@@ -1,0 +1,17 @@
+[gd_resource type="Theme" load_steps=3 format=3]
+
+[ext_resource type="ImageTexture" path="res://assets/ui/frames/frame_9slice_256.tres" id="1"]
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_1"]
+texture = ExtResource("1")
+region = Rect2(0, 0, 256, 256)
+margin_left = 32
+margin_top = 32
+margin_right = 32
+margin_bottom = 32
+
+[resource]
+Panel/styles/panel = SubResource("StyleBoxTexture_1")
+Button/styles/normal = SubResource("StyleBoxTexture_1")
+Button/styles/hover = SubResource("StyleBoxTexture_1")
+Button/styles/pressed = SubResource("StyleBoxTexture_1")
