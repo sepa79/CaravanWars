@@ -3,7 +3,7 @@ extends Node
 @onready var map_node: Control = $UI/Left/Map
 @onready var trade_panel: VBoxContainer = $UI/Right/Tabs/Trade/TradePanel
 @onready var caravan_panel: VBoxContainer = $UI/Right/Tabs/Caravan/CaravanPanel
-@onready var help_box: RichTextLabel = $UI/Right/Tabs/Help/HelpText
+@onready var help_box: RichTextLabel = $UI/Right/Tabs/HelpOptions/HelpText
 @onready var tab: TabContainer = $UI/Right/Tabs
 
 @onready var player_selector: OptionButton = $UI/Status/PlayerSel
@@ -18,18 +18,16 @@ extends Node
 @onready var play_btn: Button = $UI/Status/PlayBtn
 @onready var fast_btn: Button = $UI/Status/FastBtn
 
-@onready var lang_option: OptionButton = $UI/Right/Tabs/Options/Lang
+@onready var lang_option: OptionButton = $UI/Right/Tabs/HelpOptions/Lang
 
-@onready var log_label: RichTextLabel = $UI/Right/Log
-@onready var cmd_box: LineEdit = $UI/Right/Cmd
+@onready var log_label: RichTextLabel = $UI/Right/Tabs/Narrator/Log
 @onready var tick_timer: Timer = $Tick
 
 var time_factor: float = 1.0
 
 func _ready() -> void:
-	# log / komendy
+	# log
 	Commander.connect("log", _on_log)
-	cmd_box.text_submitted.connect(_on_cmd)
 
 	# tick + mapa
 	tick_timer.timeout.connect(_on_tick)
@@ -150,13 +148,6 @@ func _on_tick() -> void:
 	Sim.tick()
 	_update_status()
 	map_node.queue_redraw()
-
-func _on_cmd(text: String) -> void:
-	var t := text.strip_edges()
-	if t == "":
-		return
-	cmd_box.text = ""
-	Commander.exec(t) # zakładam, że masz metodę exec w Commander
 
 func _on_log(msg: String) -> void:
 	log_label.append_text(msg + "\n")

@@ -9,5 +9,14 @@ anchor_bottom = 1.0
 [node name="Target" type="Label" parent="."]
 text = "Target: (click on map)"
 
+[node name="Goods" type="Label" parent="."]
+text = "Goods: {}"
+
+[node name="Food" type="Label" parent="."]
+text = "Food/day: 0"
+
+[node name="Speed" type="Label" parent="."]
+text = "Speed: 0"
+
 [node name="AskAI" type="Button" parent="."]
 text = "Ask AI for advice"

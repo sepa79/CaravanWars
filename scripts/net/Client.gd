@@ -5,7 +5,8 @@ class_name Client
 @export var use_builtin_ai:bool = false
 
 var brain
-@onready var hud = get_node_or_null("Game/UI/Right/Tabs/Hud")
+@onready var chronicle = get_node_or_null("Game/UI/Right/Tabs/Chronicle")
+@onready var tabs:TabContainer = get_node_or_null("Game/UI/Right/Tabs")
 
 func _ready() -> void:
     set_multiplayer_authority(peer_id)
@@ -16,9 +17,17 @@ func _ready() -> void:
 
 @rpc("authority")
 func push_observation(obs:Dictionary) -> void:
-    if hud:
-        hud.show_observation(obs)
-        hud.show_knowledge(obs.get("markets", {}))
+    if chronicle:
+        chronicle.show_observation(obs)
+        chronicle.show_knowledge(obs.get("markets", {}))
+    if tabs:
+        var in_city := true
+        for e in obs.get("entities", []):
+            if e.get("type") == "convoy" and e.get("owner") == peer_id:
+                if e.get("path", []).size() > 0:
+                    in_city = false
+                break
+        tabs.set_tab_disabled(2, not in_city) # Trade tab at index 2
     if brain:
         var cmds = brain.think(obs)
         for c in cmds:
