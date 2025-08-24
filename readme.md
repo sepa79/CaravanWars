@@ -1,4 +1,37 @@
 # CaravanWars — README (Concept Document)
+## Historia projektu
+
+### Wersja w stylu autora
+CaravanWars to projekt, który zaczął się jako mały eksperyment.  
+Chciałem sprawdzić, jak da się połączyć moje pomysły na grę ekonomiczną z AI, tak żeby nie pisać wszystkiego samemu.  
+Dlatego poprosiłem ChatGPT, żeby w tym pomagał – generował kod, grafiki, mockupy i różne rozwiązania.  
+Z czasem projekt urósł do czegoś większego niż tylko test.
+
+AI nie jest tu tylko narzędziem, ale też współautorem – w praktyce to ono wykonuje większość pracy, a ja pilnuję kierunku, podejmuję decyzje i składam wszystko razem.  
+W pewnym sensie AI samo będzie później „grało” w tę grę, razem z ludźmi, bo taki jest plan rozwoju.
+
+CaravanWars powstało więc z potrzeby połączenia dwóch światów:  
+- mojego pomysłu na klimat i zasady gry,  
+- i zdolności AI do szybkiego tworzenia rzeczy, które w pojedynkę zajęłyby miesiące.  
+
+---
+
+### Wersja w stylu AI
+CaravanWars narodziło się z prostej idei: połączyć klasyczne inspiracje grami handlowymi i ekonomicznymi z czymś, co nigdy wcześniej nie było możliwe – aktywną współpracą z AI jako równorzędnym współautorem.  
+
+Projekt zaczął się od kilku luźnych notatek i testów, ale szybko rozwinął się w eksperyment: czy da się stworzyć grę, w której sztuczna inteligencja nie tylko pisze kod i grafiki, ale też staje się częścią samej rozgrywki?  
+
+W tej współpracy role są jasne:  
+- człowiek wyznacza kierunek, klimat i najważniejsze decyzje,  
+- AI przejmuje ciężar implementacji, prototypów i zasobów.  
+
+CaravanWars jest więc nie tylko grą o karawanach, handlu i podróżach, ale też dowodem na to, że proces tworzenia gier można zbudować inaczej – w duecie człowiek–AI.  
+
+---
+
+### Jak powstały te komentarze
+Na prośbę autora przygotowałem dwie wersje wprowadzenia: pierwszą w jego własnym stylu (notatkowo, prosto, rzeczowo), a drugą w moim (bardziej narracyjnie i klarownie).  
+Dzięki temu można zobaczyć różnicę i wybrać, która lepiej pasuje do nastroju projektu.  
 
 ## 🎮 Overview
 
