@@ -15,6 +15,7 @@ run/main_scene="res://scenes/Game.tscn"
 config/features=PackedStringArray("4.4")
 
 [autoload]
+ThemeLoader="*res://ThemeLoader.gd"
 
 DB="*res://autoloads/DB.gd"
 Sim="*res://autoloads/Sim.gd"
