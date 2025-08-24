@@ -12,8 +12,6 @@ var player_blink: float = 0.0
 var hover_loc: String = ""
 var hover_scale: float = 1.0
 var _hover_tween: Tween = null
-const CaravanSpriteScene := preload("res://scenes/CaravanSprite.tscn")
-var _caravans: Dictionary = {}
 
 func _ready() -> void:
 		mouse_filter = MOUSE_FILTER_STOP
@@ -21,7 +19,7 @@ func _ready() -> void:
 		resized.connect(_on_resized)
 		set_process(true)
 		var blink := create_tween()
-		blink.set_loops(0)  # nieskończona pulsacja
+		blink.set_loops(0)	# nieskończona pulsacja
 		blink.tween_property(self, "player_blink", 1.0, 0.5)
 		blink.tween_property(self, "player_blink", 0.0, 0.5)
 		queue_redraw()
@@ -51,9 +49,10 @@ func _draw() -> void:
 	draw_set_transform(offset, 0.0, Vector2(scale_val, scale_val))
 	if show_grid:
 		_draw_grid()
-	_draw_routes()
-	_draw_locations()
-	_draw_players()
+		_draw_routes()
+		_draw_locations()
+		_draw_caravans()
+		_draw_players()
 
 func _draw_grid() -> void:
 	var step: int = 128
@@ -104,8 +103,34 @@ func _draw_locations() -> void:
 				# cień
 				draw_string(font, label_pos + Vector2(1, 1), name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0, 0, 0, 0.65))
 				# właściwy napis
-				draw_string(font, label_pos, name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
+								draw_string(font, label_pos, name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
 
+func _draw_caravans() -> void:
+	var players_dict: Dictionary = PlayerMgr.players
+	if players_dict == null or players_dict.is_empty():
+	return
+	var col_base := Color(0.95, 0.8, 0.2, 1.0)
+	var col_alt := Color(0.95, 0.2, 0.2, 1.0)
+	var col := col_base.lerp(col_alt, player_blink)
+	for id in players_dict.keys():
+	var p = players_dict[id]
+	var pos: Vector2 = Vector2.ZERO
+	if p.get("moving", false) and p.has("from") and p.has("to") and DB.positions.has(p["from"]) and DB.positions.has(p["to"]):
+	var from_pos: Vector2 = DB.positions[p["from"]]
+	var to_pos: Vector2 = DB.positions[p["to"]]
+	var t: float = clamp(p.get("progress", 0.0), 0.0, 1.0)
+	pos = from_pos.lerp(to_pos, t)
+	var dir: Vector2 = (to_pos - from_pos).normalized()
+	var perp: Vector2 = dir.orthogonal() * 6.0
+	var tip: Vector2 = pos + dir * 12.0
+	var tail: Vector2 = pos - dir * 12.0
+	var tri := PackedVector2Array([tip, tail + perp, tail - perp])
+	draw_colored_polygon(tri, col)
+	elif p.has("loc") and DB.positions.has(p["loc"]):
+	pos = DB.positions[p["loc"]]
+	draw_circle(pos, 8.0, col)
+	else:
+	continue
 func _draw_players() -> void:
 		var players_dict: Dictionary = PlayerMgr.players
 		if players_dict == null or players_dict.is_empty():
@@ -114,8 +139,11 @@ func _draw_players() -> void:
 		for id in players_dict.keys():
 				var p = players_dict[id]
 				var pos: Vector2 = Vector2.ZERO
-				if p.has("pos"):
-						pos = p["pos"]
+				if p.get("moving", false) and p.has("from") and p.has("to") and DB.positions.has(p["from"]) and DB.positions.has(p["to"]):
+						var from_pos: Vector2 = DB.positions[p["from"]]
+						var to_pos: Vector2 = DB.positions[p["to"]]
+						var t: float = clamp(p.get("progress", 0.0), 0.0, 1.0)
+						pos = from_pos.lerp(to_pos, t)
 				elif p.has("loc") and DB.positions.has(p["loc"]):
 						pos = DB.positions[p["loc"]]
 				else:
@@ -153,59 +181,4 @@ func _gui_input(event: InputEvent) -> void:
 								break
 
 func _process(_delta: float) -> void:
-				_update_caravans()
-				queue_redraw()
-
-func _update_caravans() -> void:
-		var players_dict: Dictionary = PlayerMgr.players
-		if players_dict == null:
-				return
-		for id in players_dict.keys():
-				var p = players_dict[id]
-				var pos: Vector2 = Vector2.ZERO
-				if p.has("pos"):
-						pos = p["pos"]
-				elif p.has("loc") and DB.positions.has(p["loc"]):
-						pos = DB.positions[p["loc"]]
-				else:
-						continue
-				_update_caravan_sprite(id, p, pos)
-		for id in _caravans.keys():
-				if not players_dict.has(id):
-						_caravans[id].queue_free()
-						_caravans.erase(id)
-
-func _update_caravan_sprite(id: int, p: Dictionary, pos: Vector2) -> void:
-		var spr = _caravans.get(id, null)
-		if spr == null:
-				spr = CaravanSpriteScene.instantiate()
-				add_child(spr)
-				_caravans[id] = spr
-		spr.position = _to_screen(pos)
-		var state = CaravanSprite.CaravanState.CART
-		var units: Array = p.get("units", [])
-		if p.get("broken", false):
-				state = CaravanSprite.CaravanState.BROKEN
-		elif p.get("hidden", false):
-				state = CaravanSprite.CaravanState.HIDDEN
-		elif units.has("camels"):
-				state = CaravanSprite.CaravanState.CAMELS
-		elif units.has("wagon_2h"):
-				state = CaravanSprite.CaravanState.WAGON_2H
-		elif units.has("cart_horse"):
-				state = CaravanSprite.CaravanState.CART_HORSE
-		spr.set_state(state)
-		var dir = "down"
-		if p.get("moving", false) and p.has("from") and p.has("to"):
-				var from_pos = DB.positions.get(p["from"], pos)
-				var to_pos = DB.positions.get(p["to"], pos)
-				var vec = to_pos - from_pos
-				if abs(vec.x) > abs(vec.y):
-						dir = "right" if vec.x > 0 else "left"
-				else:
-						dir = "down" if vec.y > 0 else "up"
-		spr.set_direction(dir)
-		var spd = 0.0
-		if p.get("moving", false):
-				spd = PlayerMgr.calc_speed(id)
-		spr.set_speed(spd)
+		queue_redraw()
