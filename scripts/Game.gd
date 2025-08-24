@@ -6,17 +6,17 @@ extends Node
 @onready var help_box: RichTextLabel = $UI/Right/Tabs/Help/HelpText
 @onready var tab: TabContainer = $UI/Right/Tabs
 
-@onready var player_selector: OptionButton = $UI/Right/Status/PlayerSel
-@onready var gold_label: Label = $UI/Right/Status/Gold
-@onready var caravans_label: Label = $UI/Right/Status/Caravans
-@onready var tick_label: Label = $UI/Right/Status/Tick
-@onready var loc_label: Label = $UI/Right/Status/Loc
-@onready var cap_label: Label = $UI/Right/Status/Cap
-@onready var speed_label: Label = $UI/Right/Status/Speed
+@onready var player_selector: OptionButton = $UI/Status/PlayerSel
+@onready var gold_label: Label = $UI/Status/Gold
+@onready var caravans_label: Label = $UI/Status/Caravans
+@onready var tick_label: Label = $UI/Status/Tick
+@onready var loc_label: Label = $UI/Status/Loc
+@onready var cap_label: Label = $UI/Status/Cap
+@onready var speed_label: Label = $UI/Status/Speed
 
-@onready var pause_btn: Button = $UI/Right/Status/PauseBtn
-@onready var play_btn: Button = $UI/Right/Status/PlayBtn
-@onready var fast_btn: Button = $UI/Right/Status/FastBtn
+@onready var pause_btn: Button = $UI/Status/PauseBtn
+@onready var play_btn: Button = $UI/Status/PlayBtn
+@onready var fast_btn: Button = $UI/Status/FastBtn
 
 @onready var lang_option: OptionButton = $UI/Right/Tabs/Options/Lang
 
