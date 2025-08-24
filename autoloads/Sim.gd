@@ -41,4 +41,4 @@ func advance_players(delta: float) -> void:
 			p["loc"] = p["to"]
 			p.erase("from"); p.erase("to")
 			p["progress"] = 0.0
-			Commander.emit_signal("log", "[%s] arrived at %s." % [p["name"], DB.get_loc_name(p["loc"])])
+			Commander.emit_signal("log", tr("[%s] arrived at %s.") % [p["name"], DB.get_loc_name(p["loc"])])

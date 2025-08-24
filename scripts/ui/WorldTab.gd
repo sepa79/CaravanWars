@@ -9,7 +9,7 @@ func _ready() -> void:
     add_child(loc_sel)
     add_child(info_label)
     info_label.set_anchors_and_margins_preset(Control.PRESET_FULL_RECT)
-    info_label.text = "No location selected"
+    info_label.text = tr("No location selected")
 
 func set_locations(names:Array) -> void:
     loc_sel.clear()
@@ -21,4 +21,4 @@ func set_locations(names:Array) -> void:
 
 func _on_loc_selected(index:int) -> void:
     var name = loc_sel.get_item_text(index)
-    info_label.text = "Status for %s" % name
+    info_label.text = tr("Status for {name}").format({"name": name})

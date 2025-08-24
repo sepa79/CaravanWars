@@ -10,25 +10,25 @@ func _ready() -> void:
     tabs.set_anchors_and_margins_preset(Control.PRESET_FULL_RECT)
     add_child(tabs)
     var obs_panel := Control.new()
-    obs_panel.name = "Observation"
+    obs_panel.name = tr("Observation")
     observation_label.set_anchors_and_margins_preset(Control.PRESET_FULL_RECT)
     obs_panel.add_child(observation_label)
     tabs.add_child(obs_panel)
-    observation_label.text = "No observation"
+    observation_label.text = tr("No observation")
 
     var knowledge_panel := Control.new()
-    knowledge_panel.name = "Knowledge"
+    knowledge_panel.name = tr("Knowledge")
     knowledge_label.set_anchors_and_margins_preset(Control.PRESET_FULL_RECT)
     knowledge_panel.add_child(knowledge_label)
     tabs.add_child(knowledge_panel)
-    knowledge_label.text = "No knowledge"
+    knowledge_label.text = tr("No knowledge")
 
     var log_panel := Control.new()
-    log_panel.name = "Log"
+    log_panel.name = tr("Log")
     log_label.set_anchors_and_margins_preset(Control.PRESET_FULL_RECT)
     log_panel.add_child(log_label)
     tabs.add_child(log_panel)
-    log_label.text = "No events"
+    log_label.text = tr("No events")
 
 func show_observation(obs:Dictionary) -> void:
     observation_label.text = JSON.stringify(obs, "\t")
