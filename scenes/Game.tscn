@@ -29,6 +29,14 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource("2")
 
+[node name="Background" type="TextureRect" parent="UI/Left/Map"]
+z_index = -1
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+stretch_mode = 4
+
 [node name="Right" type="Control" parent="UI"]
 anchors_preset = 0
 anchor_left = 0.72
