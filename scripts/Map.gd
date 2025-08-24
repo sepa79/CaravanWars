@@ -49,10 +49,10 @@ func _draw() -> void:
 	draw_set_transform(offset, 0.0, Vector2(scale_val, scale_val))
 	if show_grid:
 		_draw_grid()
-        _draw_routes()
-        _draw_locations()
-        _draw_caravans()
-        _draw_players()
+		_draw_routes()
+		_draw_locations()
+		_draw_caravans()
+		_draw_players()
 
 func _draw_grid() -> void:
 	var step: int = 128
@@ -103,53 +103,53 @@ func _draw_locations() -> void:
 				# cień
 				draw_string(font, label_pos + Vector2(1, 1), name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0, 0, 0, 0.65))
 				# właściwy napis
-                                draw_string(font, label_pos, name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
+				draw_string(font, label_pos, name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
 
 func _draw_caravans() -> void:
-        var players_dict: Dictionary = PlayerMgr.players
-        if players_dict == null or players_dict.is_empty():
-                return
-        for id in players_dict.keys():
-                var p = players_dict[id]
-                var pos: Vector2 = Vector2.ZERO
-                if p.get("moving", false) and p.has("from") and p.has("to") and DB.positions.has(p["from"]) and DB.positions.has(p["to"]):
-                        var from_pos: Vector2 = DB.positions[p["from"]]
-                        var to_pos: Vector2 = DB.positions[p["to"]]
-                        var t: float = clamp(p.get("progress", 0.0), 0.0, 1.0)
-                        pos = from_pos.lerp(to_pos, t)
-                        var dir: Vector2 = (to_pos - from_pos).normalized()
-                        var perp: Vector2 = dir.orthogonal() * 4.0
-                        var tip: Vector2 = pos + dir * 6.0
-                        var tail: Vector2 = pos - dir * 6.0
-                        var tri := PackedVector2Array([tip, tail + perp, tail - perp])
-                        draw_colored_polygon(tri, Color(0.95, 0.8, 0.2, 1.0))
-                elif p.has("loc") and DB.positions.has(p["loc"]):
-                        pos = DB.positions[p["loc"]]
-                        draw_circle(pos, 5.0, Color(0.95, 0.8, 0.2, 1.0))
-                else:
-                        continue
+		var players_dict: Dictionary = PlayerMgr.players
+		if players_dict == null or players_dict.is_empty():
+				return
+		for id in players_dict.keys():
+				var p = players_dict[id]
+				var pos: Vector2 = Vector2.ZERO
+				if p.get("moving", false) and p.has("from") and p.has("to") and DB.positions.has(p["from"]) and DB.positions.has(p["to"]):
+						var from_pos: Vector2 = DB.positions[p["from"]]
+						var to_pos: Vector2 = DB.positions[p["to"]]
+						var t: float = clamp(p.get("progress", 0.0), 0.0, 1.0)
+						pos = from_pos.lerp(to_pos, t)
+						var dir: Vector2 = (to_pos - from_pos).normalized()
+						var perp: Vector2 = dir.orthogonal() * 4.0
+						var tip: Vector2 = pos + dir * 6.0
+						var tail: Vector2 = pos - dir * 6.0
+						var tri := PackedVector2Array([tip, tail + perp, tail - perp])
+						draw_colored_polygon(tri, Color(0.95, 0.8, 0.2, 1.0))
+				elif p.has("loc") and DB.positions.has(p["loc"]):
+						pos = DB.positions[p["loc"]]
+						draw_circle(pos, 5.0, Color(0.95, 0.8, 0.2, 1.0))
+				else:
+						continue
 
 func _draw_players() -> void:
-        var players_dict: Dictionary = PlayerMgr.players
-        if players_dict == null or players_dict.is_empty():
-                return
-        var font := get_theme_default_font()
-        for id in players_dict.keys():
-                var p = players_dict[id]
-                var pos: Vector2 = Vector2.ZERO
-                if p.get("moving", false) and p.has("from") and p.has("to") and DB.positions.has(p["from"]) and DB.positions.has(p["to"]):
-                        var from_pos: Vector2 = DB.positions[p["from"]]
-                        var to_pos: Vector2 = DB.positions[p["to"]]
-                        var t: float = clamp(p.get("progress", 0.0), 0.0, 1.0)
-                        pos = from_pos.lerp(to_pos, t)
-                elif p.has("loc") and DB.positions.has(p["loc"]):
-                        pos = DB.positions[p["loc"]]
-                else:
-                        continue
-                var disp_label: String = "P"
-                if p.has("name"):
-                        disp_label = String(p["name"])
-                draw_string(font, pos + Vector2(12, -8), disp_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
+		var players_dict: Dictionary = PlayerMgr.players
+		if players_dict == null or players_dict.is_empty():
+				return
+		var font := get_theme_default_font()
+		for id in players_dict.keys():
+				var p = players_dict[id]
+				var pos: Vector2 = Vector2.ZERO
+				if p.get("moving", false) and p.has("from") and p.has("to") and DB.positions.has(p["from"]) and DB.positions.has(p["to"]):
+						var from_pos: Vector2 = DB.positions[p["from"]]
+						var to_pos: Vector2 = DB.positions[p["to"]]
+						var t: float = clamp(p.get("progress", 0.0), 0.0, 1.0)
+						pos = from_pos.lerp(to_pos, t)
+				elif p.has("loc") and DB.positions.has(p["loc"]):
+						pos = DB.positions[p["loc"]]
+				else:
+						continue
+				var disp_label: String = "P"
+				if p.has("name"):
+						disp_label = String(p["name"])
+				draw_string(font, pos + Vector2(12, -8), disp_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
 
 func _gui_input(event: InputEvent) -> void:
 		if event is InputEventMouseMotion:
@@ -179,4 +179,4 @@ func _gui_input(event: InputEvent) -> void:
 								break
 
 func _process(_delta: float) -> void:
-        queue_redraw()
+		queue_redraw()
