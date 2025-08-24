@@ -92,34 +92,34 @@ func _draw_locations() -> void:
 		draw_string(font, label_pos, name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
 
 func _draw_players() -> void:
-	# PlayerMgr.players to Dictionary (id -> dane gracza)
-	var players_dict: Dictionary = PlayerMgr.players
-	if players_dict == null or players_dict.is_empty():
-		return
-	var font := get_theme_default_font()
-	var colors: Array = [Color.YELLOW, Color.CYAN, Color.ORANGE, Color.MAGENTA, Color.SPRING_GREEN, Color.AQUA]
-	var idx: int = 0
-	var players: Array = players_dict.values()  # <-- kluczowa zmiana: Array z wartości słownika
+    # PlayerMgr.players to Dictionary (id -> dane gracza)
+    var players_dict: Dictionary = PlayerMgr.players
+    if players_dict == null or players_dict.is_empty():
+        return
+    var font := get_theme_default_font()
+    var colors: Array = [Color.YELLOW, Color.CYAN, Color.ORANGE, Color.MAGENTA, Color.SPRING_GREEN, Color.AQUA]
+    var idx: int = 0
+    var players: Array = players_dict.values()  # <-- kluczowa zmiana: Array z wartości słownika
 
-	for p in players:
-		# oczekujemy słownika z kluczami: "pos" (Vector2) LUB "loc" (kod DB)
-		var pos: Vector2 = Vector2.ZERO
-		if p.has("pos"):
-			pos = p["pos"]
-		elif p.has("loc") and DB.positions.has(p["loc"]):
-			pos = DB.positions[p["loc"]]
-		else:
-			continue
+    for p in players:
+        # oczekujemy słownika z kluczami: "pos" (Vector2) LUB "loc" (kod DB)
+        var pos: Vector2 = Vector2.ZERO
+        if p.has("pos"):
+            pos = p["pos"]
+        elif p.has("loc") and DB.positions.has(p["loc"]):
+            pos = DB.positions[p["loc"]]
+        else:
+            continue
 
-		var c: Color = colors[idx % colors.size()]
-		idx += 1
+        var c: Color = colors[idx % colors.size()]
+        idx += 1
 
-		var disp_label: String = "P"
-		if p.has("name"):
-			disp_label = String(p["name"])
+        var disp_label: String = "P"
+        if p.has("name"):
+            disp_label = String(p["name"])
 
-		draw_circle(pos, 8.0, c)
-		draw_string(font, pos + Vector2(12, -8), disp_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, c)
+        draw_circle(pos, 8.0, c)
+        draw_string(font, pos + Vector2(12, -8), disp_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, c)
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
