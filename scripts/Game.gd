@@ -102,9 +102,9 @@ func _on_ask_ai(player_id: int) -> void:
 		aibr.suggest_for_player(player_id)
 
 func _on_tick() -> void:
-	Sim.step()
-	_update_status()
-	map_node.queue_redraw()
+        Sim.tick()
+        _update_status()
+        map_node.queue_redraw()
 
 func _on_cmd(text: String) -> void:
 	var t := text.strip_edges()
