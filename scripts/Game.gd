@@ -6,7 +6,7 @@ extends Node
 @onready var help_box: RichTextLabel = $UI/Right/Tabs/HelpOptions/HelpText
 @onready var tab: TabContainer = $UI/Right/Tabs
 
-@onready var player_selector: OptionButton = $UI/Status/PlayerSel
+@onready var player_selector: OptionButton = $UI/Right/Tabs/World/Cheats/PlayerSel
 @onready var gold_label: Label = $UI/Status/Gold
 @onready var caravans_label: Label = $UI/Status/Caravans
 @onready var tick_label: Label = $UI/Status/Tick
