@@ -20,14 +20,16 @@ extends Node
 
 @onready var lang_option: OptionButton = $UI/Right/Tabs/HelpOptions/Lang
 
-@onready var log_label: RichTextLabel = $UI/Right/Tabs/Narrator/Log
+@onready var log_label: RichTextLabel = $UI/Right/Log
+@onready var cmd_box: LineEdit = $UI/Right/Cmd
 @onready var tick_timer: Timer = $Tick
 
 var time_factor: float = 1.0
 
 func _ready() -> void:
-	# log
+	# log / komendy
 	Commander.connect("log", _on_log)
+	cmd_box.text_submitted.connect(_on_cmd)
 
 	# tick + mapa
 	tick_timer.timeout.connect(_on_tick)
@@ -148,6 +150,13 @@ func _on_tick() -> void:
 	Sim.tick()
 	_update_status()
 	map_node.queue_redraw()
+
+func _on_cmd(text: String) -> void:
+	var t := text.strip_edges()
+	if t == "":
+		return
+	cmd_box.text = ""
+	Commander.exec(t) # zakładam, że masz metodę exec w Commander
 
 func _on_log(msg: String) -> void:
 	log_label.append_text(msg + "\n")
