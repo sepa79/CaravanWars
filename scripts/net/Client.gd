@@ -18,6 +18,7 @@ func _ready() -> void:
 func push_observation(obs:Dictionary) -> void:
     if hud:
         hud.show_observation(obs)
+        hud.show_knowledge(obs.get("markets", {}))
     if brain:
         var cmds = brain.think(obs)
         for c in cmds:
