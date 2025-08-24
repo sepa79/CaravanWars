@@ -14,151 +14,152 @@ var hover_scale: float = 1.0
 var _hover_tween: Tween = null
 
 func _ready() -> void:
-        mouse_filter = MOUSE_FILTER_STOP
-        _update_layout()
-        resized.connect(_on_resized)
-        set_process(true)
-        var blink := create_tween()
-        blink.set_loops(0)  # nieskończona pulsacja
-        blink.tween_property(self, "player_blink", 1.0, 0.5)
-        blink.tween_property(self, "player_blink", 0.0, 0.5)
-        queue_redraw()
+		mouse_filter = MOUSE_FILTER_STOP
+		_update_layout()
+		resized.connect(_on_resized)
+		set_process(true)
+		var blink := create_tween()
+		blink.set_loops(0)  # nieskończona pulsacja
+		blink.tween_property(self, "player_blink", 1.0, 0.5)
+		blink.tween_property(self, "player_blink", 0.0, 0.5)
+		queue_redraw()
 
 func _on_resized() -> void:
-    _update_layout()
-    queue_redraw()
+	_update_layout()
+	queue_redraw()
 
 func _update_layout() -> void:
-    var panel_size: Vector2 = size
-    scale_val = min(
-        panel_size.x / float(IMG_SIZE.x),
-        panel_size.y / float(IMG_SIZE.y)
-    )
-    var disp_size: Vector2 = Vector2(IMG_SIZE) * scale_val
-    offset = (panel_size - disp_size) * 0.5
+	var panel_size: Vector2 = size
+	scale_val = min(
+		panel_size.x / float(IMG_SIZE.x),
+		panel_size.y / float(IMG_SIZE.y)
+	)
+	var disp_size: Vector2 = Vector2(IMG_SIZE) * scale_val
+	offset = (panel_size - disp_size) * 0.5
 
 func _to_screen(p_img: Vector2) -> Vector2:
-    return offset + p_img * scale_val
+	return offset + p_img * scale_val
 
 func _to_image(p_screen: Vector2) -> Vector2:
-    var s: float = max(scale_val, 0.00001)
-    return (p_screen - offset) / s
+	var s: float = max(scale_val, 0.00001)
+	return (p_screen - offset) / s
 
 func _draw() -> void:
-    # Ustaw transform tak, aby rysować w układzie współrzędnych obrazu (1536x1024)
-    draw_set_transform(offset, 0.0, Vector2(scale_val, scale_val))
-    if show_grid:
-        _draw_grid()
-    _draw_routes()
-    _draw_locations()
-    _draw_players()
+	# Ustaw transform tak, aby rysować w układzie współrzędnych obrazu (1536x1024)
+	draw_set_transform(offset, 0.0, Vector2(scale_val, scale_val))
+	if show_grid:
+		_draw_grid()
+	_draw_routes()
+	_draw_locations()
+	_draw_players()
 
 func _draw_grid() -> void:
-    var step: int = 128
-    var c: Color = Color(0.1, 0.1, 0.1, 0.5)
-    for x in range(0, IMG_SIZE.x + 1, step):
-        draw_line(Vector2(x, 0), Vector2(x, IMG_SIZE.y), c, 1.0)
-    for y in range(0, IMG_SIZE.y + 1, step):
-        draw_line(Vector2(0, y), Vector2(IMG_SIZE.x, y), c, 1.0)
+	var step: int = 128
+	var c: Color = Color(0.1, 0.1, 0.1, 0.5)
+	for x in range(0, IMG_SIZE.x + 1, step):
+		draw_line(Vector2(x, 0), Vector2(x, IMG_SIZE.y), c, 1.0)
+	for y in range(0, IMG_SIZE.y + 1, step):
+		draw_line(Vector2(0, y), Vector2(IMG_SIZE.x, y), c, 1.0)
 
 func _draw_routes() -> void:
-    # Ścieżki handlowe z DB.routes (klucze "A->B")
-    var line: Color = Color(0.85, 0.7, 0.45, 1.0)  # jasny, „drogowy”
-    var shadow: Color = Color(0.0, 0.0, 0.0, 0.25)
-    for key in DB.routes.keys():
-        if not (key is String):
-            continue
-        var parts: PackedStringArray = String(key).split("->", false, 2)
-        if parts.size() != 2:
-            continue
-        var a_id: String = parts[0]
-        var b_id: String = parts[1]
-        if not (DB.positions.has(a_id) and DB.positions.has(b_id)):
-            continue
-        var pa: Vector2 = DB.positions[a_id]
-        var pb: Vector2 = DB.positions[b_id]
-        # lekki cień pod linią
-        draw_line(pa + Vector2(0, 1), pb + Vector2(0, 1), shadow, 4.0)
-        # właściwa linia trasy
-        draw_line(pa, pb, line, 3.0)
+	# Ścieżki handlowe z DB.routes (klucze "A->B")
+	var line: Color = Color(0.85, 0.7, 0.45, 1.0)  # jasny, „drogowy”
+	var shadow: Color = Color(0.0, 0.0, 0.0, 0.25)
+	for key in DB.routes.keys():
+		if not (key is String):
+			continue
+		var parts: PackedStringArray = String(key).split("->", false, 2)
+		if parts.size() != 2:
+			continue
+		var a_id: String = parts[0]
+		var b_id: String = parts[1]
+		if not (DB.positions.has(a_id) and DB.positions.has(b_id)):
+			continue
+		var pa: Vector2 = DB.positions[a_id]
+		var pb: Vector2 = DB.positions[b_id]
+		# lekki cień pod linią
+		draw_line(pa + Vector2(0, 1), pb + Vector2(0, 1), shadow, 4.0)
+		# właściwa linia trasy
+		draw_line(pa, pb, line, 3.0)
 
 func _draw_locations() -> void:
-        var font := get_theme_default_font()
-        # rysuj w stabilnej kolejności po kodach
-        var ids: Array = DB.positions.keys()
-        ids.sort()
-        for loc_id in ids:
-                var pos: Vector2 = DB.positions[loc_id]
-                var radius: float = 10.5
-                if loc_id == hover_loc:
-                        radius *= hover_scale
-                        draw_circle(pos, radius + 2.0, Color.WHITE)
-                # marker: kropka z ciemnym środkiem
-                draw_circle(pos, radius, Color(0.95, 0.3, 0.2, 0.9))
-                draw_circle(pos, 3.75, Color(0.1, 0.1, 0.1, 1.0))
-                # podpis (tłumaczona nazwa)
-                var label_pos := pos + Vector2(12, -8)
-                var name_str: String = DB.get_loc_name(loc_id)
-        # cień
-        draw_string(font, label_pos + Vector2(1, 1), name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0, 0, 0, 0.65))
-        # właściwy napis
-        draw_string(font, label_pos, name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
+		var font := get_theme_default_font()
+		# rysuj w stabilnej kolejności po kodach
+		var ids: Array = DB.positions.keys()
+		ids.sort()
+		for loc_id in ids:
+				var pos: Vector2 = DB.positions[loc_id]
+				var radius: float = 10.5
+				if loc_id == hover_loc:
+						radius *= hover_scale
+						draw_circle(pos, radius + 2.0, Color.WHITE)
+				# marker: kropka z ciemnym środkiem
+				draw_circle(pos, radius, Color(0.95, 0.3, 0.2, 0.9))
+				draw_circle(pos, 3.75, Color(0.1, 0.1, 0.1, 1.0))
+				# podpis (tłumaczona nazwa)
+				var label_pos := pos + Vector2(12, -8)
+				var name_str: String = DB.get_loc_name(loc_id)
+				# cień
+				draw_string(font, label_pos + Vector2(1, 1), name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0, 0, 0, 0.65))
+				# właściwy napis
+				draw_string(font, label_pos, name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
 
 func _draw_players() -> void:
-    # PlayerMgr.players to Dictionary (id -> dane gracza)
-    var players_dict: Dictionary = PlayerMgr.players
-    if players_dict == null or players_dict.is_empty():
-        return
-    var font := get_theme_default_font()
-    var colors: Array = [Color.YELLOW, Color.CYAN, Color.ORANGE, Color.MAGENTA, Color.SPRING_GREEN, Color.AQUA]
-    var idx: int = 0
-    var players: Array = players_dict.values()  # <-- kluczowa zmiana: Array z wartości słownika
+	# PlayerMgr.players to Dictionary (id -> dane gracza)
+	var players_dict: Dictionary = PlayerMgr.players
+	if players_dict == null or players_dict.is_empty():
+		return
+	var font := get_theme_default_font()
+	var colors: Array = [Color.YELLOW, Color.CYAN, Color.ORANGE, Color.MAGENTA, Color.SPRING_GREEN, Color.AQUA]
+	var idx: int = 0
+	var players: Array = players_dict.values()  # <-- kluczowa zmiana: Array z wartości słownika
+	
+	for p in players:
+		# oczekujemy słownika z kluczami: "pos" (Vector2) LUB "loc" (kod DB)
+		var pos: Vector2 = Vector2.ZERO
+		if p.has("pos"):
+			pos = p["pos"]
+		elif p.has("loc") and DB.positions.has(p["loc"]):
+			pos = DB.positions[p["loc"]]
+		else:
+			continue
 
-        # oczekujemy słownika z kluczami: "pos" (Vector2) LUB "loc" (kod DB)
-        var pos: Vector2 = Vector2.ZERO
-        if p.has("pos"):
-            pos = p["pos"]
-        elif p.has("loc") and DB.positions.has(p["loc"]):
-            pos = DB.positions[p["loc"]]
-        else:
-            continue
+		var c: Color = colors[idx % colors.size()]
+		idx += 1
 
-        var c: Color = colors[idx % colors.size()]
-        idx += 1
+		var disp_label: String = "P"
+		if p.has("name"):
+			disp_label = String(p["name"])
 
-        var disp_label: String = "P"
-        if p.has("name"):
-            disp_label = String(p["name"])
-
-        draw_circle(pos, 8.0, c)
-        draw_string(font, pos + Vector2(12, -8), disp_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, c)
+		draw_circle(pos, 8.0, c)
+		draw_string(font, pos + Vector2(12, -8), disp_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, c)
 
 func _gui_input(event: InputEvent) -> void:
-        if event is InputEventMouseMotion:
-                var mouse_pos: Vector2 = _to_image(event.position)
-                var found: String = ""
-                for loc_id in DB.positions.keys():
-                        var p: Vector2 = DB.positions[loc_id]
-                        if p.distance_to(mouse_pos) <= 18.0:
-                                found = loc_id
-                                break
-                if found != hover_loc:
-                        hover_loc = found
-                        if _hover_tween != null:
-                                _hover_tween.kill()
-                        _hover_tween = create_tween()
-                        var target: float = hover_loc == "" ? 1.0 : 1.1
-                        _hover_tween.tween_property(self, "hover_scale", target, 0.1)
-                        queue_redraw()
-        elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-                # Przelicz klik ze space UI → space obrazu
-                var click_pos: Vector2 = _to_image(event.position)
-                # Trafienie w lokację po większym okręgu
-                for loc_id in DB.positions.keys():
-                        var p: Vector2 = DB.positions[loc_id]
-                        if p.distance_to(click_pos) <= 18.0:
-                                emit_signal("location_clicked", loc_id)
-                                break
+		if event is InputEventMouseMotion:
+				var mouse_pos: Vector2 = _to_image(event.position)
+				var found: String = ""
+				for loc_id in DB.positions.keys():
+						var p: Vector2 = DB.positions[loc_id]
+						if p.distance_to(mouse_pos) <= 18.0:
+								found = loc_id
+								break
+				if found != hover_loc:
+						hover_loc = found
+						if _hover_tween != null:
+								_hover_tween.kill()
+						_hover_tween = create_tween()
+						var target: float = (hover_loc == "") if true else 1.0
+						_hover_tween.tween_property(self, "hover_scale", target, 0.1)
+						queue_redraw()
+		elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+				# Przelicz klik ze space UI → space obrazu
+				var click_pos: Vector2 = _to_image(event.position)
+				# Trafienie w lokację po większym okręgu
+				for loc_id in DB.positions.keys():
+						var p: Vector2 = DB.positions[loc_id]
+						if p.distance_to(click_pos) <= 18.0:
+								emit_signal("location_clicked", loc_id)
+								break
 
 func _process(_delta: float) -> void:
-        queue_redraw()
+		queue_redraw()

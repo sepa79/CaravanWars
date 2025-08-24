@@ -50,17 +50,11 @@ var positions: Dictionary = {
 
 # Routes (A->B using codes)
 var routes: Dictionary = {
-	"CENTRAL_KEEP->FOREST_HAVEN": {"risk": 0.00, "ticks": 2},
-	"FOREST_HAVEN->CENTRAL_KEEP": {"risk": 0.00, "ticks": 2},
-
 	"FOREST_SPRING->MINE": {"risk": 0.00, "ticks": 2},
 	"MINE->FOREST_SPRING": {"risk": 0.00, "ticks": 2},
 
 	"HARBOR->CENTRAL_KEEP": {"risk": 0.05, "ticks": 3},
 	"CENTRAL_KEEP->HARBOR": {"risk": 0.05, "ticks": 3},
-
-	"HARBOR->FOREST_HAVEN": {"risk": 0.05, "ticks": 3},
-	"FOREST_HAVEN->HARBOR": {"risk": 0.05, "ticks": 3},
 
 	"CENTRAL_KEEP->FOREST_SPRING": {"risk": 0.05, "ticks": 3},
 	"FOREST_SPRING->CENTRAL_KEEP": {"risk": 0.05, "ticks": 3},
@@ -71,14 +65,9 @@ var routes: Dictionary = {
 	"CENTRAL_KEEP->SOUTHERN_SHRINE": {"risk": 0.07, "ticks": 3},
 	"SOUTHERN_SHRINE->CENTRAL_KEEP": {"risk": 0.07, "ticks": 3},
 
-	"HARBOR->SOUTHERN_SHRINE": {"risk": 0.07, "ticks": 4},
-	"SOUTHERN_SHRINE->HARBOR": {"risk": 0.07, "ticks": 4},
-
 	"MILLS->FOREST_HAVEN": {"risk": 0.06, "ticks": 3},
-	"FOREST_HAVEN->MILLS": {"risk": 0.06, "ticks": 3},
+	"FOREST_HAVEN->MILLS": {"risk": 0.06, "ticks": 3}
 
-	"FOREST_SPRING->MILLS": {"risk": 0.06, "ticks": 3},
-	"MILLS->FOREST_SPRING": {"risk": 0.06, "ticks": 3}
 }
 
 # Market per location (by codes)

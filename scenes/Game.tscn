@@ -4,7 +4,7 @@
 [ext_resource type="Script" uid="uid://cx8wh45qc2dts" path="res://scripts/Map.gd" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/panels/CaravanPanel.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/panels/TradePanel.tscn" id="4"]
-[ext_resource type="Texture2D" uid="uid://b0bk7e01fw7nb" path="res://assets/bg/world_map.webp" id="5"]
+[ext_resource type="Texture2D" uid="uid://pybonc2rcxwf" path="res://assets/bg/world_map.webp" id="5"]
 
 [node name="Game" type="Node"]
 script = ExtResource("1")
