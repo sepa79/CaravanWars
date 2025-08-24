@@ -1,0 +1,8 @@
+# Godot-generated files
+.godot/
+*.import
+# Temporary files
+*~
+*.tmp
+# OS files
+.DS_Store
