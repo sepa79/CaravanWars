@@ -1,6 +1,10 @@
 # Caravan Wars — Changelog
 
-## 0.3.3-alpha (current)
+## 0.3.4-alpha – 2025-08-24
+- UI: Zintegrowano nowe ramki (panele i przyciski) jako Theme globalne
+- Ujednolicono styl ekranów menu i Chronicles
+
+## 0.3.3-alpha
 - Added translations for user interface strings.
 - Restored world map background image.
 

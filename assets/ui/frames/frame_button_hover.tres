@@ -1,0 +1,13 @@
+[gd_resource type="ImageTexture" load_steps=2 format=3]
+
+[sub_resource type="Image" id="Image_btn_hover"]
+data = {
+"data": PackedByteArray(136,136,136,255, 136,136,136,255, 136,136,136,255, 136,136,136,255, 238,238,238,255, 136,136,136,255, 136,136,136,255, 136,136,136,255, 136,136,136,255),
+"format": "RGBA8",
+"height": 3,
+"mipmaps": false,
+"width": 3
+}
+
+[resource]
+image = SubResource("Image_btn_hover")

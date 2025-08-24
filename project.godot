@@ -32,3 +32,6 @@ window/stretch/aspect="expand"
 
 ; [internationalization]
 ; locale/translations=PackedStringArray("res://locale/translations.pl.tres")
+
+[gui]
+theme/custom="res://assets/ui/theme/caravan_theme.tres"
