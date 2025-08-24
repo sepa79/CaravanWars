@@ -42,6 +42,7 @@ func _ready() -> void:
 	_fill_help()
 	_update_status()
 	map_node.queue_redraw()
+	set_process(true)
 
 func _populate_player_selector() -> void:
 	player_selector.clear()
@@ -69,14 +70,18 @@ func _update_status() -> void:
 	var p = PlayerMgr.players.get(pid, null)
 	if p == null:
 		return
-	# uzupełnij tutaj swoje liczniki/etykiety wg danych z PlayerMgr
-	loc_label.text = DB.get_loc_name(p.get("loc", ""))
-	speed_label.text = str(p.get("speed", 0.0))
-	tick_label.text = str(Sim.get("tick")) 
-	# cap/gold/caravans — przykładowo:
-	cap_label.text = str(p.get("cap_used", 0)) + "/" + str(p.get("cap_total", 0))
-	gold_label.text = str(p.get("gold", 0))
-	caravans_label.text = str(p.get("caravans", 1))
+	loc_label.text = "Location: " + DB.get_loc_name(p.get("loc", ""))
+	speed_label.text = "Speed: " + str(PlayerMgr.calc_speed(pid))
+	tick_label.text = "Tick: " + str(Sim.tick_count)
+	var used = PlayerMgr.cargo_used(pid)
+	var total = PlayerMgr.capacity_total(pid)
+	cap_label.text = "Cargo: " + str(used) + "/" + str(total)
+	gold_label.text = "Gold: " + str(p.get("gold", 0))
+	caravans_label.text = "Caravans: " + str(p.get("units", []).size())
+
+func _process(delta: float) -> void:
+	Sim.advance_players(delta)
+	_update_status()
 
 func _on_location_click(loc_code: String) -> void:
 	var pid := PlayerMgr.local_player_id
@@ -102,9 +107,9 @@ func _on_ask_ai(player_id: int) -> void:
 		aibr.suggest_for_player(player_id)
 
 func _on_tick() -> void:
-		Sim.tick()
-		_update_status()
-		map_node.queue_redraw()
+	Sim.tick()
+	_update_status()
+	map_node.queue_redraw()
 
 func _on_cmd(text: String) -> void:
 	var t := text.strip_edges()
