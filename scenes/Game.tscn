@@ -76,6 +76,18 @@ text = "Cargo: 0/0"
 layout_mode = 2
 text = "Speed: 1.0"
 
+[node name="PauseBtn" type="Button" parent="UI/Right/Status"]
+layout_mode = 2
+text = "||"
+
+[node name="PlayBtn" type="Button" parent="UI/Right/Status"]
+layout_mode = 2
+text = ">"
+
+[node name="FastBtn" type="Button" parent="UI/Right/Status"]
+layout_mode = 2
+text = ">>"
+
 [node name="Tabs" type="TabContainer" parent="UI/Right"]
 layout_mode = 0
 anchor_top = 0.05

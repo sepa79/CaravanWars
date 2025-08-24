@@ -14,9 +14,17 @@ extends Node
 @onready var cap_label: Label = $UI/Right/Status/Cap
 @onready var speed_label: Label = $UI/Right/Status/Speed
 
+@onready var pause_btn: Button = $UI/Right/Status/PauseBtn
+@onready var play_btn: Button = $UI/Right/Status/PlayBtn
+@onready var fast_btn: Button = $UI/Right/Status/FastBtn
+
+@onready var lang_option: OptionButton = $UI/Right/Tabs/Options/Lang
+
 @onready var log_label: RichTextLabel = $UI/Right/Log
 @onready var cmd_box: LineEdit = $UI/Right/Cmd
 @onready var tick_timer: Timer = $Tick
+
+var time_factor: float = 1.0
 
 func _ready() -> void:
 	# log / komendy
@@ -35,14 +43,17 @@ func _ready() -> void:
 		trade_panel.sell_request.connect(_on_sell_request)
 
 	# inne panele (opcjonalnie)
-	if caravan_panel.has_signal("ask_ai_pressed"):
-		caravan_panel.ask_ai_pressed.connect(_on_ask_ai)
+        if caravan_panel.has_signal("ask_ai_pressed"):
+                caravan_panel.ask_ai_pressed.connect(_on_ask_ai)
 
-	_populate_player_selector()
-	_fill_help()
-	_update_status()
-	map_node.queue_redraw()
-	set_process(true)
+        _populate_player_selector()
+        _fill_help()
+        _setup_language_dropdown()
+        _setup_time_controls()
+        _update_status()
+        map_node.queue_redraw()
+        _set_time_factor(time_factor)
+        set_process(true)
 
 func _populate_player_selector() -> void:
 	player_selector.clear()
@@ -63,7 +74,35 @@ func _fill_help() -> void:
 	t += "• Trade only in the current location.\n"
 	t += "• Console commands (EN codes only): [code]help, info, price <CODE>, move <CODE>[/code]\n"
 	t += "Codes: HARBOR, CENTRAL_KEEP, SOUTHERN_SHRINE, FOREST_SPRING, MILLS, FOREST_HAVEN, MINE\n"
-	help_box.bbcode_text = t
+        help_box.bbcode_text = t
+
+func _setup_language_dropdown() -> void:
+        lang_option.clear()
+        var langs := {"en": "English", "pl": "Polski"}
+        for code in langs.keys():
+                lang_option.add_item(langs[code], code)
+        for i in range(lang_option.get_item_count()):
+                if lang_option.get_item_id(i) == DB.current_language:
+                        lang_option.select(i)
+                        break
+        lang_option.item_selected.connect(func(i):
+                DB.set_language(lang_option.get_item_id(i))
+                _update_status()
+                trade_panel.call_deferred("populate")
+                map_node.queue_redraw()
+        )
+
+func _setup_time_controls() -> void:
+        pause_btn.pressed.connect(func(): _set_time_factor(0.0))
+        play_btn.pressed.connect(func(): _set_time_factor(1.0))
+        fast_btn.pressed.connect(func(): _set_time_factor(2.0))
+
+func _set_time_factor(f: float) -> void:
+        time_factor = f
+        if f <= 0.0:
+                tick_timer.stop()
+        else:
+                tick_timer.start(1.0 / f)
 
 func _update_status() -> void:
 	var pid := PlayerMgr.local_player_id
@@ -80,8 +119,8 @@ func _update_status() -> void:
 	caravans_label.text = "Caravans: " + str(p.get("units", []).size())
 
 func _process(delta: float) -> void:
-	Sim.advance_players(delta)
-	_update_status()
+        Sim.advance_players(delta * time_factor)
+        _update_status()
 
 func _on_location_click(loc_code: String) -> void:
 	var pid := PlayerMgr.local_player_id
