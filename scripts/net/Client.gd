@@ -5,7 +5,7 @@ class_name Client
 @export var use_builtin_ai:bool = false
 
 var brain
-@onready var hud = get_node_or_null("Hud")
+@onready var hud = get_node_or_null("Game/UI/Right/Tabs/Hud")
 
 func _ready() -> void:
     set_multiplayer_authority(peer_id)

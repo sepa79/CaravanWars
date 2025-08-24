@@ -4,7 +4,7 @@
 [ext_resource type="Script" uid="uid://cx8wh45qc2dts" path="res://scripts/Map.gd" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/panels/CaravanPanel.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/panels/TradePanel.tscn" id="4"]
-[ext_resource type="Texture2D" uid="uid://pybonc2rcxwf" path="res://assets/bg/world_map.webp" id="5"]
+[ext_resource type="Script" path="res://scripts/ui/Hud.gd" id="5"]
 
 [node name="Game" type="Node"]
 script = ExtResource("1")
@@ -28,16 +28,6 @@ anchors_preset = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource("2")
-
-[node name="Background" type="TextureRect" parent="UI/Left/Map"]
-z_index = -1
-layout_mode = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 2
-texture = ExtResource("5")
-stretch_mode = 4
-
 
 [node name="Right" type="Control" parent="UI"]
 anchors_preset = 0
@@ -139,6 +129,11 @@ layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
 bbcode_enabled = true
+
+[node name="Hud" type="Control" parent="UI/Right/Tabs" script=ExtResource("5")]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 4
 
 [node name="Log" type="RichTextLabel" parent="UI/Right"]
 layout_mode = 0

@@ -6,6 +6,7 @@ class_name Hud
 @onready var knowledge_label:RichTextLabel = RichTextLabel.new()
 
 func _ready() -> void:
+    tabs.set_anchors_and_margins_preset(Control.PRESET_FULL_RECT)
     add_child(tabs)
     var obs_panel := Control.new()
     obs_panel.name = "Observation"
