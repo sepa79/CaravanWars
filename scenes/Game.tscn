@@ -21,6 +21,7 @@ grow_vertical = 2
 anchors_preset = 0
 anchor_right = 0.72
 anchor_bottom = 1.0
+offset_bottom = -28.0
 
 [node name="Map" type="Control" parent="UI/Left"]
 anchors_preset = 0
@@ -37,54 +38,58 @@ mouse_filter = 2
 texture = ExtResource("5")
 stretch_mode = 4
 
+
 [node name="Right" type="Control" parent="UI"]
 anchors_preset = 0
 anchor_left = 0.72
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_bottom = -28.0
 
-[node name="Status" type="HBoxContainer" parent="UI/Right"]
+[node name="Status" type="HBoxContainer" parent="UI"]
 layout_mode = 0
 anchor_right = 1.0
-offset_bottom = 28.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -28.0
 
-[node name="PlayerSel" type="OptionButton" parent="UI/Right/Status"]
+[node name="PlayerSel" type="OptionButton" parent="UI/Status"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Gold" type="Label" parent="UI/Right/Status"]
+[node name="Gold" type="Label" parent="UI/Status"]
 layout_mode = 2
 text = "Gold: 0"
 
-[node name="Caravans" type="Label" parent="UI/Right/Status"]
+[node name="Caravans" type="Label" parent="UI/Status"]
 layout_mode = 2
 text = "Caravans: 0"
 
-[node name="Tick" type="Label" parent="UI/Right/Status"]
+[node name="Tick" type="Label" parent="UI/Status"]
 layout_mode = 2
 text = "Tick: 0"
 
-[node name="Loc" type="Label" parent="UI/Right/Status"]
+[node name="Loc" type="Label" parent="UI/Status"]
 layout_mode = 2
 text = "Location: Colony"
 
-[node name="Cap" type="Label" parent="UI/Right/Status"]
+[node name="Cap" type="Label" parent="UI/Status"]
 layout_mode = 2
 text = "Cargo: 0/0"
 
-[node name="Speed" type="Label" parent="UI/Right/Status"]
+[node name="Speed" type="Label" parent="UI/Status"]
 layout_mode = 2
 text = "Speed: 1.0"
 
-[node name="PauseBtn" type="Button" parent="UI/Right/Status"]
+[node name="PauseBtn" type="Button" parent="UI/Status"]
 layout_mode = 2
 text = "||"
 
-[node name="PlayBtn" type="Button" parent="UI/Right/Status"]
+[node name="PlayBtn" type="Button" parent="UI/Status"]
 layout_mode = 2
 text = ">"
 
-[node name="FastBtn" type="Button" parent="UI/Right/Status"]
+[node name="FastBtn" type="Button" parent="UI/Status"]
 layout_mode = 2
 text = ">>"
 
