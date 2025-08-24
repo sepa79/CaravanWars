@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://scripts/ui/Chronicle.gd" id="5"]
 [ext_resource type="Script" path="res://scripts/ui/WorldTab.gd" id="6"]
 [ext_resource type="Theme" path="res://assets/ui/theme/caravan_theme.tres" id="7"]
+[ext_resource type="Texture2D" path="res://assets/bg/world_map.webp" id="8"]
 
 [node name="Game" type="Node"]
 script = ExtResource("1")
@@ -20,6 +21,15 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
+[node name="Background" type="TextureRect" parent="UI/Left/Map"]
+z_index = -1
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+ mouse_filter = 2
+texture = ExtResource("8")
+
+stretch_mode = 4
 [node name="Left" type="Control" parent="UI"]
 anchors_preset = 0
 anchor_right = 0.72
