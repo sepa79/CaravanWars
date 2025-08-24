@@ -114,7 +114,6 @@ func _draw_players() -> void:
     var idx: int = 0
     var players: Array = players_dict.values()  # <-- kluczowa zmiana: Array z wartości słownika
 
-        for p in players:
         # oczekujemy słownika z kluczami: "pos" (Vector2) LUB "loc" (kod DB)
         var pos: Vector2 = Vector2.ZERO
         if p.has("pos"):
@@ -124,21 +123,15 @@ func _draw_players() -> void:
         else:
             continue
 
-                var c: Color = colors[idx % colors.size()]
-                idx += 1
+        var c: Color = colors[idx % colors.size()]
+        idx += 1
 
-                var disp_label: String = "P"
-                if p.has("name"):
-                        disp_label = String(p["name"])
+        var disp_label: String = "P"
+        if p.has("name"):
+            disp_label = String(p["name"])
 
-                var scale := 1.0 + 0.3 * player_blink
-                var tri := PackedVector2Array([
-                        Vector2(0, -10) * scale + pos,
-                        Vector2(7, 10) * scale + pos,
-                        Vector2(-7, 10) * scale + pos,
-                ])
-                draw_colored_polygon(tri, c)
-                draw_string(font, pos + Vector2(12, -8), disp_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, c)
+        draw_circle(pos, 8.0, c)
+        draw_string(font, pos + Vector2(12, -8), disp_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, c)
 
 func _gui_input(event: InputEvent) -> void:
         if event is InputEventMouseMotion:
