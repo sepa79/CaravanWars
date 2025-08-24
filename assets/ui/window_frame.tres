@@ -1,0 +1,10 @@
+[gd_resource type="StyleBoxTexture" format=3]
+
+[resource]
+texture = ExtResource("res://assets/ui/window_frame_256.png")
+region_rect = Rect2(0, 0, 256, 256)
+margin_left = 24.0
+margin_top = 24.0
+margin_right = 24.0
+margin_bottom = 24.0
+draw_center = false

@@ -1,17 +1,33 @@
-[gd_resource type="Theme" load_steps=3 format=3]
+[gd_resource type="Theme" load_steps=5 format=3]
 
-[ext_resource type="ImageTexture" path="res://assets/ui/frames/frame_9slice_256.tres" id="1"]
+[ext_resource type="Texture2D" path="res://assets/ui/popup_bg_256.png" id="1"]
+[ext_resource type="Texture2D" path="res://assets/ui/window_frame_256.png" id="2"]
 
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_1"]
+[sub_resource type="StyleBoxTexture" id="SBT_PAPER"]
 texture = ExtResource("1")
 region = Rect2(0, 0, 256, 256)
-margin_left = 32
-margin_top = 32
-margin_right = 32
-margin_bottom = 32
+margin_left = 4.0
+margin_top = 4.0
+margin_right = 4.0
+margin_bottom = 4.0
+draw_center = true
+
+[sub_resource type="StyleBoxTexture" id="SBT_FRAME"]
+texture = ExtResource("2")
+region = Rect2(0, 0, 256, 256)
+margin_left = 24.0
+margin_top = 24.0
+margin_right = 24.0
+margin_bottom = 24.0
+draw_center = false
 
 [resource]
-Panel/styles/panel = SubResource("StyleBoxTexture_1")
-Button/styles/normal = SubResource("StyleBoxTexture_1")
-Button/styles/hover = SubResource("StyleBoxTexture_1")
-Button/styles/pressed = SubResource("StyleBoxTexture_1")
+Window/styles/panel = SubResource("SBT_FRAME")
+Window/styles/close = SubResource("SBT_FRAME")
+Window/styles/embedded_border = SubResource("SBT_FRAME")
+
+PopupPanel/styles/panel = SubResource("SBT_PAPER")
+AcceptDialog/styles/panel = SubResource("SBT_PAPER")
+
+TabContainer/styles/panel = SubResource("SBT_PAPER")
+Panel/styles/panel = SubResource("SBT_PAPER")

@@ -1,0 +1,12 @@
+# -- Add these to your existing caravan_theme.tres --
+# Example of hooking textures to common controls:
+# Panel
+Panel/styles/panel = ExtResource("res://assets/ui/popup_bg.tres")
+# Window (base dialog window)
+Window/styles/close = ExtResource("res://assets/ui/window_frame.tres")
+Window/styles/embedded_border = ExtResource("res://assets/ui/window_frame.tres")
+Window/styles/panel = ExtResource("res://assets/ui/popup_bg.tres")
+# PopupPanel / AcceptDialog
+PopupPanel/styles/panel = ExtResource("res://assets/ui/window_frame.tres")
+# Tabs (optional, if you want tab bodies to use the parchment background)
+TabContainer/styles/panel = ExtResource("res://assets/ui/popup_bg.tres")
