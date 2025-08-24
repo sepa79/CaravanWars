@@ -3,10 +3,10 @@ extends Node
 @onready var map_node: Control = $UI/Left/Map
 @onready var trade_panel: VBoxContainer = $UI/Right/Tabs/Trade/TradePanel
 @onready var caravan_panel: VBoxContainer = $UI/Right/Tabs/Caravan/CaravanPanel
-@onready var help_box: RichTextLabel = $UI/Right/Tabs/Help/HelpText
+@onready var help_box: RichTextLabel = $UI/Right/Tabs/HelpOptions/HelpText
 @onready var tab: TabContainer = $UI/Right/Tabs
 
-@onready var player_selector: OptionButton = $UI/Status/PlayerSel
+@onready var player_selector: OptionButton = $UI/Right/Tabs/World/Cheats/PlayerSel
 @onready var gold_label: Label = $UI/Status/Gold
 @onready var caravans_label: Label = $UI/Status/Caravans
 @onready var tick_label: Label = $UI/Status/Tick
@@ -18,7 +18,7 @@ extends Node
 @onready var play_btn: Button = $UI/Status/PlayBtn
 @onready var fast_btn: Button = $UI/Status/FastBtn
 
-@onready var lang_option: OptionButton = $UI/Right/Tabs/Options/Lang
+@onready var lang_option: OptionButton = $UI/Right/Tabs/HelpOptions/Lang
 
 @onready var log_label: RichTextLabel = $UI/Right/Log
 @onready var cmd_box: LineEdit = $UI/Right/Cmd
