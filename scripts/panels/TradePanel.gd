@@ -12,7 +12,7 @@ func populate():
         c.queue_free()
     grid.columns = 6
 
-    var h = ["Good","Price","City stock","You","Qty","Action"]
+    var h = [tr("Good"), tr("Price"), tr("City stock"), tr("You"), tr("Qty"), tr("Action")]
     for i in h:
         var l = Label.new(); l.text = i; grid.add_child(l)
 
@@ -22,7 +22,7 @@ func populate():
     var moving = p.get("moving", false)
 
     for g in DB.goods_base_price.keys():
-        var name = DB.goods_names[g]
+        var name = tr(DB.goods_names[g])
         var price = Sim.price[loc][g]
         var city_stock = DB.locations[loc]["stock"].get(g, 0)
         var you_have = p["cargo"].get(g, 0)
@@ -35,8 +35,8 @@ func populate():
         var qty = SpinBox.new(); qty.min_value = 1; qty.max_value = 999; qty.step = 1; grid.add_child(qty)
 
         var hb = HBoxContainer.new()
-        var b_buy = Button.new(); b_buy.text = "Buy"; b_buy.disabled = moving
-        var b_sell = Button.new(); b_sell.text = "Sell"; b_sell.disabled = moving
+        var b_buy = Button.new(); b_buy.text = tr("Buy"); b_buy.disabled = moving
+        var b_sell = Button.new(); b_sell.text = tr("Sell"); b_sell.disabled = moving
         hb.add_child(b_buy); hb.add_child(b_sell)
         grid.add_child(hb)
 

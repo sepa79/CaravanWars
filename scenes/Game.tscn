@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://b3x0wko2kygau"]
+[gd_scene load_steps=7 format=3 uid="uid://b3x0wko2kygau"]
 
 [ext_resource type="Script" uid="uid://bb08weeru3c3c" path="res://scripts/Game.gd" id="1"]
 [ext_resource type="Script" uid="uid://cx8wh45qc2dts" path="res://scripts/Map.gd" id="2"]
@@ -6,7 +6,6 @@
 [ext_resource type="PackedScene" path="res://scenes/panels/TradePanel.tscn" id="4"]
 [ext_resource type="Script" path="res://scripts/ui/Chronicle.gd" id="5"]
 [ext_resource type="Script" path="res://scripts/ui/WorldTab.gd" id="6"]
-[ext_resource type="Texture2D" path="res://assets/bg/world_map.webp" id="7"]
 
 [node name="Game" type="Node"]
 script = ExtResource("1")
@@ -32,14 +31,12 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource("2")
 
-[node name="Background" type="TextureRect" parent="UI/Left/Map"]
+[node name="Background" type="ColorRect" parent="UI/Left/Map"]
 z_index = -1
 layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
  mouse_filter = 2
- texture = ExtResource("7")
- stretch_mode = 4
 
 [node name="Right" type="Control" parent="UI"]
 anchors_preset = 0
@@ -57,27 +54,27 @@ offset_top = -64.0
 
 [node name="Gold" type="Label" parent="UI/Status"]
 layout_mode = 2
-text = "Gold: 0"
+text = ""
 
 [node name="Caravans" type="Label" parent="UI/Status"]
 layout_mode = 2
-text = "Caravans: 0"
+text = ""
 
 [node name="Tick" type="Label" parent="UI/Status"]
 layout_mode = 2
-text = "Tick: 0"
+text = ""
 
 [node name="Loc" type="Label" parent="UI/Status"]
 layout_mode = 2
-text = "Location: Colony"
+text = ""
 
 [node name="Cap" type="Label" parent="UI/Status"]
 layout_mode = 2
-text = "Cargo: 0/0"
+text = ""
 
 [node name="Speed" type="Label" parent="UI/Status"]
 layout_mode = 2
-text = "Speed: 1.0"
+text = ""
 
 [node name="PauseBtn" type="Button" parent="UI/Status"]
 layout_mode = 2
