@@ -6,7 +6,7 @@
 [ext_resource type="PackedScene" path="res://scenes/panels/TradePanel.tscn" id="4"]
 [ext_resource type="Script" path="res://scripts/ui/Chronicle.gd" id="5"]
 [ext_resource type="Script" path="res://scripts/ui/WorldTab.gd" id="6"]
-[ext_resource type="Texture2D" path="res://assets/bg/world_map.tres" id="7"]
+[ext_resource type="Texture2D" path="res://assets/bg/world_map.webp" id="7"]
 
 [node name="Game" type="Node"]
 script = ExtResource("1")
