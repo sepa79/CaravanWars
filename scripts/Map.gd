@@ -12,6 +12,8 @@ var player_blink: float = 0.0
 var hover_loc: String = ""
 var hover_scale: float = 1.0
 var _hover_tween: Tween = null
+const CaravanSpriteScene := preload("res://scenes/CaravanSprite.tscn")
+var _caravans: Dictionary = {}
 
 func _ready() -> void:
 		mouse_filter = MOUSE_FILTER_STOP
@@ -105,34 +107,23 @@ func _draw_locations() -> void:
 				draw_string(font, label_pos, name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
 
 func _draw_players() -> void:
-	# PlayerMgr.players to Dictionary (id -> dane gracza)
-	var players_dict: Dictionary = PlayerMgr.players
-	if players_dict == null or players_dict.is_empty():
-		return
-	var font := get_theme_default_font()
-	var colors: Array = [Color.YELLOW, Color.CYAN, Color.ORANGE, Color.MAGENTA, Color.SPRING_GREEN, Color.AQUA]
-	var idx: int = 0
-	var players: Array = players_dict.values()  # <-- kluczowa zmiana: Array z wartości słownika
-	
-	for p in players:
-		# oczekujemy słownika z kluczami: "pos" (Vector2) LUB "loc" (kod DB)
-		var pos: Vector2 = Vector2.ZERO
-		if p.has("pos"):
-			pos = p["pos"]
-		elif p.has("loc") and DB.positions.has(p["loc"]):
-			pos = DB.positions[p["loc"]]
-		else:
-			continue
-
-		var c: Color = colors[idx % colors.size()]
-		idx += 1
-
-		var disp_label: String = "P"
-		if p.has("name"):
-			disp_label = String(p["name"])
-
-		draw_circle(pos, 8.0, c)
-		draw_string(font, pos + Vector2(12, -8), disp_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, c)
+        var players_dict: Dictionary = PlayerMgr.players
+        if players_dict == null or players_dict.is_empty():
+                return
+        var font := get_theme_default_font()
+        for id in players_dict.keys():
+                var p = players_dict[id]
+                var pos: Vector2 = Vector2.ZERO
+                if p.has("pos"):
+                        pos = p["pos"]
+                elif p.has("loc") and DB.positions.has(p["loc"]):
+                        pos = DB.positions[p["loc"]]
+                else:
+                        continue
+                var disp_label: String = "P"
+                if p.has("name"):
+                        disp_label = String(p["name"])
+                draw_string(font, pos + Vector2(12, -8), disp_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
 
 func _gui_input(event: InputEvent) -> void:
 		if event is InputEventMouseMotion:
@@ -162,4 +153,59 @@ func _gui_input(event: InputEvent) -> void:
 								break
 
 func _process(_delta: float) -> void:
-		queue_redraw()
+                _update_caravans()
+                queue_redraw()
+
+func _update_caravans() -> void:
+        var players_dict: Dictionary = PlayerMgr.players
+        if players_dict == null:
+                return
+        for id in players_dict.keys():
+                var p = players_dict[id]
+                var pos: Vector2 = Vector2.ZERO
+                if p.has("pos"):
+                        pos = p["pos"]
+                elif p.has("loc") and DB.positions.has(p["loc"]):
+                        pos = DB.positions[p["loc"]]
+                else:
+                        continue
+                _update_caravan_sprite(id, p, pos)
+        for id in _caravans.keys():
+                if not players_dict.has(id):
+                        _caravans[id].queue_free()
+                        _caravans.erase(id)
+
+func _update_caravan_sprite(id: int, p: Dictionary, pos: Vector2) -> void:
+        var spr = _caravans.get(id, null)
+        if spr == null:
+                spr = CaravanSpriteScene.instantiate()
+                add_child(spr)
+                _caravans[id] = spr
+        spr.position = _to_screen(pos)
+        var state = CaravanSprite.CaravanState.CART
+        var units: Array = p.get("units", [])
+        if p.get("broken", false):
+                state = CaravanSprite.CaravanState.BROKEN
+        elif p.get("hidden", false):
+                state = CaravanSprite.CaravanState.HIDDEN
+        elif units.has("camels"):
+                state = CaravanSprite.CaravanState.CAMELS
+        elif units.has("wagon_2h"):
+                state = CaravanSprite.CaravanState.WAGON_2H
+        elif units.has("cart_horse"):
+                state = CaravanSprite.CaravanState.CART_HORSE
+        spr.set_state(state)
+        var dir = "down"
+        if p.get("moving", false) and p.has("from") and p.has("to"):
+                var from_pos = DB.positions.get(p["from"], pos)
+                var to_pos = DB.positions.get(p["to"], pos)
+                var vec = to_pos - from_pos
+                if abs(vec.x) > abs(vec.y):
+                        dir = "right" if vec.x > 0 else "left"
+                else:
+                        dir = "down" if vec.y > 0 else "up"
+        spr.set_direction(dir)
+        var spd = 0.0
+        if p.get("moving", false):
+                spd = PlayerMgr.calc_speed(id)
+        spr.set_speed(spd)
