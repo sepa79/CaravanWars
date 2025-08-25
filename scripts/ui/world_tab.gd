@@ -1,20 +1,20 @@
 extends VBoxContainer
 
-@onready var player_sel: OptionButton = $PlayerSel
+@onready var player_sel: OptionButton = $PlayerSel/Select
 @onready var player_info: RichTextLabel = $PlayerInfo
-@onready var loc_sel: OptionButton = $LocationSel
+@onready var loc_sel: OptionButton = $LocationSel/Select
 @onready var loc_info: RichTextLabel = $LocationInfo
 
 func _ready() -> void:
         var c = get_theme_color("font_color", "Label")
         player_info.add_theme_color_override("default_color", c)
         loc_info.add_theme_color_override("default_color", c)
+        var paper := get_theme_stylebox("panel", "Panel").duplicate()
         for b in [player_sel, loc_sel]:
-                var frame := get_theme_stylebox("normal", "OptionButton").duplicate()
-                b.add_theme_stylebox_override("normal", frame)
-                b.add_theme_stylebox_override("hover", frame)
-                b.add_theme_stylebox_override("pressed", frame)
-                b.add_theme_stylebox_override("focus", frame)
+                b.add_theme_stylebox_override("normal", paper)
+                b.add_theme_stylebox_override("hover", paper)
+                b.add_theme_stylebox_override("pressed", paper)
+                b.add_theme_stylebox_override("focus", paper)
         player_sel.item_selected.connect(_on_player_selected)
         loc_sel.item_selected.connect(_on_location_selected)
         WorldViewModel.player_changed.connect(_update_player_info)
