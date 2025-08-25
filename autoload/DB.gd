@@ -45,13 +45,13 @@ func _ready() -> void:
 
 # Map positions (codes -> image coords)
 var positions: Dictionary = {
-        "HARBOR":        Vector2(1230, 900),
-        "CENTRAL_KEEP":  Vector2(1000, 750),
-        "SOUTHERN_SHRINE": Vector2(400, 800),
-        "FOREST_SPRING": Vector2(735, 450),
-        "MILLS":         Vector2(1140, 110),
-        "FOREST_HAVEN":  Vector2(990, 310),
-        "MINE":          Vector2(490, 300)
+		"HARBOR":        Vector2(1060, 840),
+		"CENTRAL_KEEP":  Vector2(910, 750),
+		"SOUTHERN_SHRINE": Vector2(350, 840),
+		"FOREST_SPRING": Vector2(690, 560),
+		"MILLS":         Vector2(1010, 185),
+		"FOREST_HAVEN":  Vector2(890, 360),
+		"MINE":          Vector2(440, 340)
 }
 
 # Routes (A->B using codes)
