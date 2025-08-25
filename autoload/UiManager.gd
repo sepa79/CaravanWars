@@ -1,7 +1,7 @@
 extends Node
 
 const UI_ROOT_PATH := "/root/Game/UI" # <- wpisz ścieżkę do swojego Control z całym UI
-const BASE_VP := Vector2i(1280, 720)
+const BASE_VP := Vector2i(1920, 1080)
 const MIN_FONT_SCALE := 0.85
 const MAX_FONT_SCALE := 1.75
 
@@ -9,10 +9,10 @@ signal window_scaled(scale: float)
 
 func _ready() -> void:
 	var win := get_window()
-	win.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
-	win.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+	win.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+	win.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
 	win.content_scale_size = BASE_VP
-	win.size = Vector2i(1280, 720)
+	win.size = Vector2i(1920, 1080)
 	win.min_size = Vector2i(1024, 576)
 	win.mode = Window.MODE_WINDOWED
 	win.borderless = false
@@ -30,12 +30,10 @@ func _on_window_resized() -> void:
 func _apply_font_and_ui_scale(scale: float) -> void:
 	var theme := get_tree().root.theme
 	if theme:
-		theme.default_font_size = int(round(18.0 * scale))
 		print("[UiManager] theme.default_font_size =", theme.default_font_size)
 	var ui := get_node_or_null(UI_ROOT_PATH)
 	if ui and ui is CanvasItem:
-		(ui as CanvasItem).scale = Vector2(scale, scale)
-		print("[UiManager] ui scale set on:", ui.name)
+		print("[UiManager] ui scale target:", ui.name)
 
 func toggle_fullscreen() -> void:
 	var win := get_window()
