@@ -69,7 +69,7 @@ func start_travel(id:int, to_loc:String) -> bool:
 	p["from"] = from_loc
 	p["to"] = to_loc
 	p["eta_left"] = eta
-		p["eta_total"] = eta
-		p["progress"] = 0.0
-		Commander.emit_signal("log", tr("[%s] traveling %s -> %s (ETA %.1f).") % [p["name"], LocationsDB.get(from_loc).displayName, LocationsDB.get(to_loc).displayName, eta])
+	p["eta_total"] = eta
+	p["progress"] = 0.0
+	Commander.emit_signal("log", tr("[%s] traveling %s -> %s (ETA %.1f).") % [p["name"], LocationsDB.get(from_loc).displayName, LocationsDB.get(to_loc).displayName, eta])
 	return true

@@ -104,13 +104,13 @@ func _set_time_factor(f: float) -> void:
 		tick_timer.start(1.0 / f)
 
 func _update_status() -> void:
-		var pid = PlayerMgr.local_player_id
-		var p = PlayerMgr.players.get(pid, null)
-		if p == null:
-				return
-		var loc_obj := LocationsDB.get(p.get("loc", ""))
-		var loc_name := loc_obj.displayName if loc_obj else ""
-		loc_label.text = tr("Location: {loc}").format({"loc": loc_name})
+	var pid = PlayerMgr.local_player_id
+	var p = PlayerMgr.players.get(pid, null)
+	if p == null:
+		return
+	var loc_obj := LocationsDB.get(p.get("loc", ""))
+	var loc_name := loc_obj.displayName if loc_obj else ""
+	loc_label.text = tr("Location: {loc}").format({"loc": loc_name})
 	speed_label.text = tr("Speed: {value}").format({"value": str(PlayerMgr.calc_speed(pid))})
 	tick_label.text = tr("Tick: {value}").format({"value": str(Sim.tick_count)})
 	var used = PlayerMgr.cargo_used(pid)
@@ -132,19 +132,19 @@ func _process(delta: float) -> void:
 	_update_status()
 
 func _on_location_click(loc_code: String) -> void:
-		var pid = PlayerMgr.local_player_id
+	var pid = PlayerMgr.local_player_id
 	if PlayerMgr.start_travel(pid, loc_code):
 		_update_status()
 		map_node.queue_redraw()
 
 func _on_buy_request(good: int, amount: int) -> void:
-		var pid = PlayerMgr.local_player_id
+	var pid = PlayerMgr.local_player_id
 	if Commander.buy(pid, good, amount):
 		_update_status()
 		trade_panel.call_deferred("populate")
 
 func _on_sell_request(good: int, amount: int) -> void:
-		var pid = PlayerMgr.local_player_id
+	var pid = PlayerMgr.local_player_id
 	if Commander.sell(pid, good, amount):
 		_update_status()
 		trade_panel.call_deferred("populate")
