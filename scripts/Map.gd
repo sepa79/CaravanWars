@@ -12,6 +12,11 @@ var player_blink: float = 0.0
 var hover_loc: String = ""
 var hover_scale: float = 1.0
 var _hover_tween: Tween = null
+var zoom: float = 1.0
+
+const ZOOM_STEP: float = 1.25
+const ZOOM_MIN: float = 0.5
+const ZOOM_MAX: float = 4.0
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_STOP
@@ -30,10 +35,11 @@ func _on_resized() -> void:
 
 func _update_layout() -> void:
 	var panel_size: Vector2 = size
-	scale_val = min(
+	var base: float = min(
 		panel_size.x / float(IMG_SIZE.x),
 		panel_size.y / float(IMG_SIZE.y)
 	)
+	scale_val = base * zoom
 	var disp_size: Vector2 = Vector2(IMG_SIZE) * scale_val
 	offset = (panel_size - disp_size) * 0.5
 
@@ -161,7 +167,7 @@ func _gui_input(event: InputEvent) -> void:
 			_hover_tween = create_tween()
 			var target: float = (hover_loc == "") if true else 1.0
 			_hover_tween.tween_property(self, "hover_scale", target, 0.1)
-			queue_redraw()
+		queue_redraw()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var click_pos: Vector2 = _to_image(event.position)
 		for loc_id in DB.positions.keys():
@@ -169,6 +175,16 @@ func _gui_input(event: InputEvent) -> void:
 			if p.distance_to(click_pos) <= 18.0:
 				emit_signal("location_clicked", loc_id)
 				break
+
+func zoom_in() -> void:
+	zoom = min(zoom * ZOOM_STEP, ZOOM_MAX)
+	_update_layout()
+	queue_redraw()
+
+func zoom_out() -> void:
+	zoom = max(zoom / ZOOM_STEP, ZOOM_MIN)
+	_update_layout()
+	queue_redraw()
 
 func _process(_delta: float) -> void:
 	queue_redraw()

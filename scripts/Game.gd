@@ -2,7 +2,9 @@ extends Node
 
 const GAME_VERSION := "0.3.3-alpha"
 
-@onready var map_node: Control = $UI/Main/Left/Map
+@onready var map_node: Control = $UI/Main/Left/MapBox/Map
+@onready var zoom_in_btn: Button = $UI/Main/Left/MapBox/MapControls/ZoomIn
+@onready var zoom_out_btn: Button = $UI/Main/Left/MapBox/MapControls/ZoomOut
 @onready var trade_panel: VBoxContainer = $UI/Main/Right/Tabs/Trade/TradePanel
 @onready var caravan_panel: VBoxContainer = $UI/Main/Right/Tabs/Caravan/CaravanPanel
 @onready var help_box: RichTextLabel = $UI/Main/Right/Tabs/HelpOptions/HelpText
@@ -38,6 +40,8 @@ func _ready() -> void:
 	tick_timer.timeout.connect(_on_tick)
 	if map_node.has_signal("location_clicked"):
 		map_node.location_clicked.connect(_on_location_click)
+		zoom_in_btn.pressed.connect(map_node.zoom_in)
+		zoom_out_btn.pressed.connect(map_node.zoom_out)
 
 	# trade panel
 	if trade_panel.has_signal("buy_request"):

@@ -29,15 +29,20 @@ size_flags_vertical = 3
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+size_flags_stretch_ratio = 1.0
 clip_contents = true
 
-[node name="Map" type="Control" parent="UI/Main/Left"]
-anchors_preset = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
+[node name="MapBox" type="VBoxContainer" parent="UI/Main/Left"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Map" type="Control" parent="UI/Main/Left/MapBox"]
+layout_mode = 2
+size_flags_vertical = 3
 script = ExtResource("2")
 
-[node name="Background" type="TextureRect" parent="UI/Main/Left/Map"]
+[node name="Background" type="TextureRect" parent="UI/Main/Left/MapBox/Map"]
 z_index = -1
 layout_mode = 0
 anchor_right = 1.0
@@ -46,10 +51,23 @@ anchor_bottom = 1.0
 texture = ExtResource("8")
 stretch_mode = 4
 
+[node name="MapControls" type="HBoxContainer" parent="UI/Main/Left/MapBox"]
+layout_mode = 2
+alignment = 1
+
+[node name="ZoomOut" type="Button" parent="UI/Main/Left/MapBox/MapControls"]
+layout_mode = 2
+text = "-"
+
+[node name="ZoomIn" type="Button" parent="UI/Main/Left/MapBox/MapControls"]
+layout_mode = 2
+text = "+"
+
 [node name="Right" type="VBoxContainer" parent="UI/Main"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+size_flags_stretch_ratio = 2.0
 
 [node name="Status" type="HBoxContainer" parent="UI"]
 layout_mode = 2
