@@ -5,8 +5,8 @@ class_name Client
 @export var use_builtin_ai:bool = false
 
 var brain
-@onready var chronicle = get_node_or_null("Game/UI/Right/Tabs/Chronicle")
-@onready var tabs:TabContainer = get_node_or_null("Game/UI/Right/Tabs")
+@onready var chronicle = get_node_or_null("Game/UI/Main/Right/Tabs/Chronicle")
+@onready var tabs:TabContainer = get_node_or_null("Game/UI/Main/Right/Tabs")
 
 func _ready() -> void:
     set_multiplayer_authority(peer_id)
