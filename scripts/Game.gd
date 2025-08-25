@@ -2,14 +2,16 @@ extends Node
 
 const GAME_VERSION := "0.3.3-alpha"
 
-@onready var map_node: Control = $UI/Left/Map
-@onready var trade_panel: VBoxContainer = $UI/Right/Tabs/Trade/TradePanel
-@onready var caravan_panel: VBoxContainer = $UI/Right/Tabs/Caravan/CaravanPanel
-@onready var help_box: RichTextLabel = $UI/Right/Tabs/HelpOptions/HelpText
-@onready var tab: TabContainer = $UI/Right/Tabs
+@onready var map_node: Control = $UI/Main/Left/MapBox/Map
+@onready var zoom_in_btn: Button = $UI/Main/Left/MapBox/MapControls/ZoomIn
+@onready var zoom_out_btn: Button = $UI/Main/Left/MapBox/MapControls/ZoomOut
+@onready var trade_panel: VBoxContainer = $UI/Main/Right/Tabs/Trade/TradePanel
+@onready var caravan_panel: VBoxContainer = $UI/Main/Right/Tabs/Caravan/CaravanPanel
+@onready var help_box: RichTextLabel = $UI/Main/Right/Tabs/HelpOptions/HelpText
+@onready var tab: TabContainer = $UI/Main/Right/Tabs
 
-@onready var player_selector: OptionButton = $UI/Right/Tabs/World/Cheats/PlayerSel
-@onready var cheats_label: Label = $UI/Right/Tabs/World/Cheats/CheatsLabel
+@onready var player_selector: OptionButton = $UI/Main/Right/Tabs/World/Cheats/PlayerSel
+@onready var cheats_label: Label = $UI/Main/Right/Tabs/World/Cheats/CheatsLabel
 @onready var gold_label: Label = $UI/Status/Gold
 @onready var caravans_label: Label = $UI/Status/Caravans
 @onready var tick_label: Label = $UI/Status/Tick
@@ -21,10 +23,10 @@ const GAME_VERSION := "0.3.3-alpha"
 @onready var play_btn: Button = $UI/Status/PlayBtn
 @onready var fast_btn: Button = $UI/Status/FastBtn
 
-@onready var lang_option: OptionButton = $UI/Right/Tabs/HelpOptions/Lang
+@onready var lang_option: OptionButton = $UI/Main/Right/Tabs/HelpOptions/Lang
 
-@onready var log_label: RichTextLabel = $UI/Right/Log
-@onready var cmd_box: LineEdit = $UI/Right/Cmd
+@onready var log_label: RichTextLabel = $UI/Main/Right/Log
+@onready var cmd_box: LineEdit = $UI/Main/Right/Cmd
 @onready var tick_timer: Timer = $Tick
 
 var time_factor: float = 1.0
@@ -38,6 +40,8 @@ func _ready() -> void:
 	tick_timer.timeout.connect(_on_tick)
 	if map_node.has_signal("location_clicked"):
 		map_node.location_clicked.connect(_on_location_click)
+		zoom_in_btn.pressed.connect(map_node.zoom_in)
+		zoom_out_btn.pressed.connect(map_node.zoom_out)
 
 	# trade panel
 	if trade_panel.has_signal("buy_request"):
