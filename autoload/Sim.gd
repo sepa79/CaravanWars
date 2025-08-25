@@ -4,9 +4,9 @@ var caravans := []
 var tick_count := 0
 
 func _ready():
-        randomize()
-        for loc in DB.locations.values():
-                loc.update_prices(DB.goods_base_price)
+		randomize()
+		for loc in DB.locations.values():
+				loc.update_prices(DB.goods_base_price)
 
 func tick():
 	tick_count += 1
@@ -14,8 +14,8 @@ func tick():
 		tick_economy()
 
 func tick_economy():
-        for loc in DB.locations.values():
-                loc.update_prices(DB.goods_base_price)
+		for loc in DB.locations.values():
+				loc.update_prices(DB.goods_base_price)
 
 func advance_players(delta: float) -> void:
 	for id in PlayerMgr.order:
