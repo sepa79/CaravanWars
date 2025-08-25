@@ -21,38 +21,13 @@ var goods_names: Dictionary = {
         Good.LUX:  "lux"
 }
 
-# -----------------------------
-# Locations: EN codes + i18n names
-# Codes: HARBOR, CENTRAL_KEEP, SOUTHERN_SHRINE, FOREST_SPRING, MILLS, FOREST_HAVEN, MINE
-# -----------------------------
 var current_language: String = "pl" # default UI language (PL/EN)
-
-var loc_display: Dictionary = {
-        "HARBOR":         {"en": "Harbor",          "pl": "Port"},
-        "CENTRAL_KEEP":   {"en": "Central Keep",    "pl": "Twierdza Środkowa"},
-        "SOUTHERN_SHRINE":{"en": "Southern Shrine", "pl": "Świątynia Południowa"},
-        "FOREST_SPRING":  {"en": "Forest Spring",   "pl": "Źródło Leśne"},
-        "MILLS":          {"en": "Mills",           "pl": "Młyny"},
-        "FOREST_HAVEN":   {"en": "Forest Haven",    "pl": "Leśna Przystań"},
-        "MINE":           {"en": "Mine",            "pl": "Kopalnia"}
-}
 
 func _ready() -> void:
         var tr = load("res://locale/translations.pl.tres")
         if tr:
                 TranslationServer.add_translation(tr)
         TranslationServer.set_locale(current_language)
-
-# Map positions (codes -> image coords)
-var positions: Dictionary = {
-		"HARBOR":        Vector2(1060, 840),
-		"CENTRAL_KEEP":  Vector2(910, 750),
-		"SOUTHERN_SHRINE": Vector2(350, 840),
-		"FOREST_SPRING": Vector2(690, 560),
-		"MILLS":         Vector2(1010, 185),
-		"FOREST_HAVEN":  Vector2(890, 360),
-		"MINE":          Vector2(440, 340)
-}
 
 # Routes (A->B using codes)
 var routes: Dictionary = {
@@ -102,19 +77,8 @@ func set_language(lang: String) -> void:
                 current_language = lang
                 TranslationServer.set_locale(lang)
 
-func get_loc_name(code: String) -> String:
-        if not loc_display.has(code):
-                return code
-        var names: Dictionary = loc_display[code]
-        return String(names.get(current_language, code))
-
 func route_key(a: String, b: String) -> String:
         return "%s->%s" % [a, b]
-
-func get_pos(code: String) -> Vector2:
-        if positions.has(code):
-                return positions[code]
-        return Vector2.ZERO
 
 func has_route(a: String, b: String) -> bool:
         return routes.has(route_key(a, b))

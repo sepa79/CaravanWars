@@ -15,6 +15,6 @@ func suggest_for_player(player_id:int):
 			if pr > best_profit:
 				best_profit = pr
 				best_txt = tr("Buy %s at %s (%d) and sell at %s (%d). Profit %d.") % [
-					tr(DB.goods_names[g]), DB.get_loc_name(loc), buy, DB.get_loc_name(to), sell, pr]
+									tr(DB.goods_names[g]), LocationsDB.get(loc).displayName, buy, LocationsDB.get(to).displayName, sell, pr]
 	if best_txt != "":
 		emit_signal("log", tr("[Assistant]") + " " + best_txt)
