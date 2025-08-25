@@ -1,5 +1,7 @@
 extends Node
 
+const Location = preload("res://scripts/world/Location.gd")
+
 var _locations: Dictionary = {}
 
 func register(loc: Location) -> void:
@@ -32,5 +34,5 @@ func _init_locations() -> void:
 		loc.displayName = d["name"]
 		loc.description = d["desc"]
 		loc.mapPos = d["pos"]
-		loc.neighbors = d["neighbors"]
+		loc.neighbors.assign(d["neighbors"])
 		register(loc)
