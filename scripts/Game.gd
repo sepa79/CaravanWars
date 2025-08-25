@@ -10,8 +10,6 @@ const GAME_VERSION := "0.3.3-alpha"
 @onready var help_box: RichTextLabel = $UI/Main/Right/Tabs/HelpOptions/HelpText
 @onready var tab: TabContainer = $UI/Main/Right/Tabs
 
-@onready var player_selector: OptionButton = $UI/Main/Right/Tabs/World/Cheats/PlayerSel
-@onready var cheats_label: Label = $UI/Main/Right/Tabs/World/Cheats/CheatsLabel
 @onready var gold_label: Label = $UI/Status/Gold
 @onready var caravans_label: Label = $UI/Status/Caravans
 @onready var tick_label: Label = $UI/Status/Tick
@@ -53,28 +51,15 @@ func _ready() -> void:
 	if caravan_panel.has_signal("ask_ai_pressed"):
 		caravan_panel.ask_ai_pressed.connect(_on_ask_ai)
 
-	_populate_player_selector()
 	_fill_help()
 	_setup_language_dropdown()
 	_setup_time_controls()
 	_set_tab_titles()
 	_update_status()
-	cheats_label.text = tr("Cheats")
 	map_node.queue_redraw()
 	_set_time_factor(time_factor)
 	set_process(true)
 
-func _populate_player_selector() -> void:
-	player_selector.clear()
-	for id in PlayerMgr.order:
-		var p = PlayerMgr.players[id]
-		player_selector.add_item(p["name"], id)
-	player_selector.item_selected.connect(func(_i):
-		PlayerMgr.local_player_id = player_selector.get_selected_id()
-		_update_status()
-		trade_panel.call_deferred("populate") # bezpiecznie po zmianie gracza
-		map_node.queue_redraw()
-	)
 
 func _fill_help() -> void:
 	var t := ""
@@ -99,7 +84,6 @@ func _setup_language_dropdown() -> void:
 		DB.set_language(lang_option.get_item_metadata(i))
 		_fill_help()
 		_set_tab_titles()
-		cheats_label.text = tr("Cheats")
 		caravan_panel.set_target(caravan_panel.selected_target)
 		caravan_panel.ask_ai_btn.text = tr("Ask AI for advice")
 		_update_status()

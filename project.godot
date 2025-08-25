@@ -24,6 +24,7 @@ PlayerMgr="*res://autoload/PlayerMgr.gd"
 AiBridge="*res://autoload/AiBridge.gd"
 NetBridge="*res://autoload/NetBridge.gd"
 UiManager="*res://autoload/UiManager.gd"
+WorldViewModel="*res://autoload/WorldViewModel.gd"
 
 [display]
 
