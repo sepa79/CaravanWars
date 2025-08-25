@@ -9,18 +9,17 @@ var player_descriptions := {
         101: "A shrewd guild strategist controlling trade routes."
 }
 
-var location_descriptions := {
-        "CENTRAL_KEEP": "The heart of the realm and a bustling town.",
-        "HARBOR": "Ships from afar visit this busy port.",
-        "SOUTHERN_SHRINE": "A tranquil shrine in the south.",
-        "FOREST_SPRING": "A spring hidden deep within the forest.",
-        "MILLS": "Windmills that grind grain for the region.",
-        "FOREST_HAVEN": "A safe haven amid towering trees.",
-        "MINE": "Rich veins of ore run through these tunnels."
-}
+var location_defs := [
+        {"code": "CENTRAL_KEEP", "info": "The heart of the realm and a bustling town."},
+        {"code": "HARBOR", "info": "Ships from afar visit this busy port."},
+        {"code": "SOUTHERN_SHRINE", "info": "A tranquil shrine in the south."},
+        {"code": "FOREST_SPRING", "info": "A spring hidden deep within the forest."},
+        {"code": "MILLS", "info": "Windmills that grind grain for the region."},
+        {"code": "FOREST_HAVEN", "info": "A safe haven amid towering trees."},
+        {"code": "MINE", "info": "Rich veins of ore run through these tunnels."}
+]
 
 var player_ids: Array = []
-var location_codes: Array = []
 
 var selected_player: int = -1
 var selected_location: int = -1
@@ -30,7 +29,6 @@ func _ready() -> void:
         for id in PlayerMgr.players.keys():
                 if id not in player_ids:
                         player_ids.append(id)
-        location_codes = DB.loc_display.keys()
 
 func get_players() -> Array:
         var list: Array = []
@@ -44,7 +42,7 @@ func get_players() -> Array:
                 list.append({
                         "id": id,
                         "name": p.get("name", ""),
-                        "info": player_descriptions.get(id, ""),
+                        "info": tr(player_descriptions.get(id, "")),
                         "gold": int(p.get("gold", 0)),
                         "cargo": cargo
                 })
@@ -52,7 +50,8 @@ func get_players() -> Array:
 
 func get_locations() -> Array:
         var list: Array = []
-        for code in location_codes:
+        for def in location_defs:
+                var code: String = def["code"]
                 var loc: Dictionary = DB.locations.get(code, {})
                 var goods := {}
                 var stock: Dictionary = loc.get("stock", {})
@@ -67,7 +66,7 @@ func get_locations() -> Array:
                 list.append({
                         "code": code,
                         "name": DB.get_loc_name(code),
-                        "info": location_descriptions.get(code, ""),
+                        "info": tr(def.get("info", "")),
                         "goods": goods
                 })
         return list
