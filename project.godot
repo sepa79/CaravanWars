@@ -15,21 +15,29 @@ run/main_scene="res://scenes/Game.tscn"
 config/features=PackedStringArray("4.4")
 
 [autoload]
-ThemeLoader="*res://ThemeLoader.gd"
+ThemeLoader="*res://autoload/ThemeLoader.gd"
 
-DB="*res://autoloads/DB.gd"
-Sim="*res://autoloads/Sim.gd"
-Commander="*res://autoloads/Commander.gd"
-PlayerMgr="*res://autoloads/PlayerMgr.gd"
-AiBridge="*res://autoloads/AiBridge.gd"
-NetBridge="*res://autoloads/NetBridge.gd"
+DB="*res://autoload/DB.gd"
+Sim="*res://autoload/Sim.gd"
+Commander="*res://autoload/Commander.gd"
+PlayerMgr="*res://autoload/PlayerMgr.gd"
+AiBridge="*res://autoload/AiBridge.gd"
+NetBridge="*res://autoload/NetBridge.gd"
+UiManager="*res://autoload/UiManager.gd"
 
 [display]
 
-window/size/viewport_width=1920
-window/size/viewport_height=1080
-window/stretch/mode="canvas_items"
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/resizable=true
+window/size/min_width=1024
+window/size/min_height=576
+window/stretch/mode="viewport"
 window/stretch/aspect="expand"
+
+[input]
+
+ui_fullscreen={"deadzone":0.5,"events":[{"type":"key","keycode":417,"device":-1}]}
 
 ; [internationalization]
 ; locale/translations=PackedStringArray("res://locale/translations.pl.tres")
