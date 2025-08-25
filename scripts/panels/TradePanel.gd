@@ -32,8 +32,9 @@ func populate():
 
     for g in DB.goods_base_price.keys():
         var name = tr(DB.goods_names[g])
-        var price = Sim.price[loc][g]
-        var city_stock = DB.locations[loc]["stock"].get(g, 0)
+        var loc_obj = DB.get_loc(loc)
+        var price = loc_obj.prices.get(g, 0)
+        var city_stock = loc_obj.stock.get(g, 0)
         var you_have = p["cargo"].get(g, 0)
 
         var l1 = Label.new(); l1.text = name; grid.add_child(l1)

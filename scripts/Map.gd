@@ -78,27 +78,27 @@ func _draw_grid() -> void:
 func _draw_routes() -> void:
 	var line: Color = Color(0.85, 0.7, 0.45, 1.0)
 	var shadow: Color = Color(0.0, 0.0, 0.0, 0.25)
-	for key in DB.routes.keys():
-		if not (key is String):
-			continue
-		var parts: PackedStringArray = String(key).split("->", false, 2)
-		if parts.size() != 2:
-			continue
-		var a_id: String = parts[0]
-		var b_id: String = parts[1]
-		if not (DB.positions.has(a_id) and DB.positions.has(b_id)):
-			continue
-		var pa: Vector2 = DB.positions[a_id]
-		var pb: Vector2 = DB.positions[b_id]
+        for key in DB.routes.keys():
+                if not (key is String):
+                        continue
+                var parts: PackedStringArray = String(key).split("->", false, 2)
+                if parts.size() != 2:
+                        continue
+                var a_id: String = parts[0]
+                var b_id: String = parts[1]
+                if DB.get_loc(a_id) == null or DB.get_loc(b_id) == null:
+                        continue
+                var pa: Vector2 = DB.get_pos(a_id)
+                var pb: Vector2 = DB.get_pos(b_id)
 		draw_line(pa + Vector2(0, 1), pb + Vector2(0, 1), shadow, 4.0)
 		draw_line(pa, pb, line, 3.0)
 
 func _draw_locations() -> void:
 	var font := get_theme_default_font()
-	var ids: Array = DB.positions.keys()
-	ids.sort()
-	for loc_id in ids:
-		var pos: Vector2 = DB.positions[loc_id]
+        var ids: Array = DB.locations.keys()
+        ids.sort()
+        for loc_id in ids:
+                var pos: Vector2 = DB.get_pos(loc_id)
 		var radius: float = 10.5
 		if loc_id == hover_loc:
 			radius *= hover_scale
@@ -106,7 +106,7 @@ func _draw_locations() -> void:
 		draw_circle(pos, radius, Color(0.95, 0.3, 0.2, 0.9))
 		draw_circle(pos, 3.75, Color(0.1, 0.1, 0.1, 1.0))
 		var label_pos := pos + Vector2(12, -8)
-		var name_str: String = DB.get_loc_name(loc_id)
+                var name_str: String = DB.get_loc_name(loc_id)
 		draw_string(font, label_pos + Vector2(1, 1), name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0, 0, 0, 0.65))
 		draw_string(font, label_pos, name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
 
@@ -117,12 +117,12 @@ func _draw_caravans() -> void:
 	var col_base := Color(0.95, 0.8, 0.2, 1.0)
 	var col_alt := Color(0.95, 0.2, 0.2, 1.0)
 	var col := col_base.lerp(col_alt, player_blink)
-	for id in players_dict.keys():
-		var p = players_dict[id]
-		var pos: Vector2 = Vector2.ZERO
-		if p.get("moving", false) and p.has("from") and p.has("to") and DB.positions.has(p["from"]) and DB.positions.has(p["to"]):
-			var from_pos: Vector2 = DB.positions[p["from"]]
-			var to_pos: Vector2 = DB.positions[p["to"]]
+        for id in players_dict.keys():
+                var p = players_dict[id]
+                var pos: Vector2 = Vector2.ZERO
+                if p.get("moving", false) and p.has("from") and p.has("to") and DB.get_loc(p["from"]) and DB.get_loc(p["to"]):
+                        var from_pos: Vector2 = DB.get_pos(p["from"])
+                        var to_pos: Vector2 = DB.get_pos(p["to"])
 			var t: float = clamp(p.get("progress", 0.0), 0.0, 1.0)
 			pos = from_pos.lerp(to_pos, t)
 			var dir: Vector2 = (to_pos - from_pos).normalized()
@@ -131,8 +131,8 @@ func _draw_caravans() -> void:
 			var tail: Vector2 = pos - dir * 12.0
 			var tri := PackedVector2Array([tip, tail + perp, tail - perp])
 			draw_colored_polygon(tri, col)
-		elif p.has("loc") and DB.positions.has(p["loc"]):
-			pos = DB.positions[p["loc"]]
+                elif p.has("loc") and DB.get_loc(p["loc"]):
+                        pos = DB.get_pos(p["loc"])
 			draw_circle(pos, 8.0, col)
 		else:
 			continue
@@ -142,16 +142,16 @@ func _draw_players() -> void:
 	if players_dict == null or players_dict.is_empty():
 		return
 	var font := get_theme_default_font()
-	for id in players_dict.keys():
-		var p = players_dict[id]
-		var pos: Vector2 = Vector2.ZERO
-		if p.get("moving", false) and p.has("from") and p.has("to") and DB.positions.has(p["from"]) and DB.positions.has(p["to"]):
-			var from_pos: Vector2 = DB.positions[p["from"]]
-			var to_pos: Vector2 = DB.positions[p["to"]]
+        for id in players_dict.keys():
+                var p = players_dict[id]
+                var pos: Vector2 = Vector2.ZERO
+                if p.get("moving", false) and p.has("from") and p.has("to") and DB.get_loc(p["from"]) and DB.get_loc(p["to"]):
+                        var from_pos: Vector2 = DB.get_pos(p["from"])
+                        var to_pos: Vector2 = DB.get_pos(p["to"])
 			var t: float = clamp(p.get("progress", 0.0), 0.0, 1.0)
 			pos = from_pos.lerp(to_pos, t)
-		elif p.has("loc") and DB.positions.has(p["loc"]):
-			pos = DB.positions[p["loc"]]
+                elif p.has("loc") and DB.get_loc(p["loc"]):
+                        pos = DB.get_pos(p["loc"])
 		else:
 			continue
 		var disp_label: String = "P"
@@ -163,8 +163,8 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		var mouse_pos: Vector2 = _to_image(event.position)
 		var found: String = ""
-		for loc_id in DB.positions.keys():
-			var p: Vector2 = DB.positions[loc_id]
+                for loc_id in DB.locations.keys():
+                        var p: Vector2 = DB.get_pos(loc_id)
 			if p.distance_to(mouse_pos) <= 18.0:
 				found = loc_id
 				break
@@ -178,8 +178,8 @@ func _gui_input(event: InputEvent) -> void:
 		queue_redraw()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var click_pos: Vector2 = _to_image(event.position)
-		for loc_id in DB.positions.keys():
-			var p: Vector2 = DB.positions[loc_id]
+                for loc_id in DB.locations.keys():
+                        var p: Vector2 = DB.get_pos(loc_id)
 			if p.distance_to(click_pos) <= 18.0:
 				emit_signal("location_clicked", loc_id)
 				break

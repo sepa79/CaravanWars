@@ -1,15 +1,12 @@
 extends Node
 
-var price := {}
 var caravans := []
 var tick_count := 0
 
 func _ready():
-	randomize()
-	for loc in DB.locations.keys():
-		price[loc] = {}
-		for g in DB.goods_base_price.keys():
-			price[loc][g] = DB.goods_base_price[g]
+        randomize()
+        for loc in DB.locations.values():
+                loc.update_prices(DB.goods_base_price)
 
 func tick():
 	tick_count += 1
@@ -17,15 +14,8 @@ func tick():
 		tick_economy()
 
 func tick_economy():
-	for loc in DB.locations.keys():
-		var st = DB.locations[loc]["stock"]
-		var dm = DB.locations[loc].get("demand", {})
-		for g in DB.goods_base_price.keys():
-			var base = DB.goods_base_price[g]
-			var s = float(st.get(g, 0))
-			var d = float(dm.get(g, 1.0))
-			var factor = clamp(d * (1.5 - min(s, 100.0) / 200.0), 0.5, 2.0)
-			price[loc][g] = int(round(base * factor))
+        for loc in DB.locations.values():
+                loc.update_prices(DB.goods_base_price)
 
 func advance_players(delta: float) -> void:
 	for id in PlayerMgr.order:

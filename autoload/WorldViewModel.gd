@@ -9,16 +9,6 @@ var player_descriptions := {
         101: "A shrewd guild strategist controlling trade routes."
 }
 
-var location_defs := [
-        {"code": "CENTRAL_KEEP", "info": "The heart of the realm and a bustling town."},
-        {"code": "HARBOR", "info": "Ships from afar visit this busy port."},
-        {"code": "SOUTHERN_SHRINE", "info": "A tranquil shrine in the south."},
-        {"code": "FOREST_SPRING", "info": "A spring hidden deep within the forest."},
-        {"code": "MILLS", "info": "Windmills that grind grain for the region."},
-        {"code": "FOREST_HAVEN", "info": "A safe haven amid towering trees."},
-        {"code": "MINE", "info": "Rich veins of ore run through these tunnels."}
-]
-
 var player_ids: Array = []
 
 var selected_player: int = -1
@@ -50,23 +40,22 @@ func get_players() -> Array:
 
 func get_locations() -> Array:
         var list: Array = []
-        for def in location_defs:
-                var code: String = def["code"]
-                var loc: Dictionary = DB.locations.get(code, {})
+        var codes: Array = DB.locations.keys()
+        codes.sort()
+        for code in codes:
+                var loc_obj = DB.get_loc(code)
+                if loc_obj == null:
+                        continue
                 var goods := {}
-                var stock: Dictionary = loc.get("stock", {})
-                for g in stock.keys():
-                        var qty: int = stock[g]
-                        var base: int = DB.goods_base_price.get(g, 0)
-                        var demand: float = loc.get("demand", {}).get(g, 1.0)
+                for g in loc_obj.stock.keys():
                         goods[DB.goods_names.get(g, str(g))] = {
-                                "qty": int(qty),
-                                "price": int(round(base * demand))
+                                "qty": int(loc_obj.stock[g]),
+                                "price": int(loc_obj.prices.get(g, 0))
                         }
                 list.append({
                         "code": code,
-                        "name": DB.get_loc_name(code),
-                        "info": tr(def.get("info", "")),
+                        "name": loc_obj.get_name(),
+                        "info": loc_obj.get_info(),
                         "goods": goods
                 })
         return list
