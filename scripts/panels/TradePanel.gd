@@ -10,16 +10,25 @@ func _ready():
 func populate():
     for c in grid.get_children():
         c.queue_free()
+
+    var pid = PlayerMgr.local_player_id
+    var p = PlayerMgr.players[pid]
+    var moving = p.get("moving", false)
+
+    if moving:
+        grid.columns = 1
+        var msg = Label.new()
+        msg.text = tr("Trading unavailable while traveling.")
+        grid.add_child(msg)
+        return
+
     grid.columns = 6
 
     var h = [tr("Good"), tr("Price"), tr("City stock"), tr("You"), tr("Qty"), tr("Action")]
     for i in h:
         var l = Label.new(); l.text = i; grid.add_child(l)
 
-    var pid = PlayerMgr.local_player_id
-    var p = PlayerMgr.players[pid]
     var loc = p["loc"]
-    var moving = p.get("moving", false)
 
     for g in DB.goods_base_price.keys():
         var name = tr(DB.goods_names[g])
@@ -35,8 +44,8 @@ func populate():
         var qty = SpinBox.new(); qty.min_value = 1; qty.max_value = 999; qty.step = 1; grid.add_child(qty)
 
         var hb = HBoxContainer.new()
-        var b_buy = Button.new(); b_buy.text = tr("Buy"); b_buy.disabled = moving
-        var b_sell = Button.new(); b_sell.text = tr("Sell"); b_sell.disabled = moving
+        var b_buy = Button.new(); b_buy.text = tr("Buy")
+        var b_sell = Button.new(); b_sell.text = tr("Sell")
         hb.add_child(b_buy); hb.add_child(b_sell)
         grid.add_child(hb)
 

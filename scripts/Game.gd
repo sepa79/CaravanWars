@@ -29,6 +29,10 @@ const GAME_VERSION := "0.3.3-alpha"
 
 var time_factor: float = 1.0
 
+var last_loc: String = ""
+var last_stock: Dictionary = {}
+var last_moving: bool = false
+
 func _ready() -> void:
 	# log / komendy
 	Commander.connect("log", _on_log)
@@ -61,6 +65,7 @@ func _ready() -> void:
 	map_node.queue_redraw()
 	_set_time_factor(time_factor)
 	set_process(true)
+	_store_trade_state()
 
 
 func _fill_help() -> void:
@@ -89,7 +94,7 @@ func _setup_language_dropdown() -> void:
 		caravan_panel.set_target(caravan_panel.selected_target)
 		caravan_panel.ask_ai_btn.text = tr("Ask AI for advice")
 		_update_status()
-		trade_panel.call_deferred("populate")
+		_refresh_trade_panel()
 		map_node.queue_redraw()
 	)
 
@@ -104,6 +109,28 @@ func _set_time_factor(f: float) -> void:
 		tick_timer.stop()
 	else:
 		tick_timer.start(1.0 / f)
+
+func _store_trade_state() -> void:
+	var pid := PlayerMgr.local_player_id
+	var p = PlayerMgr.players.get(pid, {})
+	last_loc = p.get("loc", "")
+	last_moving = p.get("moving", false)
+	last_stock = DB.locations.get(last_loc, {}).get("stock", {}).duplicate()
+
+func _refresh_trade_panel() -> void:
+	trade_panel.call_deferred("populate")
+	_store_trade_state()
+
+func _check_trade_refresh() -> void:
+	var pid := PlayerMgr.local_player_id
+	var p = PlayerMgr.players.get(pid, null)
+	if p == null:
+		return
+	var loc = p.get("loc", "")
+	var moving = p.get("moving", false)
+	var stock = DB.locations.get(loc, {}).get("stock", {}).duplicate()
+	if moving != last_moving or loc != last_loc or stock != last_stock:
+		_refresh_trade_panel()
 
 func _update_status() -> void:
 	var pid := PlayerMgr.local_player_id
@@ -130,24 +157,26 @@ func _set_tab_titles() -> void:
 func _process(delta: float) -> void:
 	Sim.advance_players(delta * time_factor)
 	_update_status()
+	_check_trade_refresh()
 
 func _on_location_click(loc_code: String) -> void:
 	var pid := PlayerMgr.local_player_id
 	if PlayerMgr.start_travel(pid, loc_code):
 		_update_status()
 		map_node.queue_redraw()
+		_refresh_trade_panel()
 
 func _on_buy_request(good: int, amount: int) -> void:
 	var pid := PlayerMgr.local_player_id
 	if Commander.buy(pid, good, amount):
 		_update_status()
-		trade_panel.call_deferred("populate")
+		_refresh_trade_panel()
 
 func _on_sell_request(good: int, amount: int) -> void:
 	var pid := PlayerMgr.local_player_id
 	if Commander.sell(pid, good, amount):
 		_update_status()
-		trade_panel.call_deferred("populate")
+		_refresh_trade_panel()
 
 func _on_ask_ai(player_id: int) -> void:
 	var aibr = get_node_or_null("/root/AiBridge")
@@ -171,5 +200,5 @@ func _on_log(msg: String) -> void:
 
 func _on_player_changed(_data: Dictionary) -> void:
 	_update_status()
-	trade_panel.call_deferred("populate")
+	_refresh_trade_panel()
 	map_node.queue_redraw()
