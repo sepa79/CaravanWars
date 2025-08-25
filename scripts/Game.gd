@@ -50,6 +50,8 @@ func _ready() -> void:
 	# inne panele (opcjonalnie)
 	if caravan_panel.has_signal("ask_ai_pressed"):
 		caravan_panel.ask_ai_pressed.connect(_on_ask_ai)
+	if WorldViewModel.has_signal("player_changed"):
+		WorldViewModel.player_changed.connect(_on_player_changed)
 
 	_fill_help()
 	_setup_language_dropdown()
@@ -166,3 +168,8 @@ func _on_cmd(text: String) -> void:
 
 func _on_log(msg: String) -> void:
 	log_label.append_text(msg + "\n")
+
+func _on_player_changed(_data: Dictionary) -> void:
+	_update_status()
+	trade_panel.call_deferred("populate")
+	map_node.queue_redraw()
