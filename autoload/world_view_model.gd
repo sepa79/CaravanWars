@@ -3,45 +3,100 @@ extends Node
 signal player_changed(player: Dictionary)
 signal location_changed(location: Dictionary)
 
-var players := [
-	{"name": "Player A", "info": "A brave merchant traveling the lands."},
-	{"name": "Player B", "info": "A cunning trader with many secrets."}
-]
+var player_descriptions := {
+        1: "A brave merchant traveling the lands.",
+        2: "A cunning trader with many secrets.",
+        101: "A shrewd guild strategist controlling trade routes."
+}
 
-var locations := [
-	{"name": "Central Keep", "info": "The heart of the realm and a bustling town."},
-	{"name": "Harbor", "info": "Ships from afar visit this busy port."}
-]
+var location_descriptions := {
+        "CENTRAL_KEEP": "The heart of the realm and a bustling town.",
+        "HARBOR": "Ships from afar visit this busy port.",
+        "SOUTHERN_SHRINE": "A tranquil shrine in the south.",
+        "FOREST_SPRING": "A spring hidden deep within the forest.",
+        "MILLS": "Windmills that grind grain for the region.",
+        "FOREST_HAVEN": "A safe haven amid towering trees.",
+        "MINE": "Rich veins of ore run through these tunnels."
+}
+
+var player_ids: Array = []
+var location_codes: Array = []
 
 var selected_player: int = -1
 var selected_location: int = -1
 
+func _ready() -> void:
+        player_ids = PlayerMgr.order.duplicate()
+        for id in PlayerMgr.players.keys():
+                if id not in player_ids:
+                        player_ids.append(id)
+        location_codes = DB.loc_display.keys()
+
 func get_players() -> Array:
-	return players
+        var list: Array = []
+        for id in player_ids:
+                var p: Dictionary = PlayerMgr.players.get(id, {})
+                if p.is_empty():
+                        continue
+                var cargo := {}
+                for g in p.get("cargo", {}).keys():
+                        cargo[g] = int(p["cargo"][g])
+                list.append({
+                        "id": id,
+                        "name": p.get("name", ""),
+                        "info": player_descriptions.get(id, ""),
+                        "gold": int(p.get("gold", 0)),
+                        "cargo": cargo
+                })
+        return list
 
 func get_locations() -> Array:
-	return locations
+        var list: Array = []
+        for code in location_codes:
+                var loc: Dictionary = DB.locations.get(code, {})
+                var goods := {}
+                var stock: Dictionary = loc.get("stock", {})
+                for g in stock.keys():
+                        var qty: int = stock[g]
+                        var base: int = DB.goods_base_price.get(g, 0)
+                        var demand: float = loc.get("demand", {}).get(g, 1.0)
+                        goods[DB.goods_names.get(g, str(g))] = {
+                                "qty": int(qty),
+                                "price": int(round(base * demand))
+                        }
+                list.append({
+                        "code": code,
+                        "name": DB.get_loc_name(code),
+                        "info": location_descriptions.get(code, ""),
+                        "goods": goods
+                })
+        return list
 
 func set_player(index: int) -> void:
-	selected_player = index
-	var data := {}
-	if index >= 0 and index < players.size():
-		data = players[index]
-	emit_signal("player_changed", data)
+        selected_player = index
+        var data := {}
+        var players = get_players()
+        if index >= 0 and index < players.size():
+                data = players[index]
+        player_changed.emit(data)
 
 func set_location(index: int) -> void:
-	selected_location = index
-	var data := {}
-	if index >= 0 and index < locations.size():
-		data = locations[index]
-	emit_signal("location_changed", data)
+        selected_location = index
+        var data := {}
+        var locs = get_locations()
+        if index >= 0 and index < locs.size():
+                data = locs[index]
+        location_changed.emit(data)
 
 func get_selected_player() -> Dictionary:
-	if selected_player >= 0 and selected_player < players.size():
-		return players[selected_player]
-	return {}
+        var players = get_players()
+        if selected_player >= 0 and selected_player < players.size():
+                return players[selected_player]
+        return {}
 
 func get_selected_location() -> Dictionary:
-	if selected_location >= 0 and selected_location < locations.size():
-		return locations[selected_location]
-	return {}
+        var locs = get_locations()
+        if selected_location >= 0 and selected_location < locs.size():
+                return locs[selected_location]
+        return {}
+
