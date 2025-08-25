@@ -6,6 +6,8 @@ signal location_clicked(loc_code: String)
 # Rozmiar obrazu bazowego mapy (piksele)
 const IMG_SIZE: Vector2i = Vector2i(1536, 1024)
 
+@onready var background: TextureRect = $Background
+
 var scale_val: float = 1.0
 var offset: Vector2 = Vector2.ZERO
 var player_blink: float = 0.0
@@ -42,6 +44,9 @@ func _update_layout() -> void:
 	scale_val = base * zoom
 	var disp_size: Vector2 = Vector2(IMG_SIZE) * scale_val
 	offset = (panel_size - disp_size) * 0.5
+	if background:
+		background.position = offset
+		background.size = disp_size
 
 func _to_screen(p_img: Vector2) -> Vector2:
 	return offset + p_img * scale_val
