@@ -15,6 +15,9 @@ func _ready() -> void:
                 b.add_theme_stylebox_override("hover", paper)
                 b.add_theme_stylebox_override("pressed", paper)
                 b.add_theme_stylebox_override("focus", paper)
+                for col in ["font_color", "font_pressed_color", "font_hover_color", "font_focus_color", "font_disabled_color"]:
+                        b.add_theme_color_override(col, c)
+                        b.get_popup().add_theme_color_override(col, c)
         player_sel.item_selected.connect(_on_player_selected)
         loc_sel.item_selected.connect(_on_location_selected)
         WorldViewModel.player_changed.connect(_update_player_info)
