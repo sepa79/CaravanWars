@@ -1,7 +1,7 @@
 
 [gd_scene load_steps=3 format=3 uid="uid://bde0ccc21476"]
 
-[ext_resource type="Script" path="res://scripts/ui/world_tab.gd" id=1]
+[ext_resource type="Script" path="res://scripts/ui/WorldTab.gd" id=1]
 [ext_resource type="StyleBox" path="res://assets/ui/window_frame.tres" id=2]
 
 [node name="WorldTab" type="VBoxContainer"]
