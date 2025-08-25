@@ -7,9 +7,11 @@ signal location_clicked(loc_code: String)
 const IMG_SIZE: Vector2i = Vector2i(1536, 1024)
 
 @onready var background: TextureRect = $Background
+@onready var background_tex: Texture2D = $Background.texture
 
 var scale_val: float = 1.0
 var offset: Vector2 = Vector2.ZERO
+var disp_size: Vector2 = Vector2.ZERO
 var player_blink: float = 0.0
 var hover_loc: String = ""
 var hover_scale: float = 1.0
@@ -17,11 +19,13 @@ var _hover_tween: Tween = null
 var zoom: float = 1.0
 
 const ZOOM_STEP: float = 1.25
-const ZOOM_MIN: float = 0.5
+const ZOOM_MIN: float = 1.0
 const ZOOM_MAX: float = 4.0
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_STOP
+	if background:
+		background.visible = false
 	_update_layout()
 	resized.connect(_on_resized)
 	set_process(true)
@@ -38,15 +42,12 @@ func _on_resized() -> void:
 func _update_layout() -> void:
 	var panel_size: Vector2 = size
 	var base: float = min(
-		panel_size.x / float(IMG_SIZE.x),
-		panel_size.y / float(IMG_SIZE.y)
+	panel_size.x / float(IMG_SIZE.x),
+	panel_size.y / float(IMG_SIZE.y)
 	)
 	scale_val = base * zoom
-	var disp_size: Vector2 = Vector2(IMG_SIZE) * scale_val
+	disp_size = Vector2(IMG_SIZE) * scale_val
 	offset = (panel_size - disp_size) * 0.5
-	if background:
-		background.position = offset
-		background.size = disp_size
 
 func _to_screen(p_img: Vector2) -> Vector2:
 	return offset + p_img * scale_val
@@ -56,6 +57,8 @@ func _to_image(p_screen: Vector2) -> Vector2:
 	return (p_screen - offset) / s
 
 func _draw() -> void:
+	if background_tex:
+		draw_texture_rect(background_tex, Rect2(offset, disp_size), false)
 	draw_set_transform(offset, 0.0, Vector2(scale_val, scale_val))
 	if show_grid:
 		_draw_grid()
