@@ -74,9 +74,12 @@ func get_locations() -> Array:
 func set_player(index: int) -> void:
         selected_player = index
         var data := {}
-        var players = get_players()
-        if index >= 0 and index < players.size():
-                data = players[index]
+        if index >= 0 and index < player_ids.size():
+                var id = player_ids[index]
+                PlayerMgr.local_player_id = id
+                var players = get_players()
+                if index < players.size():
+                        data = players[index]
         player_changed.emit(data)
 
 func set_location(index: int) -> void:
