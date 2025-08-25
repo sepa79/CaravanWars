@@ -12,9 +12,9 @@ func _ready():
 	add_player(101, "Guild AI", Kind.AI, "MINE")
 	order = [1,2,101]
 
-func add_player(id:int, name:String, kind:int, start_loc:String):
+func add_player(id:int, player_name:String, kind:int, start_loc:String):
 	players[id] = {
-		"name":name, "kind":kind, "loc":start_loc, "gold":150,
+		"name":player_name, "kind":kind, "loc":start_loc, "gold":150,
 		"units":["hand_cart"],
 		"cargo":{},
 		"moving":false, "progress":0.0
@@ -65,11 +65,15 @@ func start_travel(id:int, to_loc:String) -> bool:
 	var base_ticks = int(DB.routes[key]["ticks"]) * 5
 	var speed = max(0.1, calc_speed(id))
 	var eta = float(base_ticks) / speed
+	var from_obj := LocationsDB.get(from_loc)
+	var to_obj := LocationsDB.get(to_loc)
+	if from_obj == null or to_obj == null:
+		return false
 	p["moving"] = true
 	p["from"] = from_loc
 	p["to"] = to_loc
 	p["eta_left"] = eta
 	p["eta_total"] = eta
 	p["progress"] = 0.0
-	Commander.emit_signal("log", tr("[%s] traveling %s -> %s (ETA %.1f).") % [p["name"], LocationsDB.get(from_loc).displayName, LocationsDB.get(to_loc).displayName, eta])
+	Commander.emit_signal("log", tr("[%s] traveling %s -> %s (ETA %.1f).") % [p["name"], from_obj.displayName, to_obj.displayName, eta])
 	return true

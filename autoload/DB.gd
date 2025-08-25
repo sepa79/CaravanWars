@@ -24,9 +24,9 @@ var goods_names: Dictionary = {
 var current_language: String = "pl" # default UI language (PL/EN)
 
 func _ready() -> void:
-	var tr = load("res://locale/translations.pl.tres")
-	if tr:
-		TranslationServer.add_translation(tr)
+	var translation_res = load("res://locale/translations.pl.tres")
+	if translation_res:
+		TranslationServer.add_translation(translation_res)
 	TranslationServer.set_locale(current_language)
 
 # Routes (A->B using codes)

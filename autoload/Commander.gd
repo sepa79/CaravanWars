@@ -23,7 +23,6 @@ func cmd_price(arg: String) -> void:
 		emit_signal("log", "[color=red]Unknown market code:[/color] " + code)
 		return
 
-	var loc = DB.locations[code]
 	var loc_obj := LocationsDB.get(code)
 	emit_signal("log", "Prices at " + loc_obj.displayName)
 	# TODO: wypisz konkretne ceny

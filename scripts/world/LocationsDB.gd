@@ -1,7 +1,5 @@
 extends Node
 
-const Location = preload("res://scripts/world/Location.gd")
-
 var _locations: Dictionary = {}
 
 func register(loc: Location) -> void:
@@ -9,8 +7,8 @@ func register(loc: Location) -> void:
 		_locations[loc.id] = loc
 
 @warning_ignore("native_method_override")
-func get(id: StringName) -> Location:
-	return _locations.get(id, null)
+func get(id) -> Location:
+	return _locations.get(StringName(id), null)
 
 func all() -> Array:
 	return _locations.values()

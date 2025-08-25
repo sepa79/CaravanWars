@@ -9,14 +9,14 @@ signal ask_ai_pressed(player_id:int)
 
 var selected_target: String = ""
 
-func set_target(name:String):
-    selected_target = name
-    target_label.text = tr("Target: {name}").format({"name": name})
+func set_target(target_name:String):
+	selected_target = target_name
+	target_label.text = tr("Target: {name}").format({"name": target_name})
 
 func _ready():
-    ask_ai_btn.pressed.connect(func(): emit_signal("ask_ai_pressed", PlayerMgr.local_player_id))
+	ask_ai_btn.pressed.connect(func(): emit_signal("ask_ai_pressed", PlayerMgr.local_player_id))
 
 func show_status(data:Dictionary) -> void:
-    goods_label.text = tr("Goods: {goods}").format({"goods": str(data.get("goods", {}))})
-    food_label.text = tr("Food/day: {rate}").format({"rate": str(data.get("food_rate", 0))})
-    speed_label.text = tr("Speed: {value}").format({"value": str(data.get("speed", 0))})
+	goods_label.text = tr("Goods: {goods}").format({"goods": str(data.get("goods", {}))})
+	food_label.text = tr("Food/day: {rate}").format({"rate": str(data.get("food_rate", 0))})
+	speed_label.text = tr("Speed: {value}").format({"value": str(data.get("speed", 0))})
