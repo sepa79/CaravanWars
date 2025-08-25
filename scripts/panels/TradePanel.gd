@@ -40,5 +40,7 @@ func populate():
         hb.add_child(b_buy); hb.add_child(b_sell)
         grid.add_child(hb)
 
-        b_buy.pressed.connect(func(): emit_signal("buy_request", g, int(qty.value)))
-        b_sell.pressed.connect(func(): emit_signal("sell_request", g, int(qty.value)))
+        var good = g
+        var qty_box = qty
+        b_buy.pressed.connect(func(): emit_signal("buy_request", good, int(qty_box.value)))
+        b_sell.pressed.connect(func(): emit_signal("sell_request", good, int(qty_box.value)))
