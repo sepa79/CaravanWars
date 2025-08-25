@@ -1,0 +1,34 @@
+[gd_scene load_steps=2 format=3 uid="uid://bde0ccc21476"]
+
+[ext_resource type="Script" path="res://scripts/ui/world_tab.gd" id=1]
+
+[node name="WorldTab" type="HBoxContainer"]
+script = ExtResource(1)
+
+[node name="PlayerColumn" type="VBoxContainer" parent="."]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="PlayerSel" type="OptionButton" parent="PlayerColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PlayerInfo" type="RichTextLabel" parent="PlayerColumn"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+text = "No player selected"
+
+[node name="LocationColumn" type="VBoxContainer" parent="."]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="LocationSel" type="OptionButton" parent="LocationColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="LocationInfo" type="RichTextLabel" parent="LocationColumn"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+text = "No location selected"

@@ -5,7 +5,7 @@
 [ext_resource type="PackedScene" path="res://scenes/panels/CaravanPanel.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/panels/TradePanel.tscn" id="4"]
 [ext_resource type="Script" path="res://scripts/ui/Chronicle.gd" id="5"]
-[ext_resource type="Script" path="res://scripts/ui/WorldTab.gd" id="6"]
+[ext_resource type="PackedScene" path="res://scenes/ui/world/WorldTab.tscn" id="6"]
 [ext_resource type="Theme" path="res://assets/ui/theme/caravan_theme.tres" id="7"]
 [ext_resource type="Texture2D" path="res://assets/bg/world_map.webp" id="8"]
 
@@ -137,19 +137,10 @@ layout_mode = 0
 anchor_right = 0.0
 anchor_bottom = 0.0
 
-[node name="World" type="VBoxContainer" parent="UI/Main/Right/Tabs" script=ExtResource("6")]
+[node name="World" parent="UI/Main/Right/Tabs" instance=ExtResource("6")]
 visible = false
 layout_mode = 2
 metadata/_tab_index = 3
-
-[node name="Cheats" type="VBoxContainer" parent="UI/Main/Right/Tabs/World"]
-
-[node name="CheatsLabel" type="Label" parent="UI/Main/Right/Tabs/World/Cheats"]
-text = "Cheats"
-
-[node name="PlayerSel" type="OptionButton" parent="UI/Main/Right/Tabs/World/Cheats"]
-layout_mode = 2
-size_flags_horizontal = 3
 
 [node name="Narrator" type="Control" parent="UI/Main/Right/Tabs"]
 visible = false

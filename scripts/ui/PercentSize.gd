@@ -1,10 +1,10 @@
-extends Control
 @tool
+extends Control
 
 @export_range(0.0, 1.0, 0.01) var percent_width: float  = 0.85
 @export_range(0.0, 1.0, 0.01) var percent_height: float = 0.85
-@export_range(0.0, 1.0, 0.01) var anchor_left: float = 0.075
-@export_range(0.0, 1.0, 0.01) var anchor_top: float  = 0.075
+@export_range(0.0, 1.0, 0.01) var base_left: float = 0.075
+@export_range(0.0, 1.0, 0.01) var base_top: float  = 0.075
 @export var keep_centered: bool = true
 
 func _ready() -> void:
@@ -14,8 +14,8 @@ func _ready() -> void:
 		win.size_changed.connect(_apply_percent_size)
 
 func _apply_percent_size() -> void:
-	var left := anchor_left
-	var top := anchor_top
+	var left := base_left
+	var top := base_top
 	var right := left + percent_width
 	var bottom := top + percent_height
 	if keep_centered:
