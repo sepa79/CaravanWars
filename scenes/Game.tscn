@@ -1,10 +1,10 @@
 [gd_scene load_steps=8 format=3 uid="uid://b3x0wko2kygau"]
 
-[ext_resource type="Script" uid="uid://bb08weeru3c3c" path="res://scripts/Game.gd" id="1"]
-[ext_resource type="Script" uid="uid://cx8wh45qc2dts" path="res://scripts/Map.gd" id="2"]
+[ext_resource type="Script" uid="uid://bb08weeru3c3c" path="res://scripts/Game.cs" id="1"]
+[ext_resource type="Script" uid="uid://cx8wh45qc2dts" path="res://scripts/Map.cs" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/panels/CaravanPanel.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/panels/TradePanel.tscn" id="4"]
-[ext_resource type="Script" path="res://scripts/ui/Chronicle.gd" id="5"]
+[ext_resource type="Script" path="res://scripts/ui/Chronicle.cs" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/ui/world/WorldTab.tscn" id="6"]
 [ext_resource type="Theme" path="res://assets/ui/theme/caravan_theme.tres" id="7"]
 [ext_resource type="Texture2D" path="res://assets/bg/world_map.webp" id="8"]

@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3]
 
-[ext_resource type="Script" path="res://scripts/net/Server.gd" id=1]
-[ext_resource type="Script" path="res://scripts/net/Client.gd" id=2]
+[ext_resource type="Script" path="res://scripts/net/Server.cs" id=1]
+[ext_resource type="Script" path="res://scripts/net/Client.cs" id=2]
 [ext_resource type="PackedScene" path="res://scenes/Game.tscn" id=3]
 
 [node name="Main" type="Node"]

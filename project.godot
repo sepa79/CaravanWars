@@ -12,19 +12,19 @@ config_version=5
 
 config/name="Caravan Wars"
 run/main_scene="res://scenes/Game.tscn"
-config/features=PackedStringArray("4.4")
+config/features=PackedStringArray("4.4", "C#")
 
 [autoload]
-ThemeLoader="*res://autoload/ThemeLoader.gd"
+ThemeLoader="*res://autoload/ThemeLoader.cs"
 
-DB="*res://autoload/DB.gd"
-Sim="*res://autoload/Sim.gd"
-Commander="*res://autoload/Commander.gd"
-PlayerMgr="*res://autoload/PlayerMgr.gd"
-AiBridge="*res://autoload/AiBridge.gd"
-NetBridge="*res://autoload/NetBridge.gd"
-UiManager="*res://autoload/UiManager.gd"
-WorldViewModel="*res://autoload/WorldViewModel.gd"
+DB="*res://autoload/DB.cs"
+Sim="*res://autoload/Sim.cs"
+Commander="*res://autoload/Commander.cs"
+PlayerMgr="*res://autoload/PlayerMgr.cs"
+AiBridge="*res://autoload/AiBridge.cs"
+NetBridge="*res://autoload/NetBridge.cs"
+UiManager="*res://autoload/UiManager.cs"
+WorldViewModel="*res://autoload/WorldViewModel.cs"
 
 [display]
 
