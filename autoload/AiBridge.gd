@@ -6,11 +6,12 @@ func suggest_for_player(player_id:int):
 	var loc = p["loc"]
 	var best_txt := ""
 	var best_profit := -99999
-		for to in DB.locations.keys():
-				if to == loc: continue
-				for g in DB.goods_base_price.keys():
-						var buy = DB.get_loc(loc).prices.get(g, 9999)
-						var sell = DB.get_loc(to).prices.get(g, 0)
+	for to in DB.locations.keys():
+		if to == loc:
+			continue
+		for g in DB.goods_base_price.keys():
+			var buy = DB.get_loc(loc).prices.get(g, 9999)
+			var sell = DB.get_loc(to).prices.get(g, 0)
 			var pr = sell - buy
 			if pr > best_profit:
 				best_profit = pr
