@@ -1,11 +1,12 @@
 using Godot;
 using System;
 using Godot.Collections;
+using GodotArray = Godot.Collections.Array;
 
 public partial class Sim : Node
 {
     public static Dictionary price = new Dictionary();
-    public static Array caravans = new Array();
+    public static GodotArray caravans = new GodotArray();
     public static int tick_count = 0;
 
     public override void _Ready()

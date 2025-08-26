@@ -1,6 +1,7 @@
 using Godot;
 using System;
 using Godot.Collections;
+using GodotArray = Godot.Collections.Array;
 
 public partial class Game : Node
 {
@@ -212,7 +213,7 @@ public partial class Game : Node
         var total = PlayerMgr.CapacityTotal(pid).ToString();
         capLabel.Text = Tr("Cargo: {used}/{total}").Replace("{used}", used).Replace("{total}", total);
         goldLabel.Text = Tr("Gold: {value}").Replace("{value}", p.ContainsKey("gold") ? p["gold"].ToString() : "0");
-        var units = p.ContainsKey("units") ? (Array)p["units"] : new Array();
+        var units = p.ContainsKey("units") ? (GodotArray)p["units"] : new GodotArray();
         caravansLabel.Text = Tr("Caravans: {value}").Replace("{value}", units.Count.ToString());
     }
 
