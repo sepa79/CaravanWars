@@ -4,9 +4,9 @@ using Godot.Collections;
 
 public partial class Sim : Node
 {
-    public Dictionary price = new Dictionary();
-    public Array caravans = new Array();
-    public int tick_count = 0;
+    public static Dictionary price = new Dictionary();
+    public static Array caravans = new Array();
+    public static int tick_count = 0;
 
     public override void _Ready()
     {
@@ -22,14 +22,14 @@ public partial class Sim : Node
         }
     }
 
-    public void Tick()
+    public static void Tick()
     {
         tick_count += 1;
         if (tick_count % 3 == 0)
             TickEconomy();
     }
 
-    public void TickEconomy()
+    public static void TickEconomy()
     {
         foreach (string loc in DB.locations.Keys)
         {
@@ -47,7 +47,7 @@ public partial class Sim : Node
         }
     }
 
-    public void AdvancePlayers(float delta)
+    public static void AdvancePlayers(float delta)
     {
         foreach (int id in PlayerMgr.order)
         {
@@ -67,8 +67,8 @@ public partial class Sim : Node
                 p.Remove("from");
                 p.Remove("to");
                 p["progress"] = 0.0f;
-                Commander.EmitSignal(Commander.SignalName.Log,
-                    string.Format(Tr("[{0}] arrived at {1}."),
+                Commander.Instance.EmitSignal(Commander.SignalName.Log,
+                    string.Format("[{0}] arrived at {1}.",
                         p["name"], DB.GetLocName(p["loc"].ToString())));
             }
         }

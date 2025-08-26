@@ -37,6 +37,8 @@ public partial class Game : Node
     private Dictionary lastStock = new Dictionary();
     private bool lastMoving = false;
 
+    private Commander commander;
+
     public override void _Ready()
     {
         mapNode = GetNode<Control>("UI/Main/Left/MapBox/Map");
@@ -64,7 +66,8 @@ public partial class Game : Node
         cmdBox = GetNode<LineEdit>("UI/Main/Right/Cmd");
         tickTimer = GetNode<Timer>("Tick");
 
-        Commander.Connect("log", new Callable(this, nameof(OnLog)));
+        commander = GetNode<Commander>("/root/Commander");
+        commander.Log += OnLog;
         cmdBox.TextSubmitted += OnCmd;
 
         tickTimer.Timeout += OnTick;
@@ -82,8 +85,9 @@ public partial class Game : Node
 
         if (caravanPanel.HasSignal("ask_ai_pressed"))
             caravanPanel.Connect("ask_ai_pressed", new Callable(this, nameof(OnAskAi)));
-        if (WorldViewModel.HasSignal("player_changed"))
-            WorldViewModel.Connect("player_changed", new Callable(this, nameof(OnPlayerChanged)));
+        var wvm = GetNodeOrNull<WorldViewModel>("/root/WorldViewModel");
+        if (wvm != null && wvm.HasSignal("player_changed"))
+            wvm.Connect("player_changed", new Callable(this, nameof(OnPlayerChanged)));
 
         FillHelp();
         SetupLanguageDropdown();
@@ -122,7 +126,7 @@ public partial class Game : Node
         }
         for (int i = 0; i < langOption.GetItemCount(); i++)
         {
-            if ((string)langOption.GetItemMetadata(i) == (string)DB.Get("current_language"))
+            if ((string)langOption.GetItemMetadata(i) == DB.current_language)
             {
                 langOption.Select(i);
                 break;
@@ -130,7 +134,7 @@ public partial class Game : Node
         }
         langOption.ItemSelected += (long i) =>
         {
-            DB.Call("set_language", langOption.GetItemMetadata((int)i));
+            DB.SetLanguage((string)langOption.GetItemMetadata((int)i));
             FillHelp();
             SetTabTitles();
             caravanPanel.Call("set_target", caravanPanel.Get("selected_target"));
@@ -161,14 +165,14 @@ public partial class Game : Node
 
     private void StoreTradeState()
     {
-        var pid = (int)PlayerMgr.Get("local_player_id");
-        var players = (Dictionary)PlayerMgr.Get("players");
-        var p = (Dictionary)players.Get(pid, new Dictionary());
-        lastLoc = (string)p.Get("loc", "");
-        lastMoving = (bool)p.Get("moving", false);
-        var locations = (Dictionary)DB.Get("locations");
-        var locData = (Dictionary)locations.Get(lastLoc, new Dictionary());
-        lastStock = (Dictionary)locData.Get("stock", new Dictionary()).Duplicate();
+        var pid = PlayerMgr.local_player_id;
+        var players = PlayerMgr.players;
+        var p = players.ContainsKey(pid) ? (Dictionary)players[pid] : new Dictionary();
+        lastLoc = p.ContainsKey("loc") ? p["loc"].ToString() : "";
+        lastMoving = p.ContainsKey("moving") && (bool)p["moving"];
+        var locations = DB.locations;
+        var locData = locations.ContainsKey(lastLoc) ? (Dictionary)locations[lastLoc] : new Dictionary();
+        lastStock = locData.ContainsKey("stock") ? ((Dictionary)locData["stock"]).Duplicate() : new Dictionary();
     }
 
     private void RefreshTradePanel()
@@ -179,35 +183,36 @@ public partial class Game : Node
 
     private void CheckTradeRefresh()
     {
-        var pid = (int)PlayerMgr.Get("local_player_id");
-        var players = (Dictionary)PlayerMgr.Get("players");
-        var p = (Dictionary)players.Get(pid, null);
+        var pid = PlayerMgr.local_player_id;
+        var players = PlayerMgr.players;
+        var p = players.ContainsKey(pid) ? (Dictionary)players[pid] : null;
         if (p == null)
             return;
-        var loc = (string)p.Get("loc", "");
-        var moving = (bool)p.Get("moving", false);
-        var locations = (Dictionary)DB.Get("locations");
-        var locData = (Dictionary)locations.Get(loc, new Dictionary());
-        var stock = (Dictionary)locData.Get("stock", new Dictionary()).Duplicate();
+        var loc = p.ContainsKey("loc") ? p["loc"].ToString() : "";
+        var moving = p.ContainsKey("moving") && (bool)p["moving"];
+        var locations = DB.locations;
+        var locData = locations.ContainsKey(loc) ? (Dictionary)locations[loc] : new Dictionary();
+        var stock = locData.ContainsKey("stock") ? ((Dictionary)locData["stock"]).Duplicate() : new Dictionary();
         if (moving != lastMoving || loc != lastLoc || !stock.Equals(lastStock))
             RefreshTradePanel();
     }
 
     private void UpdateStatus()
     {
-        var pid = (int)PlayerMgr.Get("local_player_id");
-        var players = (Dictionary)PlayerMgr.Get("players");
-        var p = (Dictionary)players.Get(pid, null);
+        var pid = PlayerMgr.local_player_id;
+        var players = PlayerMgr.players;
+        var p = players.ContainsKey(pid) ? (Dictionary)players[pid] : null;
         if (p == null)
             return;
-        locLabel.Text = Tr("Location: {loc}").Replace("{loc}", (string)DB.Call("get_loc_name", p.Get("loc", "")));
-        speedLabel.Text = Tr("Speed: {value}").Replace("{value}", PlayerMgr.Call("calc_speed", pid).ToString());
-        tickLabel.Text = Tr("Tick: {value}").Replace("{value}", Sim.Get("tick_count").ToString());
-        var used = PlayerMgr.Call("cargo_used", pid).ToString();
-        var total = PlayerMgr.Call("capacity_total", pid).ToString();
+        var locCode = p.ContainsKey("loc") ? p["loc"].ToString() : "";
+        locLabel.Text = Tr("Location: {loc}").Replace("{loc}", DB.GetLocName(locCode));
+        speedLabel.Text = Tr("Speed: {value}").Replace("{value}", PlayerMgr.CalcSpeed(pid).ToString());
+        tickLabel.Text = Tr("Tick: {value}").Replace("{value}", Sim.tick_count.ToString());
+        var used = PlayerMgr.CargoUsed(pid).ToString();
+        var total = PlayerMgr.CapacityTotal(pid).ToString();
         capLabel.Text = Tr("Cargo: {used}/{total}").Replace("{used}", used).Replace("{total}", total);
-        goldLabel.Text = Tr("Gold: {value}").Replace("{value}", p.Get("gold", 0).ToString());
-        var units = p.Get("units", new Array()) as Array;
+        goldLabel.Text = Tr("Gold: {value}").Replace("{value}", p.ContainsKey("gold") ? p["gold"].ToString() : "0");
+        var units = p.ContainsKey("units") ? (Array)p["units"] : new Array();
         caravansLabel.Text = Tr("Caravans: {value}").Replace("{value}", units.Count.ToString());
     }
 
@@ -223,15 +228,15 @@ public partial class Game : Node
 
     public override void _Process(double delta)
     {
-        Sim.Call("advance_players", delta * timeFactor);
+        Sim.AdvancePlayers((float)delta * timeFactor);
         UpdateStatus();
         CheckTradeRefresh();
     }
 
     private void OnLocationClick(string locCode)
     {
-        var pid = (int)PlayerMgr.Get("local_player_id");
-        if ((bool)PlayerMgr.Call("start_travel", pid, locCode))
+        var pid = PlayerMgr.local_player_id;
+        if (PlayerMgr.StartTravel(pid, locCode))
         {
             UpdateStatus();
             mapNode.QueueRedraw();
@@ -241,8 +246,8 @@ public partial class Game : Node
 
     private void OnBuyRequest(int good, int amount)
     {
-        var pid = (int)PlayerMgr.Get("local_player_id");
-        if ((bool)Commander.Call("buy", pid, good, amount))
+        var pid = PlayerMgr.local_player_id;
+        if (commander.Buy(pid, good, amount))
         {
             UpdateStatus();
             RefreshTradePanel();
@@ -251,8 +256,8 @@ public partial class Game : Node
 
     private void OnSellRequest(int good, int amount)
     {
-        var pid = (int)PlayerMgr.Get("local_player_id");
-        if ((bool)Commander.Call("sell", pid, good, amount))
+        var pid = PlayerMgr.local_player_id;
+        if (commander.Sell(pid, good, amount))
         {
             UpdateStatus();
             RefreshTradePanel();
@@ -268,18 +273,18 @@ public partial class Game : Node
 
     private void OnTick()
     {
-        Sim.Call("tick");
+        Sim.Tick();
         UpdateStatus();
         mapNode.QueueRedraw();
     }
 
     private void OnCmd(string text)
     {
-        var t = text.StripEdges();
+        var t = text.Trim();
         if (t == "")
             return;
         cmdBox.Text = "";
-        Commander.Call("exec", t);
+        commander.Call("exec", t);
     }
 
     private void OnLog(string msg)

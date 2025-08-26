@@ -4,8 +4,15 @@ using Godot.Collections;
 
 public partial class Commander : Node
 {
+    public static Commander Instance { get; private set; }
+
     [Signal]
     public delegate void LogEventHandler(string msg);
+
+    public override void _Ready()
+    {
+        Instance = this;
+    }
 
     public void CmdMove(string arg)
     {

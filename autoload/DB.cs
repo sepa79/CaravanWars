@@ -6,7 +6,7 @@ public partial class DB : Node
 {
     public enum Good { FOOD, MEDS, ORE, TOOLS, LUX }
 
-    public Dictionary goods_base_price = new Dictionary
+    public static Dictionary goods_base_price = new Dictionary
     {
         { (int)Good.FOOD, 10 },
         { (int)Good.MEDS, 16 },
@@ -15,7 +15,7 @@ public partial class DB : Node
         { (int)Good.LUX, 40 }
     };
 
-    public Dictionary goods_names = new Dictionary
+    public static Dictionary goods_names = new Dictionary
     {
         { (int)Good.FOOD, "food" },
         { (int)Good.MEDS, "meds" },
@@ -24,9 +24,9 @@ public partial class DB : Node
         { (int)Good.LUX, "lux" }
     };
 
-    public string current_language = "pl";
+    public static string current_language = "pl";
 
-    public Dictionary loc_display = new Dictionary
+    public static Dictionary loc_display = new Dictionary
     {
         { "HARBOR", new Dictionary { {"en", "Harbor"}, {"pl", "Port"} } },
         { "CENTRAL_KEEP", new Dictionary { {"en", "Central Keep"}, {"pl", "Twierdza Środkowa"} } },
@@ -45,7 +45,7 @@ public partial class DB : Node
         TranslationServer.SetLocale(current_language);
     }
 
-    public Dictionary positions = new Dictionary
+    public static Dictionary positions = new Dictionary
     {
         { "HARBOR", new Vector2(1060, 840) },
         { "CENTRAL_KEEP", new Vector2(910, 750) },
@@ -56,7 +56,7 @@ public partial class DB : Node
         { "MINE", new Vector2(440, 340) }
     };
 
-    public Dictionary routes = new Dictionary
+    public static Dictionary routes = new Dictionary
     {
         { "FOREST_SPRING->MINE", new Dictionary { {"risk", 0.00}, {"ticks", 2} } },
         { "MINE->FOREST_SPRING", new Dictionary { {"risk", 0.00}, {"ticks", 2} } },
@@ -77,7 +77,7 @@ public partial class DB : Node
         { "FOREST_HAVEN->MILLS", new Dictionary { {"risk", 0.06}, {"ticks", 3} } }
     };
 
-    public Dictionary locations = new Dictionary
+    public static Dictionary locations = new Dictionary
     {
         { "CENTRAL_KEEP", new Dictionary { {"stock", new Dictionary { { (int)Good.FOOD, 30 }, { (int)Good.MEDS, 10 } } }, {"demand", new Dictionary { { (int)Good.FOOD, 1.0 }, { (int)Good.MEDS, 1.1 }, { (int)Good.TOOLS, 1.2 } } } } },
         { "MINE", new Dictionary { {"stock", new Dictionary { { (int)Good.ORE, 60 } } }, {"demand", new Dictionary { { (int)Good.FOOD, 1.1 }, { (int)Good.TOOLS, 1.2 } } } } },
@@ -88,14 +88,14 @@ public partial class DB : Node
         { "SOUTHERN_SHRINE", new Dictionary { {"stock", new Dictionary { { (int)Good.MEDS, 20 } } }, {"demand", new Dictionary { { (int)Good.FOOD, 1.2 }, { (int)Good.TOOLS, 1.3 } } } } }
     };
 
-    public Dictionary unit_defs = new Dictionary
+    public static Dictionary unit_defs = new Dictionary
     {
         { "hand_cart", new Dictionary { {"name", "Hand Cart"}, {"speed", 1.0}, {"capacity", 10}, {"upkeep_gold", 0}, {"upkeep_food", 1} } },
         { "horse_cart", new Dictionary { {"name", "Horse Cart"}, {"speed", 2.0}, {"capacity", 25}, {"upkeep_gold", 1}, {"upkeep_food", 2} } },
         { "guard", new Dictionary { {"name", "Guard"}, {"speed", 1.0}, {"capacity", 0}, {"upkeep_gold", 1}, {"upkeep_food", 1}, {"power", 2} } }
     };
 
-    public void SetLanguage(string lang)
+    public static void SetLanguage(string lang)
     {
         if (lang == "pl" || lang == "en")
         {
@@ -104,7 +104,7 @@ public partial class DB : Node
         }
     }
 
-    public string GetLocName(string code)
+    public static string GetLocName(string code)
     {
         if (!loc_display.ContainsKey(code))
             return code;
@@ -114,24 +114,24 @@ public partial class DB : Node
         return code;
     }
 
-    public string RouteKey(string a, string b)
+    public static string RouteKey(string a, string b)
     {
         return $"{a}->{b}";
     }
 
-    public Vector2 GetPos(string code)
+    public static Vector2 GetPos(string code)
     {
         if (positions.ContainsKey(code))
             return (Vector2)positions[code];
         return Vector2.Zero;
     }
 
-    public bool HasRoute(string a, string b)
+    public static bool HasRoute(string a, string b)
     {
         return routes.ContainsKey(RouteKey(a, b));
     }
 
-    public Dictionary GetRoute(string a, string b)
+    public static Dictionary GetRoute(string a, string b)
     {
         if (routes.ContainsKey(RouteKey(a, b)))
             return routes[RouteKey(a, b)] as Dictionary;

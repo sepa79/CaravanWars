@@ -6,9 +6,9 @@ public partial class PlayerMgr : Node
 {
     public enum Kind { HUMAN, AI, NARRATOR }
 
-    public Dictionary players = new Dictionary();
-    public Array order = new Array();
-    public int local_player_id = 1;
+    public static Dictionary players = new Dictionary();
+    public static Array order = new Array();
+    public static int local_player_id = 1;
 
     public override void _Ready()
     {
@@ -18,7 +18,7 @@ public partial class PlayerMgr : Node
         order = new Array { 1, 2, 101 };
     }
 
-    public void AddPlayer(int id, string name, int kind, string startLoc)
+    public static void AddPlayer(int id, string name, int kind, string startLoc)
     {
         players[id] = new Dictionary
         {
@@ -33,7 +33,7 @@ public partial class PlayerMgr : Node
         };
     }
 
-    public bool IsMoving(int id)
+    public static bool IsMoving(int id)
     {
         if (!players.ContainsKey(id))
             return false;
@@ -41,7 +41,7 @@ public partial class PlayerMgr : Node
         return p.ContainsKey("moving") && (bool)p["moving"];
     }
 
-    public float CalcSpeed(int id)
+    public static float CalcSpeed(int id)
     {
         var p = players[id] as Dictionary;
         var defs = DB.unit_defs;
@@ -61,7 +61,7 @@ public partial class PlayerMgr : Node
         return sp;
     }
 
-    public int CapacityTotal(int id)
+    public static int CapacityTotal(int id)
     {
         var p = players[id] as Dictionary;
         var defs = DB.unit_defs;
@@ -78,7 +78,7 @@ public partial class PlayerMgr : Node
         return cap;
     }
 
-    public int CargoUsed(int id)
+    public static int CargoUsed(int id)
     {
         var p = players[id] as Dictionary;
         int used = 0;
@@ -90,12 +90,12 @@ public partial class PlayerMgr : Node
         return used;
     }
 
-    public int CargoFree(int id)
+    public static int CargoFree(int id)
     {
         return Math.Max(0, CapacityTotal(id) - CargoUsed(id));
     }
 
-    public bool StartTravel(int id, string toLoc)
+    public static bool StartTravel(int id, string toLoc)
     {
         var p = players[id] as Dictionary;
         if (p.ContainsKey("moving") && (bool)p["moving"])
@@ -115,8 +115,8 @@ public partial class PlayerMgr : Node
         p["eta_left"] = eta;
         p["eta_total"] = eta;
         p["progress"] = 0.0f;
-        Commander.EmitSignal(Commander.SignalName.Log,
-            string.Format(Tr("[{0}] traveling {1} -> {2} (ETA {3:0.0})."),
+        Commander.Instance.EmitSignal(Commander.SignalName.Log,
+            string.Format("[{0}] traveling {1} -> {2} (ETA {3:0.0}).",
                 p["name"], DB.GetLocName(fromLoc), DB.GetLocName(toLoc), eta));
         return true;
     }
