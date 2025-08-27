@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    
+    {
+      "name": "CaravanWars: F5 Build & Run",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "${workspaceFolder}\\caravanwars-build.bat",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

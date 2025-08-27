@@ -25,6 +25,8 @@ AiBridge="*res://autoload/AiBridge.gd"
 NetBridge="*res://autoload/NetBridge.gd"
 UiManager="*res://autoload/UiManager.gd"
 WorldViewModel="*res://autoload/WorldViewModel.gd"
+LoopbackServer="*res://autoload/LoopbackServer.gd"
+GlobalNarrator="*res://scripts/narrative/GlobalNarrator.gd"
 
 [display]
 

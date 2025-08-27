@@ -67,7 +67,6 @@ func _ready() -> void:
 	set_process(true)
 	_store_trade_state()
 
-
 func _fill_help() -> void:
 	var t := ""
 	t += "[b]" + tr("Caravan Wars {version}").format({"version": GAME_VERSION}) + "[/b]\n"
