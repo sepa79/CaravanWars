@@ -162,22 +162,24 @@ func _process(delta: float) -> void:
 
 func _on_location_click(loc_code: String) -> void:
 	var pid := PlayerMgr.local_player_id
-	if PlayerMgr.start_travel(pid, loc_code):
-		_update_status()
-		map_node.queue_redraw()
-		_refresh_trade_panel()
+	Orders.move(str(pid), loc_code)
+	_update_status()
+	map_node.queue_redraw()
+	_refresh_trade_panel()
 
 func _on_buy_request(good: int, amount: int) -> void:
 	var pid := PlayerMgr.local_player_id
-	if Commander.buy(pid, good, amount):
-		_update_status()
-		_refresh_trade_panel()
+	var loc: String = PlayerMgr.players.get(pid, {}).get("loc", "")
+	Orders.trade(str(pid), "buy", str(good), amount, loc)
+	_update_status()
+	_refresh_trade_panel()
 
 func _on_sell_request(good: int, amount: int) -> void:
 	var pid := PlayerMgr.local_player_id
-	if Commander.sell(pid, good, amount):
-		_update_status()
-		_refresh_trade_panel()
+	var loc: String = PlayerMgr.players.get(pid, {}).get("loc", "")
+	Orders.trade(str(pid), "sell", str(good), amount, loc)
+	_update_status()
+	_refresh_trade_panel()
 
 func _on_ask_ai(player_id: int) -> void:
 	var aibr = get_node_or_null("/root/AiBridge")
