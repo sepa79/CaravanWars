@@ -16,14 +16,29 @@ func cmd_move(arg: String) -> void:
 	if PlayerMgr.start_travel(pid, code):
 		emit_signal("log", "Moving to " + DB.get_loc_name(code))
 
-func cmd_price(arg: String) -> void:
-	var code: String = arg.strip_edges().to_upper()
-	var loc = DB.get_loc(code)
+func cmd_price(player_id: int, loc_code: String) -> void:
+	var loc := DB.get_loc(loc_code)
 	if loc == null:
-		emit_signal("log", "[color=red]Unknown market code:[/color] " + code)
+		emit_signal("log", "[price] Unknown location: %s" % loc_code)
 		return
-	emit_signal("log", "Prices at " + DB.get_loc_name(code))
-	# TODO: wypisz konkretne ceny
+
+	var header := "Prices @ %s" % (loc.name if "name" in loc else loc_code)
+	emit_signal("log", header)
+	emit_signal("log", "Good        | Price | Stock")
+	emit_signal("log", "------------+-------+------")
+
+	for g in DB.goods_base_price.keys():
+		var name_str := ""
+		if DB.goods_names.has(g):
+			# jeśli chcesz tłumaczenia, podmień na: name_str = tr(DB.goods_names[g])
+			name_str = str(DB.goods_names[g])
+		else:
+			name_str = "GOOD_%d" % int(g)
+
+		var price := int(loc.prices.get(g, 0))
+		var stock := int(loc.stock.get(g, 0))
+		var short_name := name_str.substr(0, 11)
+		emit_signal("log", "%-11s | %5d | %5d" % [short_name, price, stock])
 
 func buy(pid:int, good:int, amount:int) -> bool:
 	var p = PlayerMgr.players.get(pid, null)

@@ -1,75 +1,47 @@
-[gd_resource type="Theme" load_steps=9 format=3]
+[gd_resource type="Theme" load_steps=7 format=3 uid="uid://dutacqr14vbg4"]
 
-[ext_resource type="Texture2D" path="res://assets/ui/popup_bg_256.png" id="1"]
-[ext_resource type="Texture2D" path="res://assets/ui/window_frame_256.png" id="2"]
+[ext_resource type="Texture2D" uid="uid://4nmmi0uqrqgg" path="res://assets/ui/popup_bg_256.png" id="1"]
+[ext_resource type="Texture2D" uid="uid://ddcle4jta162a" path="res://assets/ui/window_frame_256.png" id="2"]
 
 [sub_resource type="StyleBoxTexture" id="SBT_PAPER"]
 texture = ExtResource("1")
-region = Rect2(0, 0, 256, 256)
-margin_left = 8.0
-margin_top = 8.0
-margin_right = 8.0
-margin_bottom = 8.0
-draw_center = true
 
-[sub_resource type="StyleBoxTexture" id="SBT_FRAME"]
+[sub_resource type="StyleBoxTexture" id="BTN_FRAME"]
 texture = ExtResource("2")
-region = Rect2(0, 0, 256, 256)
-margin_left = 28.0
-margin_top = 28.0
-margin_right = 28.0
-margin_bottom = 28.0
 draw_center = false
 
 [sub_resource type="StyleBoxTexture" id="BTN_NORMAL"]
 texture = ExtResource("1")
-region = Rect2(0, 0, 256, 256)
-margin_left = 10.0
-margin_top = 10.0
-margin_right = 10.0
-margin_bottom = 10.0
-draw_center = true
 
-[sub_resource type="StyleBoxTexture" id="BTN_FRAME"]
+[sub_resource type="StyleBoxTexture" id="SBT_FRAME"]
 texture = ExtResource("2")
-region = Rect2(0, 0, 256, 256)
-margin_left = 24.0
-margin_top = 24.0
-margin_right = 24.0
-margin_bottom = 24.0
 draw_center = false
 
 [resource]
 default_font_size = 18
-
-Window/styles/panel = SubResource("SBT_PAPER")
-Window/styles/embedded_border = SubResource("SBT_FRAME")
-Window/styles/close = SubResource("SBT_FRAME")
-
-PopupPanel/styles/panel = SubResource("SBT_PAPER")
 AcceptDialog/styles/panel = SubResource("SBT_PAPER")
-
+Button/colors/font_color = Color(0.25, 0.2, 0.15, 1)
+Button/styles/focus = SubResource("BTN_FRAME")
+Button/styles/hover = SubResource("BTN_FRAME")
+Button/styles/normal = SubResource("BTN_NORMAL")
+Button/styles/pressed = SubResource("BTN_FRAME")
+CheckBox/colors/font_color = Color(0.25, 0.2, 0.15, 1)
+Label/colors/font_color = Color(0.25, 0.2, 0.15, 1)
+LineEdit/styles/focus = SubResource("SBT_FRAME")
+LineEdit/styles/normal = SubResource("SBT_FRAME")
+OptionButton/colors/font_color = Color(0.25, 0.2, 0.15, 1)
+OptionButton/styles/focus = SubResource("SBT_FRAME")
+OptionButton/styles/hover = SubResource("SBT_FRAME")
+OptionButton/styles/normal = SubResource("SBT_FRAME")
+OptionButton/styles/pressed = SubResource("SBT_FRAME")
 Panel/styles/panel = SubResource("SBT_PAPER")
 PanelContainer/styles/panel = SubResource("SBT_FRAME")
-TabContainer/styles/panel = SubResource("SBT_PAPER")
-
-Button/styles/normal = SubResource("BTN_NORMAL")
-Button/styles/hover = SubResource("BTN_FRAME")
-Button/styles/pressed = SubResource("BTN_FRAME")
-Button/styles/focus = SubResource("BTN_FRAME")
-
-LineEdit/styles/normal = SubResource("SBT_FRAME")
-LineEdit/styles/focus = SubResource("SBT_FRAME")
-SpinBox/styles/normal = SubResource("SBT_FRAME")
-SpinBox/styles/focus = SubResource("SBT_FRAME")
-OptionButton/styles/normal = SubResource("SBT_FRAME")
-OptionButton/styles/hover = SubResource("SBT_FRAME")
-OptionButton/styles/pressed = SubResource("SBT_FRAME")
-OptionButton/styles/focus = SubResource("SBT_FRAME")
-
-Label/colors/font_color = Color(0.25, 0.2, 0.15, 1)
-Button/colors/font_color = Color(0.25, 0.2, 0.15, 1)
-CheckBox/colors/font_color = Color(0.25, 0.2, 0.15, 1)
-OptionButton/colors/font_color = Color(0.25, 0.2, 0.15, 1)
+PopupPanel/styles/panel = SubResource("SBT_PAPER")
 SpinBox/colors/font_color = Color(0.25, 0.2, 0.15, 1)
+SpinBox/styles/focus = SubResource("SBT_FRAME")
+SpinBox/styles/normal = SubResource("SBT_FRAME")
+TabContainer/styles/panel = SubResource("SBT_PAPER")
 Tree/colors/font_color = Color(0.25, 0.2, 0.15, 1)
+Window/styles/close = SubResource("SBT_FRAME")
+Window/styles/embedded_border = SubResource("SBT_FRAME")
+Window/styles/panel = SubResource("SBT_PAPER")

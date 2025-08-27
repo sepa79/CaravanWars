@@ -4,33 +4,31 @@
 [ext_resource type="Script" uid="uid://cx8wh45qc2dts" path="res://scripts/Map.gd" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/panels/CaravanPanel.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/panels/TradePanel.tscn" id="4"]
-[ext_resource type="Script" path="res://scripts/ui/Chronicle.gd" id="5"]
-[ext_resource type="PackedScene" path="res://scenes/ui/world/WorldTab.tscn" id="6"]
+[ext_resource type="PackedScene" uid="uid://bde0ccc21476" path="res://scenes/ui/world/WorldTab.tscn" id="6"]
 [ext_resource type="Theme" path="res://assets/ui/theme/caravan_theme.tres" id="7"]
-[ext_resource type="Texture2D" path="res://assets/bg/world_map.webp" id="8"]
+[ext_resource type="Texture2D" uid="uid://crk5o5h86un48" path="res://assets/bg/world_map.webp" id="8"]
 
 [node name="Game" type="Node"]
 script = ExtResource("1")
 
 [node name="UI" type="VBoxContainer" parent="."]
-theme = ExtResource("7")
-layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("7")
 
 [node name="Main" type="HBoxContainer" parent="UI"]
 layout_mode = 2
 size_flags_vertical = 3
 
 [node name="Left" type="MarginContainer" parent="UI/Main"]
+clip_contents = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 size_flags_stretch_ratio = 2.0
-clip_contents = true
 
 [node name="MapBox" type="VBoxContainer" parent="UI/Main/Left"]
 layout_mode = 2
@@ -45,11 +43,8 @@ script = ExtResource("2")
 [node name="Background" type="TextureRect" parent="UI/Main/Left/MapBox/Map"]
 z_index = -1
 layout_mode = 0
-anchor_right = 0.0
-anchor_bottom = 0.0
 mouse_filter = 2
 texture = ExtResource("8")
-stretch_mode = 0
 
 [node name="MapControls" type="HBoxContainer" parent="UI/Main/Left/MapBox"]
 layout_mode = 2
@@ -67,53 +62,13 @@ text = "+"
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-size_flags_stretch_ratio = 1.0
-
-[node name="Status" type="HBoxContainer" parent="UI"]
-layout_mode = 2
-
-[node name="Gold" type="Label" parent="UI/Status"]
-layout_mode = 2
-text = ""
-
-[node name="Caravans" type="Label" parent="UI/Status"]
-layout_mode = 2
-text = ""
-
-[node name="Tick" type="Label" parent="UI/Status"]
-layout_mode = 2
-text = ""
-
-[node name="Loc" type="Label" parent="UI/Status"]
-layout_mode = 2
-text = ""
-
-[node name="Cap" type="Label" parent="UI/Status"]
-layout_mode = 2
-text = ""
-
-[node name="Speed" type="Label" parent="UI/Status"]
-layout_mode = 2
-text = ""
-
-[node name="PauseBtn" type="Button" parent="UI/Status"]
-layout_mode = 2
-text = "||"
-
-[node name="PlayBtn" type="Button" parent="UI/Status"]
-layout_mode = 2
-text = ">"
-
-[node name="FastBtn" type="Button" parent="UI/Status"]
-layout_mode = 2
-text = ">>"
 
 [node name="Tabs" type="TabContainer" parent="UI/Main/Right"]
 layout_mode = 2
 size_flags_vertical = 3
 current_tab = 0
 
-[node name="Chronicle" type="Control" parent="UI/Main/Right/Tabs" script=ExtResource("5")]
+[node name="Chronicle" type="Control" parent="UI/Main/Right/Tabs"]
 layout_mode = 2
 metadata/_tab_index = 0
 
@@ -178,6 +133,39 @@ scroll_following = true
 layout_mode = 2
 placeholder_text = "command (optional)"
 caret_blink = true
+
+[node name="Status" type="HBoxContainer" parent="UI"]
+layout_mode = 2
+
+[node name="Gold" type="Label" parent="UI/Status"]
+layout_mode = 2
+
+[node name="Caravans" type="Label" parent="UI/Status"]
+layout_mode = 2
+
+[node name="Tick" type="Label" parent="UI/Status"]
+layout_mode = 2
+
+[node name="Loc" type="Label" parent="UI/Status"]
+layout_mode = 2
+
+[node name="Cap" type="Label" parent="UI/Status"]
+layout_mode = 2
+
+[node name="Speed" type="Label" parent="UI/Status"]
+layout_mode = 2
+
+[node name="PauseBtn" type="Button" parent="UI/Status"]
+layout_mode = 2
+text = "||"
+
+[node name="PlayBtn" type="Button" parent="UI/Status"]
+layout_mode = 2
+text = ">"
+
+[node name="FastBtn" type="Button" parent="UI/Status"]
+layout_mode = 2
+text = ">>"
 
 [node name="Tick" type="Timer" parent="."]
 autostart = true

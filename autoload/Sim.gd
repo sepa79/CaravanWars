@@ -3,18 +3,32 @@ extends Node
 var caravans := []
 var tick_count := 0
 
-func _ready():
-		randomize()
-		for loc in DB.locations.values():
-				loc.update_prices(DB.goods_base_price)
+# Co ile ticków logiki wykonywać krok ekonomii (przez GlobalNarrator)
+@export var econ_every_n_ticks: int = 2
 
+func _ready():
+	randomize()
+	# Początkowe przeliczenie cen na starcie
+	for loc in DB.locations.values():
+		loc.update_prices(DB.goods_base_price)
+
+# GŁÓWNY TICK SYMULACJI — jedyny zegar gry
 func tick():
 	tick_count += 1
-	if tick_count % 3 == 0:
-		tick_economy()
 
-func tick_economy():
+	# Ekonomia napędzana wyłącznie przez Sim: co N ticków
+	if econ_every_n_ticks > 0 and (tick_count % econ_every_n_ticks) == 0:
+		_tick_economy()
+
+# Delegat ekonomii do GlobalNarrator (bez własnych timerów)
+func _tick_economy() -> void:
+	var gn := get_node_or_null("/root/GlobalNarrator")
+	if gn != null and gn.has_method("econ_tick"):
+		gn.econ_tick()
+	else:
+		# Fallback (awaryjnie): tylko przelicz ceny, jeśli Narratora nie ma
 		for loc in DB.locations.values():
+			if loc != null and loc.has_method("update_prices"):
 				loc.update_prices(DB.goods_base_price)
 
 func advance_players(delta: float) -> void:

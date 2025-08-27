@@ -1,7 +1,7 @@
 extends Node
 
 @onready var loop: Node = get_node_or_null("/root/LoopbackServer")
-var _tick_timer: Timer = null
+var _tick_timer: Timer = null  # (nieużywany – zostawiony tylko dla kompatybilności)
 
 const CITY_PRESETS := {
 	"HARBOR":          {"produce": {"LUX": 2},   "consume": {"FOOD": 2, "MEDS": 1, "TOOLS": 1}, "min_food": 5},
@@ -23,7 +23,7 @@ func _ready() -> void:
 
 	_init_city_narrators()
 	_register_endpoints()
-	_start_timer()
+	# Brak własnego timera – ekonomię napędza Sim przez econ_tick()
 
 func _locations_as_array() -> Array:
 	# DB.locations może być Dictionary (code->Location) albo Array
@@ -122,18 +122,8 @@ func _find_loc_by_code(code: String) -> Variant:
 				return item
 	return null
 
-func _start_timer() -> void:
-	if _tick_timer != null:
-		return
-	_tick_timer = Timer.new()
-	_tick_timer.wait_time = 0.5   # 2 tps ekonomii
-	_tick_timer.one_shot = false
-	_tick_timer.autostart = true
-	add_child(_tick_timer)
-	_tick_timer.timeout.connect(_on_tick_timeout)
-	print("[GlobalNarrator] economy timer started")
-
-func _on_tick_timeout() -> void:
+## Jedyny publiczny krok ekonomii — wołany przez Sim
+func econ_tick() -> void:
 	var any_changed: bool = false
 
 	var kids: Array = get_children()
