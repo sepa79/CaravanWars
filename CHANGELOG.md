@@ -1,6 +1,11 @@
 # Caravan Wars — Changelog
 
-## 0.3.3-alpha (current)
+## 0.3.4-alpha (current)
+- Centralized city info in `Location` objects with translation keys, stock, and pricing.
+- Updated database and world logic to use the new location model.
+- Fixed trade state indentation in `Game.gd`.
+
+## 0.3.3-alpha
 - Added translations for user interface strings.
 - Restored world map background image.
 
