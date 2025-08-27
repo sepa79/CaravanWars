@@ -115,7 +115,8 @@ func _store_trade_state() -> void:
 	var p = PlayerMgr.players.get(pid, {})
 	last_loc = p.get("loc", "")
 	last_moving = p.get("moving", false)
-	last_stock = DB.locations.get(last_loc, {}).get("stock", {}).duplicate()
+	var loc_obj = DB.get_loc(last_loc)
+	last_stock = loc_obj.stock.duplicate() if loc_obj else {}
 
 func _refresh_trade_panel() -> void:
 	trade_panel.call_deferred("populate")
@@ -128,7 +129,8 @@ func _check_trade_refresh() -> void:
 		return
 	var loc = p.get("loc", "")
 	var moving = p.get("moving", false)
-	var stock = DB.locations.get(loc, {}).get("stock", {}).duplicate()
+	var loc_obj = DB.get_loc(loc)
+	var stock = loc_obj.stock.duplicate() if loc_obj else {}
 	if moving != last_moving or loc != last_loc or stock != last_stock:
 		_refresh_trade_panel()
 
