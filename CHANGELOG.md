@@ -1,6 +1,7 @@
 # Caravan Wars — Changelog
 
 ## 0.3.4-alpha (current)
+- Ujednolicone API poleceń (UI/AI/konsola) → Orders.
 - Centralized city info in `Location` objects with translation keys, stock, and pricing.
 - Updated database and world logic to use the new location model.
 - Fixed trade state indentation in `Game.gd`.
