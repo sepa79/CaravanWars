@@ -30,8 +30,8 @@ func push_observation(obs:Dictionary) -> void:
 		tabs.set_tab_disabled(2, not in_city) # Trade tab at index 2
 	if brain:
 		var cmds = brain.think(obs)
-			for c in cmds:
-				rpc_id(1, "cmd", c)
+		for c in cmds:
+			rpc_id(1, "cmd", c)
 
 @rpc("authority")
 func push_log(msg:String) -> void:
