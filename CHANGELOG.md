@@ -1,7 +1,15 @@
 # Caravan Wars — Changelog
 
-## 0.3.4-alpha (current)
-- Ujednolicone API poleceń (UI/AI/konsola) → Orders.
+## 0.3.5-alpha (current)
+- Trading: locations now accept selling any goods (not only those currently in stock). `Location.list_goods()` returns all defined goods, so the Trade panel can always sell; buying remains limited by stock and gold.
+- World tab redesign: two tables — Players summary (name, gold, total cargo) and Markets matrix (locations as rows, goods IDs as columns with qty/price), plus a legend mapping IDs to names.
+- Live refresh: World tab updates on every server snapshot via `WorldViewModel.notify_data_changed()`, with a lightweight periodic check as a safety net.
+- Data normalization: fixed mixed stock keys (int vs string) in market updates (MayorNarrator) and normalized incoming snapshot data on the client. This ensures UI always reflects current stocks/prices.
+- GDScript cleanup: replaced unsafe `String(...)` casts with `str(...)` where needed; minor indentation fixes and robustness improvements.
+
+## 0.3.4-alpha
+- MVP Pack #2 (rev): authoritative server for movement and trading; UI/console/AI only enqueue commands; prices sourced exclusively from location methods; server log replicated to clients.
+- Unified Orders API for UI/AI/console.
 - Centralized city info in `Location` objects with translation keys, stock, and pricing.
 - Updated database and world logic to use the new location model.
 - Fixed trade state indentation in `Game.gd`.

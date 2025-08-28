@@ -1,0 +1,43 @@
+# EditorConfig helps maintain consistent coding styles
+root = true
+
+# Default: use tabs for indentation
+[*]
+indent_style = tab
+indent_size = tab
+tab_width = 4
+insert_final_newline = true
+
+# Godot scripts and resources
+[*.gd]
+indent_style = tab
+indent_size = tab
+
+[*.tscn]
+indent_style = tab
+indent_size = tab
+
+[*.tres]
+indent_style = tab
+indent_size = tab
+
+# Batch and text
+[*.bat]
+indent_style = tab
+
+[*.txt]
+indent_style = tab
+
+# Markdown (allow tabs for indents)
+[*.md]
+indent_style = tab
+
+# YAML must use spaces (language restriction)
+[*.yml]
+indent_style = space
+indent_size = 2
+
+[*.yaml]
+indent_style = space
+indent_size = 2
+

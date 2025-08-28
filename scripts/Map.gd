@@ -85,7 +85,7 @@ func _draw_routes() -> void:
 	for key in DB.routes.keys():
 		if not (key is String):
 			continue
-		var parts: PackedStringArray = String(key).split("->", false, 2)
+		var parts: PackedStringArray = str(key).split("->", false, 2)
 		if parts.size() != 2:
 			continue
 		var a_id: String = parts[0]
@@ -183,7 +183,7 @@ func _draw_players() -> void:
 			continue
 		var disp_label: String = "P"
 		if p.has("name"):
-			disp_label = String(p["name"])
+				disp_label = str(p["name"])
 		draw_string(
 			font, pos + Vector2(12, -8), disp_label, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE
 		)

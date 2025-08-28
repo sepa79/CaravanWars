@@ -2,6 +2,7 @@ extends Node
 
 signal player_changed(player: Dictionary)
 signal location_changed(location: Dictionary)
+signal data_changed
 
 var player_descriptions := {
 		1: "A brave merchant traveling the lands.",
@@ -47,10 +48,10 @@ func get_locations() -> Array:
 				if loc_obj == null:
 						continue
 				var goods := {}
-				for g in loc_obj.stock.keys():
+				for g in loc_obj.list_goods():
 						goods[DB.goods_names.get(g, str(g))] = {
-								"qty": int(loc_obj.stock[g]),
-								"price": int(loc_obj.prices.get(g, 0))
+								"qty": int(loc_obj.get_stock(g)),
+								"price": int(loc_obj.get_price(g))
 						}
 				list.append({
 						"code": code,
@@ -91,3 +92,8 @@ func get_selected_location() -> Dictionary:
 				return locs[selected_location]
 		return {}
 
+func notify_data_changed() -> void:
+		# Re-emit current selections so listeners refresh their views
+		player_changed.emit(get_selected_player())
+		location_changed.emit(get_selected_location())
+		data_changed.emit()

@@ -6,6 +6,9 @@ var tick_count := 0
 # Co ile ticków logiki wykonywać krok ekonomii (przez GlobalNarrator)
 @export var econ_every_n_ticks: int = 2
 
+func _is_server() -> bool:
+	return get_tree() != null and get_tree().get_multiplayer().is_server()
+
 func _ready():
 	randomize()
 	# Początkowe przeliczenie cen na starcie
@@ -14,6 +17,8 @@ func _ready():
 
 # GŁÓWNY TICK SYMULACJI — jedyny zegar gry
 func tick():
+	if not _is_server():
+		return
 	tick_count += 1
 
 	# Ekonomia napędzana wyłącznie przez Sim: co N ticków
@@ -32,6 +37,9 @@ func _tick_economy() -> void:
 				loc.update_prices(DB.goods_base_price)
 
 func advance_players(delta: float) -> void:
+	if not _is_server():
+		return
+	var srv = get_node_or_null("/root/Server")
 	for id in PlayerMgr.order:
 		var p = PlayerMgr.players[id]
 		if not p.get("moving", false):
@@ -45,5 +53,6 @@ func advance_players(delta: float) -> void:
 			p["loc"] = p["to"]
 			p.erase("from"); p.erase("to")
 			p["progress"] = 0.0
-			Commander.emit_signal("log", tr("[%s] arrived at %s.") % [p["name"], DB.get_loc_name(p["loc"])])
+			if srv != null:
+				srv.call_deferred("broadcast_log", tr("Arrived %s at %s.") % [p.get("name", ""), DB.get_loc_name(p.get("loc", ""))])
 	Orders.process(delta)

@@ -1,6 +1,6 @@
 extends Node
 
-const GAME_VERSION := "0.3.3-alpha"
+const GAME_VERSION := "0.3.5-alpha"
 
 @onready var map_node: Control = $UI/Main/Left/MapBox/Map
 @onready var zoom_in_btn: Button = $UI/Main/Left/MapBox/MapControls/ZoomIn
