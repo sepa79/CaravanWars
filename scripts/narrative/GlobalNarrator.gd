@@ -1,7 +1,7 @@
 extends Node
 
 @onready var loop: Node = get_node_or_null("/root/LoopbackServer")
-var _tick_timer: Timer = null  # (nieużywany – zostawiony tylko dla kompatybilności)
+var _tick_timer: Timer = null  # (nieużywany — zostawiony tylko dla kompatybilności)
 
 const CITY_PRESETS := {
 	"HARBOR":          {"produce": {"LUX": 2},   "consume": {"FOOD": 2, "MEDS": 1, "TOOLS": 1}, "min_food": 5},
@@ -15,6 +15,9 @@ const CITY_PRESETS := {
 
 const MAYOR_SCRIPT_PATH := "res://scripts/narrative/MayorNarrator.gd"
 
+func _srv() -> Variant:
+	return get_node_or_null("/root/Server")
+
 func _ready() -> void:
 	if loop != null:
 		loop.publish("system/ready", {"who": "GlobalNarrator"})
@@ -23,7 +26,10 @@ func _ready() -> void:
 
 	_init_city_narrators()
 	_register_endpoints()
-	# Brak własnego timera – ekonomię napędza Sim przez econ_tick()
+	# Brak własnego timera — ekonomię napędza Sim przez econ_tick()
+	var s = _srv()
+	if s != null:
+		s.call_deferred("broadcast_log", "[GlobalNarrator] ready; city narrators initialized: " + str(get_child_count()))
 
 func _locations_as_array() -> Array:
 	# DB.locations może być Dictionary (code->Location) albo Array
@@ -125,6 +131,9 @@ func _find_loc_by_code(code: String) -> Variant:
 ## Jedyny publiczny krok ekonomii — wołany przez Sim
 func econ_tick() -> void:
 	var any_changed: bool = false
+	var s = _srv()
+	if s != null:
+		s.call_deferred("broadcast_log", "[GlobalNarrator] econ_tick begin (tick=" + str(Sim.tick_count) + ")")
 
 	var kids: Array = get_children()
 	for i in kids.size():
@@ -143,3 +152,9 @@ func econ_tick() -> void:
 				loc.update_prices(basep)
 		if loop != null:
 			loop.publish("market/updated", {})
+		if s != null:
+			s.call_deferred("broadcast_log", "[GlobalNarrator] econ_tick: markets updated")
+	else:
+		if s != null:
+			s.call_deferred("broadcast_log", "[GlobalNarrator] econ_tick: no changes")
+

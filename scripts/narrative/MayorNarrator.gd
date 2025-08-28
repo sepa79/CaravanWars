@@ -9,6 +9,15 @@ var consume: Dictionary = {}   # { String -> int }
 var _loc: Variant = null       # obiekt Location (z DB)
 var _loop: Variant = null      # /root/LoopbackServer
 
+func _srv() -> Variant:
+	return get_node_or_null("/root/Server")
+
+func _log(msg:String) -> void:
+	print("[MayorNarrator] ", msg)
+	var s = _srv()
+	if s != null:
+		s.call_deferred("broadcast_log", msg)
+
 func setup(p_code: String, p_loc: Variant, p_loop: Variant, p_prod: Dictionary, p_cons: Dictionary, p_min_food: int = 5) -> void:
 	code = p_code
 	_loc = p_loc
@@ -16,6 +25,7 @@ func setup(p_code: String, p_loc: Variant, p_loop: Variant, p_prod: Dictionary, 
 	produce = (p_prod.duplicate() as Dictionary)
 	consume = (p_cons.duplicate() as Dictionary)
 	min_food = p_min_food
+	_log("setup city=" + code + ", min_food=" + str(min_food) + ", produce=" + str(produce) + ", consume=" + str(consume))
 
 func _food_amount() -> int:
 	var stock: Dictionary = (_loc.get("stock") as Dictionary)
@@ -35,6 +45,7 @@ func process_tick() -> bool:
 
 	var changed: bool = false
 	var stock: Dictionary = (_loc.get("stock") as Dictionary)
+	var before := stock.duplicate(true)
 
 	# Konsumpcja
 	var cons_keys: Array = consume.keys()
@@ -47,6 +58,7 @@ func process_tick() -> bool:
 			if used > 0:
 				stock[g] = have - used
 				changed = true
+				_log("[" + code + "] consume " + g + " used=" + str(used) + " (have=" + str(have) + ", need=" + str(need) + ")")
 
 	# Produkcja (z karą poza FOOD)
 	var prod_keys: Array = produce.keys()
@@ -59,10 +71,12 @@ func process_tick() -> bool:
 			var cur: int = int(stock.get(g2, 0))
 			stock[g2] = cur + amt
 			changed = true
+			_log("[" + code + "] produce " + g2 + " amount=" + str(amt) + " (cur=" + str(cur) + ")")
 
 	if changed and _loop != null:
 		var payload: Dictionary = {"city": code, "stock": stock.duplicate()}
 		_loop.publish("market/stock_changed", payload)
 		_loop.publish("market/stock_changed/%s" % code, payload)
+		_log("[" + code + "] stock changed: before=" + str(before) + " after=" + str(stock))
 
 	return changed
