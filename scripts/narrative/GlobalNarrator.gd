@@ -65,7 +65,7 @@ func _init_city_narrators() -> void:
 		if typeof(code_val) == TYPE_NIL or typeof(stock_val) != TYPE_DICTIONARY:
 			continue
 
-		var code: String = String(code_val)
+		var code: String = str(code_val)
 
 		var preset_any: Variant = CITY_PRESETS.get(code, {})
 		var preset: Dictionary = (preset_any if typeof(preset_any) == TYPE_DICTIONARY else {}) as Dictionary
@@ -96,7 +96,7 @@ func _register_endpoints() -> void:
 	)
 
 	loop.register_endpoint("market.get_city_state", func (args: Dictionary) -> Dictionary:
-		var code: String = String(args.get("city", ""))
+		var code: String = str(args.get("city", ""))
 		if code == "":
 			return {"ok": false, "error": "bad_request"}
 
@@ -124,7 +124,7 @@ func _find_loc_by_code(code: String) -> Variant:
 		var item: Variant = locs[i]
 		if item != null:
 			var c: Variant = item.get("code")
-			if String(c) == code:
+			if str(c) == code:
 				return item
 	return null
 
@@ -157,4 +157,3 @@ func econ_tick() -> void:
 	else:
 		if s != null:
 			s.call_deferred("broadcast_log", "[GlobalNarrator] econ_tick: no changes")
-

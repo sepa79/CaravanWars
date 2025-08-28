@@ -44,23 +44,23 @@ func _on_tick() -> void:
 @rpc("any_peer")
 func cmd(action:Dictionary) -> void:
 	var sender := multiplayer.get_remote_sender_id()
-	var atype := String(action.get("type", ""))
+	var atype := str(action.get("type", ""))
 	match atype:
 		"move":
 			var p = action.get("payload", {})
-			Orders.move(String(p.get("player_id", "")), String(p.get("to", "")))
+			Orders.move(str(p.get("player_id", "")), str(p.get("to", "")))
 			broadcast_snapshot()
 		"trade":
 			var p = action.get("payload", {})
-			Orders.trade(String(p.get("player_id", "")), String(p.get("action", "")), String(p.get("good", "")), int(p.get("amount", 0)), String(p.get("at", "")))
+			Orders.trade(str(p.get("player_id", "")), str(p.get("action", "")), str(p.get("good", "")), int(p.get("amount", 0)), str(p.get("at", "")))
 			broadcast_snapshot()
 		"wait":
 			var p = action.get("payload", {})
-			Orders.wait(String(p.get("player_id", "")), float(p.get("seconds", 0.0)))
+			Orders.wait(str(p.get("player_id", "")), float(p.get("seconds", 0.0)))
 			broadcast_snapshot()
 		"stop":
 			var p = action.get("payload", {})
-			Orders.stop(String(p.get("player_id", "")))
+			Orders.stop(str(p.get("player_id", "")))
 			broadcast_snapshot()
 		_:
 			# Forward unrecognized actions to the World simulation

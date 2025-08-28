@@ -50,11 +50,11 @@ func _good_id(g: Variant) -> int:
 	if typeof(g) == TYPE_INT:
 		return int(g)
 	if typeof(g) == TYPE_STRING:
-		var s: String = String(g)
+		var s: String = str(g)
 		var s_up := s.to_upper()
 		# Build reverse map from DB.goods_names
 		for id in DB.goods_names.keys():
-			var name_low: String = String(DB.goods_names[id])
+			var name_low: String = str(DB.goods_names.get(id, ""))
 			if s_up == name_low.to_upper():
 				return int(id)
 		# Also allow already-uppercase codes like "FOOD"
@@ -72,7 +72,7 @@ func has_good(good: Variant) -> bool:
 		return false
 	if stock.has(id):
 		return true
-	var code_up := String(DB.goods_names.get(id, str(id))).to_upper()
+	var code_up := str(DB.goods_names.get(id, id)).to_upper()
 	return stock.has(code_up) or stock.has(code_up.to_lower())
 
 func get_stock(good: Variant) -> int:
@@ -81,7 +81,7 @@ func get_stock(good: Variant) -> int:
 		return 0
 	if stock.has(id):
 		return int(stock.get(id))
-	var code_low := String(DB.goods_names.get(id, str(id)))
+	var code_low := str(DB.goods_names.get(id, id))
 	var code_up := code_low.to_upper()
 	if stock.has(code_up):
 		return int(stock.get(code_up))
@@ -90,13 +90,12 @@ func get_stock(good: Variant) -> int:
 	return 0
 
 func list_goods() -> Array:
-	var seen := {}
+	# Expose all known goods so locations can buy from or accept sales of any item,
+	# not only those currently in stock.
 	var goods: Array = []
-	for k in stock.keys():
-		var id := _good_id(k)
-		if id != -1 and not seen.has(id):
-			seen[id] = true
-			goods.append(id)
+	if typeof(DB) == TYPE_OBJECT and DB.goods_base_price is Dictionary:
+		goods = DB.goods_base_price.keys()
+		goods.sort()
 	return goods
 
 func get_price(good: Variant) -> int:

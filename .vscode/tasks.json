@@ -1,0 +1,49 @@
+{
+  // Godot code checks from VS Code
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Godot: Check (headless)",
+      "type": "shell",
+      "command": "./tools/check.sh",
+      "args": [".", "check"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": [] ,
+      "windows": {
+        "command": "tools\\check.bat",
+        "args": [".", "check"]
+      }
+    },
+    {
+      "label": "Godot: Quick Boot (headless)",
+      "type": "shell",
+      "command": "./tools/check.sh",
+      "args": [".", "quick"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": [],
+      "windows": {
+        "command": "tools\\check.bat",
+        "args": [".", "quick"]
+      }
+    },
+    {
+      "label": "Godot: Check + Quick",
+      "type": "shell",
+      "command": "./tools/check.sh",
+      "args": [".", "both"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": [],
+      "windows": {
+        "command": "tools\\check.bat",
+        "args": [".", "both"]
+      }
+    }
+  ]
+}
+

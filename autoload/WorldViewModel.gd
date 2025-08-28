@@ -2,6 +2,7 @@ extends Node
 
 signal player_changed(player: Dictionary)
 signal location_changed(location: Dictionary)
+signal data_changed
 
 var player_descriptions := {
 		1: "A brave merchant traveling the lands.",
@@ -90,3 +91,9 @@ func get_selected_location() -> Dictionary:
 		if selected_location >= 0 and selected_location < locs.size():
 				return locs[selected_location]
 		return {}
+
+func notify_data_changed() -> void:
+		# Re-emit current selections so listeners refresh their views
+		player_changed.emit(get_selected_player())
+		location_changed.emit(get_selected_location())
+		data_changed.emit()
