@@ -19,7 +19,6 @@ config/features=PackedStringArray("4.4")
 ThemeLoader="*res://autoload/ThemeLoader.gd"
 DB="*res://autoload/DB.gd"
 Sim="*res://autoload/Sim.gd"
-Commander="*res://autoload/Commander.gd"
 PlayerMgr="*res://autoload/PlayerMgr.gd"
 Orders="*res://autoload/Orders.gd"
 AiBridge="*res://autoload/AiBridge.gd"

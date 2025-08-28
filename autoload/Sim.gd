@@ -1,5 +1,7 @@
 extends Node
 
+signal player_arrived(player_id: int, location_id: String)
+
 var caravans := []
 var tick_count := 0
 
@@ -55,4 +57,6 @@ func advance_players(delta: float) -> void:
 			p["progress"] = 0.0
 			if srv != null:
 				srv.call_deferred("broadcast_log", tr("Arrived %s at %s.") % [p.get("name", ""), DB.get_loc_name(p.get("loc", ""))])
+			# Notify listeners about player arrival (UI may react as needed)
+			emit_signal("player_arrived", int(id), str(p.get("loc", "")))
 	Orders.process(delta)

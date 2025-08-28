@@ -24,7 +24,6 @@ const GAME_VERSION := "0.3.5-alpha"
 @onready var lang_option: OptionButton = $UI/Main/Right/Tabs/HelpOptions/Lang
 
 @onready var log_label: RichTextLabel = $UI/Main/Right/Log
-@onready var cmd_box: LineEdit = $UI/Main/Right/Cmd
 @onready var tick_timer: Timer = $Tick
 
 var time_factor: float = 1.0
@@ -34,9 +33,7 @@ var last_stock: Dictionary = {}
 var last_moving: bool = false
 
 func _ready() -> void:
-	# log / komendy
-	Commander.connect("log", _on_log)
-	cmd_box.text_submitted.connect(_on_cmd)
+	# log setup (console removed; logs come from Server/Client)
 
 	# tick + mapa
 	tick_timer.timeout.connect(_on_tick)
@@ -72,9 +69,10 @@ func _fill_help() -> void:
 	t += "[b]" + tr("Caravan Wars {version}").format({"version": GAME_VERSION}) + "[/b]\n"
 	t += tr("• Move by clicking on the map (your caravan travels between locations).") + "\n"
 	t += tr("• Trade only in the current location.") + "\n"
-	t += tr("• Console commands (EN codes only): [code]help, info, price <CODE>, move <CODE>[/code]") + "\n"
 	t += tr("Codes: HARBOR, CENTRAL_KEEP, SOUTHERN_SHRINE, FOREST_SPRING, MILLS, FOREST_HAVEN, MINE") + "\n"
-	help_box.bbcode_text = t
+	help_box.bbcode_enabled = true
+	help_box.clear()
+	help_box.append_text(t)
 
 func _setup_language_dropdown() -> void:
 	lang_option.clear()
@@ -110,7 +108,7 @@ func _set_time_factor(f: float) -> void:
 		tick_timer.start(1.0 / f)
 
 func _store_trade_state() -> void:
-	var pid := PlayerMgr.local_player_id
+	var pid = PlayerMgr.local_player_id
 	var p = PlayerMgr.players.get(pid, {})
 	last_loc = p.get("loc", "")
 	last_moving = p.get("moving", false)
@@ -122,7 +120,7 @@ func _refresh_trade_panel() -> void:
 	_store_trade_state()
 
 func _check_trade_refresh() -> void:
-	var pid := PlayerMgr.local_player_id
+	var pid = PlayerMgr.local_player_id
 	var p = PlayerMgr.players.get(pid, null)
 	if p == null:
 		return
@@ -134,7 +132,7 @@ func _check_trade_refresh() -> void:
 		_refresh_trade_panel()
 
 func _update_status() -> void:
-	var pid := PlayerMgr.local_player_id
+	var pid = PlayerMgr.local_player_id
 	var p = PlayerMgr.players.get(pid, null)
 	if p == null:
 		return
@@ -161,23 +159,23 @@ func _process(delta: float) -> void:
 	_check_trade_refresh()
 
 func _on_location_click(loc_code: String) -> void:
-	var pid := PlayerMgr.local_player_id
-	Orders.move(str(pid), loc_code)
+	var pid = PlayerMgr.local_player_id
+	Orders.order_move(str(pid), loc_code)
 	_update_status()
 	map_node.queue_redraw()
 	_refresh_trade_panel()
 
 func _on_buy_request(good: int, amount: int) -> void:
-	var pid := PlayerMgr.local_player_id
+	var pid = PlayerMgr.local_player_id
 	var loc: String = PlayerMgr.players.get(pid, {}).get("loc", "")
-	Orders.trade(str(pid), "buy", str(good), amount, loc)
+	Orders.order_buy(str(pid), loc, str(good), amount)
 	_update_status()
 	_refresh_trade_panel()
 
 func _on_sell_request(good: int, amount: int) -> void:
-	var pid := PlayerMgr.local_player_id
+	var pid = PlayerMgr.local_player_id
 	var loc: String = PlayerMgr.players.get(pid, {}).get("loc", "")
-	Orders.trade(str(pid), "sell", str(good), amount, loc)
+	Orders.order_sell(str(pid), loc, str(good), amount)
 	_update_status()
 	_refresh_trade_panel()
 
@@ -190,13 +188,6 @@ func _on_tick() -> void:
 	Sim.tick()
 	_update_status()
 	map_node.queue_redraw()
-
-func _on_cmd(text: String) -> void:
-	var t := text.strip_edges()
-	if t == "":
-		return
-	cmd_box.text = ""
-	Commander.exec(t) # zakładam, że masz metodę exec w Commander
 
 func _on_log(msg: String) -> void:
 	log_label.append_text(msg + "\n")

@@ -10,8 +10,8 @@ func suggest_for_player(player_id:int):
 		if to == loc:
 			continue
 		for g in DB.goods_base_price.keys():
-			var buy = DB.get_loc(loc).get_price(g)
-			var sell = DB.get_loc(to).get_price(g)
+			var buy = int(DB.price_of(loc, g))
+			var sell = int(DB.price_of(to, g))
 			var pr = sell - buy
 			if pr > best_profit:
 				best_profit = pr

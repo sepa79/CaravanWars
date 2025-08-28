@@ -55,6 +55,32 @@ func cargo_used(id:int) -> int:
 func cargo_free(id:int) -> int:
 	return max(0, capacity_total(id) - cargo_used(id))
 
+func cargo_amount(id:int, good:int) -> int:
+	var p = players.get(id, {})
+	return int(p.get("cargo", {}).get(good, 0))
+
+func cargo_add(id:int, good:int, qty:int) -> void:
+	if qty <= 0:
+		return
+	var p = players.get(id, {})
+	var c: Dictionary = p.get("cargo", {})
+	c[good] = int(c.get(good, 0)) + qty
+	p["cargo"] = c
+
+func cargo_remove(id:int, good:int, qty:int) -> void:
+	if qty <= 0:
+		return
+	var p = players.get(id, {})
+	var c: Dictionary = p.get("cargo", {})
+	var have := int(c.get(good, 0))
+	var left = int(max(0, have - qty))
+	if left > 0:
+		c[good] = left
+	else:
+		if c.has(good):
+			c.erase(good)
+	p["cargo"] = c
+
 func start_travel(id:int, to_loc:String) -> bool:
 	var p = players[id]
 	if p.get("moving", false): return false
@@ -71,5 +97,7 @@ func start_travel(id:int, to_loc:String) -> bool:
 	p["eta_left"] = eta
 	p["eta_total"] = eta
 	p["progress"] = 0.0
-	Commander.emit_signal("log", tr("[%s] traveling %s -> %s (ETA %.1f).") % [p["name"], DB.get_loc_name(from_loc), DB.get_loc_name(to_loc), eta])
+	var srv = get_node_or_null("/root/Server")
+	if srv != null:
+		srv.call_deferred("broadcast_log", tr("[%s] traveling %s -> %s (ETA %.1f).") % [p["name"], DB.get_loc_name(from_loc), DB.get_loc_name(to_loc), eta])
 	return true
