@@ -45,3 +45,18 @@ func goods_for_view(base_prices: Dictionary, goods_names: Dictionary) -> Diction
 		var p: int = prices.get(g, int(round(base_prices.get(g, 0) * demand.get(g, 1.0))))
 		goods[goods_names.get(g, str(g))] = {"qty": int(qty), "price": int(p)}
 	return goods
+
+func has_good(good:int) -> bool:
+	return stock.has(good)
+
+func get_stock(good:int) -> int:
+	return int(stock.get(good, 0))
+
+func list_goods() -> Array:
+	return stock.keys()
+
+func get_price(good:int) -> int:
+	# Use precomputed dynamic price; fallback to base * demand
+	var base:int = int(DB.goods_base_price.get(good, 0)) if typeof(DB) == TYPE_OBJECT else 0
+	var dem:float = float(demand.get(good, 1.0))
+	return int(prices.get(good, int(round(base * dem))))

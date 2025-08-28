@@ -30,5 +30,27 @@ func push_observation(obs:Dictionary) -> void:
 		tabs.set_tab_disabled(2, not in_city) # Trade tab at index 2
 	if brain:
 		var cmds = brain.think(obs)
-		for c in cmds:
-			rpc_id(1, "cmd", c)
+			for c in cmds:
+				rpc_id(1, "cmd", c)
+
+@rpc("authority")
+func push_log(msg:String) -> void:
+	if chronicle:
+		chronicle.add_log_entry(msg)
+	var game = get_node_or_null("Game")
+	if game != null and game.has_method("_on_log"):
+		game._on_log(msg)
+
+@rpc("authority")
+func push_snapshot(snapshot:Dictionary) -> void:
+	# Update local state from server snapshot
+	var players:Dictionary = snapshot.get("players", {})
+	for k in players.keys():
+		PlayerMgr.players[k] = players[k]
+	var locs:Dictionary = snapshot.get("locations", {})
+	for code in locs.keys():
+		var loc = DB.get_loc(code)
+		if loc != null:
+			var s:Dictionary = locs[code]
+			loc.stock = s.get("stock", {}).duplicate(true)
+			loc.prices = s.get("prices", {}).duplicate(true)

@@ -47,10 +47,10 @@ func get_locations() -> Array:
 				if loc_obj == null:
 						continue
 				var goods := {}
-				for g in loc_obj.stock.keys():
+				for g in loc_obj.list_goods():
 						goods[DB.goods_names.get(g, str(g))] = {
-								"qty": int(loc_obj.stock[g]),
-								"price": int(loc_obj.prices.get(g, 0))
+								"qty": int(loc_obj.get_stock(g)),
+								"price": int(loc_obj.get_price(g))
 						}
 				list.append({
 						"code": code,
@@ -90,4 +90,3 @@ func get_selected_location() -> Dictionary:
 		if selected_location >= 0 and selected_location < locs.size():
 				return locs[selected_location]
 		return {}
-

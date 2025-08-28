@@ -1,6 +1,7 @@
 # Caravan Wars — Changelog
 
 ## 0.3.4-alpha (current)
+- MVP Pack #2 (rev): serwer autorytatywny dla ruchu i handlu; UI/konsola/AI tylko składają komendy; ceny wyłącznie z metod lokacji; log serwerowy replikowany do klienta.
 - Ujednolicone API poleceń (UI/AI/konsola) → Orders.
 - Centralized city info in `Location` objects with translation keys, stock, and pricing.
 - Updated database and world logic to use the new location model.

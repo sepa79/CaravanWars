@@ -27,7 +27,7 @@ func cmd_price(player_id: int, loc_code: String) -> void:
 	emit_signal("log", "Good        | Price | Stock")
 	emit_signal("log", "------------+-------+------")
 
-	for g in DB.goods_base_price.keys():
+	for g in loc.list_goods():
 		var name_str := ""
 		if DB.goods_names.has(g):
 			# if you want translations, use: name_str = tr(DB.goods_names[g])
@@ -35,8 +35,8 @@ func cmd_price(player_id: int, loc_code: String) -> void:
 		else:
 			name_str = "GOOD_%d" % int(g)
 
-		var price := int(loc.prices.get(g, 0))
-		var stock := int(loc.stock.get(g, 0))
+		var price := int(loc.get_price(g))
+		var stock := int(loc.get_stock(g))
 		var short_name := name_str.substr(0, 11)
 		emit_signal("log", "%-11s | %5d | %5d" % [short_name, price, stock])
 
@@ -47,4 +47,3 @@ func buy(pid:int, good:int, amount:int) -> void:
 func sell(pid:int, good:int, amount:int) -> void:
 	var loc: String = PlayerMgr.players.get(pid, {}).get("loc", "")
 	Orders.trade(str(pid), "sell", str(good), amount, loc)
-

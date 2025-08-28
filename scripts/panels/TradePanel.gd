@@ -29,12 +29,15 @@ func populate():
 		var l = Label.new(); l.text = i; grid.add_child(l)
 
 	var loc = p["loc"]
+	var loc_obj = DB.get_loc(loc)
+	if loc_obj == null:
+		return
 
-	for g in DB.goods_base_price.keys():
-		var name = tr(DB.goods_names[g])
-		var loc_obj = DB.get_loc(loc)
-		var price = loc_obj.prices.get(g, 0)
-		var city_stock = loc_obj.stock.get(g, 0)
+	# Only use data exposed by location methods
+	for g in loc_obj.list_goods():
+		var name = tr(DB.goods_names.get(g, str(g)))
+		var price = loc_obj.get_price(g)
+		var city_stock = loc_obj.get_stock(g)
 		var you_have = p["cargo"].get(g, 0)
 
 		var l1 = Label.new(); l1.text = name; grid.add_child(l1)
