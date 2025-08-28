@@ -156,3 +156,70 @@ func has_route(a: String, b: String) -> bool:
 
 func get_route(a: String, b: String) -> Dictionary:
 		return routes.get(route_key(a, b), {})
+
+# -----------------------------
+# Economy API (deterministic)
+# -----------------------------
+func _good_id(g: Variant) -> int:
+	if typeof(g) == TYPE_INT:
+		return int(g)
+	if typeof(g) == TYPE_STRING:
+		var s_up := str(g).to_upper()
+		match s_up:
+			"FOOD": return int(Good.FOOD)
+			"MEDS": return int(Good.MEDS)
+			"ORE": return int(Good.ORE)
+			"TOOLS": return int(Good.TOOLS)
+			"LUX": return int(Good.LUX)
+		# Try match by DB.goods_names
+		for id in goods_names.keys():
+			var name_low: String = str(goods_names.get(id, ""))
+			if s_up == name_low.to_upper():
+				return int(id)
+	return -1
+
+func price_of(location_id: String, good: Variant) -> int:
+	# Deterministic price: base + location modifier (no randomness, no stock-dependence)
+	var loc := get_loc(location_id)
+	if loc == null:
+		return 0
+	var gid := _good_id(good)
+	if gid == -1:
+		return 0
+	var base: int = int(goods_base_price.get(gid, 0))
+	# Use Location's computed price if present (kept in sync by update_prices),
+	# otherwise derive as base + additive modifier from location.demand multiplier.
+	if typeof(loc.prices) == TYPE_DICTIONARY and loc.prices.has(gid):
+		return int(loc.prices[gid])
+	var dem: float = float(loc.demand.get(gid, 1.0))
+	var mod: int = int(round(base * (dem - 1.0)))
+	return base + mod
+
+func stock_of(location_id: String, good: Variant) -> int:
+	var loc := get_loc(location_id)
+	if loc == null:
+		return 0
+	return int(loc.get_stock(good))
+
+func can_transact(location_id: String, good: Variant, qty: int, direction: String) -> bool:
+	# direction in ["buy","sell"].
+	# For buy: check city stock has qty.
+	# For sell: check selected/local player's cargo has qty.
+	if qty <= 0:
+		return false
+	var gid = _good_id(good)
+	if gid == -1 or not goods_base_price.has(gid):
+		return false
+	var loc = get_loc(location_id)
+	if loc == null:
+		return false
+	var dir = str(direction).to_lower()
+	if dir == "buy":
+		return int(loc.get_stock(gid)) >= qty
+	elif dir == "sell":
+		var pid = int(PlayerMgr.local_player_id)
+		var p = PlayerMgr.players.get(pid, {})
+		var have = int(p.get("cargo", {}).get(gid, 0))
+		return have >= qty
+	else:
+		return false

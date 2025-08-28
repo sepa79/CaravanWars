@@ -1,6 +1,20 @@
 # Caravan Wars — Changelog
 
-## 0.3.5-alpha (current)
+## 0.3.7-alpha (current)
+- World tab simplification: removed Player/Location selectors and the Player Details panel; added Loc/Dest/ETA columns directly to the Players table (read-only). Markets matrix and legend retained.
+- Console removed: dropped Commander autoload, console UI and handlers; travel logs routed via Server broadcast. Trade tab unaffected (uses Orders API).
+- Parser/type fixes: normalized indentation and replaced variant-inference `:=` where needed; reworked `DB.can_transact()` to deterministic if/elif.
+
+## 0.3.6-alpha
+- MVP: deterministic trade pricing and unified Orders API (`order_move`, `order_buy`, `order_sell`).
+- Added economy API in `autoload/DB.gd`: `price_of`, `stock_of`, `can_transact`.
+- Prices now computed as base + location modifier (no stock/randomness). `Location.update_prices` updated accordingly.
+- Single transaction entrypoint for UI/AI/console; existing console commands now map to `order_*`.
+- Server loop emits `Sim.player_arrived(player_id, location_id)` on arrival.
+- World tab: added selectors for Player/Location, player details, selected market table, and Buy/Sell/Move actions.
+- Kept MayorNarrator restock logic; UI reflects updated stock.
+
+## 0.3.5-alpha
 - Trading: locations now accept selling any goods (not only those currently in stock). `Location.list_goods()` returns all defined goods, so the Trade panel can always sell; buying remains limited by stock and gold.
 - World tab redesign: two tables — Players summary (name, gold, total cargo) and Markets matrix (locations as rows, goods IDs as columns with qty/price), plus a legend mapping IDs to names.
 - Live refresh: World tab updates on every server snapshot via `WorldViewModel.notify_data_changed()`, with a lightweight periodic check as a safety net.

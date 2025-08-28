@@ -31,12 +31,13 @@ func get_info() -> String:
 	return tr(info_key)
 
 func update_prices(base_prices: Dictionary) -> void:
+	# Deterministic pricing only: base + additive modifier derived from demand multiplier.
+	# No dependence on current stock or randomness.
 	for g in base_prices.keys():
-		var base: int = base_prices[g]
-		var s: float = float(stock.get(g, 0))
-		var d: float = float(demand.get(g, 1.0))
-		var factor: float = clamp(d * (1.5 - min(s, 100.0) / 200.0), 0.5, 2.0)
-		prices[g] = int(round(base * factor))
+		var base: int = int(base_prices.get(g, 0))
+		var dmul: float = float(demand.get(g, 1.0))
+		var add: int = int(round(base * (dmul - 1.0)))
+		prices[g] = base + add
 
 func goods_for_view(base_prices: Dictionary, goods_names: Dictionary) -> Dictionary:
 	var goods := {}
@@ -102,7 +103,5 @@ func get_price(good: Variant) -> int:
 	var id := _good_id(good)
 	if id == -1:
 		return 0
-	# Use precomputed dynamic price; fallback to base * demand
-	var base:int = int(DB.goods_base_price.get(id, 0)) if typeof(DB) == TYPE_OBJECT else 0
-	var dem:float = float(demand.get(id, 1.0))
-	return int(prices.get(id, int(round(base * dem))))
+	# Query DB's deterministic price function
+	return int(DB.price_of(code, id))
