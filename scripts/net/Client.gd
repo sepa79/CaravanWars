@@ -3,7 +3,6 @@ class_name Client
 
 @export var peer_id:int = 1
 @export var use_builtin_ai:bool = false
-@export var use_simple_ai:bool = false
 
 var brain
 @onready var chronicle = get_node_or_null("Game/UI/Main/Right/Tabs/Chronicle")
@@ -39,8 +38,6 @@ func _normalize_stock_dict(d: Dictionary) -> Dictionary:
 func _ready() -> void:
         set_multiplayer_authority(peer_id)
         if use_builtin_ai:
-                brain = load("res://scripts/brains/BuiltinAIBrain.gd").new()
-        elif use_simple_ai:
                 brain = load("res://scripts/brains/simple_trader_brain.gd").new()
         else:
                 brain = load("res://scripts/brains/HumanBrain.gd").new()
