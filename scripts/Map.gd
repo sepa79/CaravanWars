@@ -11,10 +11,15 @@ const ZOOM_MAX: float = 4.0
 var disp_size: Vector2 = Vector2.ZERO
 var hover_loc: String = ""
 var hover_scale: float = 1.0
+var pan_offset: Vector2 = Vector2.ZERO
 var offset: Vector2 = Vector2.ZERO
 var player_blink: float = 0.0
 var scale_val: float = 1.0
 var zoom: float = 1.0
+
+var dragging: bool = false
+var drag_origin: Vector2 = Vector2.ZERO
+var drag_start_pan: Vector2 = Vector2.ZERO
 
 var _hover_tween: Tween = null
 
@@ -46,7 +51,7 @@ func _update_layout() -> void:
 	var base: float = min(panel_size.x / float(IMG_SIZE.x), panel_size.y / float(IMG_SIZE.y))
 	scale_val = base * zoom
 	disp_size = Vector2(IMG_SIZE) * scale_val
-	offset = (panel_size - disp_size) * 0.5
+	offset = (panel_size - disp_size) * 0.5 + pan_offset
 
 
 func _to_screen(p_img: Vector2) -> Vector2:
@@ -191,6 +196,11 @@ func _draw_players() -> void:
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
+		if dragging:
+			pan_offset = drag_start_pan + (event.position - drag_origin)
+			_update_layout()
+			queue_redraw()
+			return
 		var mouse_pos: Vector2 = _to_image(event.position)
 		var found: String = ""
 		for loc_id in DB.locations.keys():
@@ -206,15 +216,25 @@ func _gui_input(event: InputEvent) -> void:
 			var target: float = 0.0 if hover_loc == "" else 1.0
 			_hover_tween.tween_property(self, "hover_scale", target, 0.1)
 		queue_redraw()
-	elif (
-		event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT
-	):
-		var click_pos: Vector2 = _to_image(event.position)
-		for loc_id in DB.locations.keys():
-			var p: Vector2 = DB.get_pos(loc_id)
-			if p.distance_to(click_pos) <= 18.0:
-				emit_signal("location_clicked", loc_id)
-				break
+	elif event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_RIGHT:
+			if event.pressed:
+				dragging = true
+				drag_origin = event.position
+				drag_start_pan = pan_offset
+			else:
+				dragging = false
+		elif event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
+			zoom_in()
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
+			zoom_out()
+		elif event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			var click_pos: Vector2 = _to_image(event.position)
+			for loc_id in DB.locations.keys():
+				var p: Vector2 = DB.get_pos(loc_id)
+				if p.distance_to(click_pos) <= 18.0:
+					emit_signal("location_clicked", loc_id)
+					break
 
 
 func zoom_in() -> void:
