@@ -3,7 +3,7 @@ extends VBoxContainer
 signal buy_request(good: int, amount: int)
 signal sell_request(good: int, amount: int)
 
-@onready var grid: GridContainer = $ScrollContainer/Grid
+@onready var grid: GridContainer = $Grid
 
 func _ready() -> void:
     populate()
