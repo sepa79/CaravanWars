@@ -7,6 +7,12 @@
 - Order script sections: extends -> signals -> constants -> variables -> functions.
 - Use `@onready` for node references that depend on the scene tree.
 
+## Server Authority
+- The server is the single source of truth for all game state.
+- Client code must not make authoritative decisions; it should only display state or send requests.
+- All state updates and validations must go through the server.
+- Avoid duplicating server logic on the client; rely on data returned from the server instead.
+
 ## Prepare Merge Procedure
 When a user asks to "prepare merge":
 1. Run `git fetch origin` and merge the latest `origin/main` into the current branch.

@@ -18,5 +18,3 @@ text = "Food/day: 0"
 [node name="Speed" type="Label" parent="."]
 text = "Speed: 0"
 
-[node name="AskAI" type="Button" parent="."]
-text = "Ask AI for advice"
