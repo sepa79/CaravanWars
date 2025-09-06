@@ -43,14 +43,12 @@ func _ready() -> void:
         zoom_out_btn.pressed.connect(map_node.zoom_out)
 
     # trade panel
-    if trade_panel.has_signal("buy_request"):
-        trade_panel.buy_request.connect(_on_buy_request)
-    if trade_panel.has_signal("sell_request"):
-        trade_panel.sell_request.connect(_on_sell_request)
+    trade_panel.buy_request.connect(_on_buy_request)
+    trade_panel.sell_request.connect(_on_sell_request)
 
-        # inne panele (opcjonalnie)
-        if WorldViewModel.has_signal("player_changed"):
-                WorldViewModel.player_changed.connect(_on_player_changed)
+    # inne panele (opcjonalnie)
+    if WorldViewModel.has_signal("player_changed"):
+        WorldViewModel.player_changed.connect(_on_player_changed)
 
     _fill_help()
     _setup_language_dropdown()
@@ -60,7 +58,7 @@ func _ready() -> void:
     map_node.queue_redraw()
     _set_time_factor(time_factor)
     set_process(true)
-    _store_trade_state()
+    _refresh_trade_panel()
 
 func _fill_help() -> void:
     var t := ""
