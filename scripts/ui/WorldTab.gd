@@ -77,9 +77,9 @@ func _ready() -> void:
 func _refresh() -> void:
 	_populate_players()
 	_update_markets_columns()
-		_update_legend()
-		_populate_markets()
-		_last_sig = _signature()
+	_update_legend()
+	_populate_markets()
+	_last_sig = _signature()
 
 func _populate_players() -> void:
 	if players_tree == null:
