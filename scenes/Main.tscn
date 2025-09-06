@@ -10,10 +10,10 @@
 
 [node name="ClientHuman" type="Node" parent="." script=ExtResource(2)]
 peer_id = 1
-use_builtin_ai = false
+use_simple_ai = false
 
 [node name="Game" parent="ClientHuman" instance=ExtResource(3)]
 
 [node name="ClientAI" type="Node" parent="." script=ExtResource(2)]
 peer_id = 2
-use_builtin_ai = true
+use_simple_ai = true
