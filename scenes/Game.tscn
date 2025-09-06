@@ -53,10 +53,12 @@ alignment = 1
 [node name="ZoomOut" type="Button" parent="UI/Main/Left/MapBox/MapControls"]
 layout_mode = 2
 text = "-"
+tooltip_text = "Scroll ↑/↓ to zoom"
 
 [node name="ZoomIn" type="Button" parent="UI/Main/Left/MapBox/MapControls"]
 layout_mode = 2
 text = "+"
+tooltip_text = "Scroll ↑/↓ to zoom"
 
 [node name="Right" type="VBoxContainer" parent="UI/Main"]
 layout_mode = 2
