@@ -46,3 +46,7 @@ ui_fullscreen={
 "type": "key"
 }]
 }
+
+[rendering]
+
+theme/default_theme="res://assets/ui/theme/caravan_theme.tres"
