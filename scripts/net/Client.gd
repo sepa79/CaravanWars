@@ -48,7 +48,8 @@ func _ready() -> void:
         brain = load("res://scripts/brains/HumanBrain.gd").new()
 
 @rpc("authority")
-func push_observation(obs:Dictionary) -> void:
+func push_observation(obs: Dictionary) -> void:
+    print("push_observation for peer %d: %s" % [peer_id, obs])
     if chronicle:
         chronicle.show_observation(obs)
         chronicle.show_knowledge(obs.get("markets", {}))
