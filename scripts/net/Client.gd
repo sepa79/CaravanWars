@@ -1,20 +1,14 @@
 extends Node
 class_name Client
 
+const Logger = preload("res://scripts/Logger.gd")
+
 @export var peer_id: int = 1
 @export var use_simple_ai: bool = false
 
 var brain
 @onready var chronicle = get_node_or_null("Game/UI/Main/Right/Tabs/Chronicle")
 @onready var tabs: TabContainer = get_node_or_null("Game/UI/Main/Right/Tabs")
-
-func _srv() -> Node:
-    return get_node_or_null("/root/Server")
-
-func _log(msg: String) -> void:
-    var s := _srv()
-    if s != null:
-        s.call_deferred("broadcast_log", "[Client %d] %s" % [peer_id, msg])
 
 func _good_id_from_key(k: Variant) -> int:
     if typeof(k) == TYPE_INT:
@@ -57,7 +51,7 @@ func _ready() -> void:
 
 @rpc("authority")
 func push_observation(obs: Dictionary) -> void:
-    _log("push_observation: %s" % [str(obs)])
+    Logger.log("Client", "peer %d push_observation: %s" % [peer_id, str(obs)])
     if chronicle:
         chronicle.show_observation(obs)
         chronicle.show_knowledge(obs.get("markets", {}))

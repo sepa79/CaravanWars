@@ -1,5 +1,7 @@
 extends Node
 
+const Logger = preload("res://scripts/Logger.gd")
+
 enum Kind { HUMAN, AI, NARRATOR }
 
 var players := {}
@@ -107,7 +109,5 @@ func start_travel(id:int, to_loc:String) -> bool:
         p["eta_left"] = eta
         p["eta_total"] = eta
         p["progress"] = 0.0
-        var srv = get_node_or_null("/root/Server")
-        if srv != null:
-                srv.call_deferred("broadcast_log", tr("[%s] traveling %s -> %s (ETA %.1f).") % [p["name"], DB.get_loc_name(from_loc), DB.get_loc_name(to_loc), eta])
+        Logger.log("PlayerMgr", tr("[%s] traveling %s -> %s (ETA %.1f).") % [p["name"], DB.get_loc_name(from_loc), DB.get_loc_name(to_loc), eta])
         return true

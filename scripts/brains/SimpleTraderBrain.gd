@@ -1,18 +1,9 @@
 extends "res://scripts/brains/IPlayerBrain.gd"
 class_name SimpleTraderBrain
 
+const Logger = preload("res://scripts/Logger.gd")
+
 const LOAD_QTY:int = 10
-
-func _srv() -> Node:
-    var loop := Engine.get_main_loop()
-    if loop is SceneTree:
-        return (loop as SceneTree).root.get_node_or_null("Server")
-    return null
-
-func _log(msg: String) -> void:
-    var s := _srv()
-    if s != null:
-        s.call_deferred("broadcast_log", "[SimpleTraderBrain] %s" % msg)
 
 func think(observation:Dictionary) -> Array[Dictionary]:
     var cmds:Array[Dictionary] = []
@@ -23,18 +14,18 @@ func think(observation:Dictionary) -> Array[Dictionary]:
         if entity.get("type") == "convoy" and entity.get("owner") == self_id:
             owned_convoys.append(entity)
     if owned_convoys.is_empty():
-        _log("No convoys owned. Creating one at PORT.")
+        Logger.log("SimpleTraderBrain", "No convoys owned. Creating one at PORT.")
         cmds.append({"type": "CreateConvoy", "payload": {"city_id": "PORT"}})
         return cmds
     for convoy in owned_convoys:
         var convoy_id:int = convoy.get("id", 0)
         var path:Array = convoy.get("path", [])
         if path.size() > 0:
-            _log("Convoy %d already en route, skipping." % convoy_id)
+            Logger.log("SimpleTraderBrain", "Convoy %d already en route, skipping." % convoy_id)
             continue
         var goods:Dictionary = convoy.get("goods", {})
         if goods.size() > 0:
-            _log("Convoy %d selling goods %s" % [convoy_id, str(goods)])
+            Logger.log("SimpleTraderBrain", "Convoy %d selling goods %s" % [convoy_id, str(goods)])
             cmds.append({"type": "LoadGoods", "payload": {"convoy_id": convoy_id, "goods": {}}})
         var current_city:String = convoy.get("pos", "")
         var city_market:Dictionary = markets.get(current_city, {})
@@ -53,9 +44,9 @@ func think(observation:Dictionary) -> Array[Dictionary]:
                     best_good = good
                     best_dest = dest
         if best_profit > 0 and best_good != "":
-            _log("Convoy %d buying %s in %s and heading to %s for profit %d" % [convoy_id, best_good, current_city, best_dest, best_profit])
+            Logger.log("SimpleTraderBrain", "Convoy %d buying %s in %s and heading to %s for profit %d" % [convoy_id, best_good, current_city, best_dest, best_profit])
             cmds.append({"type": "LoadGoods", "payload": {"convoy_id": convoy_id, "goods": {best_good: LOAD_QTY}}})
             cmds.append({"type": "PlanRoute", "payload": {"convoy_id": convoy_id, "path": [best_dest]}})
         else:
-            _log("Convoy %d found no profitable trade at %s" % [convoy_id, current_city])
+            Logger.log("SimpleTraderBrain", "Convoy %d found no profitable trade at %s" % [convoy_id, current_city])
     return cmds
