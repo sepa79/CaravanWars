@@ -35,6 +35,7 @@ func _on_peer_connected(id:int) -> void:
         world.register_player(id)
 
 func _on_tick() -> void:
+    Logger.log("Server", "Tick %d" % world.tick_count)
     # Authoritative tick: world + player sim + orders processing
     world.tick()
     Sim.tick()
