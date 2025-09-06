@@ -8,9 +8,8 @@ var local_player_id : int = 1
 
 func _ready():
     add_player(1, "Player A", Kind.HUMAN, "CENTRAL_KEEP")
-    add_player(2, "Player B", Kind.HUMAN, "HARBOR")
-    add_player(101, "Guild AI", Kind.AI, "MINE")
-    order = [1,2,101]
+    add_player(2, "Guild AI", Kind.AI, "MINE")
+    order = [1,2]
 
 func add_player(id:int, name:String, kind:int, start_loc:String):
     players[id] = {

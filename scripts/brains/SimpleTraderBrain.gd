@@ -12,18 +12,18 @@ func think(observation:Dictionary) -> Array[Dictionary]:
         if entity.get("type") == "convoy" and entity.get("owner") == self_id:
             owned_convoys.append(entity)
     if owned_convoys.is_empty():
-        print_debug("No convoys owned. Creating one at PORT.")
+        print("No convoys owned. Creating one at PORT.")
         cmds.append({"type": "CreateConvoy", "payload": {"city_id": "PORT"}})
         return cmds
     for convoy in owned_convoys:
         var convoy_id:int = convoy.get("id", 0)
         var path:Array = convoy.get("path", [])
         if path.size() > 0:
-            print_debug("Convoy ", convoy_id, " already en route, skipping.")
+            print("Convoy ", convoy_id, " already en route, skipping.")
             continue
         var goods:Dictionary = convoy.get("goods", {})
         if goods.size() > 0:
-            print_debug("Convoy ", convoy_id, " selling goods ", goods)
+            print("Convoy ", convoy_id, " selling goods ", goods)
             cmds.append({"type": "LoadGoods", "payload": {"convoy_id": convoy_id, "goods": {}}})
         var current_city:String = convoy.get("pos", "")
         var city_market:Dictionary = markets.get(current_city, {})
@@ -42,10 +42,10 @@ func think(observation:Dictionary) -> Array[Dictionary]:
                     best_good = good
                     best_dest = dest
         if best_profit > 0 and best_good != "":
-            print_debug("Convoy ", convoy_id, " buying ", best_good, " in ", current_city,
+            print("Convoy ", convoy_id, " buying ", best_good, " in ", current_city,
                 " and heading to ", best_dest, " for profit ", best_profit)
             cmds.append({"type": "LoadGoods", "payload": {"convoy_id": convoy_id, "goods": {best_good: LOAD_QTY}}})
             cmds.append({"type": "PlanRoute", "payload": {"convoy_id": convoy_id, "path": [best_dest]}})
         else:
-            print_debug("Convoy ", convoy_id, " found no profitable trade at ", current_city)
+            print("Convoy ", convoy_id, " found no profitable trade at ", current_city)
     return cmds
