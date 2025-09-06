@@ -25,6 +25,7 @@ const GAME_VERSION := "0.3.5-alpha"
 
 @onready var log_label: RichTextLabel = $UI/Main/Right/Log
 @onready var tick_timer: Timer = $Tick
+@onready var debug_overlay: Control = preload("res://scripts/ui/DebugOverlay.gd").new()
 
 var time_factor: float = 1.0
 
@@ -63,6 +64,8 @@ func _ready() -> void:
 	_set_time_factor(time_factor)
 	set_process(true)
 	_store_trade_state()
+	$UI.add_child(debug_overlay)
+	debug_overlay.visible = false
 
 func _fill_help() -> void:
 	var t := ""
@@ -187,6 +190,7 @@ func _on_ask_ai(player_id: int) -> void:
 func _on_tick() -> void:
 	Sim.tick()
 	_update_status()
+	debug_overlay.refresh()
 	map_node.queue_redraw()
 
 func _on_log(msg: String) -> void:
@@ -196,3 +200,7 @@ func _on_player_changed(_data: Dictionary) -> void:
 	_update_status()
 	_refresh_trade_panel()
 	map_node.queue_redraw()
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and event.keycode == KEY_F2:
+		debug_overlay.visible = not debug_overlay.visible
