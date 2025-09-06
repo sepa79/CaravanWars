@@ -48,6 +48,7 @@ func _on_tick() -> void:
 func cmd(action:Dictionary) -> void:
     var sender := multiplayer.get_remote_sender_id()
     var atype := str(action.get("type", ""))
+    Logger.log("Server", "Received %s from %d" % [atype, sender])
     match atype:
         "move":
             var p = action.get("payload", {})
@@ -99,6 +100,8 @@ func _make_locations_state() -> Dictionary:
     return data
 
 func _on_observation_ready(peer_id:int, obs:Dictionary) -> void:
+    var size := JSON.stringify(obs).length
+    Logger.log("Server", "Sending observation to peer %d (%d bytes)" % [peer_id, size])
     rpc_id(peer_id, "push_observation", obs)
 
 func _on_world_event(event:Dictionary) -> void:

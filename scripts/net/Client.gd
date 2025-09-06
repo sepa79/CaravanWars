@@ -46,8 +46,10 @@ func _ready() -> void:
     set_multiplayer_authority(peer_id)
     if use_simple_ai:
         brain = load("res://scripts/brains/SimpleTraderBrain.gd").new()
+        Logger.log("Client", "Loaded SimpleTraderBrain for peer %d" % peer_id)
     else:
         brain = load("res://scripts/brains/HumanBrain.gd").new()
+        Logger.log("Client", "Loaded HumanBrain for peer %d" % peer_id)
 
 @rpc("authority")
 func push_observation(obs: Dictionary) -> void:

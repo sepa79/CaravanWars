@@ -3,6 +3,8 @@ class_name World
 
 signal observation_ready(peer_id:int, obs:Dictionary)
 
+const Logger = preload("res://scripts/Logger.gd")
+
 var truth_db := {
 	"tick": 0,
 	"next_convoy_id": 1,
@@ -14,8 +16,12 @@ var truth_db := {
 		"PORT": {"salt": {"price": 12, "qty": 90}},
 		"MILLS": {"salt": {"price": 8, "qty": 110}}
 	},
-	"convoys": {}
+        "convoys": {}
 }
+
+var tick_count: int:
+        get:
+                return int(truth_db.get("tick", 0))
 
 var knowledge_db:Dictionary = {}
 var rumor_queue:Array = []
@@ -34,13 +40,14 @@ func queue_command(peer_id:int, action:Dictionary) -> void:
 	queued_cmds.append({"peer": peer_id, "action": action})
 
 func tick() -> void:
-	truth_db["tick"] += 1
-	_apply_commands()
-	_simulate_convoys()
-	_age_knowledge()
-	for pid in knowledge_db.keys():
-		var obs := make_observation_for(pid)
-		observation_ready.emit(pid, obs)
+        truth_db["tick"] += 1
+        _apply_commands()
+        _simulate_convoys()
+        _age_knowledge()
+        for pid in knowledge_db.keys():
+                var obs := make_observation_for(pid)
+                Logger.log("World", "Emitting observation for peer %d" % pid)
+                observation_ready.emit(pid, obs)
 
 func make_observation_for(peer_id:int) -> Dictionary:
 	var entities:Array = []
