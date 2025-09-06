@@ -1,7 +1,7 @@
 @tool
 extends SceneTree
 
-const BRAIN := preload("res://scripts/brains/simple_trader_brain.gd")
+const BRAIN := preload("res://scripts/brains/SimpleTraderBrain.gd")
 
 func _init() -> void:
     test_create_convoy()

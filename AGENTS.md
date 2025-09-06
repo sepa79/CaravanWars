@@ -2,6 +2,7 @@
 
 ## GDScript Guidelines
 - Use GDScript 4 with static typing whenever possible.
+- Name GDScript files using PascalCase (e.g., `SimpleTraderBrain.gd`).
 - Name variables and functions using snake_case.
 - Indent with 4 spaces.
 - Order script sections: extends -> signals -> constants -> variables -> functions.

@@ -43,7 +43,7 @@ func _normalize_stock_dict(d: Dictionary) -> Dictionary:
 func _ready() -> void:
     set_multiplayer_authority(peer_id)
     if use_simple_ai:
-        brain = load("res://scripts/brains/simple_trader_brain.gd").new()
+        brain = load("res://scripts/brains/SimpleTraderBrain.gd").new()
     else:
         brain = load("res://scripts/brains/HumanBrain.gd").new()
 
