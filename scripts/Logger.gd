@@ -1,5 +1,4 @@
 extends Node
-class_name Logger
 
 static func _srv() -> Node:
     var loop := Engine.get_main_loop()

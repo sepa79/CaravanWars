@@ -1,8 +1,8 @@
 extends Node
 
-const Logger = preload("res://scripts/Logger.gd")
-
 signal player_arrived(player_id: int, location_id: String)
+
+const Logger = preload("res://scripts/Logger.gd")
 
 var caravans := []
 var tick_count := 0

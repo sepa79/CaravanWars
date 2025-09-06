@@ -1,8 +1,8 @@
 extends Node
 
-const Logger = preload("res://scripts/Logger.gd")
-
 signal published(topic: String, payload: Dictionary)
+
+const Logger = preload("res://scripts/Logger.gd")
 
 # prościutka książka subskrypcji: topic -> [Callable, ...]
 var _subs: Dictionary = {}

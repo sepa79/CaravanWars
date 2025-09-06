@@ -2,9 +2,6 @@ extends Node
 
 const Logger = preload("res://scripts/Logger.gd")
 
-@onready var loop: Node = get_node_or_null("/root/LoopbackServer")
-var _tick_timer: Timer = null  # (nieużywany — zostawiony tylko dla kompatybilności)
-
 const CITY_PRESETS := {
     "HARBOR":          {"produce": {"LUX": 2},   "consume": {"FOOD": 2, "MEDS": 1, "TOOLS": 1}, "min_food": 5},
     "CENTRAL_KEEP":    {"produce": {"FOOD": 2},  "consume": {"FOOD": 6, "MEDS": 2, "TOOLS": 2}, "min_food": 8},
@@ -16,6 +13,9 @@ const CITY_PRESETS := {
 }
 
 const MAYOR_SCRIPT_PATH := "res://scripts/narrative/MayorNarrator.gd"
+
+@onready var loop: Node = get_node_or_null("/root/LoopbackServer")
+var _tick_timer: Timer = null  # (nieużywany — zostawiony tylko dla kompatybilności)
 
 func _ready() -> void:
     if loop != null:
