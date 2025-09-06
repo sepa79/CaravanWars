@@ -11,8 +11,13 @@ func populate():
 	for c in grid.get_children():
 		c.queue_free()
 
-	var pid = PlayerMgr.local_player_id
-	var p = PlayerMgr.players[pid]
+	var player_mgr = get_node_or_null("/root/PlayerMgr")
+	var db = get_node_or_null("/root/DB")
+	if player_mgr == null or db == null:
+		return
+
+	var pid = int(player_mgr.local_player_id)
+	var p = player_mgr.players.get(pid, {})
 	var moving = p.get("moving", false)
 
 	if moving:
@@ -28,17 +33,17 @@ func populate():
 	for i in h:
 		var l = Label.new(); l.text = i; grid.add_child(l)
 
-	var loc = p["loc"]
-	var loc_obj = DB.get_loc(loc)
+	var loc = p.get("loc", "")
+	var loc_obj = db.get_loc(loc)
 	if loc_obj == null:
 		return
 
 	# Only use data exposed by location methods
 	for g in loc_obj.list_goods():
-		var name = tr(DB.goods_names.get(g, str(g)))
+		var name = tr(db.goods_names.get(g, str(g)))
 		var price = loc_obj.get_price(g)
 		var city_stock = loc_obj.get_stock(g)
-		var you_have = p["cargo"].get(g, 0)
+		var you_have = p.get("cargo", {}).get(g, 0)
 
 		var l1 = Label.new(); l1.text = name; grid.add_child(l1)
 		var l2 = Label.new(); l2.text = str(price); grid.add_child(l2)
