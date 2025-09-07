@@ -1,4 +1,4 @@
-extends INarrativeSource
+extends "res://scripts/narrative/INarrativeSource.gd"
 class_name World
 
 signal observation_ready(peer_id:int, obs:Dictionary)

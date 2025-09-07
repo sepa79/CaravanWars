@@ -27,6 +27,7 @@ UiManager="*res://autoload/UiManager.gd"
 WorldViewModel="*res://autoload/WorldViewModel.gd"
 LoopbackServer="*res://autoload/LoopbackServer.gd"
 GlobalNarrator="*res://scripts/narrative/GlobalNarrator.gd"
+Server="*res://scripts/net/Server.gd"
 
 [display]
 
@@ -49,4 +50,3 @@ ui_fullscreen={
 
 [rendering]
 
-theme/default_theme="res://assets/ui/theme/caravan_theme.tres"
