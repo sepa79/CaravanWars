@@ -1,6 +1,8 @@
 extends Node
 class_name Client
 
+signal snapshot_applied
+
 const Logger = preload("res://scripts/Logger.gd")
 
 @export var peer_id: int = 1
@@ -105,3 +107,4 @@ func push_snapshot(snapshot:Dictionary) -> void:
     # Notify UI viewmodels to refresh current selections
     if WorldViewModel and WorldViewModel.has_method("notify_data_changed"):
         WorldViewModel.notify_data_changed()
+    snapshot_applied.emit()
