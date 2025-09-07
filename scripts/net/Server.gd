@@ -35,6 +35,7 @@ func _start_offline() -> void:
     multiplayer.multiplayer_peer = peer
     var peers := Array(multiplayer.get_peers())
     peers.sort()
+    Logger.log("Server", "Offline peers: %s" % [peers])
     if peers != [1, 2]:
         Logger.log("Server", "Unexpected offline peers: %s" % [peers])
     world.register_player(1)
