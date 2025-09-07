@@ -50,6 +50,9 @@ func _ready() -> void:
     else:
         brain = load("res://scripts/brains/HumanBrain.gd").new()
         Logger.log("Client", "Loaded HumanBrain for peer %d" % peer_id)
+    var pname: String = str(PlayerMgr.players.get(peer_id, {}).get("name", "Unnamed"))
+    rpc_id(1, "report_name", pname)
+    Logger.log("Client", "Reported name '%s' to server" % pname)
 
 @rpc("authority")
 func push_observation(obs: Dictionary) -> void:
@@ -77,6 +80,10 @@ func push_log(msg:String) -> void:
     var game = get_node_or_null("Game")
     if game != null and game.has_method("_on_log"):
         game._on_log(msg)
+
+@rpc("authority")
+func ping(msg: String) -> void:
+    Logger.log("Client", "Received ping: %s" % msg)
 
 @rpc("authority")
 func push_snapshot(snapshot:Dictionary) -> void:
