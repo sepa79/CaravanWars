@@ -13,6 +13,7 @@
 - Client code must not make authoritative decisions; it should only display state or send requests.
 - All state updates and validations must go through the server.
 - Avoid duplicating server logic on the client; rely on data returned from the server instead.
+- All simulation updates must run through the server's tick loop (`Server._on_tick`). No other node may invoke `world.tick`, `Sim.tick`, or `Sim.advance_players` directly.
 
 ## Prepare Merge Procedure
 When a user asks to "prepare merge":
