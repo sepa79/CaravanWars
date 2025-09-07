@@ -27,9 +27,12 @@ func _ready() -> void:
     timer.start()
 
 func _start_offline() -> void:
-    var peer := OfflineMultiplayerPeer.new()
+    var peer: OfflineMultiplayerPeer = OfflineMultiplayerPeer.new()
     peer.create_server(2)
+    peer.add_peer(2)
     multiplayer.multiplayer_peer = peer
+    var peers: Array[int] = multiplayer.get_peers()
+    assert(peers == [1, 2], "Expected peers [1, 2], got %s" % str(peers))
     world.register_player(1)
     world.register_player(2)
 
