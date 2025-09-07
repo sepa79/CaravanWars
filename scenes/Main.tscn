@@ -1,8 +1,11 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/net/Client.gd" id=1]
+[ext_resource type="PackedScene" path="res://scenes/Game.tscn" id=2]
 
 [node name="Main" type="Node"]
+
+[node name="Game" parent="." instance=ExtResource(2)]
 
 [node name="ClientHuman" type="Node" parent="." script=ExtResource(1)]
 peer_id = 1
