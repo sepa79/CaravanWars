@@ -5,6 +5,9 @@ const Logger = preload("res://scripts/Logger.gd")
 
 const LOAD_QTY:int = 10
 
+func _init() -> void:
+    print("Module SimpleTraderBrain loaded")
+
 func think(observation:Dictionary) -> Array[Dictionary]:
     var cmds:Array[Dictionary] = []
     var self_id:int = observation.get("self_id", 0)

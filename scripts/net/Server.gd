@@ -7,6 +7,9 @@ const Logger = preload("res://scripts/Logger.gd")
 var global_narrator
 var mayor_narrator
 
+func _init() -> void:
+    print("Module Server loaded")
+
 func _ready() -> void:
     add_child(world)
     world.observation_ready.connect(_on_observation_ready)

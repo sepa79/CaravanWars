@@ -27,6 +27,9 @@ var knowledge_db:Dictionary = {}
 var rumor_queue:Array = []
 var queued_cmds:Array = []
 
+func _init() -> void:
+    print("Module World loaded")
+
 func register_player(peer_id:int) -> void:
     knowledge_db[peer_id] = {}
     for city_id in truth_db["markets"].keys():

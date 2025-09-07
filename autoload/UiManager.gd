@@ -9,6 +9,9 @@ const MAX_FONT_SCALE := 1.75
 
 signal window_scaled(scale: float)
 
+func _init() -> void:
+    print("Module UiManager loaded")
+
 func _ready() -> void:
     var win := get_window()
     win.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS

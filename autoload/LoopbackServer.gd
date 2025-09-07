@@ -10,6 +10,9 @@ var _subs: Dictionary = {}
 # rejestr "endpointów" serwera (nazwy -> Callable)
 var _endpoints: Dictionary = {}
 
+func _init() -> void:
+    print("Module LoopbackServer loaded")
+
 func _ready() -> void:
     Logger.log("Loopback", "ready")
 

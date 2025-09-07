@@ -10,6 +10,9 @@ var tick_count := 0
 # Co ile ticków logiki wykonywać krok ekonomii (przez GlobalNarrator)
 @export var econ_every_n_ticks: int = 2
 
+func _init() -> void:
+    print("Module Sim loaded")
+
 func _is_server() -> bool:
     return get_tree() != null and get_tree().get_multiplayer().is_server()
 

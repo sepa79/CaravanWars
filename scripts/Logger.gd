@@ -1,5 +1,8 @@
 extends Node
 
+static func _static_init() -> void:
+    print("Module Logger loaded")
+
 static func _srv() -> Node:
     var loop := Engine.get_main_loop()
     if loop is SceneTree:

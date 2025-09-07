@@ -10,6 +10,9 @@ var brain
 @onready var chronicle = get_node_or_null("Game/UI/Main/Right/Tabs/Chronicle")
 @onready var tabs: TabContainer = get_node_or_null("Game/UI/Main/Right/Tabs")
 
+func _init() -> void:
+    print("Module Client loaded")
+
 func _good_id_from_key(k: Variant) -> int:
     if typeof(k) == TYPE_INT:
         return int(k)
