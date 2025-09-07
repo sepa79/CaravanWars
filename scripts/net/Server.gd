@@ -1,5 +1,4 @@
 extends Node
-class_name Server
 
 const Logger = preload("res://scripts/Logger.gd")
 
@@ -28,7 +27,8 @@ func _ready() -> void:
 
 func _start_offline() -> void:
     var peer := OfflineMultiplayerPeer.new()
-    peer.create_server(2)
+    if peer.has_method("create_server"):
+        peer.create_server(2)
     multiplayer.multiplayer_peer = peer
     world.register_player(1)
     world.register_player(2)
@@ -84,8 +84,6 @@ func cmd(action:Dictionary) -> void:
 func broadcast_log(msg:String) -> void:
     for peer_id in multiplayer.get_peers():
         rpc_id(peer_id, "push_log", msg)
-    # Also send to local authority clients if any
-    rpc("push_log", msg)
 
 func broadcast_snapshot() -> void:
     var snapshot := {
@@ -94,8 +92,6 @@ func broadcast_snapshot() -> void:
     }
     for peer_id in multiplayer.get_peers():
         rpc_id(peer_id, "push_snapshot", snapshot)
-    # Also to local authority
-    rpc("push_snapshot", snapshot)
 
 func _make_locations_state() -> Dictionary:
     var data := {}
