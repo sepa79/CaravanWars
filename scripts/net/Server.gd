@@ -19,9 +19,9 @@ func _ready() -> void:
     _start_offline()
     var timer := Timer.new()
     timer.wait_time = 1.0
-    timer.autostart = true
     timer.timeout.connect(_on_tick)
     add_child(timer)
+    timer.start()
 
 func _start_offline() -> void:
     var peer := OfflineMultiplayerPeer.new()
