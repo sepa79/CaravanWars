@@ -1,6 +1,7 @@
 extends Node
 
 const GAME_VERSION := "0.3.5-alpha"
+const ClientClass := preload("res://scripts/net/Client.gd")
 
 @onready var map_node: Control = $UI/Main/Left/MapBox/Map
 @onready var zoom_in_btn: Button = $UI/Main/Left/MapBox/MapControls/ZoomIn
@@ -25,6 +26,7 @@ const GAME_VERSION := "0.3.5-alpha"
 
 @onready var log_label: RichTextLabel = $UI/Main/Right/Log
 @onready var tick_timer: Timer = $Tick
+@onready var client: ClientClass = get_node_or_null("/root/Client")
 
 var time_factor: float = 1.0
 
@@ -36,7 +38,6 @@ func _ready() -> void:
     # log setup (console removed; logs come from Server/Client)
 
     # tick + mapa
-    tick_timer.timeout.connect(_on_tick)
     if map_node.has_signal("location_clicked"):
         map_node.location_clicked.connect(_on_location_click)
         zoom_in_btn.pressed.connect(map_node.zoom_in)
@@ -56,9 +57,9 @@ func _ready() -> void:
     _set_tab_titles()
     _update_status()
     map_node.queue_redraw()
-    _set_time_factor(time_factor)
-    set_process(true)
     _refresh_trade_panel()
+    if client:
+        client.snapshot_applied.connect(_on_snapshot_applied)
 
 func _fill_help() -> void:
     var t := ""
@@ -168,11 +169,6 @@ func _set_tab_titles() -> void:
     tab.set_tab_title(4, tr("Narrator"))
     tab.set_tab_title(5, tr("Help"))
 
-func _process(delta: float) -> void:
-    Sim.advance_players(delta * time_factor)
-    _update_status()
-    _check_trade_refresh()
-
 func _on_location_click(loc_code: String) -> void:
     var pid = PlayerMgr.local_player_id
     Orders.order_move(str(pid), loc_code)
@@ -194,10 +190,10 @@ func _on_sell_request(good: int, amount: int) -> void:
     _update_status()
     _refresh_trade_panel()
 
-func _on_tick() -> void:
-        Sim.tick()
-        _update_status()
-        map_node.queue_redraw()
+func _on_snapshot_applied() -> void:
+    _update_status()
+    _check_trade_refresh()
+    map_node.queue_redraw()
 
 func _on_log(msg: String) -> void:
     log_label.append_text(msg + "\n")
