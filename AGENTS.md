@@ -14,6 +14,7 @@
 - All state updates and validations must go through the server.
 - Avoid duplicating server logic on the client; rely on data returned from the server instead.
 - All simulation updates must run through the server's tick loop (`Server._on_tick`). No other node may invoke `world.tick`, `Sim.tick`, or `Sim.advance_players` directly.
+- The server node in `scenes/Main.tscn` owns the timer that advances `world.tick`, `Sim.tick`, and `Sim.advance_players`.
 
 ## Prepare Merge Procedure
 When a user asks to "prepare merge":
