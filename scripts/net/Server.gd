@@ -106,7 +106,7 @@ func _make_locations_state() -> Dictionary:
     return data
 
 func _on_observation_ready(peer_id:int, obs:Dictionary) -> void:
-    var size := JSON.stringify(obs).length
+    var size := JSON.stringify(obs).length()
     var text := "Sending observation to peer {peer} ({size} bytes)".format({"peer": peer_id, "size": size})
     Logger.log("Server", text)
     rpc_id(peer_id, "push_observation", obs)
