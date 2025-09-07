@@ -5,9 +5,8 @@ signal location_changed(location: Dictionary)
 signal data_changed
 
 var player_descriptions := {
-		1: "A brave merchant traveling the lands.",
-		2: "A cunning trader with many secrets.",
-		101: "A shrewd guild strategist controlling trade routes."
+                1: "A brave merchant traveling the lands.",
+                2: "A shrewd guild strategist controlling trade routes."
 }
 
 var player_ids: Array = []

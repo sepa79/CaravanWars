@@ -1,16 +1,20 @@
 extends Node
 
+const Logger = preload("res://scripts/Logger.gd")
+
 enum Kind { HUMAN, AI, NARRATOR }
 
 var players := {}
 var order := []
 var local_player_id : int = 1
 
+func _init() -> void:
+    print("Module PlayerMgr loaded")
+
 func _ready():
     add_player(1, "Player A", Kind.HUMAN, "CENTRAL_KEEP")
-    add_player(2, "Player B", Kind.HUMAN, "HARBOR")
-    add_player(101, "Guild AI", Kind.AI, "MINE")
-    order = [1,2,101]
+    add_player(2, "Guild AI", Kind.AI, "MINE")
+    order = [1,2]
 
 func add_player(id:int, name:String, kind:int, start_loc:String):
     players[id] = {
@@ -108,7 +112,5 @@ func start_travel(id:int, to_loc:String) -> bool:
         p["eta_left"] = eta
         p["eta_total"] = eta
         p["progress"] = 0.0
-        var srv = get_node_or_null("/root/Server")
-        if srv != null:
-                srv.call_deferred("broadcast_log", tr("[%s] traveling %s -> %s (ETA %.1f).") % [p["name"], DB.get_loc_name(from_loc), DB.get_loc_name(to_loc), eta])
+        Logger.log("PlayerMgr", tr("[%s] traveling %s -> %s (ETA %.1f).") % [p["name"], DB.get_loc_name(from_loc), DB.get_loc_name(to_loc), eta])
         return true
