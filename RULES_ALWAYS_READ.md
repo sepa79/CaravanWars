@@ -3,7 +3,7 @@ RULES_ALWAYS_READ — twarde zasady
 1) Technologie i styl
 - Godot 4.x, **GDScript (typed)**. To nie Python — żadnych idiomów Pythona w komentarzach ani nazwach.
 - Pliki scen/zasobów edytuj w Godot. Nie modyfikuj ręcznie `.tscn`/`.tres`.
-- Wcięcia: 2 spacje. UTF‑8. LF. Nowa linia na końcu każdego pliku.
+- Wcięcia: 4 spacje. UTF‑8. LF. Nowa linia na końcu każdego pliku.
 
 2) Nazewnictwo (Godot‑friendly)
 - Katalogi: `lower_snake_case` (np. `net`, `map`, `systems`, `autoload`, `ui`).

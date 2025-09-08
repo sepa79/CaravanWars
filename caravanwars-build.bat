@@ -19,7 +19,7 @@ if exist "%DST_DIR%" rd /S /Q "%DST_DIR%"
 mkdir "%DST_DIR%"
 
 :: 2) skopiuj cały projekt
-xcopy "%SRC_DIR%\*" "%DST_DIR%\" /E /I /Y /H >nul
+xcopy "%SRC_DIR%\game\*" "%DST_DIR%\" /E /I /Y /H >nul
 
 :: 3) odpal edytor (import assetów)
 pushd "%DST_DIR%"
