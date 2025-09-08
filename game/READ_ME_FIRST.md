@@ -1,8 +1,8 @@
 GAME — single Godot project (jedna binarka)
 
 Po co jeden projekt?
-- Jedno źródło zasobów, jeden eksport binarki.  
-- Single Player: host+client in‑process. Multiplayer: Host/Join.  
+- Jedno źródło zasobów, jeden eksport binarki.
+- Single Player: host+client in‑process. Multiplayer: Host/Join.
 - Debug UI i shell Narratora jako role w tym samym projekcie.
 
 Planowane katalogi (na razie puste):
@@ -13,6 +13,12 @@ Planowane katalogi (na razie puste):
 - map/ — generacja i model mapy (spec w PHASE‑03)
 - systems/ — reguły gry (PHASE‑08)
 - i18n/ — katalogi językowe (EN/PL)
+
+Plan autoloadów:
+- App: nawigacja scen i przechowywanie stanu bieżącej sceny
+- I18N: przełącznik języka, ładowanie katalogów `i18n`
+- Net: tryby uruchomienia, później inicjalizacja Host/Join
+- World: stan świata gry
 
 Konwencje Godot
 - Folders: lower_snake_case. Scenes/Scripts: PascalCase.
