@@ -1,5 +1,9 @@
 Changelog
 
+0.1.8 — 2025-09-08
+Fixed
+- Replaced `?:` ternary with `if/else` in river generation and documented prohibition.
+
 0.1.7 — 2025-09-08
 Added
 - Blue-noise city placement with minimum spacing.

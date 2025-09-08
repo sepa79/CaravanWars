@@ -48,7 +48,8 @@ func _process_intersections(poly: Array[Vector2], roads: Dictionary) -> void:
             var river_b: Vector2 = poly[i + 1]
             var intersection = Geometry2D.segment_intersection(river_a, river_b, road_start, road_end)
             if intersection != null:
-                var bridge_type: String = rng.randf() < 0.5 ? "bridge" : "ford"
+                # Use Python-style conditional expression; '?' operator is disallowed.
+                var bridge_type: String = "bridge" if rng.randf() < 0.5 else "ford"
                 var bridge_id: int = next_node_id
                 next_node_id += 1
                 var bridge_node: MapNode = MapNodeModule.new(bridge_id, bridge_type, intersection, {})
