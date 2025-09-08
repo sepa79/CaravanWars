@@ -5,6 +5,8 @@ Added
 - Net autoload with basic run-mode state machine.
 - Start menu hooks for single-player and multiplayer run modes.
 - Connecting UI scene for connection feedback.
+Fixed
+- Avoided shadowed variable warning in connecting UI.
 
 0.1.4 — 2025-09-08
 Added

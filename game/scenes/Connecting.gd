@@ -16,13 +16,13 @@ func _update_texts() -> void:
     _update_status()
 
 func _on_net_state_changed(state: String) -> void:
-    var show := state in [
+    var should_show := state in [
         Net.STATE_CONNECTING_STARTING_HOST,
         Net.STATE_CONNECTING_JOINING_HOST,
         Net.STATE_CONNECTING_RETRYING,
         Net.STATE_FAILED,
     ]
-    visible = show
+    visible = should_show
     _update_status()
 
 func _update_status() -> void:
