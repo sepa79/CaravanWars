@@ -90,7 +90,9 @@ func cmd(action:Dictionary) -> void:
 
 func broadcast_log(msg:String) -> void:
     for peer_id in multiplayer.get_peers():
-        rpc_id(peer_id, "push_log", msg)
+        var client := _get_client_node(peer_id)
+        if client != null:
+            client.rpc_id(peer_id, "push_log", msg)
 
 func broadcast_snapshot() -> void:
     var snapshot := {
@@ -98,7 +100,9 @@ func broadcast_snapshot() -> void:
         "locations": _make_locations_state()
     }
     for peer_id in multiplayer.get_peers():
-        rpc_id(peer_id, "push_snapshot", snapshot)
+        var client := _get_client_node(peer_id)
+        if client != null:
+            client.rpc_id(peer_id, "push_snapshot", snapshot)
 
 func _make_locations_state() -> Dictionary:
     var data := {}
@@ -116,7 +120,15 @@ func _on_observation_ready(peer_id:int, obs:Dictionary) -> void:
     var size := JSON.stringify(obs).length()
     var text := "Sending observation to peer {peer} ({size} bytes)".format({"peer": peer_id, "size": size})
     Logger.log("Server", text)
-    rpc_id(peer_id, "push_observation", obs)
+    var client := _get_client_node(peer_id)
+    if client != null:
+        client.rpc_id(peer_id, "push_observation", obs)
+
+func _get_client_node(peer_id:int) -> Node:
+    var nodes := get_tree().get_nodes_in_group("peer_%d" % peer_id)
+    if nodes.size() > 0:
+        return nodes[0]
+    return null
 
 func _on_world_event(event:Dictionary) -> void:
     global_narrator.render(-1, [event])

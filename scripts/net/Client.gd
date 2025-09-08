@@ -48,6 +48,8 @@ func _normalize_stock_dict(d: Dictionary) -> Dictionary:
     return out
 
 func _ready() -> void:
+    add_to_group("client")
+    add_to_group("peer_%d" % peer_id)
     set_multiplayer_authority(peer_id)
     if use_simple_ai:
         brain = load("res://scripts/brains/SimpleTraderBrain.gd").new()
