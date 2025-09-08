@@ -22,18 +22,16 @@ func _ready() -> void:
 
 func _start_offline() -> bool:
     var peer: OfflineMultiplayerPeer = OfflineMultiplayerPeer.new()
+    multiplayer.multiplayer_peer = peer
+
     if peer.has_method("create_server"):
         var err: int = peer.create_server(3)
         if err != OK:
             Logger.log("Server", "create_server failed: %s" % err)
-            push_error("[Server] Offline server creation failed: %s" % err)
             return false
     else:
         Logger.log("Server", "OfflineMultiplayerPeer missing create_server")
-        push_error("[Server] OfflineMultiplayerPeer missing create_server")
         return false
-
-    multiplayer.multiplayer_peer = peer
 
     if peer.has_method("add_peer"):
         var err: int
@@ -49,7 +47,6 @@ func _start_offline() -> bool:
     Logger.log("Server", "Offline peers: %s" % [peers])
     if peers.is_empty():
         Logger.log("Server", "No offline peers registered; aborting startup")
-        push_error("[Server] Offline multiplayer peer could not be created")
         return false
     if peers != [1, 2, 3]:
         Logger.log("Server", "Unexpected offline peers: %s" % [peers])
