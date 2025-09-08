@@ -1,5 +1,11 @@
 Changelog
 
+0.1.7 — 2025-09-08
+Added
+- Blue-noise city placement with minimum spacing.
+- Road network using Delaunay triangulation, MST and k-nearest edges with villages and forts.
+- River generation producing polylines and converting road intersections into bridge/ford nodes.
+
 0.1.6 — 2025-09-08
 Added
 - Map data model with nodes, edges, regions and snapshot/diff serialization.
