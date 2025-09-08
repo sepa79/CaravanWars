@@ -12,19 +12,19 @@ func _ready() -> void:
     update_texts()
 
 func update_texts() -> void:
-    title_label.text = I18N.tr("menu.title")
-    main_menu.get_node("SinglePlayer").text = I18N.tr("menu.start_single")
-    main_menu.get_node("Multiplayer").text = I18N.tr("menu.start_multi")
-    main_menu.get_node("Settings").text = I18N.tr("menu.settings")
-    var lang_text := I18N.tr("menu.language_en") if I18N.current_lang == I18N.LANG_EN else I18N.tr("menu.language_pl")
-    main_menu.get_node("Language").text = "%s: %s" % [I18N.tr("menu.language"), lang_text]
-    main_menu.get_node("Quit").text = I18N.tr("menu.quit")
-    multiplayer_menu.get_node("Host").text = I18N.tr("menu.host")
-    multiplayer_menu.get_node("Join").text = I18N.tr("menu.join")
-    multiplayer_menu.get_node("Back").text = I18N.tr("menu.back")
-    not_available_label.text = I18N.tr("menu.not_available")
-    var build_type := OS.is_debug_build() ? "Debug" : "Release"
-    version_label.text = "%s %s\n%s %s" % [I18N.tr("menu.version"), ProjectSettings.get_setting("application/config/version"), I18N.tr("menu.build_type"), build_type]
+    title_label.text = I18N.t("menu.title")
+    main_menu.get_node("SinglePlayer").text = I18N.t("menu.start_single")
+    main_menu.get_node("Multiplayer").text = I18N.t("menu.start_multi")
+    main_menu.get_node("Settings").text = I18N.t("menu.settings")
+    var lang_text := I18N.t("menu.language_en") if I18N.current_lang == I18N.LANG_EN else I18N.t("menu.language_pl")
+    main_menu.get_node("Language").text = "%s: %s" % [I18N.t("menu.language"), lang_text]
+    main_menu.get_node("Quit").text = I18N.t("menu.quit")
+    multiplayer_menu.get_node("Host").text = I18N.t("menu.host")
+    multiplayer_menu.get_node("Join").text = I18N.t("menu.join")
+    multiplayer_menu.get_node("Back").text = I18N.t("menu.back")
+    not_available_label.text = I18N.t("menu.not_available")
+    var build_type := "Debug" if OS.is_debug_build() else "Release"
+    version_label.text = "%s %s\n%s %s" % [I18N.t("menu.version"), ProjectSettings.get_setting("application/config/version"), I18N.t("menu.build_type"), build_type]
 
 func _on_single_player_pressed() -> void:
     show_not_available()

@@ -22,7 +22,7 @@ func load_language(lang: String) -> void:
     current_lang = lang
     language_changed.emit(lang)
 
-func tr(key: String) -> String:
+func t(key: String) -> String:
     return strings.get(key, key)
 
 func toggle_language() -> void:
