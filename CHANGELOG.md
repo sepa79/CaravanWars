@@ -1,5 +1,11 @@
 Changelog
 
+0.1.5 — 2025-09-08
+Added
+- Net autoload with basic run-mode state machine.
+- Start menu hooks for single-player and multiplayer run modes.
+- Connecting UI scene for connection feedback.
+
 0.1.4 — 2025-09-08
 Added
 - Start menu with runtime language toggle and i18n resources.

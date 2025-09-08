@@ -6,9 +6,12 @@ extends Control
 @onready var not_available_panel: Panel = $NotAvailable
 @onready var not_available_label: Label = $NotAvailable/Label
 @onready var version_label: Label = $Version
+@onready var connecting_ui: Control = preload("res://scenes/Connecting.tscn").instantiate()
 
 func _ready() -> void:
     I18N.language_changed.connect(update_texts)
+    Net.state_changed.connect(_on_net_state_changed)
+    add_child(connecting_ui)
     update_texts()
 
 func update_texts() -> void:
@@ -27,7 +30,7 @@ func update_texts() -> void:
     version_label.text = "%s %s\n%s %s" % [I18N.t("menu.version"), ProjectSettings.get_setting("application/config/version"), I18N.t("menu.build_type"), build_type]
 
 func _on_single_player_pressed() -> void:
-    show_not_available()
+    Net.start_singleplayer()
 
 func _on_multiplayer_pressed() -> void:
     main_menu.visible = false
@@ -45,10 +48,10 @@ func _on_quit_pressed() -> void:
     get_tree().quit()
 
 func _on_host_pressed() -> void:
-    show_not_available()
+    Net.start_host()
 
 func _on_join_pressed() -> void:
-    show_not_available()
+    Net.start_join("")
 
 func _on_back_pressed() -> void:
     multiplayer_menu.visible = false
@@ -62,3 +65,12 @@ func show_not_available() -> void:
 func _unhandled_input(event: InputEvent) -> void:
     if event.is_action_pressed("ui_cancel") and multiplayer_menu.visible:
         _on_back_pressed()
+
+func _on_net_state_changed(state: String) -> void:
+    if state == Net.STATE_MENU:
+        main_menu.visible = true
+        multiplayer_menu.visible = false
+    else:
+        main_menu.visible = false
+        multiplayer_menu.visible = false
+        not_available_panel.visible = false
