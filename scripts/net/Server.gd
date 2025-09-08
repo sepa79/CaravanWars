@@ -1,10 +1,13 @@
 extends Node
 
 const Logger = preload("res://scripts/Logger.gd")
+const EXPECTED_PEERS: Array[int] = [2, 3]
 
-@onready var world = load("res://scripts/world/World.gd").new()
+@onready var world: Node = load("res://scripts/world/World.gd").new()
 var global_narrator
 var mayor_narrator
+var tick_timer: Timer
+var ready_peers: Dictionary = {}
 
 func _init() -> void:
     print("Module Server loaded")
@@ -19,25 +22,24 @@ func _ready() -> void:
     add_child(mayor_narrator)
     multiplayer.peer_connected.connect(_on_peer_connected)
     _start_offline()
-    var timer := Timer.new()
-    timer.wait_time = 1.0
-    timer.timeout.connect(_on_tick)
-    add_child(timer)
-    timer.start()
+    tick_timer = Timer.new()
+    tick_timer.wait_time = 1.0
+    tick_timer.timeout.connect(_on_tick)
+    add_child(tick_timer)
+    get_tree().node_added.connect(_on_node_added)
 
 func _start_offline() -> void:
     var peer: OfflineMultiplayerPeer = OfflineMultiplayerPeer.new()
     if peer.has_method("create_server"):
-        peer.create_server(2)
+        peer.create_server(3)
     multiplayer.multiplayer_peer = peer
     if peer.has_method("add_peer"):
         peer.add_peer(2)
-    _on_peer_connected(1)
-    _on_peer_connected(2)
+        peer.add_peer(3)
     var peers := Array(multiplayer.get_peers())
     peers.sort()
     Logger.log("Server", "Offline peers: %s" % [peers])
-    if peers != [1, 2]:
+    if peers != [1, 2, 3]:
         Logger.log("Server", "Unexpected offline peers: %s" % [peers])
 
 func _on_peer_connected(id:int) -> void:
@@ -90,6 +92,8 @@ func cmd(action:Dictionary) -> void:
 
 func broadcast_log(msg:String) -> void:
     for peer_id in multiplayer.get_peers():
+        if peer_id == 1:
+            continue
         var client := _get_client_node(peer_id)
         if client != null:
             client.rpc_id(peer_id, "push_log", msg)
@@ -100,9 +104,13 @@ func broadcast_snapshot() -> void:
         "locations": _make_locations_state()
     }
     for peer_id in multiplayer.get_peers():
+        if peer_id == 1:
+            continue
         var client := _get_client_node(peer_id)
         if client != null:
             client.rpc_id(peer_id, "push_snapshot", snapshot)
+        else:
+            Logger.log("Server", "No client node for peer %d" % peer_id)
 
 func _make_locations_state() -> Dictionary:
     var data := {}
@@ -123,6 +131,8 @@ func _on_observation_ready(peer_id:int, obs:Dictionary) -> void:
     var client := _get_client_node(peer_id)
     if client != null:
         client.rpc_id(peer_id, "push_observation", obs)
+    else:
+        Logger.log("Server", "No client node for peer %d" % peer_id)
 
 func _get_client_node(peer_id:int) -> Node:
     var nodes := get_tree().get_nodes_in_group("peer_%d" % peer_id)
@@ -133,3 +143,11 @@ func _get_client_node(peer_id:int) -> Node:
 func _on_world_event(event:Dictionary) -> void:
     global_narrator.render(-1, [event])
     mayor_narrator.render(-1, [event])
+
+func _on_node_added(node: Node) -> void:
+    for id in EXPECTED_PEERS:
+        if node.is_in_group("peer_%d" % id):
+            ready_peers[id] = true
+    if ready_peers.size() == EXPECTED_PEERS.size():
+        get_tree().node_added.disconnect(_on_node_added)
+        tick_timer.start()
