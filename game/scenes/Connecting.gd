@@ -4,11 +4,15 @@ extends Control
 @onready var retry_button: Button = $Panel/VBoxContainer/Buttons/Retry
 @onready var cancel_button: Button = $Panel/VBoxContainer/Buttons/Cancel
 
+func _log(msg: String) -> void:
+    print("[Connecting] %s" % msg)
+
 func _ready() -> void:
     I18N.language_changed.connect(_update_texts)
     Net.state_changed.connect(_on_net_state_changed)
     _update_texts()
     _on_net_state_changed(Net.state)
+    _log("ready")
 
 func _update_texts() -> void:
     retry_button.text = I18N.t("common.retry")
@@ -16,6 +20,7 @@ func _update_texts() -> void:
     _update_status()
 
 func _on_net_state_changed(state: String) -> void:
+    _log("Net state changed to %s" % state)
     var should_show := state in [
         Net.STATE_CONNECTING_STARTING_HOST,
         Net.STATE_CONNECTING_JOINING_HOST,
@@ -44,7 +49,9 @@ func _update_status() -> void:
             retry_button.visible = false
 
 func _on_retry_pressed() -> void:
+    _log("retry pressed")
     Net.retry()
 
 func _on_cancel_pressed() -> void:
+    _log("cancel pressed")
     Net.reset()

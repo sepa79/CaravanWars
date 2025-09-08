@@ -7,6 +7,7 @@ Added
 - Connecting UI scene for connection feedback.
 - Naming guideline to avoid variable names shadowing Godot built-in methods.
 - Networking and common UI translations.
+- Logging to confirm menu actions and network state transitions.
 Fixed
 - Avoided shadowed variable warning in connecting UI.
 - Corrected invalid indent rules in `.editorconfig`.
