@@ -86,6 +86,11 @@ func _on_net_state_changed(state: String) -> void:
         main_menu.visible = true
         multiplayer_menu.visible = false
         main_menu.get_node("Multiplayer").grab_focus()
+    elif state == Net.STATE_READY:
+        main_menu.visible = false
+        multiplayer_menu.visible = false
+        not_available_panel.visible = false
+        App.goto_scene("res://scenes/Game.tscn")
     else:
         main_menu.visible = false
         multiplayer_menu.visible = false
