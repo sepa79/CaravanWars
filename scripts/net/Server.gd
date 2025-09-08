@@ -31,7 +31,6 @@ func _start_offline() -> void:
         peer.create_server(2)
     multiplayer.multiplayer_peer = peer
     if peer.has_method("add_peer"):
-        peer.add_peer(1)
         peer.add_peer(2)
     _on_peer_connected(1)
     _on_peer_connected(2)
