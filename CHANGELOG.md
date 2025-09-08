@@ -1,5 +1,13 @@
 Changelog
 
+0.1.4 — 2025-09-08
+Added
+- Start menu with runtime language toggle and i18n resources.
+
+0.1.3 — 2025-09-08
+Removed
+- Obsolete placeholder Import file.
+
 0.1.2 — 2025-09-08
 Added
 - Godot project scaffold with Main scene and directory structure.
