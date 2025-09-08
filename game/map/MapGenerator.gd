@@ -1,29 +1,29 @@
 extends RefCounted
 class_name MapGenerator
 
-var seed: int
+var world_seed: int
 var rng: RandomNumberGenerator
 
-const CityPlacer = preload("res://map/CityPlacer.gd")
-const RoadNetwork = preload("res://map/RoadNetwork.gd")
-const RiverGenerator = preload("res://map/RiverGenerator.gd")
+const CityPlacerModule = preload("res://map/CityPlacer.gd")
+const RoadNetworkModule = preload("res://map/RoadNetwork.gd")
+const RiverGeneratorModule = preload("res://map/RiverGenerator.gd")
 
 func _init(_seed: int) -> void:
-    seed = _seed
+    world_seed = _seed
     rng = RandomNumberGenerator.new()
-    rng.seed = seed
+    rng.seed = world_seed
 
 func generate() -> Dictionary:
     var map_data: Dictionary = {}
-    var city_stage := CityPlacer.new(rng)
+    var city_stage := CityPlacerModule.new(rng)
     var cities := city_stage.place_cities()
     map_data["cities"] = cities
 
-    var road_stage := RoadNetwork.new(rng)
+    var road_stage := RoadNetworkModule.new(rng)
     var roads := road_stage.build_roads(cities)
     map_data["roads"] = roads
 
-    var river_stage := RiverGenerator.new(rng)
+    var river_stage := RiverGeneratorModule.new(rng)
     var rivers := river_stage.generate_rivers()
     map_data["rivers"] = rivers
 
