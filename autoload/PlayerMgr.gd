@@ -11,7 +11,8 @@ var local_player_id : int = 1
 func _init() -> void:
     print("Module PlayerMgr loaded")
 
-func _ready():
+func _ready() -> void:
+    set_multiplayer_authority(1)
     add_player(1, "Player A", Kind.HUMAN, "CENTRAL_KEEP")
     add_player(2, "Guild AI", Kind.AI, "MINE")
     order = [1,2]

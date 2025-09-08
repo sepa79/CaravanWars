@@ -54,14 +54,14 @@ func _on_tick() -> void:
     # After server-side updates, broadcast a fresh snapshot
     broadcast_snapshot()
 
-@rpc("any_peer")
+@rpc("authority")
 func report_name(name: String) -> void:
     var sender: int = multiplayer.get_remote_sender_id()
     Logger.log("Server", "Peer %d reported name '%s'" % [sender, name])
     Logger.log("Server", "Sending ping to %s" % name)
     rpc_id(sender, "ping", "ping")
 
-@rpc("any_peer")
+@rpc("authority")
 func cmd(action:Dictionary) -> void:
     var sender := multiplayer.get_remote_sender_id()
     var atype := str(action.get("type", ""))

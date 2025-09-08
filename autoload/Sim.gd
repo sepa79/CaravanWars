@@ -16,7 +16,8 @@ func _init() -> void:
 func _is_server() -> bool:
     return get_tree() != null and get_tree().get_multiplayer().is_server()
 
-func _ready():
+func _ready() -> void:
+    set_multiplayer_authority(1)
     randomize()
     # Początkowe przeliczenie cen na starcie
     for loc in DB.locations.values():

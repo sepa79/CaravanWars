@@ -30,6 +30,9 @@ var queued_cmds:Array = []
 func _init() -> void:
     print("Module World loaded")
 
+func _ready() -> void:
+    set_multiplayer_authority(1)
+
 func register_player(peer_id:int) -> void:
     knowledge_db[peer_id] = {}
     for city_id in truth_db["markets"].keys():
