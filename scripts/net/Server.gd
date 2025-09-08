@@ -2,8 +2,6 @@ extends Node
 
 const Logger = preload("res://scripts/Logger.gd")
 @onready var world: Node = load("res://scripts/world/World.gd").new()
-var global_narrator
-var mayor_narrator
 var tick_timer: Timer
 var ready_peers: Dictionary = {}
 
@@ -14,30 +12,48 @@ func _ready() -> void:
     add_child(world)
     world.observation_ready.connect(_on_observation_ready)
     world.event.connect(_on_world_event)
-    global_narrator = load("res://scripts/narrative/GlobalNarrator.gd").new()
-    mayor_narrator = load("res://scripts/narrative/MayorNarrator.gd").new()
-    add_child(global_narrator)
-    add_child(mayor_narrator)
     multiplayer.peer_connected.connect(_on_peer_connected)
-    _start_offline()
+    if not _start_offline():
+        return
     tick_timer = Timer.new()
     tick_timer.wait_time = 1.0
     tick_timer.timeout.connect(_on_tick)
     add_child(tick_timer)
 
-func _start_offline() -> void:
+func _start_offline() -> bool:
     var peer: OfflineMultiplayerPeer = OfflineMultiplayerPeer.new()
     if peer.has_method("create_server"):
-        peer.create_server(3)
+        var err: int = peer.create_server(3)
+        if err != OK:
+            Logger.log("Server", "create_server failed: %s" % err)
+            push_error("[Server] Offline server creation failed: %s" % err)
+            return false
+    else:
+        Logger.log("Server", "OfflineMultiplayerPeer missing create_server")
+        push_error("[Server] OfflineMultiplayerPeer missing create_server")
+        return false
+
     multiplayer.multiplayer_peer = peer
+
     if peer.has_method("add_peer"):
-        peer.add_peer(2)
-        peer.add_peer(3)
+        var err: int
+        for pid in [2, 3]:
+            err = peer.add_peer(pid)
+            if err != OK:
+                Logger.log("Server", "add_peer %d failed: %s" % [pid, err])
+    else:
+        Logger.log("Server", "OfflineMultiplayerPeer missing add_peer")
+
     var peers := Array(multiplayer.get_peers())
     peers.sort()
     Logger.log("Server", "Offline peers: %s" % [peers])
+    if peers.is_empty():
+        Logger.log("Server", "No offline peers registered; aborting startup")
+        push_error("[Server] Offline multiplayer peer could not be created")
+        return false
     if peers != [1, 2, 3]:
         Logger.log("Server", "Unexpected offline peers: %s" % [peers])
+    return true
 
 func _on_peer_connected(id:int) -> void:
     if not world.knowledge_db.has(id):
@@ -146,5 +162,4 @@ func _get_client_node(peer_id:int) -> Node:
     return null
 
 func _on_world_event(event:Dictionary) -> void:
-    global_narrator.render(-1, [event])
-    mayor_narrator.render(-1, [event])
+    GlobalNarrator.render(-1, [event])
