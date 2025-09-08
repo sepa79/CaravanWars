@@ -1,8 +1,6 @@
 extends Node
 
 const Logger = preload("res://scripts/Logger.gd")
-const EXPECTED_PEERS: Array[int] = [2, 3]
-
 @onready var world: Node = load("res://scripts/world/World.gd").new()
 var global_narrator
 var mayor_narrator
@@ -26,7 +24,6 @@ func _ready() -> void:
     tick_timer.wait_time = 1.0
     tick_timer.timeout.connect(_on_tick)
     add_child(tick_timer)
-    get_tree().node_added.connect(_on_node_added)
 
 func _start_offline() -> void:
     var peer: OfflineMultiplayerPeer = OfflineMultiplayerPeer.new()
@@ -60,6 +57,10 @@ func _on_tick() -> void:
 func report_name(name: String) -> void:
     var sender: int = multiplayer.get_remote_sender_id()
     Logger.log("Server", "Peer %d reported name '%s'" % [sender, name])
+    ready_peers[sender] = true
+    var required: int = multiplayer.get_peers().size() - 1
+    if ready_peers.size() >= required and tick_timer.is_stopped():
+        tick_timer.start()
     Logger.log("Server", "Sending ping to %s" % name)
     rpc_id(sender, "ping", "ping")
 
@@ -143,11 +144,3 @@ func _get_client_node(peer_id:int) -> Node:
 func _on_world_event(event:Dictionary) -> void:
     global_narrator.render(-1, [event])
     mayor_narrator.render(-1, [event])
-
-func _on_node_added(node: Node) -> void:
-    for id in EXPECTED_PEERS:
-        if node.is_in_group("peer_%d" % id):
-            ready_peers[id] = true
-    if ready_peers.size() == EXPECTED_PEERS.size():
-        get_tree().node_added.disconnect(_on_node_added)
-        tick_timer.start()
