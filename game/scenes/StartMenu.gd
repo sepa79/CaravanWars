@@ -16,6 +16,7 @@ func _ready() -> void:
     Net.state_changed.connect(_on_net_state_changed)
     add_child(connecting_ui)
     update_texts()
+    main_menu.get_node("Multiplayer").grab_focus()
     _log("ready")
 
 func update_texts() -> void:
@@ -84,6 +85,7 @@ func _on_net_state_changed(state: String) -> void:
     if state == Net.STATE_MENU:
         main_menu.visible = true
         multiplayer_menu.visible = false
+        main_menu.get_node("Multiplayer").grab_focus()
     else:
         main_menu.visible = false
         multiplayer_menu.visible = false

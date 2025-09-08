@@ -11,6 +11,7 @@ Added
 Fixed
 - Avoided shadowed variable warning in connecting UI.
 - Corrected invalid indent rules in `.editorconfig`.
+- Default focus in start menu ensures keyboard navigation works without mouse.
 
 0.1.4 — 2025-09-08
 Added
