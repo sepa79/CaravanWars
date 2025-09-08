@@ -1,0 +1,54 @@
+extends RefCounted
+class_name MapSnapshot
+
+var seed: int
+var version: String
+var nodes: Dictionary
+var edges: Dictionary
+var regions: Dictionary
+
+func _init(_seed: int, _version: String) -> void:
+    seed = _seed
+    version = _version
+    nodes = {}
+    edges = {}
+    regions = {}
+
+func to_dict() -> Dictionary:
+    var node_list: Array = []
+    for node in nodes.values():
+        node_list.append(node.to_dict())
+    var edge_list: Array = []
+    for edge in edges.values():
+        edge_list.append(edge.to_dict())
+    var region_list: Array = []
+    for region in regions.values():
+        region_list.append(region.to_dict())
+    return {
+        "meta": {"seed": seed, "version": version},
+        "nodes": node_list,
+        "edges": edge_list,
+        "regions": region_list,
+    }
+
+func diff(previous: MapSnapshot) -> Dictionary:
+    return {
+        "meta": {"seed": seed, "version": version},
+        "nodes": _diff_section(nodes, previous.nodes),
+        "edges": _diff_section(edges, previous.edges),
+        "regions": _diff_section(regions, previous.regions),
+    }
+
+func _diff_section(current: Dictionary, previous: Dictionary) -> Dictionary:
+    var added: Array = []
+    var updated: Array = []
+    var removed: Array = []
+    for id in current.keys():
+        if not previous.has(id):
+            added.append(current[id].to_dict())
+        elif current[id].to_dict() != previous[id].to_dict():
+            updated.append(current[id].to_dict())
+    for id in previous.keys():
+        if not current.has(id):
+            removed.append(id)
+    return {"added": added, "updated": updated, "removed": removed}

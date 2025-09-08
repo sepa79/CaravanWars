@@ -1,5 +1,9 @@
 Changelog
 
+0.1.6 — 2025-09-08
+Added
+- Map data model with nodes, edges, regions and snapshot/diff serialization.
+
 0.1.5 — 2025-09-08
 Added
 - Net autoload with basic run-mode state machine.
