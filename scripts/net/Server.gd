@@ -59,8 +59,12 @@ func report_name(name: String) -> void:
     Logger.log("Server", "Peer %d reported name '%s'" % [sender, name])
     ready_peers[sender] = true
     var required: int = multiplayer.get_peers().size() - 1
-    if ready_peers.size() >= required and tick_timer.is_stopped():
+    var count: int = ready_peers.size()
+    if count >= required and tick_timer.is_stopped():
+        Logger.log("Server", "All clients ready, starting tick timer")
         tick_timer.start()
+    else:
+        Logger.log("Server", "Waiting for clients: %d/%d ready" % [count, required])
     Logger.log("Server", "Sending ping to %s" % name)
     rpc_id(sender, "ping", "ping")
 
