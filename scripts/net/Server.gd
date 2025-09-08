@@ -30,13 +30,15 @@ func _start_offline() -> void:
     if peer.has_method("create_server"):
         peer.create_server(2)
     multiplayer.multiplayer_peer = peer
+    var peer_ids: Array[int] = [1, 2]
     if peer.has_method("add_peer"):
-        peer.add_peer(1)
-        peer.add_peer(2)
+        for id in peer_ids:
+            peer.add_peer(id)
+            _on_peer_connected(id)
     var peers := Array(multiplayer.get_peers())
     peers.sort()
     Logger.log("Server", "Offline peers: %s" % [peers])
-    if peers != [1, 2]:
+    if peers != peer_ids:
         Logger.log("Server", "Unexpected offline peers: %s" % [peers])
 
 func _on_peer_connected(id:int) -> void:
