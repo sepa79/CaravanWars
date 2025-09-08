@@ -75,6 +75,7 @@ func push_observation(obs: Dictionary) -> void:
         tabs.set_tab_disabled(2, not in_city) # Trade tab at index 2
     if brain:
         var cmds = brain.think(obs)
+        Logger.log("Client", "peer %d brain returned %d cmds" % [peer_id, cmds.size()])
         for c in cmds:
             rpc_id(1, "cmd", c)
 
