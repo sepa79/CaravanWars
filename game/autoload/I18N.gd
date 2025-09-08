@@ -1,6 +1,6 @@
 extends Node
 
-signal language_changed(language: String)
+signal language_changed
 
 const LANG_EN := "en"
 const LANG_PL := "pl"
@@ -20,7 +20,7 @@ func load_language(lang: String) -> void:
     for key in cfg.get_section_keys("strings"):
         strings[key] = cfg.get_value("strings", key, key)
     current_lang = lang
-    language_changed.emit(lang)
+    language_changed.emit()
 
 func t(key: String) -> String:
     return strings.get(key, key)
