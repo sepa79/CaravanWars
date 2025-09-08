@@ -48,6 +48,8 @@ func _normalize_stock_dict(d: Dictionary) -> Dictionary:
     return out
 
 func _ready() -> void:
+    add_to_group("client")
+    add_to_group("peer_%d" % peer_id)
     set_multiplayer_authority(peer_id)
     if use_simple_ai:
         brain = load("res://scripts/brains/SimpleTraderBrain.gd").new()
@@ -59,7 +61,7 @@ func _ready() -> void:
     rpc_id(1, "report_name", pname)
     Logger.log("Client", "Reported name '%s' to server" % pname)
 
-@rpc("authority")
+@rpc("any_peer")
 func push_observation(obs: Dictionary) -> void:
     Logger.log("Client", "peer %d push_observation: %s" % [peer_id, str(obs)])
     if chronicle:
@@ -75,10 +77,11 @@ func push_observation(obs: Dictionary) -> void:
         tabs.set_tab_disabled(2, not in_city) # Trade tab at index 2
     if brain:
         var cmds = brain.think(obs)
+        Logger.log("Client", "peer %d brain returned %d cmds" % [peer_id, cmds.size()])
         for c in cmds:
             rpc_id(1, "cmd", c)
 
-@rpc("authority")
+@rpc("any_peer")
 func push_log(msg:String) -> void:
     if chronicle:
         chronicle.add_log_entry(msg)
@@ -86,11 +89,11 @@ func push_log(msg:String) -> void:
     if game != null and game.has_method("_on_log"):
         game._on_log(msg)
 
-@rpc("authority")
+@rpc("any_peer")
 func ping(msg: String) -> void:
     Logger.log("Client", "Received ping: %s" % msg)
 
-@rpc("authority")
+@rpc("any_peer")
 func push_snapshot(snapshot:Dictionary) -> void:
     # Update local state from server snapshot
     var players: Dictionary = snapshot.get("players", {})

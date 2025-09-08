@@ -5,6 +5,9 @@ const Logger = preload("res://scripts/Logger.gd")
 func _init() -> void:
     print("Module Orders loaded")
 
+func _ready() -> void:
+    set_multiplayer_authority(1)
+
 func _is_server() -> bool:
     return get_tree() != null and get_tree().get_multiplayer().is_server()
 

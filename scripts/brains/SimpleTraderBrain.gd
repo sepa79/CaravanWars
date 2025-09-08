@@ -11,6 +11,7 @@ func _init() -> void:
 func think(observation:Dictionary) -> Array[Dictionary]:
     var cmds:Array[Dictionary] = []
     var self_id:int = observation.get("self_id", 0)
+    Logger.log("SimpleTraderBrain", "Received observation for peer %d" % self_id)
     var markets:Dictionary = observation.get("markets", {})
     var owned_convoys:Array[Dictionary] = []
     for entity in observation.get("entities", []):
