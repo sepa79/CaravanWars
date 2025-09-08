@@ -6,10 +6,18 @@ extends Control
 @onready var not_available_panel: Panel = $NotAvailable
 @onready var not_available_label: Label = $NotAvailable/Label
 @onready var version_label: Label = $Version
+@onready var connecting_ui: Control = preload("res://scenes/Connecting.tscn").instantiate()
+
+func _log(msg: String) -> void:
+    print("[StartMenu] %s" % msg)
 
 func _ready() -> void:
     I18N.language_changed.connect(update_texts)
+    Net.state_changed.connect(_on_net_state_changed)
+    add_child(connecting_ui)
     update_texts()
+    main_menu.get_node("Multiplayer").grab_focus()
+    _log("ready")
 
 func update_texts() -> void:
     title_label.text = I18N.t("menu.title")
@@ -27,38 +35,58 @@ func update_texts() -> void:
     version_label.text = "%s %s\n%s %s" % [I18N.t("menu.version"), ProjectSettings.get_setting("application/config/version"), I18N.t("menu.build_type"), build_type]
 
 func _on_single_player_pressed() -> void:
-    show_not_available()
+    _log("single player pressed")
+    Net.start_singleplayer()
 
 func _on_multiplayer_pressed() -> void:
+    _log("multiplayer pressed")
     main_menu.visible = false
     multiplayer_menu.visible = true
     not_available_panel.visible = false
     multiplayer_menu.get_node("Host").grab_focus()
 
 func _on_settings_pressed() -> void:
+    _log("settings pressed")
     show_not_available()
 
 func _on_language_pressed() -> void:
+    _log("language pressed")
     I18N.toggle_language()
 
 func _on_quit_pressed() -> void:
+    _log("quit pressed")
     get_tree().quit()
 
 func _on_host_pressed() -> void:
-    show_not_available()
+    _log("host pressed")
+    Net.start_host()
 
 func _on_join_pressed() -> void:
-    show_not_available()
+    _log("join pressed")
+    Net.start_join("")
 
 func _on_back_pressed() -> void:
+    _log("back pressed")
     multiplayer_menu.visible = false
     main_menu.visible = true
     not_available_panel.visible = false
     main_menu.get_node("Multiplayer").grab_focus()
 
 func show_not_available() -> void:
+    _log("show_not_available")
     not_available_panel.visible = true
 
 func _unhandled_input(event: InputEvent) -> void:
     if event.is_action_pressed("ui_cancel") and multiplayer_menu.visible:
         _on_back_pressed()
+
+func _on_net_state_changed(state: String) -> void:
+    _log("Net state changed to %s" % state)
+    if state == Net.STATE_MENU:
+        main_menu.visible = true
+        multiplayer_menu.visible = false
+        main_menu.get_node("Multiplayer").grab_focus()
+    else:
+        main_menu.visible = false
+        multiplayer_menu.visible = false
+        not_available_panel.visible = false

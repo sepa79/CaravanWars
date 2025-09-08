@@ -9,6 +9,13 @@ RULES_ALWAYS_READ — twarde zasady
 - Katalogi: `lower_snake_case` (np. `net`, `map`, `systems`, `autoload`, `ui`).
 - Sceny i skrypty: `PascalCase.tscn` / `PascalCase.gd`; klasy w PascalCase.
 - Zmienne/funkcje w GDScript: `lower_snake_case`.
+- Nie używaj nazw zmiennych kolidujących z metodami wbudowanymi Godota (shadowing). Unikaj m.in.:
+  - `show`, `hide`
+  - `ready`, `process`, `physics_process`
+  - `input`, `unhandled_input`
+  - `enter_tree`, `exit_tree`
+  - `duplicate`, `free`, `queue_free`
+  - `update`, `draw`, `play`, `stop`
 - Autoloady (nazwy singletonów): `App`, `I18N`, `Net`, `World`, później `Debug`, `Ai`.
 
 3) I18N (obowiązkowe)

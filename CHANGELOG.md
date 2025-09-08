@@ -1,5 +1,18 @@
 Changelog
 
+0.1.5 — 2025-09-08
+Added
+- Net autoload with basic run-mode state machine.
+- Start menu hooks for single-player and multiplayer run modes.
+- Connecting UI scene for connection feedback.
+- Naming guideline to avoid variable names shadowing Godot built-in methods.
+- Networking and common UI translations.
+- Logging to confirm menu actions and network state transitions.
+Fixed
+- Avoided shadowed variable warning in connecting UI.
+- Corrected invalid indent rules in `.editorconfig`.
+- Default focus in start menu ensures keyboard navigation works without mouse.
+
 0.1.4 — 2025-09-08
 Added
 - Start menu with runtime language toggle and i18n resources.
