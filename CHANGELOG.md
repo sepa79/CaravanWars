@@ -6,8 +6,10 @@ Added
 - Start menu hooks for single-player and multiplayer run modes.
 - Connecting UI scene for connection feedback.
 - Naming guideline to avoid variable names shadowing Godot built-in methods.
+- Networking and common UI translations.
 Fixed
 - Avoided shadowed variable warning in connecting UI.
+- Corrected invalid indent rules in `.editorconfig`.
 
 0.1.4 — 2025-09-08
 Added

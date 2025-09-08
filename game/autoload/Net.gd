@@ -21,20 +21,23 @@ func _set_state(new_state: String) -> void:
 func start_singleplayer() -> void:
     last_action = start_singleplayer
     _set_state(STATE_CONNECTING_STARTING_HOST)
-    # TODO: implement single-player host and join logic
-    _set_state(STATE_READY)
+    get_tree().create_timer(0.5).timeout.connect(func():
+        _set_state(STATE_READY)
+    )
 
 func start_host() -> void:
     last_action = start_host
     _set_state(STATE_CONNECTING_STARTING_HOST)
-    # TODO: implement hosting logic
-    _set_state(STATE_READY)
+    get_tree().create_timer(0.5).timeout.connect(func():
+        _set_state(STATE_READY)
+    )
 
 func start_join(address: String) -> void:
     last_action = func() -> void: start_join(address)
     _set_state(STATE_CONNECTING_JOINING_HOST)
-    # TODO: implement joining logic
-    _set_state(STATE_READY)
+    get_tree().create_timer(0.5).timeout.connect(func():
+        _set_state(STATE_READY)
+    )
 
 func retry() -> void:
     if last_action == null:

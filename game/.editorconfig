@@ -4,22 +4,22 @@ root = true
 # Default: use space for indentation
 [*]
 indent_style = space
-indent_size = space
+indent_size = 4
 tab_width = 4
 insert_final_newline = true
 
 # Godot scripts and resources
 [*.gd]
 indent_style = space
-indent_size = space
+indent_size = 4
 
 [*.tscn]
 indent_style = space
-indent_size = space
+indent_size = 4
 
 [*.tres]
 indent_style = space
-indent_size = space
+indent_size = 4
 
 # Batch and text
 [*.bat]
