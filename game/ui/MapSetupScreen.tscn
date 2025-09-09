@@ -83,6 +83,9 @@ button_pressed = true
 [node name="ShowCrossings" type="CheckBox" parent="VBox/Layers"]
 button_pressed = false
 
+[node name="ShowRegions" type="CheckBox" parent="VBox/Layers"]
+button_pressed = true
+
 [node name="Buttons" type="HBoxContainer" parent="VBox"]
 size_flags_horizontal = 3
 

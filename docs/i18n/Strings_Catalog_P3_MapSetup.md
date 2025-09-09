@@ -12,3 +12,4 @@ Namespace `setup.*`
 | setup.rivers  | Rivers      | Rzeki            | number of rivers |
 | setup.min_connections | Min Connections | Min. połączeń | minimum road connections |
 | setup.max_connections | Max Connections | Maks. połączeń | maximum road connections |
+| setup.show_regions | Show Regions | Pokaż regiony | toggle region overlay |

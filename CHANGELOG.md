@@ -1,5 +1,9 @@
 Changelog
 
+0.1.18 — 2025-09-09
+Added
+- Toggle to show or hide regions in map setup screen.
+
 0.1.17 — 2025-09-09
 Removed
 - Map node count parameter and UI from map setup.
