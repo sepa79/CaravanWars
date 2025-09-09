@@ -10,9 +10,14 @@ func _init(_rng: RandomNumberGenerator) -> void:
     rng = _rng
 
 ## Builds primary trade routes between cities.
-## Pipeline: Delaunay triangulation → MST → k-nearest edges.
+## Pipeline: Delaunay triangulation → MST → per-city k-nearest edges.
 ## Villages are inserted every `village_spacing` units; a fort is placed near the center.
-func build_roads(cities: Array[Vector2], k: int = 2, village_spacing: float = 25.0) -> Dictionary:
+func build_roads(
+    cities: Array[Vector2],
+    min_connections: int = 1,
+    max_connections: int = 3,
+    village_spacing: float = 25.0
+) -> Dictionary:
     var nodes: Dictionary = {}
     var edges: Dictionary = {}
     var node_id: int = 1
@@ -31,6 +36,12 @@ func build_roads(cities: Array[Vector2], k: int = 2, village_spacing: float = 25
     for e in mst_edges:
         final_edge_set[_pair_key(e.x, e.y)] = e
 
+    min_connections = clamp(min_connections, 1, cities.size() - 1)
+    max_connections = clamp(max_connections, min_connections, cities.size() - 1)
+    var k_values: Array[int] = []
+    for _city in cities:
+        k_values.append(rng.randi_range(min_connections, max_connections))
+
     for i in range(cities.size()):
         var distances: Array = []
         for j in range(cities.size()):
@@ -38,7 +49,8 @@ func build_roads(cities: Array[Vector2], k: int = 2, village_spacing: float = 25
                 continue
             distances.append({"index": j, "dist": cities[i].distance_to(cities[j])})
         distances.sort_custom(func(a, b): return a["dist"] < b["dist"])
-        for n in range(min(k, distances.size())):
+        var k_i: int = k_values[i]
+        for n in range(min(k_i, distances.size())):
             var j: int = distances[n]["index"]
             final_edge_set[_pair_key(i, j)] = Vector2i(i, j)
 

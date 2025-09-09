@@ -1,5 +1,9 @@
 Changelog
 
+0.1.16 — 2025-09-09
+Added
+- Variable road connections per city supporting min/max connection bounds.
+
 0.1.15 — 2025-09-09
 Added
 - Mouse wheel zoom and drag panning in map view with configurable limits.
