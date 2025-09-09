@@ -6,7 +6,7 @@ var rng: RandomNumberGenerator
 
 const CityPlacerModule = preload("res://map/CityPlacer.gd")
 const RoadNetworkModule = preload("res://map/RoadNetwork.gd")
-const RiverGeneratorModule = preload("res://map/RiverGenerator.gd")
+const RiverGeneratorModule: Script = preload("res://map/RiverGenerator.gd")
 
 func _init(_seed: int) -> void:
     world_seed = _seed
@@ -23,8 +23,8 @@ func generate() -> Dictionary:
     var roads := road_stage.build_roads(cities)
     map_data["roads"] = roads
 
-    var river_stage := RiverGeneratorModule.new(rng)
-    var rivers := river_stage.generate_rivers()
+    var river_stage: RiverGenerator = RiverGeneratorModule.new(rng)
+    var rivers: Array = river_stage.generate_rivers(roads)
     map_data["rivers"] = rivers
 
     return map_data
