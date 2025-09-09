@@ -1,5 +1,9 @@
 Changelog
 
+0.1.9 — 2025-09-08
+Fixed
+- Corrected river-road intersection detection using `segment_intersects_segment`.
+
 0.1.8 — 2025-09-08
 Fixed
 - Replaced `?:` ternary with `if/else` in river generation and documented prohibition.
