@@ -1,5 +1,10 @@
 Changelog
 
+0.1.10 — 2025-09-08
+Added
+- Validation utilities for road connectivity, dangling edges and river intersections.
+- Manual map-generation checklist.
+
 0.1.9 — 2025-09-08
 Fixed
 - Corrected river-road intersection detection using `segment_intersects_segment`.
