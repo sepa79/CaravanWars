@@ -12,17 +12,17 @@ class MapView:
     func _draw() -> void:
         if map_data.is_empty():
             return
-        var scale: float = min(size.x / CityPlacerModule.WIDTH, size.y / CityPlacerModule.HEIGHT)
+        var map_scale: float = min(size.x / CityPlacerModule.WIDTH, size.y / CityPlacerModule.HEIGHT)
         var roads: Dictionary = map_data.get("roads", {})
         for edge in roads.get("edges", {}).values():
             var pts: PackedVector2Array = edge.polyline
             for i in range(pts.size() - 1):
-                draw_line(pts[i] * scale, pts[i + 1] * scale, Color.WHITE, 1.0)
+                draw_line(pts[i] * map_scale, pts[i + 1] * map_scale, Color.WHITE, 1.0)
         for river in map_data.get("rivers", []):
             for i in range(river.size() - 1):
-                draw_line(river[i] * scale, river[i + 1] * scale, Color.BLUE, 1.0)
+                draw_line(river[i] * map_scale, river[i + 1] * map_scale, Color.BLUE, 1.0)
         for city in map_data.get("cities", []):
-            draw_circle(city * scale, 2.0, Color.RED)
+            draw_circle(city * map_scale, 2.0, Color.RED)
 
 @onready var title_label: Label = $VBox/Title
 @onready var map_view: MapView = $VBox/MapView
@@ -53,8 +53,8 @@ func _update_texts() -> void:
     back_button.text = I18N.t("menu.back")
 
 func _generate_map() -> void:
-    var seed := Time.get_ticks_msec()
-    var generator := MapGeneratorModule.new(seed)
+    var map_seed: int = Time.get_ticks_msec()
+    var generator := MapGeneratorModule.new(map_seed)
     current_map = generator.generate()
     map_view.set_map_data(current_map)
 
