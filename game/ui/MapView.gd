@@ -13,6 +13,7 @@ var show_roads: bool = true
 var show_rivers: bool = true
 var show_cities: bool = true
 var show_crossings: bool = false
+var show_regions: bool = true
 
 func set_map_data(data: Dictionary) -> void:
     map_data = data
@@ -60,6 +61,23 @@ func _draw() -> void:
     var base_scale: float = _base_scale()
     var draw_scale: float = base_scale * zoom_level
     var offset: Vector2 = _base_offset(base_scale) - pan_offset * draw_scale
+    var regions: Dictionary = map_data.get("regions", {})
+    if show_regions:
+        for region in regions.values():
+            var pts := PackedVector2Array()
+            for p in region.boundary_nodes:
+                pts.append(p * draw_scale + offset)
+            if pts.size() >= 3:
+                var base_color := Color.from_hsv(hash(region.id) % 360 / 360.0, 0.6, 0.8)
+                var fill_color: Color = base_color
+                fill_color.a = 0.3
+                var outline_color: Color = base_color
+                outline_color.a = 0.8
+                draw_polygon(pts, PackedColorArray([fill_color]))
+                for i in range(pts.size()):
+                    var a: Vector2 = pts[i]
+                    var b: Vector2 = pts[(i + 1) % pts.size()]
+                    draw_line(a, b, outline_color, 1.0)
     var roads: Dictionary = map_data.get("roads", {})
     if show_roads:
         for edge in roads.get("edges", {}).values():
@@ -95,4 +113,8 @@ func set_show_cities(value: bool) -> void:
 
 func set_show_crossings(value: bool) -> void:
     show_crossings = value
+    queue_redraw()
+
+func set_show_regions(value: bool) -> void:
+    show_regions = value
     queue_redraw()
