@@ -5,6 +5,7 @@ Added
 - Map setup screen to preview generated maps and handle start flow.
 Fixed
 - Explicit polyline type in map setup screen to satisfy typed GDScript.
+- Casted map view node to its script class to avoid Control assignment error.
 - Renamed shadowed `scale` and `seed` variables and documented them as unsafe names.
 
 0.1.10 — 2025-09-08

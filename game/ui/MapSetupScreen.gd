@@ -25,7 +25,7 @@ class MapView:
             draw_circle(city * map_scale, 2.0, Color.RED)
 
 @onready var title_label: Label = $VBox/Title
-@onready var map_view: MapView = $VBox/MapView
+@onready var map_view: MapView = $VBox/MapView as MapView
 @onready var generate_button: Button = $VBox/Buttons/Generate
 @onready var start_button: Button = $VBox/Buttons/Start
 @onready var back_button: Button = $VBox/Buttons/Back
