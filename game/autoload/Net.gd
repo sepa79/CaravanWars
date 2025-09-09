@@ -13,6 +13,7 @@ const STATE_FAILED := "FAILED"
 var state: String = STATE_MENU
 var last_action: Callable = func() -> void: pass
 var fail_reason: String = ""
+var run_mode: String = ""
 
 func _log(msg: String) -> void:
     print("[Net] %s" % msg)

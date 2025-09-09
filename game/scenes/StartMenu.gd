@@ -36,7 +36,8 @@ func update_texts() -> void:
 
 func _on_single_player_pressed() -> void:
     _log("single player pressed")
-    Net.start_singleplayer()
+    Net.run_mode = "single"
+    App.goto_scene("res://ui/MapSetupScreen.tscn")
 
 func _on_multiplayer_pressed() -> void:
     _log("multiplayer pressed")
@@ -59,7 +60,8 @@ func _on_quit_pressed() -> void:
 
 func _on_host_pressed() -> void:
     _log("host pressed")
-    Net.start_host()
+    Net.run_mode = "host"
+    App.goto_scene("res://ui/MapSetupScreen.tscn")
 
 func _on_join_pressed() -> void:
     _log("join pressed")
