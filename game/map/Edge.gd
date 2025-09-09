@@ -7,7 +7,7 @@ var polyline: Array[Vector2]
 var endpoints: Array[int]
 var attrs: Dictionary
 
-func _init(_id: int, _type: String, _polyline: Array, _endpoints: Array, _attrs: Dictionary = {}) -> void:
+func _init(_id: int, _type: String, _polyline: Array[Vector2], _endpoints: Array[int], _attrs: Dictionary = {}) -> void:
     id = _id
     type = _type
     polyline = _polyline
