@@ -7,8 +7,6 @@ set "DST_DIR=C:\Users\Sepa\Documents\GoDot\CaravanWars"
 set "SRC_DIR=%CD%"
 :: -------------
 
-echo [CaravanWars] Kill -> Clean -> Copy -> Import (Editor)
-
 :: 0) ubij wszystkie poprzednie sesje Godota (editor / gra)
 for %%P in (Godot_v4.4.1-stable_win64.exe godot4.exe Godot.exe) do (
   taskkill /F /IM "%%P" >nul 2>&1
