@@ -20,7 +20,6 @@ size_flags_vertical = 3
 columns = 2
 
 [node name="SeedLabel" type="Label" parent="VBox/Params"]
-text = "Seed"
 
 [node name="Seed" type="SpinBox" parent="VBox/Params"]
 min_value = 0.0
@@ -28,7 +27,6 @@ max_value = 1.0e+09
 step = 1.0
 
 [node name="NodesLabel" type="Label" parent="VBox/Params"]
-text = "Nodes"
 
 [node name="Nodes" type="SpinBox" parent="VBox/Params"]
 min_value = 1.0
@@ -37,7 +35,6 @@ step = 1.0
 value = 2.0
 
 [node name="CitiesLabel" type="Label" parent="VBox/Params"]
-text = "Cities"
 
 [node name="Cities" type="SpinBox" parent="VBox/Params"]
 min_value = 1.0
@@ -46,7 +43,6 @@ step = 1.0
 value = 3.0
 
 [node name="RiversLabel" type="Label" parent="VBox/Params"]
-text = "Rivers"
 
 [node name="Rivers" type="SpinBox" parent="VBox/Params"]
 min_value = 0.0
