@@ -21,10 +21,14 @@ columns = 2
 
 [node name="SeedLabel" type="Label" parent="VBox/Params"]
 
-[node name="Seed" type="SpinBox" parent="VBox/Params"]
+[node name="SeedRow" type="HBoxContainer" parent="VBox/Params"]
+
+[node name="Seed" type="SpinBox" parent="VBox/Params/SeedRow"]
 min_value = 0.0
 max_value = 1.0e+09
 step = 1.0
+
+[node name="RandomSeed" type="Button" parent="VBox/Params/SeedRow"]
 
 [node name="NodesLabel" type="Label" parent="VBox/Params"]
 
@@ -58,8 +62,6 @@ script = ExtResource(2)
 
 [node name="Buttons" type="HBoxContainer" parent="VBox"]
 size_flags_horizontal = 3
-
-[node name="Generate" type="Button" parent="VBox/Buttons"]
 
 [node name="Start" type="Button" parent="VBox/Buttons"]
 

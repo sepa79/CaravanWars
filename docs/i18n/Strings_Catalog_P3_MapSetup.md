@@ -5,7 +5,7 @@ Namespace `setup.*`
 | key           | en          | pl               | note |
 |---------------|-------------|------------------|------|
 | setup.title   | Map Setup   | Ustawienia mapy  | screen title |
-| setup.generate| Generate    | Generuj          | regenerate map |
+| setup.random_seed | Random Seed | Losowe ziarno | assign random seed |
 | setup.start   | Start       | Start            | begin game |
 | setup.seed    | Seed        | Ziarno           | random seed |
 | setup.nodes   | Nodes       | Węzły            | number of nodes |
