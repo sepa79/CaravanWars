@@ -94,6 +94,14 @@ func _generate_map() -> void:
         seed_spin.set_block_signals(true)
         seed_spin.value = params.rng_seed
         seed_spin.set_block_signals(false)
+    if min_connections_spin.value != params.min_connections:
+        min_connections_spin.set_block_signals(true)
+        min_connections_spin.value = params.min_connections
+        min_connections_spin.set_block_signals(false)
+    if max_connections_spin.value != params.max_connections:
+        max_connections_spin.set_block_signals(true)
+        max_connections_spin.value = params.max_connections
+        max_connections_spin.set_block_signals(false)
     var generator := MapGeneratorModule.new(params)
     current_map = generator.generate()
     map_view.set_map_data(current_map)
