@@ -13,6 +13,9 @@ const MapGeneratorModule = preload("res://map/MapGenerator.gd")
 @onready var rivers_label: Label = $VBox/Params/RiversLabel
 @onready var rivers_spin: SpinBox = $VBox/Params/Rivers
 @onready var map_view: MapView = $VBox/MapView
+@onready var show_roads_check: CheckBox = $VBox/Layers/ShowRoads
+@onready var show_rivers_check: CheckBox = $VBox/Layers/ShowRivers
+@onready var show_cities_check: CheckBox = $VBox/Layers/ShowCities
 @onready var start_button: Button = $VBox/Buttons/Start
 @onready var back_button: Button = $VBox/Buttons/Back
 @onready var main_ui: VBoxContainer = $VBox
@@ -32,6 +35,12 @@ func _ready() -> void:
     nodes_spin.value_changed.connect(_on_params_changed)
     cities_spin.value_changed.connect(_on_params_changed)
     rivers_spin.value_changed.connect(_on_params_changed)
+    show_roads_check.toggled.connect(_on_show_roads_toggled)
+    show_rivers_check.toggled.connect(_on_show_rivers_toggled)
+    show_cities_check.toggled.connect(_on_show_cities_toggled)
+    map_view.set_show_roads(show_roads_check.button_pressed)
+    map_view.set_show_rivers(show_rivers_check.button_pressed)
+    map_view.set_show_cities(show_cities_check.button_pressed)
     _update_texts()
     _generate_map()
     _on_net_state_changed(Net.state)
@@ -43,6 +52,9 @@ func _update_texts() -> void:
     nodes_label.text = I18N.t("setup.nodes")
     cities_label.text = I18N.t("setup.cities")
     rivers_label.text = I18N.t("setup.rivers")
+    show_roads_check.text = I18N.t("setup.show_roads")
+    show_rivers_check.text = I18N.t("setup.show_rivers")
+    show_cities_check.text = I18N.t("setup.show_cities")
     start_button.text = I18N.t("setup.start")
     back_button.text = I18N.t("menu.back")
 
@@ -63,6 +75,15 @@ func _generate_map() -> void:
 
 func _on_params_changed(_value: float) -> void:
     _generate_map()
+
+func _on_show_roads_toggled(pressed: bool) -> void:
+    map_view.set_show_roads(pressed)
+
+func _on_show_rivers_toggled(pressed: bool) -> void:
+    map_view.set_show_rivers(pressed)
+
+func _on_show_cities_toggled(pressed: bool) -> void:
+    map_view.set_show_cities(pressed)
 
 func _on_random_seed_pressed() -> void:
     seed_spin.set_block_signals(true)
