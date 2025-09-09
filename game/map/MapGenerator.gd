@@ -4,7 +4,6 @@ class_name MapGenerator
 ## Parameter container for map generation.
 class MapGenParams:
     var rng_seed: int
-    var node_count: int
     var city_count: int
     var max_river_count: int
     var min_connections: int
@@ -12,14 +11,12 @@ class MapGenParams:
 
     func _init(
         p_rng_seed: int = 0,
-        p_node_count: int = 2,
         p_city_count: int = 3,
         p_max_river_count: int = 1,
         p_min_connections: int = 1,
         p_max_connections: int = 3
     ) -> void:
         rng_seed = p_rng_seed if p_rng_seed != 0 else Time.get_ticks_msec()
-        node_count = p_node_count
         city_count = p_city_count
         max_river_count = p_max_river_count
         min_connections = p_min_connections

@@ -1,5 +1,9 @@
 Changelog
 
+0.1.17 — 2025-09-09
+Removed
+- Map node count parameter and UI from map setup.
+
 0.1.16 — 2025-09-09
 Added
 - Variable road connections per city supporting min/max connection bounds.
