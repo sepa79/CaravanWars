@@ -12,7 +12,7 @@ class MapView:
     func _draw() -> void:
         if map_data.is_empty():
             return
-        var scale := min(size.x / CityPlacerModule.WIDTH, size.y / CityPlacerModule.HEIGHT)
+        var scale: float = min(size.x / CityPlacerModule.WIDTH, size.y / CityPlacerModule.HEIGHT)
         var roads: Dictionary = map_data.get("roads", {})
         for edge in roads.get("edges", {}).values():
             var pts: PackedVector2Array = edge.polyline
