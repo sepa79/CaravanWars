@@ -62,6 +62,14 @@ max_value = 10.0
 step = 1.0
 value = 3.0
 
+[node name="CrossingMarginLabel" type="Label" parent="VBox/Params"]
+
+[node name="CrossingMargin" type="SpinBox" parent="VBox/Params"]
+min_value = 0.0
+max_value = 50.0
+step = 0.5
+value = 5.0
+
 [node name="MapView" type="Control" parent="VBox"]
 custom_minimum_size = Vector2(400, 300)
 size_flags_horizontal = 3
