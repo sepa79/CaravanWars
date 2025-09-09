@@ -1,5 +1,9 @@
 Changelog
 
+0.1.12 — 2025-09-09
+Added
+- Documented map setup preview flow and manual test checklist.
+
 0.1.11 — 2025-09-08
 Added
 - Map setup screen to preview generated maps and handle start flow.

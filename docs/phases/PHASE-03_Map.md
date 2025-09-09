@@ -3,6 +3,11 @@ PHASE‑03 — Map (vector; seeded; validations)
 Cel:
 - Opisać deterministyczny pipeline generacji wektorowej mapy wraz z walidacjami i modelem danych.
 
+Map-setup flow:
+- Podgląd mapy pojawia się przed stanami READY i GAME.
+- Zmiana parametrów (seed, rozmiar itp.) natychmiast aktualizuje podgląd.
+- **Start** zatwierdza mapę i przechodzi do gry; **Back** wraca do MENU.
+
 Pipeline szczegółowy:
 1) Rozmieszczenie miast: rozstaw punkty zgodnie z „blue‑noise” (np. Poisson‑like) z minimalną odległością między miastami.  
 2) Połączenia główne: oblicz połączenia kandydujące (np. triangulacja/Delaunay), zredukuj do MST dla spójności, następnie dodaj k‑najbliższych sąsiadów dla alternatyw (k=1..2).  
@@ -13,7 +18,7 @@ Pipeline szczegółowy:
 7) Walidacje: spójność grafu dróg, brak krawędzi „wiszących”, rzeki nie tną dróg bez węzła mostu/brodu, stabilne ID.
 
 Implementacja walidacji: `game/map/MapValidator.gd`.
-Manualne testy: `docs/checks/Map_Generation_Checklist.md`.
+Manualne testy: `docs/checks/Map_Generation_Checklist.md` oraz `docs/checks/Map_Setup_Checklist.md`.
 
 Model danych — patrz `docs/specs/Map_Data_Model.md`.
 
