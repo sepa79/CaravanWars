@@ -28,6 +28,7 @@ var rng: RandomNumberGenerator
 const CityPlacerModule = preload("res://map/CityPlacer.gd")
 const RoadNetworkModule = preload("res://map/RoadNetwork.gd")
 const RiverGeneratorModule: Script = preload("res://map/RiverGenerator.gd")
+const RegionGeneratorModule: Script = preload("res://map/RegionGenerator.gd")
 
 func _init(_params: MapGenParams = MapGenParams.new()) -> void:
     params = _params
@@ -40,11 +41,15 @@ func generate() -> Dictionary:
     var cities := city_stage.place_cities(params.city_count)
     map_data["cities"] = cities
 
+    var region_stage = RegionGeneratorModule.new()
+    var regions: Dictionary = region_stage.generate_regions(cities)
+    map_data["regions"] = regions
+
     var road_stage := RoadNetworkModule.new(rng)
     var roads := road_stage.build_roads(cities, params.min_connections, params.max_connections)
     map_data["roads"] = roads
 
-    var river_stage: RiverGenerator = RiverGeneratorModule.new(rng)
+    var river_stage = RiverGeneratorModule.new(rng)
     var rivers: Array = river_stage.generate_rivers(roads, params.max_river_count)
     map_data["rivers"] = rivers
 
