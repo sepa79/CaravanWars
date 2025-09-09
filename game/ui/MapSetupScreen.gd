@@ -3,6 +3,10 @@ extends Control
 const MapGeneratorModule = preload("res://map/MapGenerator.gd")
 
 @onready var title_label: Label = $VBox/Title
+@onready var seed_spin: SpinBox = $VBox/Params/Seed
+@onready var nodes_spin: SpinBox = $VBox/Params/Nodes
+@onready var cities_spin: SpinBox = $VBox/Params/Cities
+@onready var rivers_spin: SpinBox = $VBox/Params/Rivers
 @onready var map_view: MapView = $VBox/MapView
 @onready var generate_button: Button = $VBox/Buttons/Generate
 @onready var start_button: Button = $VBox/Buttons/Start
@@ -20,6 +24,10 @@ func _ready() -> void:
     generate_button.pressed.connect(_on_generate_pressed)
     start_button.pressed.connect(_on_start_pressed)
     back_button.pressed.connect(_on_back_pressed)
+    seed_spin.value_changed.connect(_on_params_changed)
+    nodes_spin.value_changed.connect(_on_params_changed)
+    cities_spin.value_changed.connect(_on_params_changed)
+    rivers_spin.value_changed.connect(_on_params_changed)
     _update_texts()
     _generate_map()
     _on_net_state_changed(Net.state)
@@ -31,12 +39,24 @@ func _update_texts() -> void:
     back_button.text = I18N.t("menu.back")
 
 func _generate_map() -> void:
-    var map_seed: int = Time.get_ticks_msec()
-    var generator := MapGeneratorModule.new(map_seed)
+    var params := MapGeneratorModule.MapGenParams.new(
+        int(seed_spin.value),
+        int(nodes_spin.value),
+        int(cities_spin.value),
+        int(rivers_spin.value)
+    )
+    if seed_spin.value != params.seed:
+        seed_spin.set_block_signals(true)
+        seed_spin.value = params.seed
+        seed_spin.set_block_signals(false)
+    var generator := MapGeneratorModule.new(params)
     current_map = generator.generate()
     map_view.set_map_data(current_map)
 
 func _on_generate_pressed() -> void:
+    _generate_map()
+
+func _on_params_changed(_value: float) -> void:
     _generate_map()
 
 func _on_start_pressed() -> void:
