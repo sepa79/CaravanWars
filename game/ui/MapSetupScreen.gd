@@ -3,9 +3,13 @@ extends Control
 const MapGeneratorModule = preload("res://map/MapGenerator.gd")
 
 @onready var title_label: Label = $VBox/Title
+@onready var seed_label: Label = $VBox/Params/SeedLabel
 @onready var seed_spin: SpinBox = $VBox/Params/Seed
+@onready var nodes_label: Label = $VBox/Params/NodesLabel
 @onready var nodes_spin: SpinBox = $VBox/Params/Nodes
+@onready var cities_label: Label = $VBox/Params/CitiesLabel
 @onready var cities_spin: SpinBox = $VBox/Params/Cities
+@onready var rivers_label: Label = $VBox/Params/RiversLabel
 @onready var rivers_spin: SpinBox = $VBox/Params/Rivers
 @onready var map_view: MapView = $VBox/MapView
 @onready var generate_button: Button = $VBox/Buttons/Generate
@@ -34,6 +38,10 @@ func _ready() -> void:
 
 func _update_texts() -> void:
     title_label.text = I18N.t("setup.title")
+    seed_label.text = I18N.t("setup.seed")
+    nodes_label.text = I18N.t("setup.nodes")
+    cities_label.text = I18N.t("setup.cities")
+    rivers_label.text = I18N.t("setup.rivers")
     generate_button.text = I18N.t("setup.generate")
     start_button.text = I18N.t("setup.start")
     back_button.text = I18N.t("menu.back")

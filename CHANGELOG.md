@@ -1,5 +1,9 @@
 Changelog
 
+0.1.13 — 2025-09-09
+Added
+- Localized map setup parameter labels for seed, nodes, cities and rivers, removing hardcoded text.
+
 0.1.12 — 2025-09-09
 Added
 - Documented map setup preview flow and manual test checklist.
