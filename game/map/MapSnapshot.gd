@@ -1,15 +1,15 @@
 extends RefCounted
 class_name MapSnapshot
 
-var seed: int
+var rng_seed: int
 var version: String
 var nodes: Dictionary
 var edges: Dictionary
 var regions: Dictionary
 
-func _init(_seed: int, _version: String) -> void:
-    seed = _seed
-    version = _version
+func _init(p_rng_seed: int, p_version: String) -> void:
+    rng_seed = p_rng_seed
+    version = p_version
     nodes = {}
     edges = {}
     regions = {}
@@ -25,7 +25,7 @@ func to_dict() -> Dictionary:
     for region in regions.values():
         region_list.append(region.to_dict())
     return {
-        "meta": {"seed": seed, "version": version},
+        "meta": {"seed": rng_seed, "version": version},
         "nodes": node_list,
         "edges": edge_list,
         "regions": region_list,
@@ -33,7 +33,7 @@ func to_dict() -> Dictionary:
 
 func diff(previous: MapSnapshot) -> Dictionary:
     return {
-        "meta": {"seed": seed, "version": version},
+        "meta": {"seed": rng_seed, "version": version},
         "nodes": _diff_section(nodes, previous.nodes),
         "edges": _diff_section(edges, previous.edges),
         "regions": _diff_section(regions, previous.regions),
