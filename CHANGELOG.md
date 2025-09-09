@@ -1,5 +1,9 @@
 Changelog
 
+0.1.14 — 2025-09-09
+Added
+- Random seed button in map setup screen replacing generate button.
+
 0.1.13 — 2025-09-09
 Added
 - Localized map setup parameter labels for seed, nodes, cities and rivers, removing hardcoded text.
