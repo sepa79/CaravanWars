@@ -91,13 +91,15 @@ func _generate_map() -> void:
         crossing_margin_spin.value
     )
     var max_possible: int = max(1, params.city_count - 1)
-    min_connections_spin.max_value = max_possible
+    var prev_max_possible: int = int(max_connections_spin.max_value)
     max_connections_spin.max_value = max_possible
-    if int(max_connections_spin.value) == params.max_connections and params.max_connections < max_possible:
+    if int(max_connections_spin.value) == prev_max_possible and prev_max_possible < max_possible:
         params.max_connections = max_possible
         max_connections_spin.set_block_signals(true)
         max_connections_spin.value = params.max_connections
         max_connections_spin.set_block_signals(false)
+    max_connections_spin.min_value = params.min_connections
+    min_connections_spin.max_value = params.max_connections
     if seed_spin.value != params.rng_seed:
         seed_spin.set_block_signals(true)
         seed_spin.value = params.rng_seed
