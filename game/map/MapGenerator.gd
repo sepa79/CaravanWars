@@ -3,16 +3,16 @@ class_name MapGenerator
 
 ## Parameter container for map generation.
 class MapGenParams:
-    var seed: int
+    var rng_seed: int
     var node_count: int
     var city_count: int
     var max_river_count: int
 
-    func _init(seed: int = 0, node_count: int = 2, city_count: int = 3, max_river_count: int = 1) -> void:
-        self.seed = seed if seed != 0 else Time.get_ticks_msec()
-        self.node_count = node_count
-        self.city_count = city_count
-        self.max_river_count = max_river_count
+    func _init(p_rng_seed: int = 0, p_node_count: int = 2, p_city_count: int = 3, p_max_river_count: int = 1) -> void:
+        rng_seed = p_rng_seed if p_rng_seed != 0 else Time.get_ticks_msec()
+        node_count = p_node_count
+        city_count = p_city_count
+        max_river_count = p_max_river_count
 
 var params: MapGenParams
 var rng: RandomNumberGenerator
@@ -24,7 +24,7 @@ const RiverGeneratorModule: Script = preload("res://map/RiverGenerator.gd")
 func _init(_params: MapGenParams = MapGenParams.new()) -> void:
     params = _params
     rng = RandomNumberGenerator.new()
-    rng.seed = params.seed
+    rng.seed = params.rng_seed
 
 func generate() -> Dictionary:
     var map_data: Dictionary = {}

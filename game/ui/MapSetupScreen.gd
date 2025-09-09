@@ -45,9 +45,9 @@ func _generate_map() -> void:
         int(cities_spin.value),
         int(rivers_spin.value)
     )
-    if seed_spin.value != params.seed:
+    if seed_spin.value != params.rng_seed:
         seed_spin.set_block_signals(true)
-        seed_spin.value = params.seed
+        seed_spin.value = params.rng_seed
         seed_spin.set_block_signals(false)
     var generator := MapGeneratorModule.new(params)
     current_map = generator.generate()
