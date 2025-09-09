@@ -60,6 +60,18 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource(2)
 
+[node name="Layers" type="HBoxContainer" parent="VBox"]
+size_flags_horizontal = 3
+
+[node name="ShowRoads" type="CheckBox" parent="VBox/Layers"]
+button_pressed = true
+
+[node name="ShowRivers" type="CheckBox" parent="VBox/Layers"]
+button_pressed = true
+
+[node name="ShowCities" type="CheckBox" parent="VBox/Layers"]
+button_pressed = true
+
 [node name="Buttons" type="HBoxContainer" parent="VBox"]
 size_flags_horizontal = 3
 

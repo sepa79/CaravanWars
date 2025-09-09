@@ -9,6 +9,9 @@ var map_data: Dictionary = {}
 var zoom_level: float = 1.0
 var pan_offset: Vector2 = Vector2.ZERO
 var dragging: bool = false
+var show_roads: bool = true
+var show_rivers: bool = true
+var show_cities: bool = true
 
 func set_map_data(data: Dictionary) -> void:
     map_data = data
@@ -57,12 +60,27 @@ func _draw() -> void:
     var draw_scale: float = base_scale * zoom_level
     var offset: Vector2 = _base_offset(base_scale) - pan_offset * draw_scale
     var roads: Dictionary = map_data.get("roads", {})
-    for edge in roads.get("edges", {}).values():
-        var pts: PackedVector2Array = edge.polyline
-        for i in range(pts.size() - 1):
-            draw_line(pts[i] * draw_scale + offset, pts[i + 1] * draw_scale + offset, Color.WHITE, 1.0)
-    for river in map_data.get("rivers", []):
-        for i in range(river.size() - 1):
-            draw_line(river[i] * draw_scale + offset, river[i + 1] * draw_scale + offset, Color.BLUE, 1.0)
-    for city in map_data.get("cities", []):
-        draw_circle(city * draw_scale + offset, 2.0, Color.RED)
+    if show_roads:
+        for edge in roads.get("edges", {}).values():
+            var pts: PackedVector2Array = edge.polyline
+            for i in range(pts.size() - 1):
+                draw_line(pts[i] * draw_scale + offset, pts[i + 1] * draw_scale + offset, Color.WHITE, 1.0)
+    if show_rivers:
+        for river in map_data.get("rivers", []):
+            for i in range(river.size() - 1):
+                draw_line(river[i] * draw_scale + offset, river[i + 1] * draw_scale + offset, Color.BLUE, 1.0)
+    if show_cities:
+        for city in map_data.get("cities", []):
+            draw_circle(city * draw_scale + offset, 2.0, Color.RED)
+
+func set_show_roads(value: bool) -> void:
+    show_roads = value
+    queue_redraw()
+
+func set_show_rivers(value: bool) -> void:
+    show_rivers = value
+    queue_redraw()
+
+func set_show_cities(value: bool) -> void:
+    show_cities = value
+    queue_redraw()
