@@ -39,11 +39,7 @@ func build_roads(
 
     var max_possible: int = cities.size() - 1
     min_connections = clamp(min_connections, 1, max_possible)
-    max_connections = clamp(max_connections, 1, max_possible)
-    if min_connections > max_connections:
-        var tmp: int = min_connections
-        min_connections = max_connections
-        max_connections = tmp
+    max_connections = clamp(max_connections, min_connections, max_possible)
     var k_values: Array[int] = []
     for _city in cities:
         k_values.append(rng.randi_range(min_connections, max_connections))

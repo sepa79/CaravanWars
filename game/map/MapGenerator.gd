@@ -23,11 +23,7 @@ class MapGenParams:
         max_river_count = p_max_river_count
         var max_possible: int = max(1, p_city_count - 1)
         min_connections = clamp(p_min_connections, 1, max_possible)
-        max_connections = clamp(p_max_connections, 1, max_possible)
-        if min_connections > max_connections:
-            var tmp: int = min_connections
-            min_connections = max_connections
-            max_connections = tmp
+        max_connections = clamp(p_max_connections, min_connections, max_possible)
         crossing_detour_margin = p_crossing_detour_margin
 
 var params: MapGenParams
