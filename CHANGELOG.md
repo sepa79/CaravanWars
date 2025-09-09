@@ -7,6 +7,7 @@ Fixed
 - Explicit polyline type in map setup screen to satisfy typed GDScript.
 - Casted map view node to its script class to avoid Control assignment error.
 - Renamed shadowed `scale` and `seed` variables and documented them as unsafe names.
+- Attached dedicated MapView script to prevent nil preview node.
 
 0.1.10 — 2025-09-08
 Added
