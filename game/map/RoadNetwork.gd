@@ -234,7 +234,7 @@ func _prune_crossing_duplicates(nodes: Dictionary, edges: Dictionary, margin: fl
                 if city_edges.has(key):
                     var direct_id: int = city_edges[key]
                     var direct_len: float = nodes[a_id].pos2d.distance_to(nodes[b_id].pos2d)
-                    var crossing_len: float = nodes[a_id].pos2d.distance_to(nodes[cross_id].pos2d) +
+                    var crossing_len: float = nodes[a_id].pos2d.distance_to(nodes[cross_id].pos2d) + \
                         nodes[cross_id].pos2d.distance_to(nodes[b_id].pos2d)
                     if crossing_len - direct_len <= margin:
                         edges.erase(direct_id)
