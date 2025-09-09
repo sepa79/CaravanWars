@@ -1,5 +1,9 @@
 Changelog
 
+0.1.15 — 2025-09-09
+Added
+- Mouse wheel zoom and drag panning in map view with configurable limits.
+
 0.1.14 — 2025-09-09
 Added
 - Random seed button in map setup screen replacing generate button.
