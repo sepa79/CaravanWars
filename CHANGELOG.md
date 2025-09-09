@@ -1,5 +1,11 @@
 Changelog
 
+0.1.11 — 2025-09-08
+Added
+- Map setup screen to preview generated maps and handle start flow.
+Fixed
+- Explicit polyline type in map setup screen to satisfy typed GDScript.
+
 0.1.10 — 2025-09-08
 Added
 - Validation utilities for road connectivity, dangling edges and river intersections.

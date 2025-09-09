@@ -15,7 +15,7 @@ class MapView:
         var scale := min(size.x / CityPlacerModule.WIDTH, size.y / CityPlacerModule.HEIGHT)
         var roads: Dictionary = map_data.get("roads", {})
         for edge in roads.get("edges", {}).values():
-            var pts := edge.polyline
+            var pts: PackedVector2Array = edge.polyline
             for i in range(pts.size() - 1):
                 draw_line(pts[i] * scale, pts[i + 1] * scale, Color.WHITE, 1.0)
         for river in map_data.get("rivers", []):
