@@ -1,5 +1,9 @@
 Changelog
 
+0.1.19 — 2025-09-09
+Added
+- Expanded game design doc with kingdom mechanics and region generation workflow.
+
 0.1.18 — 2025-09-09
 Added
 - Toggle to show or hide regions in map setup screen.
