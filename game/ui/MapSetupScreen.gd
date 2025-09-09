@@ -18,6 +18,7 @@ const MapGeneratorModule = preload("res://map/MapGenerator.gd")
 @onready var show_roads_check: CheckBox = $VBox/Layers/ShowRoads
 @onready var show_rivers_check: CheckBox = $VBox/Layers/ShowRivers
 @onready var show_cities_check: CheckBox = $VBox/Layers/ShowCities
+@onready var show_crossings_check: CheckBox = $VBox/Layers/ShowCrossings
 @onready var start_button: Button = $VBox/Buttons/Start
 @onready var back_button: Button = $VBox/Buttons/Back
 @onready var main_ui: VBoxContainer = $VBox
@@ -47,9 +48,11 @@ func _ready() -> void:
     show_roads_check.toggled.connect(_on_show_roads_toggled)
     show_rivers_check.toggled.connect(_on_show_rivers_toggled)
     show_cities_check.toggled.connect(_on_show_cities_toggled)
+    show_crossings_check.toggled.connect(_on_show_crossings_toggled)
     map_view.set_show_roads(show_roads_check.button_pressed)
     map_view.set_show_rivers(show_rivers_check.button_pressed)
     map_view.set_show_cities(show_cities_check.button_pressed)
+    map_view.set_show_crossings(show_crossings_check.button_pressed)
     _update_texts()
     _generate_map()
     _on_net_state_changed(Net.state)
@@ -65,6 +68,7 @@ func _update_texts() -> void:
     show_roads_check.text = I18N.t("setup.show_roads")
     show_rivers_check.text = I18N.t("setup.show_rivers")
     show_cities_check.text = I18N.t("setup.show_cities")
+    show_crossings_check.text = I18N.t("setup.show_crossings")
     start_button.text = I18N.t("setup.start")
     back_button.text = I18N.t("menu.back")
 
@@ -99,6 +103,9 @@ func _on_show_rivers_toggled(pressed: bool) -> void:
 
 func _on_show_cities_toggled(pressed: bool) -> void:
     map_view.set_show_cities(pressed)
+
+func _on_show_crossings_toggled(pressed: bool) -> void:
+    map_view.set_show_crossings(pressed)
 
 func _on_random_seed_pressed() -> void:
     seed_spin.set_block_signals(true)
