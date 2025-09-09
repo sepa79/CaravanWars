@@ -87,7 +87,10 @@ func _delaunay_edges(points: Array[Vector2]) -> Array[Vector2i]:
         _add_edge(edges_dict, tri[i], tri[i + 1])
         _add_edge(edges_dict, tri[i + 1], tri[i + 2])
         _add_edge(edges_dict, tri[i + 2], tri[i])
-    return edges_dict.values()
+    var result: Array[Vector2i] = []
+    for v in edges_dict.values():
+        result.append(v)
+    return result
 
 func _add_edge(container: Dictionary, a: int, b: int) -> void:
     var key := _pair_key(a, b)
