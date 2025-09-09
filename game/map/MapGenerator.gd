@@ -44,7 +44,7 @@ func generate() -> Dictionary:
     map_data["cities"] = cities
 
     var road_stage := RoadNetworkModule.new(rng)
-    var roads := road_stage.build_roads(cities, params.node_count)
+    var roads := road_stage.build_roads(cities, params.min_connections, params.max_connections)
     map_data["roads"] = roads
 
     var river_stage: RiverGenerator = RiverGeneratorModule.new(rng)
