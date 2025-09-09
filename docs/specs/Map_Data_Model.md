@@ -9,4 +9,5 @@ Elementy:
 Inwarianty:
 - Stabilne ID w trakcie sesji.  
 - Graf dróg spójny między miastami głównymi.  
+- Brak krawędzi wiszących; każda krawędź ma dwa węzły końcowe.
 - Rzeki przecinają drogi tylko w węzłach `bridge` lub `ford`.

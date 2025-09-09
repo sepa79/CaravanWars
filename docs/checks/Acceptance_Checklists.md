@@ -17,6 +17,7 @@ PHASE‑02:
 
 PHASE‑03:
 - Pipeline mapy z walidacjami; snapshot/diff opisane.
+- Manual map generation tests documented in `docs/checks/Map_Generation_Checklist.md`.
 
 PHASE‑04:
 - UI gracza: elementy, interakcje, stany, i18n klucze.

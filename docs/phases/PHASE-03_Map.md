@@ -12,6 +12,9 @@ Pipeline szczegółowy:
 6) Regiony: podziel mapę na regiony (np. przez Voronoi po miastach głównych); regiony przypisz do narratorów.  
 7) Walidacje: spójność grafu dróg, brak krawędzi „wiszących”, rzeki nie tną dróg bez węzła mostu/brodu, stabilne ID.
 
+Implementacja walidacji: `game/map/MapValidator.gd`.
+Manualne testy: `docs/checks/Map_Generation_Checklist.md`.
+
 Model danych — patrz `docs/specs/Map_Data_Model.md`.
 
 Snapshot i diff:
