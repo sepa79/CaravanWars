@@ -18,6 +18,9 @@ func _ready() -> void:
     update_texts()
     main_menu.get_node("Multiplayer").grab_focus()
     _log("ready")
+    if OS.has_environment("CI_AUTO_QUIT"):
+        await get_tree().process_frame
+        _on_quit_pressed()
 
 func update_texts() -> void:
     title_label.text = I18N.t("menu.title")
