@@ -6,8 +6,6 @@ const MapGeneratorModule = preload("res://map/MapGenerator.gd")
 @onready var seed_label: Label = $VBox/Params/SeedLabel
 @onready var seed_spin: SpinBox = $VBox/Params/SeedRow/Seed
 @onready var random_seed_button: Button = $VBox/Params/SeedRow/RandomSeed
-@onready var nodes_label: Label = $VBox/Params/NodesLabel
-@onready var nodes_spin: SpinBox = $VBox/Params/Nodes
 @onready var cities_label: Label = $VBox/Params/CitiesLabel
 @onready var cities_spin: SpinBox = $VBox/Params/Cities
 @onready var rivers_label: Label = $VBox/Params/RiversLabel
@@ -42,7 +40,6 @@ func _ready() -> void:
     start_button.pressed.connect(_on_start_pressed)
     back_button.pressed.connect(_on_back_pressed)
     seed_spin.value_changed.connect(_on_params_changed)
-    nodes_spin.value_changed.connect(_on_params_changed)
     cities_spin.value_changed.connect(_on_params_changed)
     rivers_spin.value_changed.connect(_on_params_changed)
     min_connections_spin.value_changed.connect(_on_params_changed)
@@ -61,7 +58,6 @@ func _update_texts() -> void:
     title_label.text = I18N.t("setup.title")
     seed_label.text = I18N.t("setup.seed")
     random_seed_button.text = I18N.t("setup.random_seed")
-    nodes_label.text = I18N.t("setup.nodes")
     cities_label.text = I18N.t("setup.cities")
     rivers_label.text = I18N.t("setup.rivers")
     min_connections_label.text = I18N.t("setup.min_connections")
@@ -76,7 +72,6 @@ func _generate_map() -> void:
     start_button.disabled = true
     var params := MapGeneratorModule.MapGenParams.new(
         int(seed_spin.value),
-        int(nodes_spin.value),
         int(cities_spin.value),
         int(rivers_spin.value),
         int(min_connections_spin.value),

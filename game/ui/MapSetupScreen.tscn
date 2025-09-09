@@ -30,14 +30,6 @@ step = 1.0
 
 [node name="RandomSeed" type="Button" parent="VBox/Params/SeedRow"]
 
-[node name="NodesLabel" type="Label" parent="VBox/Params"]
-
-[node name="Nodes" type="SpinBox" parent="VBox/Params"]
-min_value = 1.0
-max_value = 10.0
-step = 1.0
-value = 2.0
-
 [node name="CitiesLabel" type="Label" parent="VBox/Params"]
 
 [node name="Cities" type="SpinBox" parent="VBox/Params"]
