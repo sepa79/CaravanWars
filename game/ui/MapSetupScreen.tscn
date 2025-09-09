@@ -54,6 +54,22 @@ max_value = 10.0
 step = 1.0
 value = 1.0
 
+[node name="MinConnectionsLabel" type="Label" parent="VBox/Params"]
+
+[node name="MinConnections" type="SpinBox" parent="VBox/Params"]
+min_value = 1.0
+max_value = 10.0
+step = 1.0
+value = 1.0
+
+[node name="MaxConnectionsLabel" type="Label" parent="VBox/Params"]
+
+[node name="MaxConnections" type="SpinBox" parent="VBox/Params"]
+min_value = 1.0
+max_value = 10.0
+step = 1.0
+value = 3.0
+
 [node name="MapView" type="Control" parent="VBox"]
 custom_minimum_size = Vector2(400, 300)
 size_flags_horizontal = 3

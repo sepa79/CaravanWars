@@ -11,3 +11,5 @@ Namespace `setup.*`
 | setup.nodes   | Nodes       | Węzły            | number of nodes |
 | setup.cities  | Cities      | Miasta           | number of cities |
 | setup.rivers  | Rivers      | Rzeki            | number of rivers |
+| setup.min_connections | Min Connections | Min. połączeń | minimum road connections |
+| setup.max_connections | Max Connections | Maks. połączeń | maximum road connections |

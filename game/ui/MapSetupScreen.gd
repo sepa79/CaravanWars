@@ -12,6 +12,10 @@ const MapGeneratorModule = preload("res://map/MapGenerator.gd")
 @onready var cities_spin: SpinBox = $VBox/Params/Cities
 @onready var rivers_label: Label = $VBox/Params/RiversLabel
 @onready var rivers_spin: SpinBox = $VBox/Params/Rivers
+@onready var min_connections_label: Label = $VBox/Params/MinConnectionsLabel
+@onready var min_connections_spin: SpinBox = $VBox/Params/MinConnections
+@onready var max_connections_label: Label = $VBox/Params/MaxConnectionsLabel
+@onready var max_connections_spin: SpinBox = $VBox/Params/MaxConnections
 @onready var map_view: MapView = $VBox/MapView
 @onready var show_roads_check: CheckBox = $VBox/Layers/ShowRoads
 @onready var show_rivers_check: CheckBox = $VBox/Layers/ShowRivers
@@ -41,6 +45,8 @@ func _ready() -> void:
     nodes_spin.value_changed.connect(_on_params_changed)
     cities_spin.value_changed.connect(_on_params_changed)
     rivers_spin.value_changed.connect(_on_params_changed)
+    min_connections_spin.value_changed.connect(_on_params_changed)
+    max_connections_spin.value_changed.connect(_on_params_changed)
     show_roads_check.toggled.connect(_on_show_roads_toggled)
     show_rivers_check.toggled.connect(_on_show_rivers_toggled)
     show_cities_check.toggled.connect(_on_show_cities_toggled)
@@ -58,6 +64,8 @@ func _update_texts() -> void:
     nodes_label.text = I18N.t("setup.nodes")
     cities_label.text = I18N.t("setup.cities")
     rivers_label.text = I18N.t("setup.rivers")
+    min_connections_label.text = I18N.t("setup.min_connections")
+    max_connections_label.text = I18N.t("setup.max_connections")
     show_roads_check.text = I18N.t("setup.show_roads")
     show_rivers_check.text = I18N.t("setup.show_rivers")
     show_cities_check.text = I18N.t("setup.show_cities")
@@ -70,7 +78,9 @@ func _generate_map() -> void:
         int(seed_spin.value),
         int(nodes_spin.value),
         int(cities_spin.value),
-        int(rivers_spin.value)
+        int(rivers_spin.value),
+        int(min_connections_spin.value),
+        int(max_connections_spin.value)
     )
     if seed_spin.value != params.rng_seed:
         seed_spin.set_block_signals(true)
