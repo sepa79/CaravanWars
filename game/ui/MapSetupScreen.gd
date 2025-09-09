@@ -21,6 +21,8 @@ const MapGeneratorModule = preload("res://map/MapGenerator.gd")
 @onready var main_ui: VBoxContainer = $VBox
 @onready var connecting_ui: Control = preload("res://scenes/Connecting.tscn").instantiate()
 
+var debounce_timer: Timer = Timer.new()
+
 var current_map: Dictionary = {}
 var previous_state: String = Net.state
 
@@ -28,6 +30,10 @@ func _ready() -> void:
     I18N.language_changed.connect(_update_texts)
     Net.state_changed.connect(_on_net_state_changed)
     add_child(connecting_ui)
+    add_child(debounce_timer)
+    debounce_timer.one_shot = true
+    debounce_timer.wait_time = 0.3
+    debounce_timer.timeout.connect(_generate_map)
     random_seed_button.pressed.connect(_on_random_seed_pressed)
     start_button.pressed.connect(_on_start_pressed)
     back_button.pressed.connect(_on_back_pressed)
@@ -59,6 +65,7 @@ func _update_texts() -> void:
     back_button.text = I18N.t("menu.back")
 
 func _generate_map() -> void:
+    start_button.disabled = true
     var params := MapGeneratorModule.MapGenParams.new(
         int(seed_spin.value),
         int(nodes_spin.value),
@@ -72,9 +79,12 @@ func _generate_map() -> void:
     var generator := MapGeneratorModule.new(params)
     current_map = generator.generate()
     map_view.set_map_data(current_map)
+    start_button.disabled = false
 
 func _on_params_changed(_value: float) -> void:
-    _generate_map()
+    start_button.disabled = true
+    debounce_timer.stop()
+    debounce_timer.start()
 
 func _on_show_roads_toggled(pressed: bool) -> void:
     map_view.set_show_roads(pressed)
@@ -90,7 +100,7 @@ func _on_random_seed_pressed() -> void:
     var random_value: int = randi() % int(seed_spin.max_value)
     seed_spin.value = random_value
     seed_spin.set_block_signals(false)
-    _generate_map()
+    _on_params_changed(0.0)
 
 func _on_start_pressed() -> void:
     match Net.run_mode:
