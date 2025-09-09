@@ -3,6 +3,7 @@ Changelog
 0.1.19 — 2025-09-09
 Added
 - Expanded game design doc with kingdom mechanics and region generation workflow.
+- Configurable crossing detour margin with UI and road pruning.
 
 0.1.18 — 2025-09-09
 Added

@@ -8,19 +8,22 @@ class MapGenParams:
     var max_river_count: int
     var min_connections: int
     var max_connections: int
+    var crossing_detour_margin: float
 
     func _init(
         p_rng_seed: int = 0,
         p_city_count: int = 3,
         p_max_river_count: int = 1,
         p_min_connections: int = 1,
-        p_max_connections: int = 3
+        p_max_connections: int = 3,
+        p_crossing_detour_margin: float = 5.0
     ) -> void:
         rng_seed = p_rng_seed if p_rng_seed != 0 else Time.get_ticks_msec()
         city_count = p_city_count
         max_river_count = p_max_river_count
         min_connections = p_min_connections
         max_connections = p_max_connections
+        crossing_detour_margin = p_crossing_detour_margin
 
 var params: MapGenParams
 var rng: RandomNumberGenerator
@@ -46,7 +49,12 @@ func generate() -> Dictionary:
     map_data["regions"] = regions
 
     var road_stage := RoadNetworkModule.new(rng)
-    var roads := road_stage.build_roads(cities, params.min_connections, params.max_connections)
+    var roads := road_stage.build_roads(
+        cities,
+        params.min_connections,
+        params.max_connections,
+        params.crossing_detour_margin
+    )
     map_data["roads"] = roads
 
     var river_stage = RiverGeneratorModule.new(rng)
