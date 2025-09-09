@@ -81,11 +81,12 @@ func build_roads(
         edges[edge_id] = EdgeModule.new(edge_id, "trade_route", [last_node.pos2d, end_node.pos2d], [last_node.id, end_node.id], {})
         edge_id += 1
 
+    var result: Dictionary = _insert_crossings(nodes, edges, node_id, edge_id)
     return {
         "nodes": nodes,
         "edges": edges,
-        "next_node_id": node_id,
-        "next_edge_id": edge_id,
+        "next_node_id": result["next_node_id"],
+        "next_edge_id": result["next_edge_id"],
     }
 
 func _pair_key(a: int, b: int) -> String:
@@ -140,3 +141,59 @@ func _minimum_spanning_tree(points: Array[Vector2], edges: Array[Vector2i]) -> A
         connected.append(best_edge.y)
         remaining.erase(best_edge.y)
     return result
+
+func _insert_crossings(nodes: Dictionary, edges: Dictionary, next_node_id: int, next_edge_id: int) -> Dictionary:
+    var edge_ids = edges.keys()
+    var changed := true
+    while changed:
+        changed = false
+        edge_ids = edges.keys()
+        for i in range(edge_ids.size()):
+            var id_a: int = edge_ids[i]
+            var edge_a: Edge = edges[id_a]
+            var a_start: Vector2 = edge_a.polyline[0]
+            var a_end: Vector2 = edge_a.polyline[1]
+            for j in range(i + 1, edge_ids.size()):
+                var id_b: int = edge_ids[j]
+                var edge_b: Edge = edges[id_b]
+                var b_start: Vector2 = edge_b.polyline[0]
+                var b_end: Vector2 = edge_b.polyline[1]
+                var inter: Variant = Geometry2D.segment_intersects_segment(a_start, a_end, b_start, b_end)
+                if inter == null:
+                    continue
+                var cross: Vector2 = inter
+                if _point_on_endpoint(cross, a_start, a_end) or _point_on_endpoint(cross, b_start, b_end):
+                    continue
+
+                var cross_id: int = next_node_id
+                next_node_id += 1
+                nodes[cross_id] = MapNodeModule.new(cross_id, "crossing", cross, {})
+
+                var a_ep0: int = edge_a.endpoints[0]
+                var a_ep1: int = edge_a.endpoints[1]
+                edges.erase(id_a)
+                edges[next_edge_id] = EdgeModule.new(next_edge_id, "trade_route", [a_start, cross], [a_ep0, cross_id], {})
+                next_edge_id += 1
+                edges[next_edge_id] = EdgeModule.new(next_edge_id, "trade_route", [cross, a_end], [cross_id, a_ep1], {})
+                next_edge_id += 1
+
+                var b_ep0: int = edge_b.endpoints[0]
+                var b_ep1: int = edge_b.endpoints[1]
+                edges.erase(id_b)
+                edges[next_edge_id] = EdgeModule.new(next_edge_id, "trade_route", [b_start, cross], [b_ep0, cross_id], {})
+                next_edge_id += 1
+                edges[next_edge_id] = EdgeModule.new(next_edge_id, "trade_route", [cross, b_end], [cross_id, b_ep1], {})
+                next_edge_id += 1
+
+                changed = true
+                break
+            if changed:
+                break
+
+    return {
+        "next_node_id": next_node_id,
+        "next_edge_id": next_edge_id,
+    }
+
+func _point_on_endpoint(p: Vector2, a: Vector2, b: Vector2) -> bool:
+    return p.distance_to(a) < 0.001 or p.distance_to(b) < 0.001

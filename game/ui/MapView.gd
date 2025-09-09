@@ -12,6 +12,7 @@ var dragging: bool = false
 var show_roads: bool = true
 var show_rivers: bool = true
 var show_cities: bool = true
+var show_crossings: bool = false
 
 func set_map_data(data: Dictionary) -> void:
     map_data = data
@@ -71,7 +72,14 @@ func _draw() -> void:
                 draw_line(river[i] * draw_scale + offset, river[i + 1] * draw_scale + offset, Color.BLUE, 1.0)
     if show_cities:
         for city in map_data.get("cities", []):
-            draw_circle(city * draw_scale + offset, 2.0, Color.RED)
+            draw_circle(city * draw_scale + offset, 4.0, Color.RED)
+    if show_crossings:
+        for node in roads.get("nodes", {}).values():
+            if node.type == "crossing":
+                var center: Vector2 = node.pos2d * draw_scale + offset
+                var s: float = 4.0
+                draw_line(center + Vector2(-s, -s), center + Vector2(s, s), Color.WHITE, 1.0)
+                draw_line(center + Vector2(-s, s), center + Vector2(s, -s), Color.WHITE, 1.0)
 
 func set_show_roads(value: bool) -> void:
     show_roads = value
@@ -83,4 +91,8 @@ func set_show_rivers(value: bool) -> void:
 
 func set_show_cities(value: bool) -> void:
     show_cities = value
+    queue_redraw()
+
+func set_show_crossings(value: bool) -> void:
+    show_crossings = value
     queue_redraw()
