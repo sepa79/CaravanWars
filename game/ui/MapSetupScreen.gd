@@ -14,6 +14,8 @@ const MapGeneratorModule = preload("res://map/MapGenerator.gd")
 @onready var min_connections_spin: SpinBox = $VBox/Params/MinConnections
 @onready var max_connections_label: Label = $VBox/Params/MaxConnectionsLabel
 @onready var max_connections_spin: SpinBox = $VBox/Params/MaxConnections
+@onready var crossing_margin_label: Label = $VBox/Params/CrossingMarginLabel
+@onready var crossing_margin_spin: SpinBox = $VBox/Params/CrossingMargin
 @onready var map_view: MapView = $VBox/MapView
 @onready var show_roads_check: CheckBox = $VBox/Layers/ShowRoads
 @onready var show_rivers_check: CheckBox = $VBox/Layers/ShowRivers
@@ -46,6 +48,7 @@ func _ready() -> void:
     rivers_spin.value_changed.connect(_on_params_changed)
     min_connections_spin.value_changed.connect(_on_params_changed)
     max_connections_spin.value_changed.connect(_on_params_changed)
+    crossing_margin_spin.value_changed.connect(_on_params_changed)
     show_roads_check.toggled.connect(_on_show_roads_toggled)
     show_rivers_check.toggled.connect(_on_show_rivers_toggled)
     show_cities_check.toggled.connect(_on_show_cities_toggled)
@@ -68,6 +71,7 @@ func _update_texts() -> void:
     rivers_label.text = I18N.t("setup.rivers")
     min_connections_label.text = I18N.t("setup.min_connections")
     max_connections_label.text = I18N.t("setup.max_connections")
+    crossing_margin_label.text = I18N.t("setup.crossing_margin")
     show_roads_check.text = I18N.t("setup.show_roads")
     show_rivers_check.text = I18N.t("setup.show_rivers")
     show_cities_check.text = I18N.t("setup.show_cities")
@@ -83,7 +87,8 @@ func _generate_map() -> void:
         int(cities_spin.value),
         int(rivers_spin.value),
         int(min_connections_spin.value),
-        int(max_connections_spin.value)
+        int(max_connections_spin.value),
+        crossing_margin_spin.value
     )
     if seed_spin.value != params.rng_seed:
         seed_spin.set_block_signals(true)

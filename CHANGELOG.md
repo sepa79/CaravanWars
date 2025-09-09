@@ -1,5 +1,9 @@
 Changelog
 
+0.1.19 — 2025-09-09
+Added
+- Configurable crossing detour margin with UI and road pruning.
+
 0.1.18 — 2025-09-09
 Added
 - Toggle to show or hide regions in map setup screen.

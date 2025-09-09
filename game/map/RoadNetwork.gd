@@ -16,6 +16,7 @@ func build_roads(
     cities: Array[Vector2],
     min_connections: int = 1,
     max_connections: int = 3,
+    crossing_margin: float = 5.0,
     village_spacing: float = 25.0
 ) -> Dictionary:
     var nodes: Dictionary = {}
@@ -82,6 +83,7 @@ func build_roads(
         edge_id += 1
 
     var result: Dictionary = _insert_crossings(nodes, edges, node_id, edge_id)
+    _prune_crossing_duplicates(nodes, edges, crossing_margin)
     return {
         "nodes": nodes,
         "edges": edges,
@@ -194,6 +196,49 @@ func _insert_crossings(nodes: Dictionary, edges: Dictionary, next_node_id: int, 
         "next_node_id": next_node_id,
         "next_edge_id": next_edge_id,
     }
+
+func _prune_crossing_duplicates(nodes: Dictionary, edges: Dictionary, margin: float) -> void:
+    var city_edges: Dictionary = {}
+    for id in edges.keys():
+        var edge: Edge = edges[id]
+        var a_id: int = edge.endpoints[0]
+        var b_id: int = edge.endpoints[1]
+        var a_node: MapNode = nodes[a_id]
+        var b_node: MapNode = nodes[b_id]
+        if a_node.type == "city" and b_node.type == "city":
+            city_edges[_pair_key(a_id, b_id)] = id
+
+    var crossing_links: Dictionary = {}
+    for id in edges.keys():
+        var edge: Edge = edges[id]
+        var a_id: int = edge.endpoints[0]
+        var b_id: int = edge.endpoints[1]
+        var a_node: MapNode = nodes[a_id]
+        var b_node: MapNode = nodes[b_id]
+        if a_node.type == "crossing" and b_node.type == "city":
+            if not crossing_links.has(a_id):
+                crossing_links[a_id] = []
+            crossing_links[a_id].append(b_id)
+        elif b_node.type == "crossing" and a_node.type == "city":
+            if not crossing_links.has(b_id):
+                crossing_links[b_id] = []
+            crossing_links[b_id].append(a_id)
+
+    for cross_id in crossing_links.keys():
+        var cities: Array[int] = crossing_links[cross_id]
+        for i in range(cities.size()):
+            for j in range(i + 1, cities.size()):
+                var a_id: int = cities[i]
+                var b_id: int = cities[j]
+                var key := _pair_key(a_id, b_id)
+                if city_edges.has(key):
+                    var direct_id: int = city_edges[key]
+                    var direct_len: float = nodes[a_id].pos2d.distance_to(nodes[b_id].pos2d)
+                    var crossing_len: float = nodes[a_id].pos2d.distance_to(nodes[cross_id].pos2d) +
+                        nodes[cross_id].pos2d.distance_to(nodes[b_id].pos2d)
+                    if crossing_len - direct_len <= margin:
+                        edges.erase(direct_id)
+                        city_edges.erase(key)
 
 func _point_on_endpoint(p: Vector2, a: Vector2, b: Vector2) -> bool:
     return p.distance_to(a) < 0.001 or p.distance_to(b) < 0.001
