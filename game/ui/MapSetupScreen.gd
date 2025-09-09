@@ -90,7 +90,7 @@ func _generate_map() -> void:
         int(max_connections_spin.value),
         crossing_margin_spin.value
     )
-    var max_possible := max(1, params.city_count - 1)
+    var max_possible: int = max(1, params.city_count - 1)
     min_connections_spin.max_value = max_possible
     max_connections_spin.max_value = max_possible
     if int(max_connections_spin.value) == params.max_connections and params.max_connections < max_possible:
