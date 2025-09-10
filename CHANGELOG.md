@@ -1,5 +1,19 @@
 Changelog
 
+0.1.22 — 2025-09-10
+Fixed
+- Corrected Voronoi half-plane clipping so region edges fall midway between cities without overlapping.
+
+0.1.21 — 2025-09-10
+Fixed
+- Replaced missing `Geometry2D` calls with Delaunay-based Voronoi generation and manual clockwise sorting for consistent region polygons.
+
+0.1.20 — 2025-09-10
+Added
+- Debug logs for region coordinates and MapView drawing to trace region display issues.
+Fixed
+- Voronoi clipping produced identical polygons; revised half-plane construction and logged neighbor sites for debugging.
+
 0.1.19 — 2025-09-09
 Added
 - Expanded game design doc with kingdom mechanics and region generation workflow.

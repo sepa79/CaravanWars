@@ -16,9 +16,14 @@ var show_crossings: bool = false
 @export var crossing_color: Color = Color.YELLOW
 @export var crossing_size: float = 8.0
 var show_regions: bool = true
+var debug_logged: bool = false
 
 func set_map_data(data: Dictionary) -> void:
     map_data = data
+    debug_logged = false
+    var regions: Dictionary = map_data.get("regions", {})
+    for region in regions.values():
+        print("[MapView] region %s nodes: %s" % [region.id, region.boundary_nodes])
     queue_redraw()
 
 func _gui_input(event: InputEvent) -> void:
@@ -69,6 +74,8 @@ func _draw() -> void:
             var pts := PackedVector2Array()
             for p in region.boundary_nodes:
                 pts.append(p * draw_scale + offset)
+            if not debug_logged:
+                print("[MapView] region %s screen pts: %s" % [region.id, pts])
             if pts.size() >= 3:
                 var base_color := Color.from_hsv(hash(region.id) % 360 / 360.0, 0.6, 0.8)
                 var fill_color: Color = base_color
@@ -80,6 +87,9 @@ func _draw() -> void:
                     var a: Vector2 = pts[i]
                     var b: Vector2 = pts[(i + 1) % pts.size()]
                     draw_line(a, b, outline_color, 1.0)
+        if not debug_logged:
+            print("[MapView] drew %s regions" % regions.size())
+            debug_logged = true
     var roads: Dictionary = map_data.get("roads", {})
     if show_roads:
         for edge in roads.get("edges", {}).values():
