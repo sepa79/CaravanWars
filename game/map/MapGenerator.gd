@@ -8,6 +8,7 @@ class MapGenParams:
     var max_river_count: int
     var min_connections: int
     var max_connections: int
+    var min_city_distance: float
     var crossing_detour_margin: float
     var width: float
     var height: float
@@ -19,6 +20,7 @@ class MapGenParams:
         p_max_river_count: int = 1,
         p_min_connections: int = 1,
         p_max_connections: int = 3,
+        p_min_city_distance: float = 20.0,
         p_crossing_detour_margin: float = 5.0,
         p_width: float = 100.0,
         p_height: float = 100.0,
@@ -30,6 +32,7 @@ class MapGenParams:
         var max_possible: int = max(1, p_city_count - 1)
         min_connections = clamp(p_min_connections, 1, max_possible)
         max_connections = clamp(p_max_connections, min_connections, max_possible)
+        min_city_distance = p_min_city_distance
         crossing_detour_margin = p_crossing_detour_margin
         width = clamp(p_width, 20.0, 500.0)
         height = clamp(p_height, 20.0, 500.0)
@@ -54,7 +57,7 @@ func generate() -> Dictionary:
         "height": params.height,
     }
     var city_stage := CityPlacerModule.new(rng)
-    var cities := city_stage.place_cities(params.city_count, 20.0, params.width, params.height)
+    var cities := city_stage.place_cities(params.city_count, params.min_city_distance, params.width, params.height)
     map_data["cities"] = cities
     print("[MapGenerator] placed %s cities" % cities.size())
 

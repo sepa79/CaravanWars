@@ -38,6 +38,14 @@ max_value = 20.0
 step = 1.0
 value = 3.0
 
+[node name="CitySpacingLabel" type="Label" parent="VBox/Params"]
+
+[node name="CitySpacing" type="SpinBox" parent="VBox/Params"]
+min_value = 1.0
+max_value = 100.0
+step = 1.0
+value = 20.0
+
 [node name="RiversLabel" type="Label" parent="VBox/Params"]
 
 [node name="Rivers" type="SpinBox" parent="VBox/Params"]
