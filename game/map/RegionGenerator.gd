@@ -43,15 +43,28 @@ func _voronoi_diagram(points: PackedVector2Array, rect: Rect2) -> Array[PackedVe
         rect.position + rect.size,
         rect.position + Vector2(0, rect.size.y),
     ])
+
+    # Use Delaunay triangulation to find neighboring sites for clipping.
+    var tri := Geometry2D.triangulate_delaunay(points)
+    var neighbor_lists: Array = []
+    neighbor_lists.resize(points.size())
+    for i in range(points.size()):
+        neighbor_lists[i] = []
+    for t in range(0, tri.size(), 3):
+        var a: int = tri[t]
+        var b: int = tri[t + 1]
+        var c: int = tri[t + 2]
+        _add_neighbor(neighbor_lists, a, b)
+        _add_neighbor(neighbor_lists, b, c)
+        _add_neighbor(neighbor_lists, c, a)
+
     var far: float = max(rect.size.x, rect.size.y) * 2.0
     var result: Array[PackedVector2Array] = []
     for i in range(points.size()):
         var cell: PackedVector2Array = bounds_poly
-        var p := points[i]
-        for j in range(points.size()):
-            if i == j:
-                continue
-            var q := points[j]
+        var p: Vector2 = points[i]
+        for j in neighbor_lists[i]:
+            var q: Vector2 = points[j]
             var mid := (p + q) * 0.5
             var dir := (q - p).normalized()
             var normal := Vector2(dir.y, -dir.x)
@@ -71,6 +84,13 @@ func _voronoi_diagram(points: PackedVector2Array, rect: Rect2) -> Array[PackedVe
             cell = clipped[0]
         result.append(cell)
     return result
+
+# Adds two-way neighbor relationship between points.
+func _add_neighbor(lists: Array, a: int, b: int) -> void:
+    if not lists[a].has(b):
+        lists[a].append(b)
+    if not lists[b].has(a):
+        lists[b].append(a)
 
 # Sorts polygon vertices clockwise around their centroid.
 func _sort_clockwise(points: PackedVector2Array) -> PackedVector2Array:
