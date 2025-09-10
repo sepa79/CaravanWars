@@ -13,6 +13,8 @@ var show_roads: bool = true
 var show_rivers: bool = true
 var show_cities: bool = true
 var show_crossings: bool = false
+@export var crossing_color: Color = Color.YELLOW
+@export var crossing_size: float = 8.0
 var show_regions: bool = true
 
 func set_map_data(data: Dictionary) -> void:
@@ -95,9 +97,14 @@ func _draw() -> void:
         for node in roads.get("nodes", {}).values():
             if node.type == "crossing":
                 var center: Vector2 = node.pos2d * draw_scale + offset
-                var s: float = 4.0
-                draw_line(center + Vector2(-s, -s), center + Vector2(s, s), Color.WHITE, 1.0)
-                draw_line(center + Vector2(-s, s), center + Vector2(s, -s), Color.WHITE, 1.0)
+                var s: float = crossing_size
+                var diamond := PackedVector2Array([
+                    center + Vector2(0, -s),
+                    center + Vector2(s, 0),
+                    center + Vector2(0, s),
+                    center + Vector2(-s, 0),
+                ])
+                draw_polygon(diamond, PackedColorArray([crossing_color]))
 
 func set_show_roads(value: bool) -> void:
     show_roads = value

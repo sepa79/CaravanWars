@@ -37,8 +37,9 @@ func build_roads(
     for e in mst_edges:
         final_edge_set[_pair_key(e.x, e.y)] = e
 
-    min_connections = clamp(min_connections, 1, cities.size() - 1)
-    max_connections = clamp(max_connections, min_connections, cities.size() - 1)
+    var max_possible: int = cities.size() - 1
+    min_connections = clamp(min_connections, 1, max_possible)
+    max_connections = clamp(max_connections, min_connections, max_possible)
     var k_values: Array[int] = []
     for _city in cities:
         k_values.append(rng.randi_range(min_connections, max_connections))
@@ -217,15 +218,15 @@ func _prune_crossing_duplicates(nodes: Dictionary, edges: Dictionary, margin: fl
         var b_node: MapNode = nodes[b_id]
         if a_node.type == "crossing" and b_node.type == "city":
             if not crossing_links.has(a_id):
-                crossing_links[a_id] = []
-            crossing_links[a_id].append(b_id)
+                crossing_links[a_id] = [] as Array[int]
+            (crossing_links[a_id] as Array[int]).append(b_id)
         elif b_node.type == "crossing" and a_node.type == "city":
             if not crossing_links.has(b_id):
-                crossing_links[b_id] = []
-            crossing_links[b_id].append(a_id)
+                crossing_links[b_id] = [] as Array[int]
+            (crossing_links[b_id] as Array[int]).append(a_id)
 
     for cross_id in crossing_links.keys():
-        var cities: Array[int] = crossing_links[cross_id]
+        var cities: Array[int] = crossing_links[cross_id] as Array[int]
         for i in range(cities.size()):
             for j in range(i + 1, cities.size()):
                 var a_id: int = cities[i]
@@ -234,7 +235,7 @@ func _prune_crossing_duplicates(nodes: Dictionary, edges: Dictionary, margin: fl
                 if city_edges.has(key):
                     var direct_id: int = city_edges[key]
                     var direct_len: float = nodes[a_id].pos2d.distance_to(nodes[b_id].pos2d)
-                    var crossing_len: float = nodes[a_id].pos2d.distance_to(nodes[cross_id].pos2d) +
+                    var crossing_len: float = nodes[a_id].pos2d.distance_to(nodes[cross_id].pos2d) + \
                         nodes[cross_id].pos2d.distance_to(nodes[b_id].pos2d)
                     if crossing_len - direct_len <= margin:
                         edges.erase(direct_id)
