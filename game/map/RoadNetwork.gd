@@ -182,9 +182,8 @@ func cleanup(roads: Dictionary, crossing_margin: float = 5.0) -> void:
     var nodes: Dictionary = roads.get("nodes", {})
     var edges: Dictionary = roads.get("edges", {})
 
-    var edge_ids: Array[int] = edges.keys()
     var remove_edges: Array[int] = []
-    for eid in edge_ids:
+    for eid in edges.keys():
         var edge: Edge = edges[eid]
         var endpoints: Array[int] = edge.endpoints
         if endpoints.size() != 2 or not nodes.has(endpoints[0]) or not nodes.has(endpoints[1]):
@@ -203,8 +202,7 @@ func cleanup(roads: Dictionary, crossing_margin: float = 5.0) -> void:
         used[e.endpoints[0]] = true
         used[e.endpoints[1]] = true
 
-    var node_ids: Array[int] = nodes.keys()
-    for nid in node_ids:
+    for nid in nodes.keys():
         if nodes[nid].type != "city" and not used.has(nid):
             nodes.erase(nid)
 
