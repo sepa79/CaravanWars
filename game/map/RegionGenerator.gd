@@ -9,26 +9,34 @@ const EPS: float = 0.001
 # Generates regions as Voronoi cells around city positions.
 # Returns a dictionary mapping region id -> Region instance.
 func generate_regions(cities: Array[Vector2]) -> Dictionary:
+    print("[RegionGenerator] generating regions for %s cities" % cities.size())
     var bounds := Rect2(Vector2.ZERO, Vector2(CityPlacerModule.WIDTH, CityPlacerModule.HEIGHT))
     var voronoi: Array = _voronoi_diagram(PackedVector2Array(cities), bounds)
+    print("[RegionGenerator] computed %s raw cells" % voronoi.size())
     var regions: Dictionary = {}
     for i in range(voronoi.size()):
         var poly: PackedVector2Array = voronoi[i]
+        print("[RegionGenerator] cell %s has %s vertices before filtering" % [i, poly.size()])
         if poly.size() < 3:
+            print("[RegionGenerator] cell %s discarded: less than 3 vertices" % i)
             continue
         poly = _sort_clockwise(poly)
         poly = _filter_points(poly)
+        print("[RegionGenerator] cell %s has %s vertices after filtering" % [i, poly.size()])
         if poly.size() < 3:
+            print("[RegionGenerator] cell %s discarded after filtering" % i)
             continue
         var arr: Array[Vector2] = []
         for p in poly:
             arr.append(p)
         regions[i + 1] = RegionModule.new(i + 1, arr, "")
+    print("[RegionGenerator] finalized %s regions" % regions.size())
     return regions
 
 # Computes Voronoi cells by iteratively clipping the bounding box with
 # perpendicular bisectors between sites.
 func _voronoi_diagram(points: PackedVector2Array, rect: Rect2) -> Array[PackedVector2Array]:
+    print("[RegionGenerator] _voronoi_diagram with %s points" % points.size())
     var bounds_poly := PackedVector2Array([
         rect.position,
         rect.position + Vector2(rect.size.x, 0),
@@ -57,6 +65,7 @@ func _voronoi_diagram(points: PackedVector2Array, rect: Rect2) -> Array[PackedVe
             ])
             var clipped := Geometry2D.intersect_polygons(cell, half_plane)
             if clipped.size() == 0:
+                print("[RegionGenerator] cell %s clipped out by point %s" % [i, j])
                 cell = PackedVector2Array()
                 break
             cell = clipped[0]

@@ -44,10 +44,12 @@ func generate() -> Dictionary:
     var city_stage := CityPlacerModule.new(rng)
     var cities := city_stage.place_cities(params.city_count)
     map_data["cities"] = cities
+    print("[MapGenerator] placed %s cities" % cities.size())
 
     var region_stage = RegionGeneratorModule.new()
     var regions: Dictionary = region_stage.generate_regions(cities)
     map_data["regions"] = regions
+    print("[MapGenerator] generated %s regions" % regions.size())
 
     var road_stage := RoadNetworkModule.new(rng)
     var roads := road_stage.build_roads(
