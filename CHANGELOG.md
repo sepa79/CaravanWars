@@ -3,6 +3,8 @@ Changelog
 0.1.20 — 2025-09-10
 Added
 - Debug logs for region coordinates and MapView drawing to trace region display issues.
+Fixed
+- Voronoi clipping produced identical polygons; revised half-plane construction and logged neighbor sites for debugging.
 
 0.1.19 — 2025-09-09
 Added

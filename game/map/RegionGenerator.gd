@@ -58,6 +58,8 @@ func _voronoi_diagram(points: PackedVector2Array, rect: Rect2) -> Array[PackedVe
         _add_neighbor(neighbor_lists, a, b)
         _add_neighbor(neighbor_lists, b, c)
         _add_neighbor(neighbor_lists, c, a)
+    for i in range(neighbor_lists.size()):
+        print("[RegionGenerator] point %s neighbors: %s" % [i, neighbor_lists[i]])
 
     var far: float = max(rect.size.x, rect.size.y) * 2.0
     var result: Array[PackedVector2Array] = []
@@ -71,12 +73,14 @@ func _voronoi_diagram(points: PackedVector2Array, rect: Rect2) -> Array[PackedVe
             var normal := Vector2(dir.y, -dir.x)
             if normal.dot(p - mid) < 0:
                 normal = -normal
-            var half_plane := PackedVector2Array([
-                mid + dir * far + normal * far,
-                mid - dir * far + normal * far,
-                mid - dir * far - normal * far,
-                mid + dir * far - normal * far,
-            ])
+            # Build a large polygon representing the half-plane of points closer to
+            # p than q. The segment between p and q is extended in both directions
+            # and then offset toward the normal that keeps p inside.
+            var a1 := mid - dir * far
+            var a2 := mid + dir * far
+            var b2 := a2 + normal * far * 2.0
+            var b1 := a1 + normal * far * 2.0
+            var half_plane := PackedVector2Array([a1, a2, b2, b1])
             var clipped := Geometry2D.intersect_polygons(cell, half_plane)
             if clipped.size() == 0:
                 print("[RegionGenerator] cell %s clipped out by point %s" % [i, j])
