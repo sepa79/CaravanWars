@@ -3,6 +3,7 @@ Changelog
 0.1.29 — 2025-09-10
 Added
 - Validate Map control to run road and river checks from map setup screen.
+- Road network cleanup helper to prune invalid edges and orphan nodes.
 
 0.1.28 — 2025-09-10
 Removed

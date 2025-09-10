@@ -177,6 +177,42 @@ func remove_edge(roads: Dictionary, edge_id: int, crossing_margin: float = 5.0) 
     roads["next_edge_id"] = res2["next_edge_id"]
     _prune_crossing_duplicates(nodes, edges, crossing_margin)
 
+## Sanitizes a road network dictionary by pruning invalid edges and nodes.
+func cleanup(roads: Dictionary, crossing_margin: float = 5.0) -> void:
+    var nodes: Dictionary = roads.get("nodes", {})
+    var edges: Dictionary = roads.get("edges", {})
+
+    var edge_ids: Array[int] = edges.keys()
+    var remove_edges: Array[int] = []
+    for eid in edge_ids:
+        var edge: Edge = edges[eid]
+        var endpoints: Array[int] = edge.endpoints
+        if endpoints.size() != 2 or not nodes.has(endpoints[0]) or not nodes.has(endpoints[1]):
+            remove_edges.append(eid)
+            continue
+        var length: float = 0.0
+        for i in range(edge.polyline.size() - 1):
+            length += edge.polyline[i].distance_to(edge.polyline[i + 1])
+        if length <= 0.001:
+            remove_edges.append(eid)
+    for eid in remove_edges:
+        edges.erase(eid)
+
+    var used: Dictionary = {}
+    for e in edges.values():
+        used[e.endpoints[0]] = true
+        used[e.endpoints[1]] = true
+
+    var node_ids: Array[int] = nodes.keys()
+    for nid in node_ids:
+        if nodes[nid].type != "city" and not used.has(nid):
+            nodes.erase(nid)
+
+    var res: Dictionary = _insert_crossings(nodes, edges, roads.get("next_node_id", 1), roads.get("next_edge_id", 1))
+    roads["next_node_id"] = res["next_node_id"]
+    roads["next_edge_id"] = res["next_edge_id"]
+    _prune_crossing_duplicates(nodes, edges, crossing_margin)
+
 func _pair_key(a: int, b: int) -> String:
     return "%d_%d" % [min(a, b), max(a, b)]
 
