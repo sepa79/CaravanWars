@@ -14,6 +14,17 @@ func _init(p_rng_seed: int, p_version: String) -> void:
     edges = {}
     regions = {}
 
+static func from_map(map_data: Dictionary, rng_seed: int, version: String) -> MapSnapshot:
+    var snapshot := MapSnapshot.new(rng_seed, version)
+    var roads: Dictionary = map_data.get("roads", {})
+    for node in roads.get("nodes", {}).values():
+        snapshot.nodes[node.id] = node
+    for edge in roads.get("edges", {}).values():
+        snapshot.edges[edge.id] = edge
+    for region in map_data.get("regions", {}).values():
+        snapshot.regions[region.id] = region
+    return snapshot
+
 func to_dict() -> Dictionary:
     var node_list: Array = []
     for node in nodes.values():
