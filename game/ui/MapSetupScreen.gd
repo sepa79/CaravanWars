@@ -10,6 +10,8 @@ const MapGeneratorModule = preload("res://map/MapGenerator.gd")
 @onready var cities_spin: SpinBox = $VBox/Params/Cities
 @onready var rivers_label: Label = $VBox/Params/RiversLabel
 @onready var rivers_spin: SpinBox = $VBox/Params/Rivers
+@onready var kingdoms_label: Label = $VBox/Params/KingdomsLabel
+@onready var kingdoms_spin: SpinBox = $VBox/Params/Kingdoms
 @onready var min_connections_label: Label = $VBox/Params/MinConnectionsLabel
 @onready var min_connections_spin: SpinBox = $VBox/Params/MinConnections
 @onready var max_connections_label: Label = $VBox/Params/MaxConnectionsLabel
@@ -46,6 +48,7 @@ func _ready() -> void:
     seed_spin.value_changed.connect(_on_params_changed)
     cities_spin.value_changed.connect(_on_params_changed)
     rivers_spin.value_changed.connect(_on_params_changed)
+    kingdoms_spin.value_changed.connect(_on_params_changed)
     min_connections_spin.value_changed.connect(_on_params_changed)
     max_connections_spin.value_changed.connect(_on_params_changed)
     crossing_margin_spin.value_changed.connect(_on_params_changed)
@@ -69,6 +72,7 @@ func _update_texts() -> void:
     random_seed_button.text = I18N.t("setup.random_seed")
     cities_label.text = I18N.t("setup.cities")
     rivers_label.text = I18N.t("setup.rivers")
+    kingdoms_label.text = I18N.t("setup.kingdoms")
     min_connections_label.text = I18N.t("setup.min_connections")
     max_connections_label.text = I18N.t("setup.max_connections")
     crossing_margin_label.text = I18N.t("setup.crossing_margin")
@@ -82,14 +86,22 @@ func _update_texts() -> void:
 
 func _generate_map() -> void:
     start_button.disabled = true
+    var city_count := int(cities_spin.value)
+    var kingdoms := int(min(kingdoms_spin.value, city_count))
     var params := MapGeneratorModule.MapGenParams.new(
         int(seed_spin.value),
-        int(cities_spin.value),
+        city_count,
         int(rivers_spin.value),
         int(min_connections_spin.value),
         int(max_connections_spin.value),
-        crossing_margin_spin.value
+        crossing_margin_spin.value,
+        kingdoms
     )
+    kingdoms_spin.max_value = params.city_count
+    if int(kingdoms_spin.value) != params.kingdom_count:
+        kingdoms_spin.set_block_signals(true)
+        kingdoms_spin.value = params.kingdom_count
+        kingdoms_spin.set_block_signals(false)
     var max_possible: int = max(1, params.city_count - 1)
     var prev_max_possible: int = int(max_connections_spin.max_value)
     max_connections_spin.max_value = max_possible

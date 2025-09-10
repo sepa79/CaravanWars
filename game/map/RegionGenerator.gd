@@ -8,7 +8,7 @@ const EPS: float = 0.001
 
 # Generates regions as Voronoi cells around city positions.
 # Returns a dictionary mapping region id -> Region instance.
-func generate_regions(cities: Array[Vector2]) -> Dictionary:
+func generate_regions(cities: Array[Vector2], kingdom_count: int = 1) -> Dictionary:
     print("[RegionGenerator] generating regions for %s cities" % cities.size())
     var bounds := Rect2(Vector2.ZERO, Vector2(CityPlacerModule.WIDTH, CityPlacerModule.HEIGHT))
     var voronoi: Array = _voronoi_diagram(cities, bounds)
@@ -32,7 +32,74 @@ func generate_regions(cities: Array[Vector2]) -> Dictionary:
         print("[RegionGenerator] cell %s vertices: %s" % [i, arr])
         regions[i + 1] = RegionModule.new(i + 1, arr, "")
     print("[RegionGenerator] finalized %s regions" % regions.size())
+    _assign_kingdoms(regions, kingdom_count)
     return regions
+
+func _assign_kingdoms(regions: Dictionary, kingdom_count: int) -> void:
+    var total: int = regions.size()
+    var k: int = clamp(kingdom_count, 1, total)
+    if k < kingdom_count:
+        print("[RegionGenerator] requested %s kingdoms but only %s regions" % [kingdom_count, total])
+    var adjacency: Dictionary = _build_adjacency(regions)
+    var ids: Array = regions.keys()
+    ids.sort()
+    var queue: Array[int] = []
+    for i in range(k):
+        var idx: int = int(i * ids.size() / k)
+        var seed: int = ids[idx]
+        regions[seed].kingdom_id = i + 1
+        queue.append(seed)
+    var front: int = 0
+    while front < queue.size():
+        var current: int = queue[front]
+        front += 1
+        var kid: int = regions[current].kingdom_id
+        for n in adjacency.get(current, []):
+            if regions[n].kingdom_id == 0:
+                regions[n].kingdom_id = kid
+                queue.append(n)
+    for region in regions.values():
+        if region.kingdom_id == 0:
+            region.kingdom_id = 1
+
+func _build_adjacency(regions: Dictionary) -> Dictionary:
+    var adjacency: Dictionary = {}
+    var edge_map: Dictionary = {}
+    for region in regions.values():
+        var pts: Array[Vector2] = region.boundary_nodes
+        for i in range(pts.size()):
+            var a: Vector2 = pts[i]
+            var b: Vector2 = pts[(i + 1) % pts.size()]
+            var key: String = _edge_key(a, b)
+            if not edge_map.has(key):
+                edge_map[key] = []
+            edge_map[key].append(region.id)
+    for key in edge_map.keys():
+        var ids: Array = edge_map[key]
+        if ids.size() == 2:
+            var a_id: int = ids[0]
+            var b_id: int = ids[1]
+            if not adjacency.has(a_id):
+                adjacency[a_id] = []
+            if not adjacency.has(b_id):
+                adjacency[b_id] = []
+            adjacency[a_id].append(b_id)
+            adjacency[b_id].append(a_id)
+    return adjacency
+
+func _edge_key(a: Vector2, b: Vector2) -> String:
+    var ax: int = int(round(a.x / EPS))
+    var ay: int = int(round(a.y / EPS))
+    var bx: int = int(round(b.x / EPS))
+    var by: int = int(round(b.y / EPS))
+    if ax > bx or (ax == bx and ay > by):
+        var tx: int = ax
+        var ty: int = ay
+        ax = bx
+        ay = by
+        bx = tx
+        by = ty
+    return "%s_%s_%s_%s" % [ax, ay, bx, by]
 
 # Removes duplicate and collinear points.
 func _filter_points(points: PackedVector2Array) -> PackedVector2Array:

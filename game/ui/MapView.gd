@@ -77,7 +77,7 @@ func _draw() -> void:
             if not debug_logged:
                 print("[MapView] region %s screen pts: %s" % [region.id, pts])
             if pts.size() >= 3:
-                var base_color := Color.from_hsv(hash(region.id) % 360 / 360.0, 0.6, 0.8)
+                var base_color := Color.from_hsv(hash(region.kingdom_id) % 360 / 360.0, 0.6, 0.8)
                 var fill_color: Color = base_color
                 fill_color.a = 0.3
                 var outline_color: Color = base_color

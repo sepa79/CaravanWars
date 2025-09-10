@@ -1,5 +1,10 @@
 Changelog
 
+0.1.23 — 2025-09-10
+Added
+- Configurable kingdom count with contiguous allocation and kingdom-aware region rendering.
+- Map setup screen exposes kingdom count parameter.
+
 0.1.22 — 2025-09-10
 Fixed
 - Corrected Voronoi half-plane clipping so region edges fall midway between cities without overlapping.
