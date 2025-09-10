@@ -29,6 +29,7 @@ func generate_regions(cities: Array[Vector2]) -> Dictionary:
         var arr: Array[Vector2] = []
         for p in poly:
             arr.append(p)
+        print("[RegionGenerator] cell %s vertices: %s" % [i, arr])
         regions[i + 1] = RegionModule.new(i + 1, arr, "")
     print("[RegionGenerator] finalized %s regions" % regions.size())
     return regions

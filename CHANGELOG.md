@@ -1,5 +1,9 @@
 Changelog
 
+0.1.20 — 2025-09-10
+Added
+- Debug logs for region coordinates and MapView drawing to trace region display issues.
+
 0.1.19 — 2025-09-09
 Added
 - Expanded game design doc with kingdom mechanics and region generation workflow.
