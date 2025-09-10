@@ -177,6 +177,59 @@ func remove_edge(roads: Dictionary, edge_id: int, crossing_margin: float = 5.0) 
     roads["next_edge_id"] = res2["next_edge_id"]
     _prune_crossing_duplicates(nodes, edges, crossing_margin)
 
+## Splits roads where they cross rivers and inserts bridge nodes.
+func insert_river_crossings(roads: Dictionary, rivers: Array, crossing_margin: float = 5.0) -> void:
+    var nodes: Dictionary = roads.get("nodes", {})
+    var edges: Dictionary = roads.get("edges", {})
+    var next_node_id: int = roads.get("next_node_id", 1)
+    var next_edge_id: int = roads.get("next_edge_id", 1)
+
+    var changed := true
+    while changed:
+        changed = false
+        var edge_ids: Array = edges.keys()
+        for eid in edge_ids:
+            var edge: Edge = edges[eid]
+            var road_start: Vector2 = edge.polyline[0]
+            var road_end: Vector2 = edge.polyline[edge.polyline.size() - 1]
+            for poly in rivers:
+                for i in range(poly.size() - 1):
+                    var river_a: Vector2 = poly[i]
+                    var river_b: Vector2 = poly[i + 1]
+                    var inter: Variant = Geometry2D.segment_intersects_segment(road_start, road_end, river_a, river_b)
+                    if inter == null:
+                        continue
+                    var cross: Vector2 = inter
+                    if _point_on_endpoint(cross, road_start, road_end):
+                        var node_id: int = edge.endpoints[0] if cross == road_start else edge.endpoints[1]
+                        var node: MapNode = nodes.get(node_id)
+                        if node != null and node.type != "bridge" and node.type != "ford":
+                            node.type = "bridge"
+                            changed = true
+                        continue
+
+                    var cross_id: int = next_node_id
+                    next_node_id += 1
+                    nodes[cross_id] = MapNodeModule.new(cross_id, "bridge", cross, {})
+                    var a_id: int = edge.endpoints[0]
+                    var b_id: int = edge.endpoints[1]
+                    edges.erase(eid)
+                    edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [road_start, cross], [a_id, cross_id], {})
+                    next_edge_id += 1
+                    edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [cross, road_end], [cross_id, b_id], {})
+                    next_edge_id += 1
+                    changed = true
+                    break
+                if changed:
+                    break
+            if changed:
+                break
+
+    var res: Dictionary = _insert_crossings(nodes, edges, next_node_id, next_edge_id)
+    roads["next_node_id"] = res["next_node_id"]
+    roads["next_edge_id"] = res["next_edge_id"]
+    _prune_crossing_duplicates(nodes, edges, crossing_margin)
+
 ## Sanitizes a road network dictionary by pruning invalid edges and nodes.
 func cleanup(roads: Dictionary, crossing_margin: float = 5.0) -> void:
     var nodes: Dictionary = roads.get("nodes", {})
