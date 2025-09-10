@@ -4,6 +4,7 @@ const MapGeneratorModule = preload("res://map/MapGenerator.gd")
 const RegionGeneratorModule = preload("res://map/RegionGenerator.gd")
 const RoadNetworkModule = preload("res://map/RoadNetwork.gd")
 const MapSnapshotModule = preload("res://map/MapSnapshot.gd")
+const MapValidatorModule = preload("res://map/MapValidator.gd")
 
 @onready var title_label: Label = $HBox/ControlsScroll/Controls/Title
 @onready var params: GridContainer = $HBox/ControlsScroll/Controls/Params
@@ -40,6 +41,7 @@ const MapSnapshotModule = preload("res://map/MapSnapshot.gd")
 @onready var edit_cities_check: CheckBox = $Layers/EditCities
 @onready var add_road_button: Button = $Layers/AddRoad
 @onready var delete_road_button: Button = $Layers/DeleteRoad
+@onready var validate_button: Button = $Layers/ValidateMap
 @onready var start_button: Button = $HBox/ControlsScroll/Controls/Buttons/Start
 @onready var back_button: Button = $HBox/ControlsScroll/Controls/Buttons/Back
 @onready var main_ui: HBoxContainer = $HBox
@@ -85,6 +87,7 @@ func _ready() -> void:
     edit_cities_check.toggled.connect(_on_edit_cities_toggled)
     add_road_button.toggled.connect(_on_add_road_toggled)
     delete_road_button.toggled.connect(_on_delete_road_toggled)
+    validate_button.pressed.connect(_on_validate_map_pressed)
     map_view.set_show_roads(show_roads_check.button_pressed)
     map_view.set_show_rivers(show_rivers_check.button_pressed)
     map_view.set_show_cities(show_cities_check.button_pressed)
@@ -117,6 +120,7 @@ func _update_texts() -> void:
     edit_cities_check.text = I18N.t("setup.edit_cities")
     add_road_button.text = I18N.t("setup.add_road")
     delete_road_button.text = I18N.t("setup.delete_road")
+    validate_button.text = I18N.t("setup.validate_map")
     start_button.text = I18N.t("setup.start")
     back_button.text = I18N.t("menu.back")
 
@@ -231,6 +235,12 @@ func _on_delete_road_toggled(pressed: bool) -> void:
         map_view.set_road_mode("delete")
     else:
         map_view.set_road_mode("")
+
+func _on_validate_map_pressed() -> void:
+    var validator: MapValidator = MapValidatorModule.new()
+    var errors: Array[String] = validator.validate(current_map["roads"], current_map.get("rivers", []))
+    for err in errors:
+        push_warning(err)
 
 func _on_random_seed_pressed() -> void:
     seed_spin.set_block_signals(true)

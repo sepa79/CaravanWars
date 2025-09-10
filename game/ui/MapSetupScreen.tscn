@@ -193,3 +193,5 @@ toggle_mode = true
 [node name="DeleteRoad" type="Button" parent="Layers"]
 toggle_mode = true
 
+[node name="ValidateMap" type="Button" parent="Layers"]
+
