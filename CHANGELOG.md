@@ -2,7 +2,7 @@ Changelog
 
 0.1.21 — 2025-09-10
 Fixed
-- Replaced custom Voronoi clipping with `Geometry2D.voronoi_diagram` and `sort_points_clockwise` for consistent region polygons.
+- Replaced missing `Geometry2D` calls with Delaunay-based Voronoi generation and manual clockwise sorting for consistent region polygons.
 
 0.1.20 — 2025-09-10
 Added
