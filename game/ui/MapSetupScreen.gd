@@ -106,7 +106,7 @@ func _generate_map() -> void:
     start_button.disabled = true
     var city_count := int(cities_spin.value)
     var kingdoms := int(min(kingdoms_spin.value, city_count))
-    var params := MapGeneratorModule.MapGenParams.new(
+    var map_params := MapGeneratorModule.MapGenParams.new(
         int(seed_spin.value),
         city_count,
         int(rivers_spin.value),
@@ -119,52 +119,52 @@ func _generate_map() -> void:
         height_spin.value,
         kingdoms
     )
-    kingdoms_spin.max_value = params.city_count
-    if int(kingdoms_spin.value) != params.kingdom_count:
+    kingdoms_spin.max_value = map_params.city_count
+    if int(kingdoms_spin.value) != map_params.kingdom_count:
         kingdoms_spin.set_block_signals(true)
-        kingdoms_spin.value = params.kingdom_count
+        kingdoms_spin.value = map_params.kingdom_count
         kingdoms_spin.set_block_signals(false)
-    var max_possible: int = max(1, params.city_count - 1)
+    var max_possible: int = max(1, map_params.city_count - 1)
     var prev_max_possible: int = int(max_connections_spin.max_value)
     max_connections_spin.max_value = max_possible
     if int(max_connections_spin.value) == prev_max_possible and prev_max_possible < max_possible:
-        params.max_connections = max_possible
+        map_params.max_connections = max_possible
         max_connections_spin.set_block_signals(true)
-        max_connections_spin.value = params.max_connections
+        max_connections_spin.value = map_params.max_connections
         max_connections_spin.set_block_signals(false)
-    max_connections_spin.min_value = params.min_connections
-    min_connections_spin.max_value = params.max_connections
-    max_city_spacing_spin.min_value = params.min_city_distance
-    min_city_spacing_spin.max_value = params.max_city_distance
-    if seed_spin.value != params.rng_seed:
+    max_connections_spin.min_value = map_params.min_connections
+    min_connections_spin.max_value = map_params.max_connections
+    max_city_spacing_spin.min_value = map_params.min_city_distance
+    min_city_spacing_spin.max_value = map_params.max_city_distance
+    if seed_spin.value != map_params.rng_seed:
         seed_spin.set_block_signals(true)
-        seed_spin.value = params.rng_seed
+        seed_spin.value = map_params.rng_seed
         seed_spin.set_block_signals(false)
-    if min_connections_spin.value != params.min_connections:
+    if min_connections_spin.value != map_params.min_connections:
         min_connections_spin.set_block_signals(true)
-        min_connections_spin.value = params.min_connections
+        min_connections_spin.value = map_params.min_connections
         min_connections_spin.set_block_signals(false)
-    if max_connections_spin.value != params.max_connections:
+    if max_connections_spin.value != map_params.max_connections:
         max_connections_spin.set_block_signals(true)
-        max_connections_spin.value = params.max_connections
+        max_connections_spin.value = map_params.max_connections
         max_connections_spin.set_block_signals(false)
-    if min_city_spacing_spin.value != params.min_city_distance:
+    if min_city_spacing_spin.value != map_params.min_city_distance:
         min_city_spacing_spin.set_block_signals(true)
-        min_city_spacing_spin.value = params.min_city_distance
+        min_city_spacing_spin.value = map_params.min_city_distance
         min_city_spacing_spin.set_block_signals(false)
-    if max_city_spacing_spin.value != params.max_city_distance:
+    if max_city_spacing_spin.value != map_params.max_city_distance:
         max_city_spacing_spin.set_block_signals(true)
-        max_city_spacing_spin.value = params.max_city_distance
+        max_city_spacing_spin.value = map_params.max_city_distance
         max_city_spacing_spin.set_block_signals(false)
-    if width_spin.value != params.width:
+    if width_spin.value != map_params.width:
         width_spin.set_block_signals(true)
-        width_spin.value = params.width
+        width_spin.value = map_params.width
         width_spin.set_block_signals(false)
-    if height_spin.value != params.height:
+    if height_spin.value != map_params.height:
         height_spin.set_block_signals(true)
-        height_spin.value = params.height
+        height_spin.value = map_params.height
         height_spin.set_block_signals(false)
-    var generator := MapGeneratorModule.new(params)
+    var generator := MapGeneratorModule.new(map_params)
     current_map = generator.generate()
     map_view.set_map_data(current_map)
     var actual_city_count: int = current_map.get("cities", []).size()
