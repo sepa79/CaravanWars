@@ -15,13 +15,13 @@ size_flags_vertical = 3
 [node name="ControlsScroll" type="ScrollContainer" parent="HBox"]
 size_flags_horizontal = 3
 size_flags_vertical = 3
-size_flags_stretch_ratio = 0.4
+size_flags_stretch_ratio = 0.3
 horizontal_scroll_enabled = false
 
 [node name="MapRow" type="HBoxContainer" parent="HBox"]
 size_flags_horizontal = 3
 size_flags_vertical = 3
-size_flags_stretch_ratio = 0.6
+size_flags_stretch_ratio = 0.7
 
 [node name="MapView" type="Control" parent="HBox/MapRow"]
 custom_minimum_size = Vector2(0, 400)
@@ -46,105 +46,117 @@ size_flags_horizontal = 3
 [node name="SeedLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
 
 [node name="SeedRow" type="HBoxContainer" parent="HBox/ControlsScroll/Controls/Params"]
-size_flags_horizontal = 3
+size_flags_horizontal = 4
 
 [node name="Seed" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params/SeedRow"]
+custom_minimum_size = Vector2(100, 0)
 min_value = 0.0
 max_value = 1.0e+09
 step = 1.0
-size_flags_horizontal = 3
+size_flags_horizontal = 4
 
 [node name="RandomSeed" type="Button" parent="HBox/ControlsScroll/Controls/Params/SeedRow"]
+size_flags_horizontal = 4
 
 [node name="CitiesLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
 
 [node name="Cities" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params"]
+custom_minimum_size = Vector2(100, 0)
 min_value = 1.0
 max_value = 20.0
 step = 1.0
 value = 3.0
-size_flags_horizontal = 3
+size_flags_horizontal = 4
 
 [node name="MinCitySpacingLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
 
 [node name="MinCitySpacing" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params"]
+custom_minimum_size = Vector2(100, 0)
 min_value = 1.0
 max_value = 100.0
 step = 1.0
 value = 20.0
-size_flags_horizontal = 3
+size_flags_horizontal = 4
 
 [node name="MaxCitySpacingLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
 
 [node name="MaxCitySpacing" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params"]
+custom_minimum_size = Vector2(100, 0)
 min_value = 1.0
 max_value = 100.0
 step = 1.0
 value = 40.0
-size_flags_horizontal = 3
+size_flags_horizontal = 4
 
 [node name="RiversLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
 
 [node name="Rivers" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params"]
+custom_minimum_size = Vector2(100, 0)
 min_value = 0.0
 max_value = 10.0
 step = 1.0
 value = 1.0
-size_flags_horizontal = 3
+size_flags_horizontal = 4
 
 [node name="KingdomsLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
 
 [node name="Kingdoms" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params"]
+custom_minimum_size = Vector2(100, 0)
 min_value = 1.0
 max_value = 20.0
 step = 1.0
 value = 1.0
-size_flags_horizontal = 3
+size_flags_horizontal = 4
 
 [node name="MinConnectionsLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
 
 [node name="MinConnections" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params"]
+custom_minimum_size = Vector2(100, 0)
 min_value = 1.0
 max_value = 10.0
 step = 1.0
 value = 1.0
-size_flags_horizontal = 3
+size_flags_horizontal = 4
 
 [node name="MaxConnectionsLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
 
 [node name="MaxConnections" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params"]
+custom_minimum_size = Vector2(100, 0)
 min_value = 1.0
 max_value = 10.0
 step = 1.0
 value = 3.0
-size_flags_horizontal = 3
+size_flags_horizontal = 4
 
 [node name="CrossingMarginLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
 
 [node name="CrossingMargin" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params"]
+custom_minimum_size = Vector2(100, 0)
 min_value = 0.0
 max_value = 50.0
 step = 0.5
 value = 5.0
-size_flags_horizontal = 3
+size_flags_horizontal = 4
 
 [node name="WidthLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
 
 [node name="Width" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params"]
+custom_minimum_size = Vector2(100, 0)
 min_value = 20.0
 max_value = 500.0
 step = 10.0
 value = 100.0
-size_flags_horizontal = 3
+size_flags_horizontal = 4
 
 [node name="HeightLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
 
 [node name="Height" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params"]
+custom_minimum_size = Vector2(100, 0)
 min_value = 20.0
 max_value = 500.0
 step = 10.0
 value = 100.0
-size_flags_horizontal = 3
+size_flags_horizontal = 4
 
 
 [node name="Buttons" type="HBoxContainer" parent="HBox/ControlsScroll/Controls"]
@@ -171,4 +183,7 @@ button_pressed = false
 
 [node name="ShowRegions" type="CheckBox" parent="Layers"]
 button_pressed = true
+
+[node name="EditCities" type="CheckBox" parent="Layers"]
+button_pressed = false
 

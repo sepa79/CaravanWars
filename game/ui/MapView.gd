@@ -17,6 +17,11 @@ var show_crossings: bool = false
 @export var crossing_size: float = 8.0
 var show_regions: bool = true
 var debug_logged: bool = false
+var edit_mode: bool = false
+var dragging_city: bool = false
+var selected_city: int = -1
+
+signal cities_changed(cities: Array)
 
 func set_map_data(data: Dictionary) -> void:
     map_data = data
@@ -27,6 +32,11 @@ func set_map_data(data: Dictionary) -> void:
     for region in regions.values():
         print("[MapView] region %s nodes: %s" % [region.id, region.boundary_nodes])
     queue_redraw()
+
+func set_edit_mode(value: bool) -> void:
+    edit_mode = value
+    dragging_city = false
+    selected_city = -1
 
 func get_kingdom_colors() -> Dictionary:
     var colors: Dictionary = {}
@@ -47,15 +57,33 @@ func _gui_input(event: InputEvent) -> void:
             accept_event()
         elif mb.button_index == MOUSE_BUTTON_LEFT:
             if mb.pressed:
-                dragging = true
+                if edit_mode:
+                    var idx: int = _city_at_point(mb.position)
+                    if idx != -1:
+                        selected_city = idx
+                        dragging_city = true
+                    else:
+                        dragging = true
+                else:
+                    dragging = true
             else:
+                if dragging_city:
+                    dragging_city = false
+                    selected_city = -1
+                    cities_changed.emit(map_data.get("cities", []))
                 dragging = false
             accept_event()
-    elif event is InputEventMouseMotion and dragging:
+    elif event is InputEventMouseMotion:
         var mm: InputEventMouseMotion = event
-        pan_offset -= mm.relative / _current_scale()
-        queue_redraw()
-        accept_event()
+        if edit_mode and dragging_city and selected_city != -1:
+            var map_pos: Vector2 = _screen_to_map(mm.position)
+            map_data.get("cities", [])[selected_city] = map_pos
+            queue_redraw()
+            accept_event()
+        elif dragging:
+            pan_offset -= mm.relative / _current_scale()
+            queue_redraw()
+            accept_event()
 
 func _adjust_zoom(factor: float) -> void:
     var old_zoom: float = zoom_level
@@ -189,6 +217,23 @@ func _polyline_midpoint(points: Array, total_length: float) -> Vector2:
             return a.lerp(b, t)
         acc += seg
     return points[0]
+
+func _city_at_point(screen_pos: Vector2) -> int:
+    var cities: Array = map_data.get("cities", [])
+    var base_scale: float = _base_scale()
+    var draw_scale: float = base_scale * zoom_level
+    var offset: Vector2 = _base_offset(base_scale) - pan_offset * draw_scale
+    for i in range(cities.size()):
+        var c: Vector2 = cities[i] * draw_scale + offset
+        if c.distance_to(screen_pos) <= 6.0:
+            return i
+    return -1
+
+func _screen_to_map(screen_pos: Vector2) -> Vector2:
+    var base_scale: float = _base_scale()
+    var draw_scale: float = base_scale * zoom_level
+    var offset: Vector2 = _base_offset(base_scale) - pan_offset * draw_scale
+    return (screen_pos - offset) / draw_scale
 
 func set_show_roads(value: bool) -> void:
     show_roads = value

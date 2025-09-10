@@ -1,5 +1,17 @@
 Changelog
 
+0.1.28 — 2025-09-10
+Removed
+- Reverted addition of `version` and `rng_seed` to unsafe variable names list.
+
+0.1.27 — 2025-09-10
+Fixed
+- Linked disconnected road graphs when Delaunay triangulation produced no edges, preventing hangs on some random seeds.
+
+0.1.26 — 2025-09-10
+Fixed
+- Renamed shadowed snapshot parameters and limited road crossing insertion iterations to guard against bad random seeds.
+
 0.1.25 — 2025-09-10
 Added
 - Documented `params` as an unsafe variable name in naming guidelines.

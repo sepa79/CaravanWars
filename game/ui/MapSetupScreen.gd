@@ -1,6 +1,9 @@
 extends Control
 
 const MapGeneratorModule = preload("res://map/MapGenerator.gd")
+const RegionGeneratorModule = preload("res://map/RegionGenerator.gd")
+const RoadNetworkModule = preload("res://map/RoadNetwork.gd")
+const MapSnapshotModule = preload("res://map/MapSnapshot.gd")
 
 @onready var title_label: Label = $HBox/ControlsScroll/Controls/Title
 @onready var params: GridContainer = $HBox/ControlsScroll/Controls/Params
@@ -34,6 +37,7 @@ const MapGeneratorModule = preload("res://map/MapGenerator.gd")
 @onready var show_cities_check: CheckBox = $Layers/ShowCities
 @onready var show_crossings_check: CheckBox = $Layers/ShowCrossings
 @onready var show_regions_check: CheckBox = $Layers/ShowRegions
+@onready var edit_cities_check: CheckBox = $Layers/EditCities
 @onready var start_button: Button = $HBox/ControlsScroll/Controls/Buttons/Start
 @onready var back_button: Button = $HBox/ControlsScroll/Controls/Buttons/Back
 @onready var main_ui: HBoxContainer = $HBox
@@ -43,6 +47,7 @@ var debounce_timer: Timer = Timer.new()
 
 var current_map: Dictionary = {}
 var previous_state: String = Net.state
+var app_version: String = ""
 
 func _ready() -> void:
     I18N.language_changed.connect(_update_texts)
@@ -52,6 +57,10 @@ func _ready() -> void:
     debounce_timer.one_shot = true
     debounce_timer.wait_time = 0.3
     debounce_timer.timeout.connect(_generate_map)
+    var vf := FileAccess.open("res://VERSION", FileAccess.READ)
+    if vf:
+        app_version = vf.get_as_text().strip_edges()
+        vf.close()
     random_seed_button.pressed.connect(_on_random_seed_pressed)
     start_button.pressed.connect(_on_start_pressed)
     back_button.pressed.connect(_on_back_pressed)
@@ -71,11 +80,13 @@ func _ready() -> void:
     show_cities_check.toggled.connect(_on_show_cities_toggled)
     show_crossings_check.toggled.connect(_on_show_crossings_toggled)
     show_regions_check.toggled.connect(_on_show_regions_toggled)
+    edit_cities_check.toggled.connect(_on_edit_cities_toggled)
     map_view.set_show_roads(show_roads_check.button_pressed)
     map_view.set_show_rivers(show_rivers_check.button_pressed)
     map_view.set_show_cities(show_cities_check.button_pressed)
     map_view.set_show_crossings(show_crossings_check.button_pressed)
     map_view.set_show_regions(show_regions_check.button_pressed)
+    map_view.cities_changed.connect(_on_cities_changed)
     _update_texts()
     _generate_map()
     _on_net_state_changed(Net.state)
@@ -99,6 +110,7 @@ func _update_texts() -> void:
     show_cities_check.text = I18N.t("setup.show_cities")
     show_crossings_check.text = I18N.t("setup.show_crossings")
     show_regions_check.text = I18N.t("setup.show_regions")
+    edit_cities_check.text = I18N.t("setup.edit_cities")
     start_button.text = I18N.t("setup.start")
     back_button.text = I18N.t("menu.back")
 
@@ -175,6 +187,7 @@ func _generate_map() -> void:
         kingdoms_spin.set_block_signals(false)
     _populate_kingdom_legend()
     start_button.disabled = false
+    _update_snapshot()
 
 func _on_params_changed(_value: float) -> void:
     start_button.disabled = true
@@ -196,14 +209,18 @@ func _on_show_crossings_toggled(pressed: bool) -> void:
 func _on_show_regions_toggled(pressed: bool) -> void:
     map_view.set_show_regions(pressed)
 
+func _on_edit_cities_toggled(pressed: bool) -> void:
+    map_view.set_edit_mode(pressed)
+
 func _on_random_seed_pressed() -> void:
     seed_spin.set_block_signals(true)
-    var random_value: int = randi() % int(seed_spin.max_value)
+    var random_value: int = randi_range(1, int(seed_spin.max_value))
     seed_spin.value = random_value
     seed_spin.set_block_signals(false)
     _on_params_changed(0.0)
 
 func _on_start_pressed() -> void:
+    _update_snapshot()
     match Net.run_mode:
         "single":
             Net.start_singleplayer()
@@ -251,3 +268,20 @@ func _on_kingdom_name_changed(text: String, kingdom_id: int) -> void:
     if not current_map.has("kingdom_names"):
         current_map["kingdom_names"] = {}
     current_map["kingdom_names"][kingdom_id] = text
+
+func _on_cities_changed(cities: Array) -> void:
+    current_map["cities"] = cities
+    var region_stage = RegionGeneratorModule.new()
+    var regions = region_stage.generate_regions(cities, int(kingdoms_spin.value), current_map.get("width", 100.0), current_map.get("height", 100.0))
+    current_map["regions"] = regions
+    var rng := RandomNumberGenerator.new()
+    rng.seed = int(seed_spin.value)
+    var road_stage := RoadNetworkModule.new(rng)
+    var roads = road_stage.build_roads(cities, int(min_connections_spin.value), int(max_connections_spin.value), crossing_margin_spin.value)
+    current_map["roads"] = roads
+    map_view.set_map_data(current_map)
+    _update_snapshot()
+
+func _update_snapshot() -> void:
+    var snapshot := MapSnapshotModule.from_map(current_map, int(seed_spin.value), app_version)
+    current_map["snapshot"] = snapshot.to_dict()
