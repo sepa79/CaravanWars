@@ -214,7 +214,7 @@ func _on_edit_cities_toggled(pressed: bool) -> void:
 
 func _on_random_seed_pressed() -> void:
     seed_spin.set_block_signals(true)
-    var random_value: int = randi() % int(seed_spin.max_value)
+    var random_value: int = randi_range(1, int(seed_spin.max_value))
     seed_spin.value = random_value
     seed_spin.set_block_signals(false)
     _on_params_changed(0.0)

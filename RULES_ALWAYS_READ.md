@@ -17,7 +17,7 @@ RULES_ALWAYS_READ — twarde zasady
   - `enter_tree`, `exit_tree`
   - `duplicate`, `free`, `queue_free`
   - `update`, `draw`, `play`, `stop`
-  - `scale`, `seed`, `params`
+  - `scale`, `seed`, `params`, `version`, `rng_seed`
 - Autoloady (nazwy singletonów): `App`, `I18N`, `Net`, `World`, później `Debug`, `Ai`.
 
 3) I18N (obowiązkowe)

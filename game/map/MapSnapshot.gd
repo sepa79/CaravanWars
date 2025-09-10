@@ -14,8 +14,8 @@ func _init(p_rng_seed: int, p_version: String) -> void:
     edges = {}
     regions = {}
 
-static func from_map(map_data: Dictionary, rng_seed: int, version: String) -> MapSnapshot:
-    var snapshot := MapSnapshot.new(rng_seed, version)
+static func from_map(map_data: Dictionary, p_rng_seed: int, p_version: String) -> MapSnapshot:
+    var snapshot := MapSnapshot.new(p_rng_seed, p_version)
     var roads: Dictionary = map_data.get("roads", {})
     for node in roads.get("nodes", {}).values():
         snapshot.nodes[node.id] = node

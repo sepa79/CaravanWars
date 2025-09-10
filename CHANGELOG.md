@@ -1,5 +1,11 @@
 Changelog
 
+0.1.26 — 2025-09-10
+Added
+- Documented `version` and `rng_seed` as unsafe variable names in naming guidelines.
+Fixed
+- Renamed shadowed snapshot parameters and limited road crossing insertion iterations to guard against bad random seeds.
+
 0.1.25 — 2025-09-10
 Added
 - Documented `params` as an unsafe variable name in naming guidelines.
