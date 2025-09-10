@@ -122,8 +122,7 @@ func _no_crossing_duplicates(roads: Dictionary, margin: float) -> bool:
                 var key := _pair_key(a_id, b_id)
                 if city_edges.has(key):
                     var direct_len: float = nodes[a_id].pos2d.distance_to(nodes[b_id].pos2d)
-                    var crossing_len: float = nodes[a_id].pos2d.distance_to(nodes[cross_id].pos2d) +
-                        nodes[cross_id].pos2d.distance_to(nodes[b_id].pos2d)
+                    var crossing_len: float = nodes[a_id].pos2d.distance_to(nodes[cross_id].pos2d) + nodes[cross_id].pos2d.distance_to(nodes[b_id].pos2d)
                     if crossing_len - direct_len <= margin:
                         return false
     return true
