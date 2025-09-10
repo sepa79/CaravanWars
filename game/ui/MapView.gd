@@ -94,10 +94,20 @@ func _draw() -> void:
             debug_logged = true
     var roads: Dictionary = map_data.get("roads", {})
     if show_roads:
+        var font: Font = get_theme_default_font()
+        var font_size: int = get_theme_default_font_size()
         for edge in roads.get("edges", {}).values():
             var pts: PackedVector2Array = edge.polyline
+            var length: float = 0.0
             for i in range(pts.size() - 1):
-                draw_line(pts[i] * draw_scale + offset, pts[i + 1] * draw_scale + offset, Color.WHITE, 1.0)
+                var a: Vector2 = pts[i]
+                var b: Vector2 = pts[i + 1]
+                draw_line(a * draw_scale + offset, b * draw_scale + offset, Color.WHITE, 1.0)
+                length += a.distance_to(b)
+            if font and pts.size() >= 2:
+                var mid: Vector2 = (pts[0] + pts[pts.size() - 1]) * 0.5
+                var pos: Vector2 = mid * draw_scale + offset + Vector2(0, -4)
+                draw_string(font, pos, "%d" % int(round(length)), HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.WHITE)
     if show_rivers:
         for river in map_data.get("rivers", []):
             for i in range(river.size() - 1):

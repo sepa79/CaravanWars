@@ -8,8 +8,10 @@ const MapGeneratorModule = preload("res://map/MapGenerator.gd")
 @onready var random_seed_button: Button = $VBox/Params/SeedRow/RandomSeed
 @onready var cities_label: Label = $VBox/Params/CitiesLabel
 @onready var cities_spin: SpinBox = $VBox/Params/Cities
-@onready var city_spacing_label: Label = $VBox/Params/CitySpacingLabel
-@onready var city_spacing_spin: SpinBox = $VBox/Params/CitySpacing
+@onready var min_city_spacing_label: Label = $VBox/Params/MinCitySpacingLabel
+@onready var min_city_spacing_spin: SpinBox = $VBox/Params/MinCitySpacing
+@onready var max_city_spacing_label: Label = $VBox/Params/MaxCitySpacingLabel
+@onready var max_city_spacing_spin: SpinBox = $VBox/Params/MaxCitySpacing
 @onready var rivers_label: Label = $VBox/Params/RiversLabel
 @onready var rivers_spin: SpinBox = $VBox/Params/Rivers
 @onready var kingdoms_label: Label = $VBox/Params/KingdomsLabel
@@ -57,7 +59,8 @@ func _ready() -> void:
     kingdoms_spin.value_changed.connect(_on_params_changed)
     min_connections_spin.value_changed.connect(_on_params_changed)
     max_connections_spin.value_changed.connect(_on_params_changed)
-    city_spacing_spin.value_changed.connect(_on_params_changed)
+    min_city_spacing_spin.value_changed.connect(_on_params_changed)
+    max_city_spacing_spin.value_changed.connect(_on_params_changed)
     crossing_margin_spin.value_changed.connect(_on_params_changed)
     width_spin.value_changed.connect(_on_params_changed)
     height_spin.value_changed.connect(_on_params_changed)
@@ -80,7 +83,8 @@ func _update_texts() -> void:
     seed_label.text = I18N.t("setup.seed")
     random_seed_button.text = I18N.t("setup.random_seed")
     cities_label.text = I18N.t("setup.cities")
-    city_spacing_label.text = I18N.t("setup.city_spacing")
+    min_city_spacing_label.text = I18N.t("setup.min_city_spacing")
+    max_city_spacing_label.text = I18N.t("setup.max_city_spacing")
     rivers_label.text = I18N.t("setup.rivers")
     kingdoms_label.text = I18N.t("setup.kingdoms")
     min_connections_label.text = I18N.t("setup.min_connections")
@@ -106,7 +110,8 @@ func _generate_map() -> void:
         int(rivers_spin.value),
         int(min_connections_spin.value),
         int(max_connections_spin.value),
-        city_spacing_spin.value,
+        min_city_spacing_spin.value,
+        max_city_spacing_spin.value,
         crossing_margin_spin.value,
         width_spin.value,
         height_spin.value,
@@ -127,6 +132,8 @@ func _generate_map() -> void:
         max_connections_spin.set_block_signals(false)
     max_connections_spin.min_value = params.min_connections
     min_connections_spin.max_value = params.max_connections
+    max_city_spacing_spin.min_value = params.min_city_distance
+    min_city_spacing_spin.max_value = params.max_city_distance
     if seed_spin.value != params.rng_seed:
         seed_spin.set_block_signals(true)
         seed_spin.value = params.rng_seed
@@ -139,6 +146,14 @@ func _generate_map() -> void:
         max_connections_spin.set_block_signals(true)
         max_connections_spin.value = params.max_connections
         max_connections_spin.set_block_signals(false)
+    if min_city_spacing_spin.value != params.min_city_distance:
+        min_city_spacing_spin.set_block_signals(true)
+        min_city_spacing_spin.value = params.min_city_distance
+        min_city_spacing_spin.set_block_signals(false)
+    if max_city_spacing_spin.value != params.max_city_distance:
+        max_city_spacing_spin.set_block_signals(true)
+        max_city_spacing_spin.value = params.max_city_distance
+        max_city_spacing_spin.set_block_signals(false)
     if width_spin.value != params.width:
         width_spin.set_block_signals(true)
         width_spin.value = params.width

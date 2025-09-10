@@ -13,6 +13,7 @@ func _init(_rng: RandomNumberGenerator) -> void:
 func place_cities(
     count: int = 3,
     min_distance: float = 20.0,
+    max_distance: float = 40.0,
     width: float = 100.0,
     height: float = 100.0
 ) -> Array[Vector2]:
@@ -41,8 +42,8 @@ func place_cities(
         var point: Vector2 = samples[idx]
         var found: bool = false
         for _i in range(k):
-            var new_point: Vector2 = _generate_point_around(point, radius)
-            if _is_valid(new_point, cell_size, grid_width, grid_height, grid, samples, radius):
+            var new_point: Vector2 = _generate_point_around(point, min_distance, max_distance)
+            if _is_valid(new_point, cell_size, grid_width, grid_height, grid, samples, min_distance):
                 samples.append(new_point)
                 active.append(samples.size() - 1)
                 grid[_grid_index(new_point, cell_size, grid_width)] = samples.size() - 1
@@ -54,8 +55,8 @@ func place_cities(
 
     return samples
 
-func _generate_point_around(p: Vector2, radius: float) -> Vector2:
-    var r: float = radius + rng.randf() * radius
+func _generate_point_around(p: Vector2, min_distance: float, max_distance: float) -> Vector2:
+    var r: float = rng.randf_range(min_distance, max_distance)
     var angle: float = rng.randf() * TAU
     return Vector2(p.x + r * cos(angle), p.y + r * sin(angle))
 
@@ -71,7 +72,7 @@ func _is_valid(
     grid_height: int,
     grid: Array[int],
     samples: Array[Vector2],
-    radius: float
+    min_distance: float
 ) -> bool:
     if p.x < 0.0 or p.y < 0.0 or p.x >= map_width or p.y >= map_height:
         return false
@@ -80,6 +81,6 @@ func _is_valid(
     for x in range(max(0, gx - 2), min(grid_width, gx + 3)):
         for y in range(max(0, gy - 2), min(grid_height, gy + 3)):
             var index: int = grid[y * grid_width + x]
-            if index != -1 and samples[index].distance_to(p) < radius:
+            if index != -1 and samples[index].distance_to(p) < min_distance:
                 return false
     return true
