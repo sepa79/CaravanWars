@@ -92,7 +92,8 @@ func build_roads(
         "next_edge_id": result["next_edge_id"],
     }
 
-func connect(roads: Dictionary, a_id: int, b_id: int, village_spacing: float = 25.0, crossing_margin: float = 5.0) -> void:
+## Links two nodes with a road, inserting villages and crossings as needed.
+func connect_nodes(roads: Dictionary, a_id: int, b_id: int, village_spacing: float = 25.0, crossing_margin: float = 5.0) -> void:
     var nodes: Dictionary = roads.get("nodes", {})
     var edges: Dictionary = roads.get("edges", {})
     var next_node_id: int = roads.get("next_node_id", 1)
