@@ -1,5 +1,9 @@
 Changelog
 
+0.1.22 — 2025-09-10
+Fixed
+- Corrected Voronoi half-plane clipping so region edges fall midway between cities without overlapping.
+
 0.1.21 — 2025-09-10
 Fixed
 - Replaced missing `Geometry2D` calls with Delaunay-based Voronoi generation and manual clockwise sorting for consistent region polygons.

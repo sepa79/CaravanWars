@@ -100,16 +100,13 @@ func _clip_poly(poly: PackedVector2Array, p: Vector2, q: Vector2) -> PackedVecto
         return poly
     var result := PackedVector2Array()
     var mid: Vector2 = (p + q) * 0.5
-    var dir: Vector2 = (q - p).normalized()
-    var normal: Vector2 = Vector2(dir.y, -dir.x)
-    if (p - mid).dot(normal) < 0:
-        normal = -normal
+    var normal: Vector2 = q - p
     for i in range(poly.size()):
         var a: Vector2 = poly[i]
         var b: Vector2 = poly[(i + 1) % poly.size()]
         var da: float = (a - mid).dot(normal)
         var db: float = (b - mid).dot(normal)
-        if da >= -EPS:
+        if da <= EPS:
             result.append(a)
         if da * db < -EPS * EPS:
             var t: float = da / (da - db)
