@@ -276,7 +276,8 @@ func _road_edge_at_point(screen_pos: Vector2) -> int:
         for i in range(pts.size() - 1):
             var a: Vector2 = pts[i] * draw_scale + offset
             var b: Vector2 = pts[i + 1] * draw_scale + offset
-            if Geometry2D.get_distance_to_segment(screen_pos, a, b) <= 3.0:
+            var closest_point: Vector2 = Geometry2D.get_closest_point_to_segment(screen_pos, a, b)
+            if closest_point.distance_to(screen_pos) <= 3.0:
                 return id
     return -1
 
