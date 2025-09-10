@@ -125,36 +125,47 @@ func connect_nodes(roads: Dictionary, a_id: int, b_id: int, village_spacing: flo
 func remove_edge(roads: Dictionary, edge_id: int, crossing_margin: float = 5.0) -> void:
     var nodes: Dictionary = roads.get("nodes", {})
     var edges: Dictionary = roads.get("edges", {})
+    var edge: Edge = edges.get(edge_id)
+    if edge == null:
+        return
+
+    var endpoints: Array[int] = [edge.endpoints[0], edge.endpoints[1]]
     edges.erase(edge_id)
+
+    var next_edge_id: int = roads.get("next_edge_id", 1)
+    for nid in endpoints:
+        var node: MapNode = nodes.get(nid)
+        if node == null or node.type != "crossing":
+            continue
+        var incident: Array[int] = []
+        for eid in edges.keys():
+            var e: Edge = edges[eid]
+            if e.endpoints.has(nid):
+                incident.append(eid)
+        if incident.size() == 0:
+            nodes.erase(nid)
+        elif incident.size() == 1:
+            edges.erase(incident[0])
+            nodes.erase(nid)
+        elif incident.size() == 2:
+            var e1: Edge = edges[incident[0]]
+            var e2: Edge = edges[incident[1]]
+            var other1: int = e1.endpoints[0] if e1.endpoints[1] == nid else e1.endpoints[1]
+            var other2: int = e2.endpoints[0] if e2.endpoints[1] == nid else e2.endpoints[1]
+            edges.erase(incident[0])
+            edges.erase(incident[1])
+            edges[next_edge_id] = EdgeModule.new(next_edge_id, "trade_route", [nodes[other1].pos2d, nodes[other2].pos2d], [other1, other2], {})
+            next_edge_id += 1
+            nodes.erase(nid)
+        # if more than two incident edges remain, keep crossing as is
+
+    roads["next_edge_id"] = max(next_edge_id, roads.get("next_edge_id", 1))
 
     var used: Dictionary = {}
     for e in edges.values():
         used[e.endpoints[0]] = true
         used[e.endpoints[1]] = true
     var to_remove: Array[int] = []
-    for id in nodes.keys():
-        if nodes[id].type != "city" and not used.has(id):
-            to_remove.append(id)
-    for id in to_remove:
-        nodes.erase(id)
-
-    var crossing_ids: Array[int] = []
-    for id in nodes.keys():
-        if nodes[id].type == "crossing":
-            crossing_ids.append(id)
-    for cid in crossing_ids:
-        var edge_keys: Array = edges.keys()
-        for eid in edge_keys:
-            var e: Edge = edges[eid]
-            if e.endpoints.has(cid):
-                edges.erase(eid)
-        nodes.erase(cid)
-
-    used.clear()
-    for e in edges.values():
-        used[e.endpoints[0]] = true
-        used[e.endpoints[1]] = true
-    to_remove = []
     for id in nodes.keys():
         if nodes[id].type != "city" and not used.has(id):
             to_remove.append(id)
