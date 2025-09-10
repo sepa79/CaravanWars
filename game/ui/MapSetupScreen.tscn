@@ -13,14 +13,15 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="ControlsScroll" type="ScrollContainer" parent="HBox"]
-custom_minimum_size = Vector2(260, 0)
-size_flags_horizontal = 1
+size_flags_horizontal = 3
 size_flags_vertical = 3
+size_flags_stretch_ratio = 0.4
 horizontal_scroll_enabled = false
 
 [node name="MapRow" type="HBoxContainer" parent="HBox"]
 size_flags_horizontal = 3
 size_flags_vertical = 3
+size_flags_stretch_ratio = 0.6
 
 [node name="MapView" type="Control" parent="HBox/MapRow"]
 custom_minimum_size = Vector2(0, 400)
