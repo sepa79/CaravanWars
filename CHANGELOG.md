@@ -1,5 +1,9 @@
 Changelog
 
+0.1.24 — 2025-09-10
+Fixed
+- Avoided integer division and shadowed built-in name in region generator.
+
 0.1.23 — 2025-09-10
 Added
 - Configurable kingdom count with contiguous allocation and kingdom-aware region rendering.

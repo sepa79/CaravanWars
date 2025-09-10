@@ -1,9 +1,9 @@
 extends Control
 class_name MapView
 
-const CityPlacerModule = preload("res://map/CityPlacer.gd")
-
 var map_data: Dictionary = {}
+var map_width: float = 100.0
+var map_height: float = 100.0
 @export var min_zoom: float = 0.5
 @export var max_zoom: float = 3.0
 var zoom_level: float = 1.0
@@ -21,6 +21,8 @@ var debug_logged: bool = false
 func set_map_data(data: Dictionary) -> void:
     map_data = data
     debug_logged = false
+    map_width = data.get("width", map_width)
+    map_height = data.get("height", map_height)
     var regions: Dictionary = map_data.get("regions", {})
     for region in regions.values():
         print("[MapView] region %s nodes: %s" % [region.id, region.boundary_nodes])
@@ -54,13 +56,13 @@ func _adjust_zoom(factor: float) -> void:
     queue_redraw()
 
 func _base_scale() -> float:
-    return min(size.x / CityPlacerModule.WIDTH, size.y / CityPlacerModule.HEIGHT)
+    return min(size.x / map_width, size.y / map_height)
 
 func _current_scale() -> float:
     return _base_scale() * zoom_level
 
 func _base_offset(base_scale: float) -> Vector2:
-    return (size - Vector2(CityPlacerModule.WIDTH, CityPlacerModule.HEIGHT) * base_scale) / 2.0
+    return (size - Vector2(map_width, map_height) * base_scale) / 2.0
 
 func _draw() -> void:
     if map_data.is_empty():

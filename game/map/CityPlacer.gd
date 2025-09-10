@@ -2,21 +2,27 @@ extends RefCounted
 class_name CityPlacer
 
 var rng: RandomNumberGenerator
-
-const WIDTH: float = 100.0
-const HEIGHT: float = 100.0
+var map_width: float = 100.0
+var map_height: float = 100.0
 
 func _init(_rng: RandomNumberGenerator) -> void:
     rng = _rng
 
 ## Places city centers using Poisson disk sampling (blue-noise).
 ## Ensures a minimum distance between any two cities.
-func place_cities(count: int = 3, min_distance: float = 20.0) -> Array[Vector2]:
+func place_cities(
+    count: int = 3,
+    min_distance: float = 20.0,
+    width: float = 100.0,
+    height: float = 100.0
+) -> Array[Vector2]:
+    map_width = width
+    map_height = height
     var radius: float = min_distance
     var k: int = 30
     var cell_size: float = radius / sqrt(2.0)
-    var grid_width: int = int(ceil(WIDTH / cell_size))
-    var grid_height: int = int(ceil(HEIGHT / cell_size))
+    var grid_width: int = int(ceil(map_width / cell_size))
+    var grid_height: int = int(ceil(map_height / cell_size))
     var grid: Array[int] = []
     for i in range(grid_width * grid_height):
         grid.append(-1)
@@ -24,7 +30,7 @@ func place_cities(count: int = 3, min_distance: float = 20.0) -> Array[Vector2]:
     var samples: Array[Vector2] = []
     var active: Array[int] = []
 
-    var initial_point := Vector2(rng.randf() * WIDTH, rng.randf() * HEIGHT)
+    var initial_point := Vector2(rng.randf() * map_width, rng.randf() * map_height)
     samples.append(initial_point)
     var initial_index: int = _grid_index(initial_point, cell_size, grid_width)
     grid[initial_index] = 0
@@ -58,8 +64,16 @@ func _grid_index(p: Vector2, cell_size: float, grid_width: int) -> int:
     var gy: int = int(p.y / cell_size)
     return gy * grid_width + gx
 
-func _is_valid(p: Vector2, cell_size: float, grid_width: int, grid_height: int, grid: Array[int], samples: Array[Vector2], radius: float) -> bool:
-    if p.x < 0.0 or p.y < 0.0 or p.x >= WIDTH or p.y >= HEIGHT:
+func _is_valid(
+    p: Vector2,
+    cell_size: float,
+    grid_width: int,
+    grid_height: int,
+    grid: Array[int],
+    samples: Array[Vector2],
+    radius: float
+) -> bool:
+    if p.x < 0.0 or p.y < 0.0 or p.x >= map_width or p.y >= map_height:
         return false
     var gx: int = int(p.x / cell_size)
     var gy: int = int(p.y / cell_size)
