@@ -239,8 +239,15 @@ func _on_delete_road_toggled(pressed: bool) -> void:
 func _on_validate_map_pressed() -> void:
     var validator: MapValidator = MapValidatorModule.new()
     var errors: Array[String] = validator.validate(current_map["roads"], current_map.get("rivers", []))
-    for err in errors:
-        push_warning(err)
+    if errors.is_empty():
+        var road_helper: RoadNetwork = RoadNetworkModule.new(RandomNumberGenerator.new())
+        road_helper.cleanup(current_map["roads"])
+        map_view.set_map_data(current_map)
+        map_view.queue_redraw()
+        _update_snapshot()
+    else:
+        for err in errors:
+            push_warning(err)
 
 func _on_random_seed_pressed() -> void:
     seed_spin.set_block_signals(true)
