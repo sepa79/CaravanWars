@@ -28,6 +28,14 @@ func set_map_data(data: Dictionary) -> void:
         print("[MapView] region %s nodes: %s" % [region.id, region.boundary_nodes])
     queue_redraw()
 
+func get_kingdom_colors() -> Dictionary:
+    var colors: Dictionary = {}
+    var regions: Dictionary = map_data.get("regions", {})
+    for region in regions.values():
+        if not colors.has(region.kingdom_id):
+            colors[region.kingdom_id] = Color.from_hsv(hash(region.kingdom_id) % 360 / 360.0, 0.6, 0.8)
+    return colors
+
 func _gui_input(event: InputEvent) -> void:
     if event is InputEventMouseButton:
         var mb: InputEventMouseButton = event

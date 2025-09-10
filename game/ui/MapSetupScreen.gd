@@ -28,6 +28,7 @@ const MapGeneratorModule = preload("res://map/MapGenerator.gd")
 @onready var height_label: Label = params.get_node("HeightLabel")
 @onready var height_spin: SpinBox = params.get_node("Height")
 @onready var map_view: MapView = $VBox/MapView
+@onready var kingdom_legend: VBoxContainer = $VBox/KingdomLegend
 @onready var show_roads_check: CheckBox = $VBox/Layers/ShowRoads
 @onready var show_rivers_check: CheckBox = $VBox/Layers/ShowRivers
 @onready var show_cities_check: CheckBox = $VBox/Layers/ShowCities
@@ -172,6 +173,7 @@ func _generate_map() -> void:
         kingdoms_spin.set_block_signals(true)
         kingdoms_spin.value = actual_city_count
         kingdoms_spin.set_block_signals(false)
+    _populate_kingdom_legend()
     start_button.disabled = false
 
 func _on_params_changed(_value: float) -> void:
@@ -223,3 +225,27 @@ func _on_net_state_changed(state: String) -> void:
     else:
         main_ui.visible = false
     previous_state = state
+
+func _populate_kingdom_legend() -> void:
+    for child in kingdom_legend.get_children():
+        child.queue_free()
+    var colors: Dictionary = map_view.get_kingdom_colors()
+    if not current_map.has("kingdom_names"):
+        current_map["kingdom_names"] = {}
+    var names: Dictionary = current_map["kingdom_names"]
+    for kingdom_id in colors.keys():
+        var entry := HBoxContainer.new()
+        kingdom_legend.add_child(entry)
+        var swatch := ColorRect.new()
+        swatch.custom_minimum_size = Vector2(16, 16)
+        swatch.color = colors[kingdom_id]
+        entry.add_child(swatch)
+        var name_edit := LineEdit.new()
+        name_edit.text = names.get(kingdom_id, "Kingdom %d" % kingdom_id)
+        name_edit.text_changed.connect(_on_kingdom_name_changed.bind(kingdom_id))
+        entry.add_child(name_edit)
+
+func _on_kingdom_name_changed(kingdom_id: int, text: String) -> void:
+    if not current_map.has("kingdom_names"):
+        current_map["kingdom_names"] = {}
+    current_map["kingdom_names"][kingdom_id] = text
