@@ -11,7 +11,7 @@ const EPS: float = 0.001
 func generate_regions(cities: Array[Vector2]) -> Dictionary:
     print("[RegionGenerator] generating regions for %s cities" % cities.size())
     var bounds := Rect2(Vector2.ZERO, Vector2(CityPlacerModule.WIDTH, CityPlacerModule.HEIGHT))
-    var voronoi: Array = _voronoi_diagram(PackedVector2Array(cities), bounds)
+    var voronoi: Array = Geometry2D.voronoi_diagram(PackedVector2Array(cities), bounds)
     print("[RegionGenerator] computed %s raw cells" % voronoi.size())
     var regions: Dictionary = {}
     for i in range(voronoi.size()):
@@ -20,7 +20,7 @@ func generate_regions(cities: Array[Vector2]) -> Dictionary:
         if poly.size() < 3:
             print("[RegionGenerator] cell %s discarded: less than 3 vertices" % i)
             continue
-        poly = _sort_clockwise(poly)
+        poly = Geometry2D.sort_points_clockwise(poly)
         poly = _filter_points(poly)
         print("[RegionGenerator] cell %s has %s vertices after filtering" % [i, poly.size()])
         if poly.size() < 3:
@@ -33,86 +33,6 @@ func generate_regions(cities: Array[Vector2]) -> Dictionary:
         regions[i + 1] = RegionModule.new(i + 1, arr, "")
     print("[RegionGenerator] finalized %s regions" % regions.size())
     return regions
-
-# Computes Voronoi cells by iteratively clipping the bounding box with
-# perpendicular bisectors between sites.
-func _voronoi_diagram(points: PackedVector2Array, rect: Rect2) -> Array[PackedVector2Array]:
-    print("[RegionGenerator] _voronoi_diagram with %s points" % points.size())
-    var bounds_poly := PackedVector2Array([
-        rect.position,
-        rect.position + Vector2(rect.size.x, 0),
-        rect.position + rect.size,
-        rect.position + Vector2(0, rect.size.y),
-    ])
-
-    # Use Delaunay triangulation to find neighboring sites for clipping.
-    var tri := Geometry2D.triangulate_delaunay(points)
-    var neighbor_lists: Array = []
-    neighbor_lists.resize(points.size())
-    for i in range(points.size()):
-        neighbor_lists[i] = []
-    for t in range(0, tri.size(), 3):
-        var a: int = tri[t]
-        var b: int = tri[t + 1]
-        var c: int = tri[t + 2]
-        _add_neighbor(neighbor_lists, a, b)
-        _add_neighbor(neighbor_lists, b, c)
-        _add_neighbor(neighbor_lists, c, a)
-    for i in range(neighbor_lists.size()):
-        print("[RegionGenerator] point %s neighbors: %s" % [i, neighbor_lists[i]])
-
-    var far: float = max(rect.size.x, rect.size.y) * 2.0
-    var result: Array[PackedVector2Array] = []
-    for i in range(points.size()):
-        var cell: PackedVector2Array = bounds_poly
-        var p: Vector2 = points[i]
-        for j in neighbor_lists[i]:
-            var q: Vector2 = points[j]
-            var mid := (p + q) * 0.5
-            var dir := (q - p).normalized()
-            var normal := Vector2(dir.y, -dir.x)
-            if normal.dot(p - mid) < 0:
-                normal = -normal
-            # Build a large polygon representing the half-plane of points closer to
-            # p than q. The segment between p and q is extended in both directions
-            # and then offset toward the normal that keeps p inside.
-            var a1 := mid - dir * far
-            var a2 := mid + dir * far
-            var b2 := a2 + normal * far * 2.0
-            var b1 := a1 + normal * far * 2.0
-            var half_plane := PackedVector2Array([a1, a2, b2, b1])
-            var clipped := Geometry2D.intersect_polygons(cell, half_plane)
-            if clipped.size() == 0:
-                print("[RegionGenerator] cell %s clipped out by point %s" % [i, j])
-                cell = PackedVector2Array()
-                break
-            cell = clipped[0]
-        result.append(cell)
-    return result
-
-# Adds two-way neighbor relationship between points.
-func _add_neighbor(lists: Array, a: int, b: int) -> void:
-    if not lists[a].has(b):
-        lists[a].append(b)
-    if not lists[b].has(a):
-        lists[b].append(a)
-
-# Sorts polygon vertices clockwise around their centroid.
-func _sort_clockwise(points: PackedVector2Array) -> PackedVector2Array:
-    var centroid := Vector2.ZERO
-    for p in points:
-        centroid += p
-    centroid /= points.size()
-    var arr: Array = []
-    for p in points:
-        arr.append(p)
-    arr.sort_custom(func(a: Vector2, b: Vector2):
-        return (a - centroid).angle() > (b - centroid).angle())
-    var sorted := PackedVector2Array(arr)
-    if not Geometry2D.is_polygon_clockwise(sorted):
-        arr.reverse()
-        sorted = PackedVector2Array(arr)
-    return sorted
 
 # Removes duplicate and collinear points.
 func _filter_points(points: PackedVector2Array) -> PackedVector2Array:
