@@ -9,6 +9,7 @@ class MapGenParams:
     var min_connections: int
     var max_connections: int
     var crossing_detour_margin: float
+    var kingdom_count: int
 
     func _init(
         p_rng_seed: int = 0,
@@ -16,7 +17,8 @@ class MapGenParams:
         p_max_river_count: int = 1,
         p_min_connections: int = 1,
         p_max_connections: int = 3,
-        p_crossing_detour_margin: float = 5.0
+        p_crossing_detour_margin: float = 5.0,
+        p_kingdom_count: int = 1
     ) -> void:
         rng_seed = p_rng_seed if p_rng_seed != 0 else Time.get_ticks_msec()
         city_count = p_city_count
@@ -25,6 +27,7 @@ class MapGenParams:
         min_connections = clamp(p_min_connections, 1, max_possible)
         max_connections = clamp(p_max_connections, min_connections, max_possible)
         crossing_detour_margin = p_crossing_detour_margin
+        kingdom_count = max(1, p_kingdom_count)
 
 var params: MapGenParams
 var rng: RandomNumberGenerator
@@ -47,7 +50,7 @@ func generate() -> Dictionary:
     print("[MapGenerator] placed %s cities" % cities.size())
 
     var region_stage = RegionGeneratorModule.new()
-    var regions: Dictionary = region_stage.generate_regions(cities)
+    var regions: Dictionary = region_stage.generate_regions(cities, params.kingdom_count)
     map_data["regions"] = regions
     print("[MapGenerator] generated %s regions" % regions.size())
 
