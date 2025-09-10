@@ -2,8 +2,8 @@ extends Control
 
 const MapGeneratorModule = preload("res://map/MapGenerator.gd")
 
-@onready var title_label: Label = $VBox/Title
-@onready var params: GridContainer = $VBox/ParamsScroll/Params
+@onready var title_label: Label = $HBox/ControlsScroll/Controls/Title
+@onready var params: GridContainer = $HBox/ControlsScroll/Controls/Params
 @onready var seed_label: Label = params.get_node("SeedLabel")
 @onready var seed_spin: SpinBox = params.get_node("SeedRow/Seed")
 @onready var random_seed_button: Button = params.get_node("SeedRow/RandomSeed")
@@ -27,16 +27,16 @@ const MapGeneratorModule = preload("res://map/MapGenerator.gd")
 @onready var width_spin: SpinBox = params.get_node("Width")
 @onready var height_label: Label = params.get_node("HeightLabel")
 @onready var height_spin: SpinBox = params.get_node("Height")
-@onready var map_view: MapView = $VBox/MapRow/MapView
-@onready var kingdom_legend: VBoxContainer = $VBox/MapRow/KingdomLegend
-@onready var show_roads_check: CheckBox = $VBox/Layers/ShowRoads
-@onready var show_rivers_check: CheckBox = $VBox/Layers/ShowRivers
-@onready var show_cities_check: CheckBox = $VBox/Layers/ShowCities
-@onready var show_crossings_check: CheckBox = $VBox/Layers/ShowCrossings
-@onready var show_regions_check: CheckBox = $VBox/Layers/ShowRegions
-@onready var start_button: Button = $VBox/Buttons/Start
-@onready var back_button: Button = $VBox/Buttons/Back
-@onready var main_ui: VBoxContainer = $VBox
+@onready var map_view: MapView = $HBox/MapRow/MapView
+@onready var kingdom_legend: VBoxContainer = $HBox/MapRow/KingdomLegend
+@onready var show_roads_check: CheckBox = $HBox/ControlsScroll/Controls/Layers/ShowRoads
+@onready var show_rivers_check: CheckBox = $HBox/ControlsScroll/Controls/Layers/ShowRivers
+@onready var show_cities_check: CheckBox = $HBox/ControlsScroll/Controls/Layers/ShowCities
+@onready var show_crossings_check: CheckBox = $HBox/ControlsScroll/Controls/Layers/ShowCrossings
+@onready var show_regions_check: CheckBox = $HBox/ControlsScroll/Controls/Layers/ShowRegions
+@onready var start_button: Button = $HBox/ControlsScroll/Controls/Buttons/Start
+@onready var back_button: Button = $HBox/ControlsScroll/Controls/Buttons/Back
+@onready var main_ui: HBoxContainer = $HBox
 @onready var connecting_ui: Control = preload("res://scenes/Connecting.tscn").instantiate()
 
 var debounce_timer: Timer = Timer.new()
