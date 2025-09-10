@@ -92,6 +92,79 @@ func build_roads(
         "next_edge_id": result["next_edge_id"],
     }
 
+func connect(roads: Dictionary, a_id: int, b_id: int, village_spacing: float = 25.0, crossing_margin: float = 5.0) -> void:
+    var nodes: Dictionary = roads.get("nodes", {})
+    var edges: Dictionary = roads.get("edges", {})
+    var next_node_id: int = roads.get("next_node_id", 1)
+    var next_edge_id: int = roads.get("next_edge_id", 1)
+    var start: MapNode = nodes.get(a_id)
+    var end: MapNode = nodes.get(b_id)
+    if start == null or end == null:
+        return
+    var length: float = start.pos2d.distance_to(end.pos2d)
+    var dir: Vector2 = (end.pos2d - start.pos2d).normalized()
+    var dist: float = village_spacing
+    var last_node: MapNode = start
+    while dist < length:
+        var pos: Vector2 = start.pos2d + dir * dist
+        var n_node: MapNode = MapNodeModule.new(next_node_id, "village", pos, {})
+        nodes[next_node_id] = n_node
+        edges[next_edge_id] = EdgeModule.new(next_edge_id, "trade_route", [last_node.pos2d, pos], [last_node.id, next_node_id], {})
+        last_node = n_node
+        next_node_id += 1
+        next_edge_id += 1
+        dist += village_spacing
+    edges[next_edge_id] = EdgeModule.new(next_edge_id, "trade_route", [last_node.pos2d, end.pos2d], [last_node.id, end.id], {})
+    next_edge_id += 1
+    var res: Dictionary = _insert_crossings(nodes, edges, next_node_id, next_edge_id)
+    roads["next_node_id"] = res["next_node_id"]
+    roads["next_edge_id"] = res["next_edge_id"]
+    _prune_crossing_duplicates(nodes, edges, crossing_margin)
+
+func remove_edge(roads: Dictionary, edge_id: int, crossing_margin: float = 5.0) -> void:
+    var nodes: Dictionary = roads.get("nodes", {})
+    var edges: Dictionary = roads.get("edges", {})
+    edges.erase(edge_id)
+
+    var used: Dictionary = {}
+    for e in edges.values():
+        used[e.endpoints[0]] = true
+        used[e.endpoints[1]] = true
+    var to_remove: Array[int] = []
+    for id in nodes.keys():
+        if nodes[id].type != "city" and not used.has(id):
+            to_remove.append(id)
+    for id in to_remove:
+        nodes.erase(id)
+
+    var crossing_ids: Array[int] = []
+    for id in nodes.keys():
+        if nodes[id].type == "crossing":
+            crossing_ids.append(id)
+    for cid in crossing_ids:
+        var edge_keys: Array = edges.keys()
+        for eid in edge_keys:
+            var e: Edge = edges[eid]
+            if e.endpoints.has(cid):
+                edges.erase(eid)
+        nodes.erase(cid)
+
+    used.clear()
+    for e in edges.values():
+        used[e.endpoints[0]] = true
+        used[e.endpoints[1]] = true
+    to_remove = []
+    for id in nodes.keys():
+        if nodes[id].type != "city" and not used.has(id):
+            to_remove.append(id)
+    for id in to_remove:
+        nodes.erase(id)
+
+    var res2: Dictionary = _insert_crossings(nodes, edges, roads.get("next_node_id", 1), roads.get("next_edge_id", 1))
+    roads["next_node_id"] = res2["next_node_id"]
+    roads["next_edge_id"] = res2["next_edge_id"]
+    _prune_crossing_duplicates(nodes, edges, crossing_margin)
+
 func _pair_key(a: int, b: int) -> String:
     return "%d_%d" % [min(a, b), max(a, b)]
 

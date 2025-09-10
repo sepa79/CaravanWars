@@ -38,6 +38,8 @@ const MapSnapshotModule = preload("res://map/MapSnapshot.gd")
 @onready var show_crossings_check: CheckBox = $Layers/ShowCrossings
 @onready var show_regions_check: CheckBox = $Layers/ShowRegions
 @onready var edit_cities_check: CheckBox = $Layers/EditCities
+@onready var add_road_button: Button = $Layers/AddRoad
+@onready var delete_road_button: Button = $Layers/DeleteRoad
 @onready var start_button: Button = $HBox/ControlsScroll/Controls/Buttons/Start
 @onready var back_button: Button = $HBox/ControlsScroll/Controls/Buttons/Back
 @onready var main_ui: HBoxContainer = $HBox
@@ -81,6 +83,8 @@ func _ready() -> void:
     show_crossings_check.toggled.connect(_on_show_crossings_toggled)
     show_regions_check.toggled.connect(_on_show_regions_toggled)
     edit_cities_check.toggled.connect(_on_edit_cities_toggled)
+    add_road_button.toggled.connect(_on_add_road_toggled)
+    delete_road_button.toggled.connect(_on_delete_road_toggled)
     map_view.set_show_roads(show_roads_check.button_pressed)
     map_view.set_show_rivers(show_rivers_check.button_pressed)
     map_view.set_show_cities(show_cities_check.button_pressed)
@@ -111,6 +115,8 @@ func _update_texts() -> void:
     show_crossings_check.text = I18N.t("setup.show_crossings")
     show_regions_check.text = I18N.t("setup.show_regions")
     edit_cities_check.text = I18N.t("setup.edit_cities")
+    add_road_button.text = I18N.t("setup.add_road")
+    delete_road_button.text = I18N.t("setup.delete_road")
     start_button.text = I18N.t("setup.start")
     back_button.text = I18N.t("menu.back")
 
@@ -211,6 +217,20 @@ func _on_show_regions_toggled(pressed: bool) -> void:
 
 func _on_edit_cities_toggled(pressed: bool) -> void:
     map_view.set_edit_mode(pressed)
+
+func _on_add_road_toggled(pressed: bool) -> void:
+    if pressed:
+        delete_road_button.button_pressed = false
+        map_view.set_road_mode("add")
+    else:
+        map_view.set_road_mode("")
+
+func _on_delete_road_toggled(pressed: bool) -> void:
+    if pressed:
+        add_road_button.button_pressed = false
+        map_view.set_road_mode("delete")
+    else:
+        map_view.set_road_mode("")
 
 func _on_random_seed_pressed() -> void:
     seed_spin.set_block_signals(true)

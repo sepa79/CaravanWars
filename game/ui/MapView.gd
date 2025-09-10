@@ -20,6 +20,10 @@ var debug_logged: bool = false
 var edit_mode: bool = false
 var dragging_city: bool = false
 var selected_city: int = -1
+const RoadNetworkModule = preload("res://map/RoadNetwork.gd")
+var road_helper: RoadNetwork = RoadNetworkModule.new(RandomNumberGenerator.new())
+var road_mode: String = ""
+var selected_node: int = -1
 
 signal cities_changed(cities: Array)
 
@@ -37,6 +41,10 @@ func set_edit_mode(value: bool) -> void:
     edit_mode = value
     dragging_city = false
     selected_city = -1
+
+func set_road_mode(mode: String) -> void:
+    road_mode = mode
+    selected_node = -1
 
 func get_kingdom_colors() -> Dictionary:
     var colors: Dictionary = {}
@@ -57,7 +65,21 @@ func _gui_input(event: InputEvent) -> void:
             accept_event()
         elif mb.button_index == MOUSE_BUTTON_LEFT:
             if mb.pressed:
-                if edit_mode:
+                if road_mode == "add":
+                    var node_id: int = _road_node_at_point(mb.position)
+                    if node_id != -1:
+                        if selected_node == -1:
+                            selected_node = node_id
+                        else:
+                            road_helper.connect(map_data.get("roads", {}), selected_node, node_id)
+                            selected_node = -1
+                            queue_redraw()
+                elif road_mode == "delete":
+                    var edge_id: int = _road_edge_at_point(mb.position)
+                    if edge_id != -1:
+                        road_helper.remove_edge(map_data.get("roads", {}), edge_id)
+                        queue_redraw()
+                elif edit_mode:
                     var idx: int = _city_at_point(mb.position)
                     if idx != -1:
                         selected_city = idx
@@ -227,6 +249,35 @@ func _city_at_point(screen_pos: Vector2) -> int:
         var c: Vector2 = cities[i] * draw_scale + offset
         if c.distance_to(screen_pos) <= 6.0:
             return i
+    return -1
+
+func _road_node_at_point(screen_pos: Vector2) -> int:
+    var roads: Dictionary = map_data.get("roads", {})
+    var nodes: Dictionary = roads.get("nodes", {})
+    var base_scale: float = _base_scale()
+    var draw_scale: float = base_scale * zoom_level
+    var offset: Vector2 = _base_offset(base_scale) - pan_offset * draw_scale
+    for id in nodes.keys():
+        var node = nodes[id]
+        var pos: Vector2 = node.pos2d * draw_scale + offset
+        if pos.distance_to(screen_pos) <= 6.0:
+            return id
+    return -1
+
+func _road_edge_at_point(screen_pos: Vector2) -> int:
+    var roads: Dictionary = map_data.get("roads", {})
+    var edges: Dictionary = roads.get("edges", {})
+    var base_scale: float = _base_scale()
+    var draw_scale: float = base_scale * zoom_level
+    var offset: Vector2 = _base_offset(base_scale) - pan_offset * draw_scale
+    for id in edges.keys():
+        var edge = edges[id]
+        var pts: Array = edge.polyline
+        for i in range(pts.size() - 1):
+            var a: Vector2 = pts[i] * draw_scale + offset
+            var b: Vector2 = pts[i + 1] * draw_scale + offset
+            if Geometry2D.get_distance_to_segment(screen_pos, a, b) <= 3.0:
+                return id
     return -1
 
 func _screen_to_map(screen_pos: Vector2) -> Vector2:
