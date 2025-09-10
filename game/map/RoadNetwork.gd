@@ -103,6 +103,12 @@ func _delaunay_edges(points: Array[Vector2]) -> Array[Vector2i]:
         _add_edge(edges_dict, tri[i], tri[i + 1])
         _add_edge(edges_dict, tri[i + 1], tri[i + 2])
         _add_edge(edges_dict, tri[i + 2], tri[i])
+    if edges_dict.is_empty():
+        var all_pairs: Array[Vector2i] = []
+        for i in range(points.size()):
+            for j in range(i + 1, points.size()):
+                all_pairs.append(Vector2i(i, j))
+        return all_pairs
     var result: Array[Vector2i] = []
     for v in edges_dict.values():
         result.append(v)
@@ -140,6 +146,19 @@ func _minimum_spanning_tree(points: Array[Vector2], edges: Array[Vector2i]) -> A
                 if d < best_dist:
                     best_dist = d
                     best_edge = Vector2i(a, b)
+        if best_edge.y == -1:
+            var a_id: int = connected[0]
+            var b_id: int = remaining[0]
+            best_dist = points[a_id].distance_to(points[b_id])
+            for a in connected:
+                for b in remaining:
+                    var d: float = points[a].distance_to(points[b])
+                    if d < best_dist:
+                        best_dist = d
+                        a_id = a
+                        b_id = b
+            best_edge = Vector2i(a_id, b_id)
+            push_warning("[RoadNetwork] disconnected graph; forcing MST link")
         result.append(best_edge)
         connected.append(best_edge.y)
         remaining.erase(best_edge.y)

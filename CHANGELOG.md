@@ -1,5 +1,9 @@
 Changelog
 
+0.1.27 — 2025-09-10
+Fixed
+- Linked disconnected road graphs when Delaunay triangulation produced no edges, preventing hangs on some random seeds.
+
 0.1.26 — 2025-09-10
 Added
 - Documented `version` and `rng_seed` as unsafe variable names in naming guidelines.
