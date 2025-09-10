@@ -2,8 +2,8 @@ extends Control
 
 const MapGeneratorModule = preload("res://map/MapGenerator.gd")
 
-@onready var title_label: Label = $VBox/Title
-@onready var params: GridContainer = $VBox/ParamsScroll/Params
+@onready var title_label: Label = $HBox/ControlsScroll/Controls/Title
+@onready var params: GridContainer = $HBox/ControlsScroll/Controls/Params
 @onready var seed_label: Label = params.get_node("SeedLabel")
 @onready var seed_spin: SpinBox = params.get_node("SeedRow/Seed")
 @onready var random_seed_button: Button = params.get_node("SeedRow/RandomSeed")
@@ -27,15 +27,16 @@ const MapGeneratorModule = preload("res://map/MapGenerator.gd")
 @onready var width_spin: SpinBox = params.get_node("Width")
 @onready var height_label: Label = params.get_node("HeightLabel")
 @onready var height_spin: SpinBox = params.get_node("Height")
-@onready var map_view: MapView = $VBox/MapView
-@onready var show_roads_check: CheckBox = $VBox/Layers/ShowRoads
-@onready var show_rivers_check: CheckBox = $VBox/Layers/ShowRivers
-@onready var show_cities_check: CheckBox = $VBox/Layers/ShowCities
-@onready var show_crossings_check: CheckBox = $VBox/Layers/ShowCrossings
-@onready var show_regions_check: CheckBox = $VBox/Layers/ShowRegions
-@onready var start_button: Button = $VBox/Buttons/Start
-@onready var back_button: Button = $VBox/Buttons/Back
-@onready var main_ui: VBoxContainer = $VBox
+@onready var map_view: MapView = $HBox/MapRow/MapView
+@onready var kingdom_legend: VBoxContainer = $HBox/MapRow/KingdomLegend
+@onready var show_roads_check: CheckBox = $Layers/ShowRoads
+@onready var show_rivers_check: CheckBox = $Layers/ShowRivers
+@onready var show_cities_check: CheckBox = $Layers/ShowCities
+@onready var show_crossings_check: CheckBox = $Layers/ShowCrossings
+@onready var show_regions_check: CheckBox = $Layers/ShowRegions
+@onready var start_button: Button = $HBox/ControlsScroll/Controls/Buttons/Start
+@onready var back_button: Button = $HBox/ControlsScroll/Controls/Buttons/Back
+@onready var main_ui: HBoxContainer = $HBox
 @onready var connecting_ui: Control = preload("res://scenes/Connecting.tscn").instantiate()
 
 var debounce_timer: Timer = Timer.new()
@@ -105,7 +106,7 @@ func _generate_map() -> void:
     start_button.disabled = true
     var city_count := int(cities_spin.value)
     var kingdoms := int(min(kingdoms_spin.value, city_count))
-    var params := MapGeneratorModule.MapGenParams.new(
+    var map_params := MapGeneratorModule.MapGenParams.new(
         int(seed_spin.value),
         city_count,
         int(rivers_spin.value),
@@ -118,52 +119,52 @@ func _generate_map() -> void:
         height_spin.value,
         kingdoms
     )
-    kingdoms_spin.max_value = params.city_count
-    if int(kingdoms_spin.value) != params.kingdom_count:
+    kingdoms_spin.max_value = map_params.city_count
+    if int(kingdoms_spin.value) != map_params.kingdom_count:
         kingdoms_spin.set_block_signals(true)
-        kingdoms_spin.value = params.kingdom_count
+        kingdoms_spin.value = map_params.kingdom_count
         kingdoms_spin.set_block_signals(false)
-    var max_possible: int = max(1, params.city_count - 1)
+    var max_possible: int = max(1, map_params.city_count - 1)
     var prev_max_possible: int = int(max_connections_spin.max_value)
     max_connections_spin.max_value = max_possible
     if int(max_connections_spin.value) == prev_max_possible and prev_max_possible < max_possible:
-        params.max_connections = max_possible
+        map_params.max_connections = max_possible
         max_connections_spin.set_block_signals(true)
-        max_connections_spin.value = params.max_connections
+        max_connections_spin.value = map_params.max_connections
         max_connections_spin.set_block_signals(false)
-    max_connections_spin.min_value = params.min_connections
-    min_connections_spin.max_value = params.max_connections
-    max_city_spacing_spin.min_value = params.min_city_distance
-    min_city_spacing_spin.max_value = params.max_city_distance
-    if seed_spin.value != params.rng_seed:
+    max_connections_spin.min_value = map_params.min_connections
+    min_connections_spin.max_value = map_params.max_connections
+    max_city_spacing_spin.min_value = map_params.min_city_distance
+    min_city_spacing_spin.max_value = map_params.max_city_distance
+    if seed_spin.value != map_params.rng_seed:
         seed_spin.set_block_signals(true)
-        seed_spin.value = params.rng_seed
+        seed_spin.value = map_params.rng_seed
         seed_spin.set_block_signals(false)
-    if min_connections_spin.value != params.min_connections:
+    if min_connections_spin.value != map_params.min_connections:
         min_connections_spin.set_block_signals(true)
-        min_connections_spin.value = params.min_connections
+        min_connections_spin.value = map_params.min_connections
         min_connections_spin.set_block_signals(false)
-    if max_connections_spin.value != params.max_connections:
+    if max_connections_spin.value != map_params.max_connections:
         max_connections_spin.set_block_signals(true)
-        max_connections_spin.value = params.max_connections
+        max_connections_spin.value = map_params.max_connections
         max_connections_spin.set_block_signals(false)
-    if min_city_spacing_spin.value != params.min_city_distance:
+    if min_city_spacing_spin.value != map_params.min_city_distance:
         min_city_spacing_spin.set_block_signals(true)
-        min_city_spacing_spin.value = params.min_city_distance
+        min_city_spacing_spin.value = map_params.min_city_distance
         min_city_spacing_spin.set_block_signals(false)
-    if max_city_spacing_spin.value != params.max_city_distance:
+    if max_city_spacing_spin.value != map_params.max_city_distance:
         max_city_spacing_spin.set_block_signals(true)
-        max_city_spacing_spin.value = params.max_city_distance
+        max_city_spacing_spin.value = map_params.max_city_distance
         max_city_spacing_spin.set_block_signals(false)
-    if width_spin.value != params.width:
+    if width_spin.value != map_params.width:
         width_spin.set_block_signals(true)
-        width_spin.value = params.width
+        width_spin.value = map_params.width
         width_spin.set_block_signals(false)
-    if height_spin.value != params.height:
+    if height_spin.value != map_params.height:
         height_spin.set_block_signals(true)
-        height_spin.value = params.height
+        height_spin.value = map_params.height
         height_spin.set_block_signals(false)
-    var generator := MapGeneratorModule.new(params)
+    var generator := MapGeneratorModule.new(map_params)
     current_map = generator.generate()
     map_view.set_map_data(current_map)
     var actual_city_count: int = current_map.get("cities", []).size()
@@ -172,6 +173,7 @@ func _generate_map() -> void:
         kingdoms_spin.set_block_signals(true)
         kingdoms_spin.value = actual_city_count
         kingdoms_spin.set_block_signals(false)
+    _populate_kingdom_legend()
     start_button.disabled = false
 
 func _on_params_changed(_value: float) -> void:
@@ -223,3 +225,29 @@ func _on_net_state_changed(state: String) -> void:
     else:
         main_ui.visible = false
     previous_state = state
+
+func _populate_kingdom_legend() -> void:
+    for child in kingdom_legend.get_children():
+        child.queue_free()
+    var colors: Dictionary = map_view.get_kingdom_colors()
+    if not current_map.has("kingdom_names"):
+        current_map["kingdom_names"] = {}
+    var names: Dictionary = current_map["kingdom_names"]
+    for kingdom_id in colors.keys():
+        var entry := HBoxContainer.new()
+        entry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        kingdom_legend.add_child(entry)
+        var swatch := ColorRect.new()
+        swatch.custom_minimum_size = Vector2(16, 16)
+        swatch.color = colors[kingdom_id]
+        entry.add_child(swatch)
+        var name_edit := LineEdit.new()
+        name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        name_edit.text = names.get(kingdom_id, "Kingdom %d" % kingdom_id)
+        name_edit.text_changed.connect(_on_kingdom_name_changed.bind(kingdom_id))
+        entry.add_child(name_edit)
+
+func _on_kingdom_name_changed(kingdom_id: int, text: String) -> void:
+    if not current_map.has("kingdom_names"):
+        current_map["kingdom_names"] = {}
+    current_map["kingdom_names"][kingdom_id] = text

@@ -1,5 +1,9 @@
 Changelog
 
+0.1.25 — 2025-09-10
+Added
+- Documented `params` as an unsafe variable name in naming guidelines.
+
 0.1.24 — 2025-09-10
 Fixed
 - Avoided integer division and shadowed built-in name in region generator.

@@ -3,145 +3,172 @@
 [ext_resource path="res://ui/MapSetupScreen.gd" type="Script" id=1]
 [ext_resource path="res://ui/MapView.gd" type="Script" id=2]
 
-[node name="MapSetupScreen" type="Control"]
+[node name="MapSetupScreen" type="VBoxContainer"]
 anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource(1)
 
-[node name="VBox" type="VBoxContainer" parent="."]
-anchor_right = 1.0
-anchor_bottom = 1.0
+[node name="HBox" type="HBoxContainer" parent="."]
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="Title" type="Label" parent="VBox"]
-
-[node name="ParamsScroll" type="ScrollContainer" parent="VBox"]
-custom_minimum_size = Vector2(0, 180)
+[node name="ControlsScroll" type="ScrollContainer" parent="HBox"]
 size_flags_horizontal = 3
-size_flags_vertical = 1
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.4
+horizontal_scroll_enabled = false
 
-[node name="Params" type="GridContainer" parent="VBox/ParamsScroll"]
-columns = 2
+[node name="MapRow" type="HBoxContainer" parent="HBox"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.6
 
-[node name="SeedLabel" type="Label" parent="VBox/ParamsScroll/Params"]
-
-[node name="SeedRow" type="HBoxContainer" parent="VBox/ParamsScroll/Params"]
-
-[node name="Seed" type="SpinBox" parent="VBox/ParamsScroll/Params/SeedRow"]
-min_value = 0.0
-max_value = 1.0e+09
-step = 1.0
-
-[node name="RandomSeed" type="Button" parent="VBox/ParamsScroll/Params/SeedRow"]
-
-[node name="CitiesLabel" type="Label" parent="VBox/ParamsScroll/Params"]
-
-[node name="Cities" type="SpinBox" parent="VBox/ParamsScroll/Params"]
-min_value = 1.0
-max_value = 20.0
-step = 1.0
-value = 3.0
-
-[node name="MinCitySpacingLabel" type="Label" parent="VBox/ParamsScroll/Params"]
-
-[node name="MinCitySpacing" type="SpinBox" parent="VBox/ParamsScroll/Params"]
-min_value = 1.0
-max_value = 100.0
-step = 1.0
-value = 20.0
-
-[node name="MaxCitySpacingLabel" type="Label" parent="VBox/ParamsScroll/Params"]
-
-[node name="MaxCitySpacing" type="SpinBox" parent="VBox/ParamsScroll/Params"]
-min_value = 1.0
-max_value = 100.0
-step = 1.0
-value = 40.0
-
-[node name="RiversLabel" type="Label" parent="VBox/ParamsScroll/Params"]
-
-[node name="Rivers" type="SpinBox" parent="VBox/ParamsScroll/Params"]
-min_value = 0.0
-max_value = 10.0
-step = 1.0
-value = 1.0
-
-[node name="KingdomsLabel" type="Label" parent="VBox/ParamsScroll/Params"]
-
-[node name="Kingdoms" type="SpinBox" parent="VBox/ParamsScroll/Params"]
-min_value = 1.0
-max_value = 20.0
-step = 1.0
-value = 1.0
-
-[node name="MinConnectionsLabel" type="Label" parent="VBox/ParamsScroll/Params"]
-
-[node name="MinConnections" type="SpinBox" parent="VBox/ParamsScroll/Params"]
-min_value = 1.0
-max_value = 10.0
-step = 1.0
-value = 1.0
-
-[node name="MaxConnectionsLabel" type="Label" parent="VBox/ParamsScroll/Params"]
-
-[node name="MaxConnections" type="SpinBox" parent="VBox/ParamsScroll/Params"]
-min_value = 1.0
-max_value = 10.0
-step = 1.0
-value = 3.0
-
-[node name="CrossingMarginLabel" type="Label" parent="VBox/ParamsScroll/Params"]
-
-[node name="CrossingMargin" type="SpinBox" parent="VBox/ParamsScroll/Params"]
-min_value = 0.0
-max_value = 50.0
-step = 0.5
-value = 5.0
-
-[node name="WidthLabel" type="Label" parent="VBox/ParamsScroll/Params"]
-
-[node name="Width" type="SpinBox" parent="VBox/ParamsScroll/Params"]
-min_value = 20.0
-max_value = 500.0
-step = 10.0
-value = 100.0
-
-[node name="HeightLabel" type="Label" parent="VBox/ParamsScroll/Params"]
-
-[node name="Height" type="SpinBox" parent="VBox/ParamsScroll/Params"]
-min_value = 20.0
-max_value = 500.0
-step = 10.0
-value = 100.0
-
-[node name="MapView" type="Control" parent="VBox"]
-custom_minimum_size = Vector2(400, 300)
+[node name="MapView" type="Control" parent="HBox/MapRow"]
+custom_minimum_size = Vector2(0, 400)
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource(2)
 
-[node name="Layers" type="HBoxContainer" parent="VBox"]
+[node name="KingdomLegend" type="VBoxContainer" parent="HBox/MapRow"]
+custom_minimum_size = Vector2(150, 0)
+size_flags_horizontal = 1
+size_flags_vertical = 3
+
+[node name="Controls" type="VBoxContainer" parent="HBox/ControlsScroll"]
 size_flags_horizontal = 3
 
-[node name="ShowRoads" type="CheckBox" parent="VBox/Layers"]
+[node name="Title" type="Label" parent="HBox/ControlsScroll/Controls"]
+
+[node name="Params" type="GridContainer" parent="HBox/ControlsScroll/Controls"]
+columns = 2
+size_flags_horizontal = 3
+
+[node name="SeedLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
+
+[node name="SeedRow" type="HBoxContainer" parent="HBox/ControlsScroll/Controls/Params"]
+size_flags_horizontal = 3
+
+[node name="Seed" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params/SeedRow"]
+min_value = 0.0
+max_value = 1.0e+09
+step = 1.0
+size_flags_horizontal = 3
+
+[node name="RandomSeed" type="Button" parent="HBox/ControlsScroll/Controls/Params/SeedRow"]
+
+[node name="CitiesLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
+
+[node name="Cities" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params"]
+min_value = 1.0
+max_value = 20.0
+step = 1.0
+value = 3.0
+size_flags_horizontal = 3
+
+[node name="MinCitySpacingLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
+
+[node name="MinCitySpacing" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params"]
+min_value = 1.0
+max_value = 100.0
+step = 1.0
+value = 20.0
+size_flags_horizontal = 3
+
+[node name="MaxCitySpacingLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
+
+[node name="MaxCitySpacing" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params"]
+min_value = 1.0
+max_value = 100.0
+step = 1.0
+value = 40.0
+size_flags_horizontal = 3
+
+[node name="RiversLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
+
+[node name="Rivers" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params"]
+min_value = 0.0
+max_value = 10.0
+step = 1.0
+value = 1.0
+size_flags_horizontal = 3
+
+[node name="KingdomsLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
+
+[node name="Kingdoms" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params"]
+min_value = 1.0
+max_value = 20.0
+step = 1.0
+value = 1.0
+size_flags_horizontal = 3
+
+[node name="MinConnectionsLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
+
+[node name="MinConnections" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params"]
+min_value = 1.0
+max_value = 10.0
+step = 1.0
+value = 1.0
+size_flags_horizontal = 3
+
+[node name="MaxConnectionsLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
+
+[node name="MaxConnections" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params"]
+min_value = 1.0
+max_value = 10.0
+step = 1.0
+value = 3.0
+size_flags_horizontal = 3
+
+[node name="CrossingMarginLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
+
+[node name="CrossingMargin" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params"]
+min_value = 0.0
+max_value = 50.0
+step = 0.5
+value = 5.0
+size_flags_horizontal = 3
+
+[node name="WidthLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
+
+[node name="Width" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params"]
+min_value = 20.0
+max_value = 500.0
+step = 10.0
+value = 100.0
+size_flags_horizontal = 3
+
+[node name="HeightLabel" type="Label" parent="HBox/ControlsScroll/Controls/Params"]
+
+[node name="Height" type="SpinBox" parent="HBox/ControlsScroll/Controls/Params"]
+min_value = 20.0
+max_value = 500.0
+step = 10.0
+value = 100.0
+size_flags_horizontal = 3
+
+
+[node name="Buttons" type="HBoxContainer" parent="HBox/ControlsScroll/Controls"]
+size_flags_horizontal = 3
+
+[node name="Start" type="Button" parent="HBox/ControlsScroll/Controls/Buttons"]
+
+[node name="Back" type="Button" parent="HBox/ControlsScroll/Controls/Buttons"]
+
+[node name="Layers" type="HBoxContainer" parent="."]
+size_flags_horizontal = 3
+
+[node name="ShowRoads" type="CheckBox" parent="Layers"]
 button_pressed = true
 
-[node name="ShowRivers" type="CheckBox" parent="VBox/Layers"]
+[node name="ShowRivers" type="CheckBox" parent="Layers"]
 button_pressed = true
 
-[node name="ShowCities" type="CheckBox" parent="VBox/Layers"]
+[node name="ShowCities" type="CheckBox" parent="Layers"]
 button_pressed = true
 
-[node name="ShowCrossings" type="CheckBox" parent="VBox/Layers"]
+[node name="ShowCrossings" type="CheckBox" parent="Layers"]
 button_pressed = false
 
-[node name="ShowRegions" type="CheckBox" parent="VBox/Layers"]
+[node name="ShowRegions" type="CheckBox" parent="Layers"]
 button_pressed = true
 
-[node name="Buttons" type="HBoxContainer" parent="VBox"]
-size_flags_horizontal = 3
-
-[node name="Start" type="Button" parent="VBox/Buttons"]
-
-[node name="Back" type="Button" parent="VBox/Buttons"]
