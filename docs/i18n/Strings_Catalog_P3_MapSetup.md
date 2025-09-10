@@ -10,6 +10,7 @@ Namespace `setup.*`
 | setup.seed    | Seed        | Ziarno           | random seed |
 | setup.cities  | Cities      | Miasta           | number of cities |
 | setup.rivers  | Rivers      | Rzeki            | number of rivers |
+| setup.kingdoms | Kingdoms   | Królestwa        | number of kingdoms |
 | setup.min_connections | Min Connections | Min. połączeń | minimum road connections |
 | setup.max_connections | Max Connections | Maks. połączeń | maximum road connections |
 | setup.crossing_margin | Crossing Margin | Margines objazdu | detour threshold for removing direct road |

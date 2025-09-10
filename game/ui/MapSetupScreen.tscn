@@ -46,6 +46,14 @@ max_value = 10.0
 step = 1.0
 value = 1.0
 
+[node name="KingdomsLabel" type="Label" parent="VBox/Params"]
+
+[node name="Kingdoms" type="SpinBox" parent="VBox/Params"]
+min_value = 1.0
+max_value = 20.0
+step = 1.0
+value = 1.0
+
 [node name="MinConnectionsLabel" type="Label" parent="VBox/Params"]
 
 [node name="MinConnections" type="SpinBox" parent="VBox/Params"]
