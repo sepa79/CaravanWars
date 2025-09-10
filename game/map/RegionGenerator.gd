@@ -1,16 +1,20 @@
 extends RefCounted
 class_name RegionGenerator
 
-const CityPlacerModule = preload("res://map/CityPlacer.gd")
 const RegionModule = preload("res://map/Region.gd")
 
 const EPS: float = 0.001
 
 # Generates regions as Voronoi cells around city positions.
 # Returns a dictionary mapping region id -> Region instance.
-func generate_regions(cities: Array[Vector2], kingdom_count: int = 1) -> Dictionary:
+func generate_regions(
+    cities: Array[Vector2],
+    kingdom_count: int = 1,
+    width: float = 100.0,
+    height: float = 100.0
+) -> Dictionary:
     print("[RegionGenerator] generating regions for %s cities" % cities.size())
-    var bounds := Rect2(Vector2.ZERO, Vector2(CityPlacerModule.WIDTH, CityPlacerModule.HEIGHT))
+    var bounds := Rect2(Vector2.ZERO, Vector2(width, height))
     var voronoi: Array = _voronoi_diagram(cities, bounds)
     print("[RegionGenerator] computed %s raw cells" % voronoi.size())
     var regions: Dictionary = {}

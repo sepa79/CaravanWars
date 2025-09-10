@@ -18,6 +18,10 @@ const MapGeneratorModule = preload("res://map/MapGenerator.gd")
 @onready var max_connections_spin: SpinBox = $VBox/Params/MaxConnections
 @onready var crossing_margin_label: Label = $VBox/Params/CrossingMarginLabel
 @onready var crossing_margin_spin: SpinBox = $VBox/Params/CrossingMargin
+@onready var width_label: Label = $VBox/Params/WidthLabel
+@onready var width_spin: SpinBox = $VBox/Params/Width
+@onready var height_label: Label = $VBox/Params/HeightLabel
+@onready var height_spin: SpinBox = $VBox/Params/Height
 @onready var map_view: MapView = $VBox/MapView
 @onready var show_roads_check: CheckBox = $VBox/Layers/ShowRoads
 @onready var show_rivers_check: CheckBox = $VBox/Layers/ShowRivers
@@ -52,6 +56,8 @@ func _ready() -> void:
     min_connections_spin.value_changed.connect(_on_params_changed)
     max_connections_spin.value_changed.connect(_on_params_changed)
     crossing_margin_spin.value_changed.connect(_on_params_changed)
+    width_spin.value_changed.connect(_on_params_changed)
+    height_spin.value_changed.connect(_on_params_changed)
     show_roads_check.toggled.connect(_on_show_roads_toggled)
     show_rivers_check.toggled.connect(_on_show_rivers_toggled)
     show_cities_check.toggled.connect(_on_show_cities_toggled)
@@ -76,6 +82,8 @@ func _update_texts() -> void:
     min_connections_label.text = I18N.t("setup.min_connections")
     max_connections_label.text = I18N.t("setup.max_connections")
     crossing_margin_label.text = I18N.t("setup.crossing_margin")
+    width_label.text = I18N.t("setup.width")
+    height_label.text = I18N.t("setup.height")
     show_roads_check.text = I18N.t("setup.show_roads")
     show_rivers_check.text = I18N.t("setup.show_rivers")
     show_cities_check.text = I18N.t("setup.show_cities")
@@ -95,6 +103,8 @@ func _generate_map() -> void:
         int(min_connections_spin.value),
         int(max_connections_spin.value),
         crossing_margin_spin.value,
+        width_spin.value,
+        height_spin.value,
         kingdoms
     )
     kingdoms_spin.max_value = params.city_count
@@ -124,6 +134,14 @@ func _generate_map() -> void:
         max_connections_spin.set_block_signals(true)
         max_connections_spin.value = params.max_connections
         max_connections_spin.set_block_signals(false)
+    if width_spin.value != params.width:
+        width_spin.set_block_signals(true)
+        width_spin.value = params.width
+        width_spin.set_block_signals(false)
+    if height_spin.value != params.height:
+        height_spin.set_block_signals(true)
+        height_spin.value = params.height
+        height_spin.set_block_signals(false)
     var generator := MapGeneratorModule.new(params)
     current_map = generator.generate()
     map_view.set_map_data(current_map)

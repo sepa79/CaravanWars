@@ -9,6 +9,8 @@ class MapGenParams:
     var min_connections: int
     var max_connections: int
     var crossing_detour_margin: float
+    var width: float
+    var height: float
     var kingdom_count: int
 
     func _init(
@@ -18,6 +20,8 @@ class MapGenParams:
         p_min_connections: int = 1,
         p_max_connections: int = 3,
         p_crossing_detour_margin: float = 5.0,
+        p_width: float = 100.0,
+        p_height: float = 100.0,
         p_kingdom_count: int = 1
     ) -> void:
         rng_seed = p_rng_seed if p_rng_seed != 0 else Time.get_ticks_msec()
@@ -27,6 +31,8 @@ class MapGenParams:
         min_connections = clamp(p_min_connections, 1, max_possible)
         max_connections = clamp(p_max_connections, min_connections, max_possible)
         crossing_detour_margin = p_crossing_detour_margin
+        width = clamp(p_width, 20.0, 500.0)
+        height = clamp(p_height, 20.0, 500.0)
         kingdom_count = max(1, p_kingdom_count)
 
 var params: MapGenParams
@@ -43,14 +49,17 @@ func _init(_params: MapGenParams = MapGenParams.new()) -> void:
     rng.seed = params.rng_seed
 
 func generate() -> Dictionary:
-    var map_data: Dictionary = {}
+    var map_data: Dictionary = {
+        "width": params.width,
+        "height": params.height,
+    }
     var city_stage := CityPlacerModule.new(rng)
-    var cities := city_stage.place_cities(params.city_count)
+    var cities := city_stage.place_cities(params.city_count, 20.0, params.width, params.height)
     map_data["cities"] = cities
     print("[MapGenerator] placed %s cities" % cities.size())
 
     var region_stage = RegionGeneratorModule.new()
-    var regions: Dictionary = region_stage.generate_regions(cities, params.kingdom_count)
+    var regions: Dictionary = region_stage.generate_regions(cities, params.kingdom_count, params.width, params.height)
     map_data["regions"] = regions
     print("[MapGenerator] generated %s regions" % regions.size())
 
