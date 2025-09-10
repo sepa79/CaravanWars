@@ -19,7 +19,7 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="MapView" type="Control" parent="HBox/MapRow"]
-custom_minimum_size = Vector2(600, 400)
+custom_minimum_size = Vector2(0, 400)
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource(2)
@@ -33,6 +33,7 @@ size_flags_vertical = 3
 custom_minimum_size = Vector2(260, 0)
 size_flags_horizontal = 1
 size_flags_vertical = 3
+horizontal_scroll_enabled = false
 
 [node name="Controls" type="VBoxContainer" parent="HBox/ControlsScroll"]
 size_flags_horizontal = 3
