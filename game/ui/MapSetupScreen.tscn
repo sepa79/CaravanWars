@@ -115,13 +115,20 @@ max_value = 500.0
 step = 10.0
 value = 100.0
 
-[node name="MapView" type="Control" parent="VBox"]
-custom_minimum_size = Vector2(400, 300)
+[node name="MapRow" type="HBoxContainer" parent="VBox"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="MapView" type="Control" parent="VBox/MapRow"]
+custom_minimum_size = Vector2(600, 400)
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource(2)
 
-[node name="KingdomLegend" type="VBoxContainer" parent="VBox"]
+[node name="KingdomLegend" type="VBoxContainer" parent="VBox/MapRow"]
+custom_minimum_size = Vector2(150, 0)
+size_flags_horizontal = 1
+size_flags_vertical = 3
 
 [node name="Layers" type="HBoxContainer" parent="VBox"]
 size_flags_horizontal = 3

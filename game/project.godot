@@ -19,3 +19,6 @@ config/features=PackedStringArray("4.4")
 App="*res://autoload/App.gd"
 I18N="*res://autoload/I18N.gd"
 Net="*res://autoload/Net.gd"
+
+[display]
+window/size/resizable=true
