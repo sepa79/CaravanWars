@@ -49,10 +49,10 @@ func _assign_kingdoms(regions: Dictionary, kingdom_count: int) -> void:
     ids.sort()
     var queue: Array[int] = []
     for i in range(k):
-        var idx: int = int(i * ids.size() / k)
-        var seed: int = ids[idx]
-        regions[seed].kingdom_id = i + 1
-        queue.append(seed)
+        var idx: int = int(float(i) * ids.size() / float(k))
+        var start_id: int = ids[idx]
+        regions[start_id].kingdom_id = i + 1
+        queue.append(start_id)
     var front: int = 0
     while front < queue.size():
         var current: int = queue[front]
