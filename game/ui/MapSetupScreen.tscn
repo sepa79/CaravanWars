@@ -16,79 +16,100 @@ size_flags_vertical = 3
 
 [node name="Title" type="Label" parent="VBox"]
 
-[node name="Params" type="GridContainer" parent="VBox"]
+[node name="ParamsScroll" type="ScrollContainer" parent="VBox"]
+custom_minimum_size = Vector2(0, 180)
+size_flags_horizontal = 3
+size_flags_vertical = 1
+
+[node name="Params" type="GridContainer" parent="VBox/ParamsScroll"]
 columns = 2
 
-[node name="SeedLabel" type="Label" parent="VBox/Params"]
+[node name="SeedLabel" type="Label" parent="VBox/ParamsScroll/Params"]
 
-[node name="SeedRow" type="HBoxContainer" parent="VBox/Params"]
+[node name="SeedRow" type="HBoxContainer" parent="VBox/ParamsScroll/Params"]
 
-[node name="Seed" type="SpinBox" parent="VBox/Params/SeedRow"]
+[node name="Seed" type="SpinBox" parent="VBox/ParamsScroll/Params/SeedRow"]
 min_value = 0.0
 max_value = 1.0e+09
 step = 1.0
 
-[node name="RandomSeed" type="Button" parent="VBox/Params/SeedRow"]
+[node name="RandomSeed" type="Button" parent="VBox/ParamsScroll/Params/SeedRow"]
 
-[node name="CitiesLabel" type="Label" parent="VBox/Params"]
+[node name="CitiesLabel" type="Label" parent="VBox/ParamsScroll/Params"]
 
-[node name="Cities" type="SpinBox" parent="VBox/Params"]
+[node name="Cities" type="SpinBox" parent="VBox/ParamsScroll/Params"]
 min_value = 1.0
 max_value = 20.0
 step = 1.0
 value = 3.0
 
-[node name="RiversLabel" type="Label" parent="VBox/Params"]
+[node name="MinCitySpacingLabel" type="Label" parent="VBox/ParamsScroll/Params"]
 
-[node name="Rivers" type="SpinBox" parent="VBox/Params"]
+[node name="MinCitySpacing" type="SpinBox" parent="VBox/ParamsScroll/Params"]
+min_value = 1.0
+max_value = 100.0
+step = 1.0
+value = 20.0
+
+[node name="MaxCitySpacingLabel" type="Label" parent="VBox/ParamsScroll/Params"]
+
+[node name="MaxCitySpacing" type="SpinBox" parent="VBox/ParamsScroll/Params"]
+min_value = 1.0
+max_value = 100.0
+step = 1.0
+value = 40.0
+
+[node name="RiversLabel" type="Label" parent="VBox/ParamsScroll/Params"]
+
+[node name="Rivers" type="SpinBox" parent="VBox/ParamsScroll/Params"]
 min_value = 0.0
 max_value = 10.0
 step = 1.0
 value = 1.0
 
-[node name="KingdomsLabel" type="Label" parent="VBox/Params"]
+[node name="KingdomsLabel" type="Label" parent="VBox/ParamsScroll/Params"]
 
-[node name="Kingdoms" type="SpinBox" parent="VBox/Params"]
+[node name="Kingdoms" type="SpinBox" parent="VBox/ParamsScroll/Params"]
 min_value = 1.0
 max_value = 20.0
 step = 1.0
 value = 1.0
 
-[node name="MinConnectionsLabel" type="Label" parent="VBox/Params"]
+[node name="MinConnectionsLabel" type="Label" parent="VBox/ParamsScroll/Params"]
 
-[node name="MinConnections" type="SpinBox" parent="VBox/Params"]
+[node name="MinConnections" type="SpinBox" parent="VBox/ParamsScroll/Params"]
 min_value = 1.0
 max_value = 10.0
 step = 1.0
 value = 1.0
 
-[node name="MaxConnectionsLabel" type="Label" parent="VBox/Params"]
+[node name="MaxConnectionsLabel" type="Label" parent="VBox/ParamsScroll/Params"]
 
-[node name="MaxConnections" type="SpinBox" parent="VBox/Params"]
+[node name="MaxConnections" type="SpinBox" parent="VBox/ParamsScroll/Params"]
 min_value = 1.0
 max_value = 10.0
 step = 1.0
 value = 3.0
 
-[node name="CrossingMarginLabel" type="Label" parent="VBox/Params"]
+[node name="CrossingMarginLabel" type="Label" parent="VBox/ParamsScroll/Params"]
 
-[node name="CrossingMargin" type="SpinBox" parent="VBox/Params"]
+[node name="CrossingMargin" type="SpinBox" parent="VBox/ParamsScroll/Params"]
 min_value = 0.0
 max_value = 50.0
 step = 0.5
 value = 5.0
 
-[node name="WidthLabel" type="Label" parent="VBox/Params"]
+[node name="WidthLabel" type="Label" parent="VBox/ParamsScroll/Params"]
 
-[node name="Width" type="SpinBox" parent="VBox/Params"]
+[node name="Width" type="SpinBox" parent="VBox/ParamsScroll/Params"]
 min_value = 20.0
 max_value = 500.0
 step = 10.0
 value = 100.0
 
-[node name="HeightLabel" type="Label" parent="VBox/Params"]
+[node name="HeightLabel" type="Label" parent="VBox/ParamsScroll/Params"]
 
-[node name="Height" type="SpinBox" parent="VBox/Params"]
+[node name="Height" type="SpinBox" parent="VBox/ParamsScroll/Params"]
 min_value = 20.0
 max_value = 500.0
 step = 10.0

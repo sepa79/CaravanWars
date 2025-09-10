@@ -3,25 +3,30 @@ extends Control
 const MapGeneratorModule = preload("res://map/MapGenerator.gd")
 
 @onready var title_label: Label = $VBox/Title
-@onready var seed_label: Label = $VBox/Params/SeedLabel
-@onready var seed_spin: SpinBox = $VBox/Params/SeedRow/Seed
-@onready var random_seed_button: Button = $VBox/Params/SeedRow/RandomSeed
-@onready var cities_label: Label = $VBox/Params/CitiesLabel
-@onready var cities_spin: SpinBox = $VBox/Params/Cities
-@onready var rivers_label: Label = $VBox/Params/RiversLabel
-@onready var rivers_spin: SpinBox = $VBox/Params/Rivers
-@onready var kingdoms_label: Label = $VBox/Params/KingdomsLabel
-@onready var kingdoms_spin: SpinBox = $VBox/Params/Kingdoms
-@onready var min_connections_label: Label = $VBox/Params/MinConnectionsLabel
-@onready var min_connections_spin: SpinBox = $VBox/Params/MinConnections
-@onready var max_connections_label: Label = $VBox/Params/MaxConnectionsLabel
-@onready var max_connections_spin: SpinBox = $VBox/Params/MaxConnections
-@onready var crossing_margin_label: Label = $VBox/Params/CrossingMarginLabel
-@onready var crossing_margin_spin: SpinBox = $VBox/Params/CrossingMargin
-@onready var width_label: Label = $VBox/Params/WidthLabel
-@onready var width_spin: SpinBox = $VBox/Params/Width
-@onready var height_label: Label = $VBox/Params/HeightLabel
-@onready var height_spin: SpinBox = $VBox/Params/Height
+@onready var params: GridContainer = $VBox/ParamsScroll/Params
+@onready var seed_label: Label = params.get_node("SeedLabel")
+@onready var seed_spin: SpinBox = params.get_node("SeedRow/Seed")
+@onready var random_seed_button: Button = params.get_node("SeedRow/RandomSeed")
+@onready var cities_label: Label = params.get_node("CitiesLabel")
+@onready var cities_spin: SpinBox = params.get_node("Cities")
+@onready var min_city_spacing_label: Label = params.get_node("MinCitySpacingLabel")
+@onready var min_city_spacing_spin: SpinBox = params.get_node("MinCitySpacing")
+@onready var max_city_spacing_label: Label = params.get_node("MaxCitySpacingLabel")
+@onready var max_city_spacing_spin: SpinBox = params.get_node("MaxCitySpacing")
+@onready var rivers_label: Label = params.get_node("RiversLabel")
+@onready var rivers_spin: SpinBox = params.get_node("Rivers")
+@onready var kingdoms_label: Label = params.get_node("KingdomsLabel")
+@onready var kingdoms_spin: SpinBox = params.get_node("Kingdoms")
+@onready var min_connections_label: Label = params.get_node("MinConnectionsLabel")
+@onready var min_connections_spin: SpinBox = params.get_node("MinConnections")
+@onready var max_connections_label: Label = params.get_node("MaxConnectionsLabel")
+@onready var max_connections_spin: SpinBox = params.get_node("MaxConnections")
+@onready var crossing_margin_label: Label = params.get_node("CrossingMarginLabel")
+@onready var crossing_margin_spin: SpinBox = params.get_node("CrossingMargin")
+@onready var width_label: Label = params.get_node("WidthLabel")
+@onready var width_spin: SpinBox = params.get_node("Width")
+@onready var height_label: Label = params.get_node("HeightLabel")
+@onready var height_spin: SpinBox = params.get_node("Height")
 @onready var map_view: MapView = $VBox/MapView
 @onready var show_roads_check: CheckBox = $VBox/Layers/ShowRoads
 @onready var show_rivers_check: CheckBox = $VBox/Layers/ShowRivers
@@ -55,6 +60,8 @@ func _ready() -> void:
     kingdoms_spin.value_changed.connect(_on_params_changed)
     min_connections_spin.value_changed.connect(_on_params_changed)
     max_connections_spin.value_changed.connect(_on_params_changed)
+    min_city_spacing_spin.value_changed.connect(_on_params_changed)
+    max_city_spacing_spin.value_changed.connect(_on_params_changed)
     crossing_margin_spin.value_changed.connect(_on_params_changed)
     width_spin.value_changed.connect(_on_params_changed)
     height_spin.value_changed.connect(_on_params_changed)
@@ -77,6 +84,8 @@ func _update_texts() -> void:
     seed_label.text = I18N.t("setup.seed")
     random_seed_button.text = I18N.t("setup.random_seed")
     cities_label.text = I18N.t("setup.cities")
+    min_city_spacing_label.text = I18N.t("setup.min_city_spacing")
+    max_city_spacing_label.text = I18N.t("setup.max_city_spacing")
     rivers_label.text = I18N.t("setup.rivers")
     kingdoms_label.text = I18N.t("setup.kingdoms")
     min_connections_label.text = I18N.t("setup.min_connections")
@@ -102,6 +111,8 @@ func _generate_map() -> void:
         int(rivers_spin.value),
         int(min_connections_spin.value),
         int(max_connections_spin.value),
+        min_city_spacing_spin.value,
+        max_city_spacing_spin.value,
         crossing_margin_spin.value,
         width_spin.value,
         height_spin.value,
@@ -122,6 +133,8 @@ func _generate_map() -> void:
         max_connections_spin.set_block_signals(false)
     max_connections_spin.min_value = params.min_connections
     min_connections_spin.max_value = params.max_connections
+    max_city_spacing_spin.min_value = params.min_city_distance
+    min_city_spacing_spin.max_value = params.max_city_distance
     if seed_spin.value != params.rng_seed:
         seed_spin.set_block_signals(true)
         seed_spin.value = params.rng_seed
@@ -134,6 +147,14 @@ func _generate_map() -> void:
         max_connections_spin.set_block_signals(true)
         max_connections_spin.value = params.max_connections
         max_connections_spin.set_block_signals(false)
+    if min_city_spacing_spin.value != params.min_city_distance:
+        min_city_spacing_spin.set_block_signals(true)
+        min_city_spacing_spin.value = params.min_city_distance
+        min_city_spacing_spin.set_block_signals(false)
+    if max_city_spacing_spin.value != params.max_city_distance:
+        max_city_spacing_spin.set_block_signals(true)
+        max_city_spacing_spin.value = params.max_city_distance
+        max_city_spacing_spin.set_block_signals(false)
     if width_spin.value != params.width:
         width_spin.set_block_signals(true)
         width_spin.value = params.width
@@ -145,6 +166,12 @@ func _generate_map() -> void:
     var generator := MapGeneratorModule.new(params)
     current_map = generator.generate()
     map_view.set_map_data(current_map)
+    var actual_city_count: int = current_map.get("cities", []).size()
+    kingdoms_spin.max_value = actual_city_count
+    if int(kingdoms_spin.value) > actual_city_count:
+        kingdoms_spin.set_block_signals(true)
+        kingdoms_spin.value = actual_city_count
+        kingdoms_spin.set_block_signals(false)
     start_button.disabled = false
 
 func _on_params_changed(_value: float) -> void:

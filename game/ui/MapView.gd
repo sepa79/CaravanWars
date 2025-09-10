@@ -33,17 +33,21 @@ func _gui_input(event: InputEvent) -> void:
         var mb: InputEventMouseButton = event
         if mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
             _adjust_zoom(1.1)
+            accept_event()
         elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
             _adjust_zoom(1.0 / 1.1)
+            accept_event()
         elif mb.button_index == MOUSE_BUTTON_LEFT:
             if mb.pressed:
                 dragging = true
             else:
                 dragging = false
+            accept_event()
     elif event is InputEventMouseMotion and dragging:
         var mm: InputEventMouseMotion = event
         pan_offset -= mm.relative / _current_scale()
         queue_redraw()
+        accept_event()
 
 func _adjust_zoom(factor: float) -> void:
     var old_zoom: float = zoom_level
@@ -94,10 +98,57 @@ func _draw() -> void:
             debug_logged = true
     var roads: Dictionary = map_data.get("roads", {})
     if show_roads:
-        for edge in roads.get("edges", {}).values():
+        var edges: Dictionary = roads.get("edges", {})
+        for edge in edges.values():
             var pts: PackedVector2Array = edge.polyline
             for i in range(pts.size() - 1):
-                draw_line(pts[i] * draw_scale + offset, pts[i + 1] * draw_scale + offset, Color.WHITE, 1.0)
+                var a: Vector2 = pts[i]
+                var b: Vector2 = pts[i + 1]
+                draw_line(a * draw_scale + offset, b * draw_scale + offset, Color.WHITE, 1.0)
+
+        var font: Font = get_theme_default_font()
+        var font_size: int = get_theme_default_font_size()
+        if font:
+            var nodes: Dictionary = roads.get("nodes", {})
+            var adjacency: Dictionary = {}
+            for edge in edges.values():
+                var ep0: int = edge.endpoints[0]
+                var ep1: int = edge.endpoints[1]
+                if not adjacency.has(ep0):
+                    adjacency[ep0] = []
+                if not adjacency.has(ep1):
+                    adjacency[ep1] = []
+                adjacency[ep0].append(edge)
+                adjacency[ep1].append(edge)
+            var handled: Dictionary = {}
+            for node_id in nodes.keys():
+                var node = nodes[node_id]
+                if node.type != "city":
+                    continue
+                for edge in adjacency.get(node_id, []):
+                    var other_id: int = edge.endpoints[0] if edge.endpoints[1] == node_id else edge.endpoints[1]
+                    var path: Array[Vector2] = edge.polyline.duplicate()
+                    var length: float = edge.polyline[0].distance_to(edge.polyline[1])
+                    var cur_edge = edge
+                    var cur_node = other_id
+                    while nodes[cur_node].type != "city":
+                        var conn: Array = adjacency.get(cur_node, [])
+                        if conn.size() < 2:
+                            break
+                        var next_edge = conn[0] if conn[0] != cur_edge else conn[1]
+                        var next_node: int = next_edge.endpoints[0] if next_edge.endpoints[1] == cur_node else next_edge.endpoints[1]
+                        path.append(nodes[next_node].pos2d)
+                        length += nodes[cur_node].pos2d.distance_to(nodes[next_node].pos2d)
+                        cur_edge = next_edge
+                        cur_node = next_node
+                    var other_city_id: int = cur_node
+                    var key: String = "%d_%d" % [min(node_id, other_city_id), max(node_id, other_city_id)]
+                    if handled.has(key) or node_id == other_city_id:
+                        continue
+                    handled[key] = true
+                    var mid: Vector2 = _polyline_midpoint(path, length)
+                    var pos: Vector2 = mid * draw_scale + offset + Vector2(0, -4)
+                    draw_string(font, pos, "%d" % int(round(length)), HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.WHITE)
     if show_rivers:
         for river in map_data.get("rivers", []):
             for i in range(river.size() - 1):
@@ -117,6 +168,19 @@ func _draw() -> void:
                     center + Vector2(-s, 0),
                 ])
                 draw_polygon(diamond, PackedColorArray([crossing_color]))
+
+func _polyline_midpoint(points: Array, total_length: float) -> Vector2:
+    var half: float = total_length / 2.0
+    var acc: float = 0.0
+    for i in range(points.size() - 1):
+        var a: Vector2 = points[i]
+        var b: Vector2 = points[i + 1]
+        var seg: float = a.distance_to(b)
+        if acc + seg >= half:
+            var t: float = (half - acc) / seg
+            return a.lerp(b, t)
+        acc += seg
+    return points[0]
 
 func set_show_roads(value: bool) -> void:
     show_roads = value
