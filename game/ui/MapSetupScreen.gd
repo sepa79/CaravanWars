@@ -247,7 +247,7 @@ func _populate_kingdom_legend() -> void:
         name_edit.text_changed.connect(_on_kingdom_name_changed.bind(kingdom_id))
         entry.add_child(name_edit)
 
-func _on_kingdom_name_changed(kingdom_id: int, text: String) -> void:
+func _on_kingdom_name_changed(text: String, kingdom_id: int) -> void:
     if not current_map.has("kingdom_names"):
         current_map["kingdom_names"] = {}
     current_map["kingdom_names"][kingdom_id] = text
