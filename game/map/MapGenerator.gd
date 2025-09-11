@@ -95,7 +95,7 @@ func generate() -> Dictionary:
         params.crossroad_detour_margin,
         "roman"
     )
-    road_stage.insert_villages(roads, params.min_villages_per_city, params.max_villages_per_city, 5.0, params.width, params.height, params.village_downgrade_threshold)
+    road_stage.insert_organic_villages(roads, params.width, params.height)
     road_stage.insert_border_forts(roads, regions, 10.0, params.max_forts_per_kingdom, params.width, params.height)
     map_data["roads"] = roads
 

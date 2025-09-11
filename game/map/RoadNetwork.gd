@@ -241,6 +241,119 @@ func insert_villages(
     roads["next_edge_id"] = res["next_edge_id"]
     _downgrade_village_branches(roads, downgrade_threshold)
 
+## Generates clustered villages around city hubs with local road loops.
+func insert_organic_villages(
+    roads: Dictionary,
+    width: float = 100.0,
+    height: float = 100.0
+) -> void:
+    var nodes: Dictionary = roads.get("nodes", {})
+    var edges: Dictionary = roads.get("edges", {})
+    var next_node_id: int = roads.get("next_node_id", 1)
+    var next_edge_id: int = roads.get("next_edge_id", 1)
+    const float RMIN := 0.8
+    const float RPEAK := 2.2
+    const float RMAX := 4.0
+    for cid in nodes.keys():
+        var city: MapNode = nodes[cid]
+        if city.type != MapNodeModule.TYPE_CITY:
+            continue
+        var candidate_edges: Array[int] = []
+        for eid in edges.keys():
+            var e: Edge = edges[eid]
+            if e.road_class != "roman":
+                continue
+            if e.endpoints.has(cid):
+                candidate_edges.append(eid)
+        if candidate_edges.is_empty():
+            continue
+        var hub_count: int = min(candidate_edges.size(), rng.randi_range(1, 2))
+        var chosen: Array[int] = []
+        while chosen.size() < hub_count and candidate_edges.size() > 0:
+            var idx: int = rng.randi_range(0, candidate_edges.size() - 1)
+            chosen.append(candidate_edges[idx])
+            candidate_edges.remove_at(idx)
+        for eid in chosen:
+            var edge: Edge = edges[eid]
+            var other_id: int = edge.endpoints[0] if edge.endpoints[1] == cid else edge.endpoints[1]
+            var start_pos: Vector2 = city.pos2d
+            var end_pos: Vector2 = nodes[other_id].pos2d
+            var total_dist: float = start_pos.distance_to(end_pos)
+            var target: float = rng.randf_range(RMIN, RMAX)
+            var t: float = clamp(target / total_dist, 0.0, 1.0)
+            var hub_pos: Vector2 = start_pos.lerp(end_pos, t)
+            var hub_id: int = next_node_id
+            next_node_id += 1
+            nodes[hub_id] = MapNodeModule.new(hub_id, MapNodeModule.TYPE_VILLAGE, hub_pos, {"hub": true})
+            edges.erase(eid)
+            edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [start_pos, hub_pos], [cid, hub_id], edge.road_class, edge.attrs)
+            next_edge_id += 1
+            edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [hub_pos, end_pos], [hub_id, other_id], edge.road_class, edge.attrs)
+            next_edge_id += 1
+            var cluster: Array[int] = [hub_id]
+            var vcount: int = rng.randi_range(4, 8)
+            for _i in range(vcount):
+                var angle: float = rng.randf_range(0.0, TAU)
+                var dist: float = rng.randf_range(0.2, 1.0)
+                var pos: Vector2 = hub_pos + Vector2(cos(angle), sin(angle)) * dist
+                pos.x = clamp(pos.x, 0.0, width)
+                pos.y = clamp(pos.y, 0.0, height)
+                var vid: int = next_node_id
+                next_node_id += 1
+                nodes[vid] = MapNodeModule.new(vid, MapNodeModule.TYPE_VILLAGE, pos, {})
+                cluster.append(vid)
+            var existing: Dictionary = {}
+            for i in range(1, cluster.size()):
+                var vid: int = cluster[i]
+                edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [nodes[vid].pos2d, hub_pos], [vid, hub_id], "road", {})
+                existing[_pair_key(vid, hub_id)] = true
+                next_edge_id += 1
+                var dists: Array = []
+                for j in range(1, cluster.size()):
+                    if j == i:
+                        continue
+                    var nid: int = cluster[j]
+                    var d: float = nodes[vid].pos2d.distance_to(nodes[nid].pos2d)
+                    dists.append({"id": nid, "dist": d})
+                dists.sort_custom(func(a, b): return a["dist"] < b["dist"])
+                for k in range(min(2, dists.size())):
+                    var nid: int = dists[k]["id"]
+                    var key: String = _pair_key(vid, nid)
+                    if existing.has(key):
+                        continue
+                    edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [nodes[vid].pos2d, nodes[nid].pos2d], [vid, nid], "road", {})
+                    existing[key] = true
+                    next_edge_id += 1
+            var extra: Array = []
+            for i in range(cluster.size()):
+                for j in range(i + 1, cluster.size()):
+                    var a: int = cluster[i]
+                    var b: int = cluster[j]
+                    var key2: String = _pair_key(a, b)
+                    if existing.has(key2):
+                        continue
+                    var dd: float = nodes[a].pos2d.distance_to(nodes[b].pos2d)
+                    if dd >= 0.6 and dd <= 1.2:
+                        extra.append({"a": a, "b": b})
+            var loop_count: int = int(round(existing.size() * 0.2))
+            while loop_count > 0 and extra.size() > 0:
+                var idx2: int = rng.randi_range(0, extra.size() - 1)
+                var e2 = extra[idx2]
+                extra.remove_at(idx2)
+                var a_id: int = e2["a"]
+                var b_id: int = e2["b"]
+                var k2: String = _pair_key(a_id, b_id)
+                if existing.has(k2):
+                    continue
+                edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [nodes[a_id].pos2d, nodes[b_id].pos2d], [a_id, b_id], "road", {})
+                existing[k2] = true
+                next_edge_id += 1
+                loop_count -= 1
+    var res: Dictionary = _insert_crossroads(nodes, edges, next_node_id, next_edge_id)
+    roads["next_node_id"] = res["next_node_id"]
+    roads["next_edge_id"] = res["next_edge_id"]
+    _downgrade_village_branches(roads, 1)
+
 ## Inserts a node in the middle of an edge and splits the edge.
 func insert_node_on_edge(roads: Dictionary, edge_id: int, node_type: String) -> void:
     var nodes: Dictionary = roads.get("nodes", {})

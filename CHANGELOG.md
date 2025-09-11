@@ -1,5 +1,13 @@
 Changelog
 
+0.1.46 — 2025-09-11
+Added
+- Organic village generation with hubs and local road loops.
+
+0.1.45 — 2025-09-11
+Added
+- Outline organic village generation algorithm.
+
 0.1.44 — 2025-09-11
 Changed
 - Villages spawn around each town with per-city count controls, linking locally via paths and only attaching to towns or nearby Roman roads with a single road connection.
