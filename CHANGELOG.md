@@ -1,5 +1,9 @@
 Changelog
 
+0.1.31 — 2025-09-10
+Added
+- World autoload for game state.
+
 0.1.30 — 2025-09-10
 Added
 - Address input for joining sessions with connection retry and handshake timeouts.

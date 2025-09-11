@@ -5,8 +5,8 @@ Po co jeden projekt?
 - Single Player: host+client in‑process. Multiplayer: Host/Join.
 - Debug UI i shell Narratora jako role w tym samym projekcie.
 
-Planowane katalogi (na razie puste):
-- autoload/ — planowane singletons: App, I18N, Net, World, później Debug, Ai
+Katalogi:
+- autoload/ — singletons: App, I18N, Net, World, później Debug, Ai
 - scenes/ — Main.tscn, StartMenu.tscn (PHASE‑01), później Game.tscn, DebugUi.tscn
 - ui/ — panele, dialogi; **tylko klucze i18n** w tekstach
 - net/ — logika połączeń i trybów (host/client) — w późniejszych fazach
@@ -14,7 +14,7 @@ Planowane katalogi (na razie puste):
 - systems/ — reguły gry (PHASE‑08)
 - i18n/ — katalogi językowe (EN/PL)
 
-Plan autoloadów:
+Autoloady:
 - App: nawigacja scen i przechowywanie stanu bieżącej sceny
 - I18N: przełącznik języka, ładowanie katalogów `i18n`
 - Net: tryby uruchomienia, później inicjalizacja Host/Join
