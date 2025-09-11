@@ -1,5 +1,9 @@
 Changelog
 
+0.1.48 — 2025-09-12
+Changed
+- River crossings detour to nearby bridges, enforce fort buffers and spacing, and split river polylines at crossing nodes.
+
 0.1.47 — 2025-09-12
 Changed
 - Crossroads merge when within 0.3 U and validation uses the same tighter detour margin.

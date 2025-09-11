@@ -137,6 +137,18 @@ func _point_along(poly: Array[Vector2], from_start: bool, distance: float) -> Ve
         remaining -= seg_len
     return pts[pts.size() - 1]
 
+func _distance_along_polyline(poly: Array[Vector2], p: Vector2) -> float:
+    var dist: float = 0.0
+    for i in range(poly.size() - 1):
+        var a: Vector2 = poly[i]
+        var b: Vector2 = poly[i + 1]
+        var seg_len: float = a.distance_to(b)
+        var q: Vector2 = Geometry2D.get_closest_point_to_segment(p, a, b)
+        if q.distance_to(p) <= 0.001:
+            return dist + a.distance_to(q)
+        dist += seg_len
+    return dist
+
 func _incident_edges(edges: Dictionary, node_id: int) -> Array[int]:
     var result: Array[int] = []
     for eid in edges.keys():
@@ -144,6 +156,42 @@ func _incident_edges(edges: Dictionary, node_id: int) -> Array[int]:
         if e.endpoints.has(node_id):
             result.append(eid)
     return result
+
+func _build_adjacency(edges: Dictionary) -> Dictionary:
+    var adj: Dictionary = {}
+    for e in edges.values():
+        var a: int = e.endpoints[0]
+        var b: int = e.endpoints[1]
+        if not adj.has(a):
+            adj[a] = []
+        if not adj.has(b):
+            adj[b] = []
+        adj[a].append(e)
+        adj[b].append(e)
+    return adj
+
+func _distance_to_bridge(start_id: int, nodes: Dictionary, adjacency: Dictionary, blocked_edge_id: int) -> float:
+    var best: Dictionary = {}
+    var queue: Array = []
+    best[start_id] = 0.0
+    queue.append({"id": start_id, "dist": 0.0})
+    while queue.size() > 0:
+        queue.sort_custom(func(a, b): return a["dist"] < b["dist"])
+        var cur = queue.pop_front()
+        var nid: int = cur["id"]
+        var dist: float = cur["dist"]
+        var node: MapNode = nodes[nid]
+        if node.type == MapNodeModule.TYPE_BRIDGE:
+            return dist
+        for e in adjacency.get(nid, []):
+            if e.id == blocked_edge_id:
+                continue
+            var other: int = e.endpoints[0] if e.endpoints[1] == nid else e.endpoints[1]
+            var nd: float = dist + _edge_length(e.polyline)
+            if nd < best.get(other, INF) and nd <= 18.0:
+                best[other] = nd
+                queue.append({"id": other, "dist": nd})
+    return INF
 
 func _downgrade_village_branches(roads: Dictionary, threshold: int = 2) -> void:
     var nodes: Dictionary = roads.get("nodes", {})
@@ -406,15 +454,25 @@ func insert_river_crossings(roads: Dictionary, rivers: Array, crossroad_margin: 
     var next_node_id: int = roads.get("next_node_id", 1)
     var next_edge_id: int = roads.get("next_edge_id", 1)
 
+    var river_crossings: Dictionary = {}
+    for r in range(rivers.size()):
+        river_crossings[r] = []
+
     var changed := true
     while changed:
         changed = false
+        var adjacency: Dictionary = _build_adjacency(edges)
+        var fort_positions: Array[Vector2] = []
+        for n in nodes.values():
+            if n.type == MapNodeModule.TYPE_FORT:
+                fort_positions.append(n.pos2d)
         var edge_ids: Array = edges.keys()
         for eid in edge_ids:
             var edge: Edge = edges[eid]
             var road_start: Vector2 = edge.polyline[0]
             var road_end: Vector2 = edge.polyline[edge.polyline.size() - 1]
-            for poly in rivers:
+            for r in range(rivers.size()):
+                var poly: Array[Vector2] = rivers[r]
                 for i in range(poly.size() - 1):
                     var river_a: Vector2 = poly[i]
                     var river_b: Vector2 = poly[i + 1]
@@ -422,20 +480,51 @@ func insert_river_crossings(roads: Dictionary, rivers: Array, crossroad_margin: 
                     if inter == null:
                         continue
                     var cross: Vector2 = inter
-                    if _point_on_endpoint(cross, road_start, road_end):
-                        var node_id: int = edge.endpoints[0] if cross == road_start else edge.endpoints[1]
-                        var node: MapNode = nodes.get(node_id)
-                        if node != null and node.type != MapNodeModule.TYPE_BRIDGE and node.type != MapNodeModule.TYPE_FORD:
-                            node.type = MapNodeModule.TYPE_BRIDGE if edge.road_class in ["road", "roman"] else MapNodeModule.TYPE_FORD
-                            changed = true
-                        continue
-
-                    var cross_id: int = next_node_id
-                    next_node_id += 1
-                    var bridge_type: String = MapNodeModule.TYPE_BRIDGE if edge.road_class in ["road", "roman"] else MapNodeModule.TYPE_FORD
-                    nodes[cross_id] = MapNodeModule.new(cross_id, bridge_type, cross, {})
                     var a_id: int = edge.endpoints[0]
                     var b_id: int = edge.endpoints[1]
+                    var dist_a: float = _distance_to_bridge(a_id, nodes, adjacency, eid)
+                    var dist_b: float = _distance_to_bridge(b_id, nodes, adjacency, eid)
+                    var best_dist: float = min(dist_a, dist_b)
+                    if best_dist <= 18.0:
+                        edges.erase(eid)
+                        changed = true
+                        break
+                    var bridge_type: String = MapNodeModule.TYPE_BRIDGE if edge.road_class in ["road", "roman"] else MapNodeModule.TYPE_FORD
+                    var along_dist: float = _distance_along_polyline(poly, cross)
+                    var min_spacing: float = 10.0 if bridge_type == MapNodeModule.TYPE_BRIDGE else 6.0
+                    var too_close := false
+                    for existing in river_crossings[r]:
+                        if abs(existing["dist"] - along_dist) < min_spacing:
+                            too_close = true
+                            break
+                    if too_close:
+                        edges.erase(eid)
+                        changed = true
+                        break
+                    var near_fort := false
+                    for fp in fort_positions:
+                        if fp.distance_to(cross) < 2.5:
+                            near_fort = true
+                            break
+                    if near_fort:
+                        edges.erase(eid)
+                        changed = true
+                        break
+                    if bridge_type == MapNodeModule.TYPE_FORD:
+                        var demand: int = nodes[a_id].attrs.get("demand", 1) + nodes[b_id].attrs.get("demand", 1)
+                        if demand <= 2:
+                            edges.erase(eid)
+                            changed = true
+                            break
+                    if cross.distance_to(river_a) < 0.3:
+                        cross = river_a
+                    elif cross.distance_to(river_b) < 0.3:
+                        cross = river_b
+                    else:
+                        poly.insert(i + 1, cross)
+                    var cross_id: int = next_node_id
+                    next_node_id += 1
+                    nodes[cross_id] = MapNodeModule.new(cross_id, bridge_type, cross, {})
                     edges.erase(eid)
                     edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [road_start, cross], [a_id, cross_id], edge.road_class, edge.attrs)
                     var seg1_id: int = next_edge_id
@@ -465,6 +554,7 @@ func insert_river_crossings(roads: Dictionary, rivers: Array, crossroad_margin: 
                                     next_edge_id += 1
                                     edges[next_edge_id] = EdgeModule.new(next_edge_id, seg.type, [pos2, seg.polyline[seg.polyline.size() - 1]], [approach_id, cross_id], "road", seg.attrs)
                                     next_edge_id += 1
+                    river_crossings[r].append({"dist": _distance_along_polyline(poly, cross), "type": bridge_type})
                     changed = true
                     break
                 if changed:
