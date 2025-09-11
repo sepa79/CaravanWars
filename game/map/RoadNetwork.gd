@@ -142,7 +142,8 @@ func _downgrade_village_branches(roads: Dictionary, threshold: int) -> void:
 ## the nearest Roman road or town. Low-traffic branches downgrade to paths.
 func insert_villages(
     roads: Dictionary,
-    village_count: int,
+    min_per_city: int,
+    max_per_city: int,
     radius: float = 5.0,
     width: float = 100.0,
     height: float = 100.0,
@@ -152,58 +153,88 @@ func insert_villages(
     var edges: Dictionary = roads.get("edges", {})
     var next_node_id: int = roads.get("next_node_id", 1)
     var next_edge_id: int = roads.get("next_edge_id", 1)
-
     var placer := CityPlacerModule.new(rng)
-    var positions: Array[Vector2] = placer.place_cities(village_count, radius, radius * 2.0, width, height)
 
-    for pos in positions:
-        var vid: int = next_node_id
-        next_node_id += 1
-        nodes[vid] = MapNodeModule.new(vid, MapNodeModule.TYPE_VILLAGE, pos, {})
-
-        var best_dist: float = INF
-        var target_city: int = -1
-        var target_edge: int = -1
-        var target_point: Vector2 = Vector2.ZERO
-
-        for nid in nodes.keys():
-            var node: MapNode = nodes[nid]
-            if node.type != MapNodeModule.TYPE_CITY:
-                continue
-            var d: float = pos.distance_to(node.pos2d)
-            if d < best_dist:
-                best_dist = d
-                target_city = nid
-                target_edge = -1
-
-        for eid in edges.keys():
-            var edge: Edge = edges[eid]
-            var q: Vector2 = _closest_point_on_polyline(pos, edge.polyline)
-            var d_edge: float = pos.distance_to(q)
-            if d_edge < best_dist:
-                best_dist = d_edge
-                target_city = -1
-                target_edge = eid
-                target_point = q
-
-        if target_edge != -1:
-            var edge: Edge = edges[target_edge]
-            var cross_id: int = next_node_id
+    for cid in nodes.keys():
+        var city: MapNode = nodes[cid]
+        if city.type != MapNodeModule.TYPE_CITY:
+            continue
+        var count: int = rng.randi_range(min_per_city, max_per_city)
+        if count <= 0:
+            continue
+        var local: Array[Vector2] = placer.place_cities(count, radius, radius * 2.0, radius * 2.0, radius * 2.0)
+        var cluster: Array[int] = []
+        for p in local:
+            var pos: Vector2 = city.pos2d + p - Vector2(radius, radius)
+            pos.x = clamp(pos.x, 0.0, width)
+            pos.y = clamp(pos.y, 0.0, height)
+            var vid: int = next_node_id
             next_node_id += 1
-            nodes[cross_id] = MapNodeModule.new(cross_id, MapNodeModule.TYPE_CROSSROAD, target_point, {})
-            var start: Vector2 = edge.polyline[0]
-            var end: Vector2 = edge.polyline[edge.polyline.size() - 1]
-            edges.erase(target_edge)
-            edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [start, target_point], [edge.endpoints[0], cross_id], edge.road_class, edge.attrs)
+            nodes[vid] = MapNodeModule.new(vid, MapNodeModule.TYPE_VILLAGE, pos, {})
+            cluster.append(vid)
+
+        var connected: Array[int] = []
+        for vid in cluster:
+            var vpos: Vector2 = nodes[vid].pos2d
+            var best_edge: int = -1
+            var best_point: Vector2 = Vector2.ZERO
+            var best_dist: float = INF
+            for eid in edges.keys():
+                var edge: Edge = edges[eid]
+                if edge.road_class != "roman":
+                    continue
+                var q: Vector2 = _closest_point_on_polyline(vpos, edge.polyline)
+                var d: float = vpos.distance_to(q)
+                if d < best_dist:
+                    best_dist = d
+                    best_edge = eid
+                    best_point = q
+            if best_edge != -1 and best_dist <= radius * 3.0:
+                var edge: Edge = edges[best_edge]
+                var cross_id: int = next_node_id
+                next_node_id += 1
+                nodes[cross_id] = MapNodeModule.new(cross_id, MapNodeModule.TYPE_CROSSROAD, best_point, {})
+                var start: Vector2 = edge.polyline[0]
+                var end: Vector2 = edge.polyline[edge.polyline.size() - 1]
+                var start_id: int = edge.endpoints[0]
+                var end_id: int = edge.endpoints[1]
+                edges.erase(best_edge)
+                edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [start, best_point], [start_id, cross_id], edge.road_class, edge.attrs)
+                next_edge_id += 1
+                edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [best_point, end], [cross_id, end_id], edge.road_class, edge.attrs)
+                next_edge_id += 1
+                edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [vpos, best_point], [vid, cross_id], "road", {})
+                next_edge_id += 1
+                connected.append(vid)
+
+        if connected.is_empty() and cluster.size() > 0:
+            var nearest: int = cluster[0]
+            var best: float = INF
+            for vid in cluster:
+                var d: float = nodes[vid].pos2d.distance_to(city.pos2d)
+                if d < best:
+                    best = d
+                    nearest = vid
+            edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [nodes[nearest].pos2d, city.pos2d], [nearest, cid], "road", {})
             next_edge_id += 1
-            edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [target_point, end], [cross_id, edge.endpoints[1]], edge.road_class, edge.attrs)
+            connected.append(nearest)
+
+        var processed: Array[int] = connected.duplicate()
+        if processed.is_empty() and cluster.size() > 0:
+            processed.append(cluster[0])
+        for vid in cluster:
+            if processed.has(vid):
+                continue
+            var best_id: int = processed[0]
+            var best_d: float = INF
+            for pid in processed:
+                var d: float = nodes[vid].pos2d.distance_to(nodes[pid].pos2d)
+                if d < best_d:
+                    best_d = d
+                    best_id = pid
+            edges[next_edge_id] = EdgeModule.new(next_edge_id, "path", [nodes[vid].pos2d, nodes[best_id].pos2d], [vid, best_id], "path", {})
             next_edge_id += 1
-            edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [pos, target_point], [vid, cross_id], "road", {})
-            next_edge_id += 1
-        elif target_city != -1:
-            var city: MapNode = nodes[target_city]
-            edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [pos, city.pos2d], [vid, target_city], "road", {})
-            next_edge_id += 1
+            processed.append(vid)
 
     var res: Dictionary = _insert_crossroads(nodes, edges, next_node_id, next_edge_id)
     roads["next_node_id"] = res["next_node_id"]
@@ -370,14 +401,6 @@ func insert_border_forts(
         cross.x = clamp(cross.x, 0.0, width)
         cross.y = clamp(cross.y, 0.0, height)
         var dir: Vector2 = (nodes[b_id].pos2d - nodes[a_id].pos2d).normalized()
-        var junction_id: int = next_node_id
-        next_node_id += 1
-        nodes[junction_id] = MapNodeModule.new(junction_id, MapNodeModule.TYPE_CROSSROAD, cross, {})
-        edges.erase(eid)
-        edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [nodes[a_id].pos2d, cross], [a_id, junction_id], edge.road_class, edge.attrs)
-        next_edge_id += 1
-        edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [cross, nodes[b_id].pos2d], [junction_id, b_id], edge.road_class, edge.attrs)
-        next_edge_id += 1
         var spur_class: String = _lower_class(edge.road_class)
         var kid_a: int = a_region.kingdom_id
         if fort_counts.get(kid_a, 0) < max_per_kingdom:
@@ -387,7 +410,7 @@ func insert_border_forts(
             var fort_id_a: int = next_node_id
             next_node_id += 1
             nodes[fort_id_a] = MapNodeModule.new(fort_id_a, MapNodeModule.TYPE_FORT, fort_pos_a, {})
-            edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [cross, fort_pos_a], [junction_id, fort_id_a], spur_class, edge.attrs)
+            edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [nodes[a_id].pos2d, cross, fort_pos_a], [a_id, fort_id_a], spur_class, edge.attrs)
             next_edge_id += 1
             fort_counts[kid_a] = fort_counts.get(kid_a, 0) + 1
         var kid_b: int = b_region.kingdom_id
@@ -398,7 +421,7 @@ func insert_border_forts(
             var fort_id_b: int = next_node_id
             next_node_id += 1
             nodes[fort_id_b] = MapNodeModule.new(fort_id_b, MapNodeModule.TYPE_FORT, fort_pos_b, {})
-            edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [cross, fort_pos_b], [junction_id, fort_id_b], spur_class, edge.attrs)
+            edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [nodes[b_id].pos2d, cross, fort_pos_b], [b_id, fort_id_b], spur_class, edge.attrs)
             next_edge_id += 1
             fort_counts[kid_b] = fort_counts.get(kid_b, 0) + 1
     roads["next_node_id"] = next_node_id

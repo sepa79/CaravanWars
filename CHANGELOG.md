@@ -1,5 +1,10 @@
 Changelog
 
+0.1.44 — 2025-09-11
+Changed
+- Villages spawn around each town with per-city count controls, linking locally via paths and only attaching to towns or nearby Roman roads with a single road connection.
+- Border forts no longer insert crossroads when roads cross kingdom boundaries.
+
 0.1.43 — 2025-09-11
 Changed
 - Villages now connect to the nearest town or existing road of any class, not just Roman roads.

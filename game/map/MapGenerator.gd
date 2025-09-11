@@ -15,7 +15,8 @@ class MapGenParams:
     var height: float
     var kingdom_count: int
     var max_forts_per_kingdom: int
-    var village_density: float
+    var min_villages_per_city: int
+    var max_villages_per_city: int
     var village_downgrade_threshold: int
 
     func _init(
@@ -31,7 +32,8 @@ class MapGenParams:
         p_height: float = 100.0,
         p_kingdom_count: int = 1,
         p_max_forts_per_kingdom: int = 1,
-        p_village_density: float = 0.0005,
+        p_min_villages_per_city: int = 0,
+        p_max_villages_per_city: int = 2,
         p_village_downgrade_threshold: int = 1
     ) -> void:
         rng_seed = p_rng_seed if p_rng_seed != 0 else Time.get_ticks_msec()
@@ -47,7 +49,8 @@ class MapGenParams:
         height = clamp(p_height, 20.0, 500.0)
         kingdom_count = max(1, p_kingdom_count)
         max_forts_per_kingdom = max(0, p_max_forts_per_kingdom)
-        village_density = max(0.0, p_village_density)
+        min_villages_per_city = max(0, p_min_villages_per_city)
+        max_villages_per_city = max(min_villages_per_city, p_max_villages_per_city)
         village_downgrade_threshold = max(1, p_village_downgrade_threshold)
 
 var params: MapGenParams
@@ -92,8 +95,7 @@ func generate() -> Dictionary:
         params.crossroad_detour_margin,
         "roman"
     )
-    var village_count: int = int(params.village_density * params.width * params.height)
-    road_stage.insert_villages(roads, village_count, 5.0, params.width, params.height, params.village_downgrade_threshold)
+    road_stage.insert_villages(roads, params.min_villages_per_city, params.max_villages_per_city, 5.0, params.width, params.height, params.village_downgrade_threshold)
     road_stage.insert_border_forts(roads, regions, 10.0, params.max_forts_per_kingdom, params.width, params.height)
     map_data["roads"] = roads
 
