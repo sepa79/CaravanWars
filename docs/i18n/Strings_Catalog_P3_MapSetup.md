@@ -33,5 +33,6 @@ Namespace `setup.*`
 | setup.legend_fords | Fords | Brody | legend toggle |
 | setup.legend_regions | Regions | Regiony | legend toggle |
 | setup.max_forts_per_kingdom | Max Forts/Kingdom | Maks. fortów/królestwo | limit forts per kingdom |
-| setup.min_villages_per_city | Min Villages/City | Min. wiosek/miasto | minimum villages near each city |
-| setup.max_villages_per_city | Max Villages/City | Maks. wiosek/miasto | maximum villages near each city |
+| setup.min_villages_per_city | Min Villages/City | Min. wiosek/miasto | lower bound of villages spawned around each city |
+| setup.max_villages_per_city | Max Villages/City | Maks. wiosek/miasto | upper bound of villages spawned around each city |
+| setup.village_path_threshold | Path Downgrade Threshold | Próg degradacji ścieżek | degree threshold for downgrading roads |

@@ -53,6 +53,8 @@ var min_villages_label: Label
 var min_villages_spin: SpinBox
 var max_villages_label: Label
 var max_villages_spin: SpinBox
+var village_threshold_label: Label
+var village_threshold_spin: SpinBox
 @onready var start_button: Button = $HBox/ControlsScroll/Controls/Buttons/Start
 @onready var back_button: Button = $HBox/ControlsScroll/Controls/Buttons/Back
 @onready var main_ui: HBoxContainer = $HBox
@@ -114,6 +116,14 @@ func _ready() -> void:
     max_villages_spin.value = 2
     params.add_child(max_villages_spin)
     max_villages_spin.value_changed.connect(_on_params_changed)
+    village_threshold_label = Label.new()
+    params.add_child(village_threshold_label)
+    village_threshold_spin = SpinBox.new()
+    village_threshold_spin.min_value = 1
+    village_threshold_spin.max_value = 5
+    village_threshold_spin.value = 1
+    params.add_child(village_threshold_spin)
+    village_threshold_spin.value_changed.connect(_on_params_changed)
     show_roads_check.toggled.connect(_on_show_roads_toggled)
     show_rivers_check.toggled.connect(_on_show_rivers_toggled)
     show_cities_check.toggled.connect(_on_show_cities_toggled)
@@ -220,6 +230,7 @@ func _update_texts() -> void:
     max_forts_label.text = I18N.t("setup.max_forts_per_kingdom")
     min_villages_label.text = I18N.t("setup.min_villages_per_city")
     max_villages_label.text = I18N.t("setup.max_villages_per_city")
+    village_threshold_label.text = I18N.t("setup.village_path_threshold")
     road_class_selector.set_item_text(0, I18N.t("setup.road_class_path"))
     road_class_selector.set_item_text(1, I18N.t("setup.road_class_road"))
     road_class_selector.set_item_text(2, I18N.t("setup.road_class_roman"))
@@ -246,17 +257,17 @@ func _generate_map() -> void:
         kingdoms,
         int(max_forts_spin.value),
         int(min_villages_spin.value),
-        int(max_villages_spin.value)
+        int(max_villages_spin.value),
+        int(village_threshold_spin.value)
     )
     kingdoms_spin.max_value = map_params.city_count
     if int(kingdoms_spin.value) != map_params.kingdom_count:
         kingdoms_spin.set_block_signals(true)
         kingdoms_spin.value = map_params.kingdom_count
         kingdoms_spin.set_block_signals(false)
-    var max_possible: int = max(1, map_params.city_count - 1)
-    var prev_max_possible: int = int(max_connections_spin.max_value)
+    var max_possible: int = min(7, max(1, map_params.city_count - 1))
     max_connections_spin.max_value = max_possible
-    if int(max_connections_spin.value) == prev_max_possible and prev_max_possible < max_possible:
+    if map_params.max_connections > max_possible:
         map_params.max_connections = max_possible
         max_connections_spin.set_block_signals(true)
         max_connections_spin.value = map_params.max_connections
@@ -307,6 +318,10 @@ func _generate_map() -> void:
         max_villages_spin.set_block_signals(false)
     max_villages_spin.min_value = min_villages_spin.value
     min_villages_spin.max_value = max_villages_spin.value
+    if village_threshold_spin.value != map_params.village_downgrade_threshold:
+        village_threshold_spin.set_block_signals(true)
+        village_threshold_spin.value = map_params.village_downgrade_threshold
+        village_threshold_spin.set_block_signals(false)
     var generator := MapGeneratorModule.new(map_params)
     current_map = generator.generate()
     map_view.set_map_data(current_map)

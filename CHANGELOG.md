@@ -1,5 +1,36 @@
 Changelog
 
+0.1.44 — 2025-09-11
+Changed
+- Villages spawn around each town with per-city count controls, linking locally via paths and only attaching to towns or nearby Roman roads with a single road connection.
+- Border forts no longer insert crossroads when roads cross kingdom boundaries.
+
+0.1.43 — 2025-09-11
+Changed
+- Villages now connect to the nearest town or existing road of any class, not just Roman roads.
+
+0.1.42 — 2025-09-11
+Changed
+- Villages spawn from a global Poisson layer and connect to the nearest town or Roman road, downgrading leaf branches to paths.
+
+0.1.41 — 2025-09-11
+Fixed
+- Villages spawn via Poisson clusters, remain within map bounds, and each connects to its town with roads while paths link villages.
+
+0.1.40 — 2025-09-11
+Changed
+- Capped road connection options at 7 and stopped auto-increasing when adding more cities.
+- Rivers now end at the map edge and villages and forts clamp to map bounds.
+
+0.1.39 — 2025-09-10
+Changed
+- Villages now form path-focused clusters and only hook into towns or Roman roads when necessary.
+
+0.1.38 — 2025-09-10
+Changed
+- Town routes now use the Roman road class.
+- Villages connect to towns by roads and link to each other with paths.
+
 0.1.37 — 2025-09-10
 Added
 - Rivers crossing paths create ford nodes while roads and Roman roads receive bridges.

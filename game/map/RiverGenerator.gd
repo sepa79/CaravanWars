@@ -11,25 +11,38 @@ func _init(_rng: RandomNumberGenerator) -> void:
 
 ## Generates simple river polylines. Intersections with roads are converted
 ## to `bridge` or `ford` nodes.
-func generate_rivers(roads: Dictionary, count: int = 1) -> Array:
+func generate_rivers(roads: Dictionary, count: int = 1, width: float = 100.0, height: float = 100.0) -> Array:
     var rivers: Array = []
 
     for _i in range(count):
-        var start = Vector2(rng.randi_range(0, 100), rng.randi_range(0, 100))
-        var end = Vector2(rng.randi_range(0, 100), rng.randi_range(0, 100))
-        var polyline: Array[Vector2] = _river_polyline(start, end)
+        var start: Vector2 = Vector2(rng.randf_range(0.0, width), rng.randf_range(0.0, height))
+        var edge_choice: int = rng.randi_range(0, 3)
+        var end: Vector2
+        match edge_choice:
+            0:
+                end = Vector2(rng.randf_range(0.0, width), 0.0)
+            1:
+                end = Vector2(rng.randf_range(0.0, width), height)
+            2:
+                end = Vector2(0.0, rng.randf_range(0.0, height))
+            _:
+                end = Vector2(width, rng.randf_range(0.0, height))
+        var polyline: Array[Vector2] = _river_polyline(start, end, 5, width, height)
         _process_intersections(polyline, roads)
         rivers.append(polyline)
 
     return rivers
 
-func _river_polyline(start: Vector2, end: Vector2, segments: int = 5) -> Array[Vector2]:
+func _river_polyline(start: Vector2, end: Vector2, segments: int = 5, width: float = 100.0, height: float = 100.0) -> Array[Vector2]:
     var pts: Array[Vector2] = [start]
     for i in range(1, segments - 1):
         var t: float = float(i) / float(segments - 1)
         var mid: Vector2 = start.lerp(end, t)
         var offset: Vector2 = Vector2(rng.randf_range(-10.0, 10.0), rng.randf_range(-10.0, 10.0))
-        pts.append(mid + offset)
+        var p: Vector2 = mid + offset
+        p.x = clamp(p.x, 0.0, width)
+        p.y = clamp(p.y, 0.0, height)
+        pts.append(p)
     pts.append(end)
     return pts
 
