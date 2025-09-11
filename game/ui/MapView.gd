@@ -20,6 +20,12 @@ var debug_logged: bool = false
 var edit_mode: bool = false
 var dragging_city: bool = false
 var selected_city: int = -1
+const RoadNetworkModule = preload("res://map/RoadNetwork.gd")
+var road_helper: RoadNetwork = RoadNetworkModule.new(RandomNumberGenerator.new())
+var road_mode: String = ""
+var selected_node: int = -1
+var hovered_node: int = -1
+var hovered_edge: int = -1
 
 signal cities_changed(cities: Array)
 
@@ -37,6 +43,13 @@ func set_edit_mode(value: bool) -> void:
     edit_mode = value
     dragging_city = false
     selected_city = -1
+
+func set_road_mode(mode: String) -> void:
+    road_mode = mode
+    selected_node = -1
+    hovered_node = -1
+    hovered_edge = -1
+    queue_redraw()
 
 func get_kingdom_colors() -> Dictionary:
     var colors: Dictionary = {}
@@ -57,7 +70,22 @@ func _gui_input(event: InputEvent) -> void:
             accept_event()
         elif mb.button_index == MOUSE_BUTTON_LEFT:
             if mb.pressed:
-                if edit_mode:
+                if road_mode == "add":
+                    var node_id: int = _road_node_at_point(mb.position)
+                    if node_id != -1:
+                        if selected_node == -1:
+                            selected_node = node_id
+                        else:
+                            road_helper.connect_nodes(map_data.get("roads", {}), selected_node, node_id)
+                            selected_node = -1
+                            queue_redraw()
+                elif road_mode == "delete":
+                    var edge_id: int = _road_edge_at_point(mb.position)
+                    if edge_id != -1:
+                        road_helper.remove_edge(map_data.get("roads", {}), edge_id)
+                        hovered_edge = -1
+                        queue_redraw()
+                elif edit_mode:
                     var idx: int = _city_at_point(mb.position)
                     if idx != -1:
                         selected_city = idx
@@ -77,7 +105,17 @@ func _gui_input(event: InputEvent) -> void:
         var mm: InputEventMouseMotion = event
         if edit_mode and dragging_city and selected_city != -1:
             var map_pos: Vector2 = _screen_to_map(mm.position)
+            map_pos.x = clamp(map_pos.x, 0.0, map_width)
+            map_pos.y = clamp(map_pos.y, 0.0, map_height)
             map_data.get("cities", [])[selected_city] = map_pos
+            queue_redraw()
+            accept_event()
+        elif road_mode == "add":
+            hovered_node = _road_node_at_point(mm.position)
+            queue_redraw()
+            accept_event()
+        elif road_mode == "delete":
+            hovered_edge = _road_edge_at_point(mm.position)
             queue_redraw()
             accept_event()
         elif dragging:
@@ -135,6 +173,7 @@ func _draw() -> void:
     var roads: Dictionary = map_data.get("roads", {})
     if show_roads:
         var edges: Dictionary = roads.get("edges", {})
+        var nodes: Dictionary = roads.get("nodes", {})
         for edge in edges.values():
             var pts: PackedVector2Array = edge.polyline
             for i in range(pts.size() - 1):
@@ -142,10 +181,25 @@ func _draw() -> void:
                 var b: Vector2 = pts[i + 1]
                 draw_line(a * draw_scale + offset, b * draw_scale + offset, Color.WHITE, 1.0)
 
+        if road_mode == "add":
+            if hovered_node != -1 and nodes.has(hovered_node):
+                var hpos: Vector2 = nodes[hovered_node].pos2d * draw_scale + offset
+                draw_circle(hpos, 6.0, Color.YELLOW)
+            if selected_node != -1 and nodes.has(selected_node):
+                var spos: Vector2 = nodes[selected_node].pos2d * draw_scale + offset
+                draw_circle(spos, 6.0, Color.GREEN)
+        elif road_mode == "delete":
+            if hovered_edge != -1 and edges.has(hovered_edge):
+                var hedge = edges[hovered_edge]
+                var hpts: PackedVector2Array = hedge.polyline
+                for i in range(hpts.size() - 1):
+                    var ha: Vector2 = hpts[i] * draw_scale + offset
+                    var hb: Vector2 = hpts[i + 1] * draw_scale + offset
+                    draw_line(ha, hb, Color.RED, 2.0)
+
         var font: Font = get_theme_default_font()
         var font_size: int = get_theme_default_font_size()
         if font:
-            var nodes: Dictionary = roads.get("nodes", {})
             var adjacency: Dictionary = {}
             for edge in edges.values():
                 var ep0: int = edge.endpoints[0]
@@ -227,6 +281,36 @@ func _city_at_point(screen_pos: Vector2) -> int:
         var c: Vector2 = cities[i] * draw_scale + offset
         if c.distance_to(screen_pos) <= 6.0:
             return i
+    return -1
+
+func _road_node_at_point(screen_pos: Vector2) -> int:
+    var roads: Dictionary = map_data.get("roads", {})
+    var nodes: Dictionary = roads.get("nodes", {})
+    var base_scale: float = _base_scale()
+    var draw_scale: float = base_scale * zoom_level
+    var offset: Vector2 = _base_offset(base_scale) - pan_offset * draw_scale
+    for id in nodes.keys():
+        var node = nodes[id]
+        var pos: Vector2 = node.pos2d * draw_scale + offset
+        if pos.distance_to(screen_pos) <= 6.0:
+            return id
+    return -1
+
+func _road_edge_at_point(screen_pos: Vector2) -> int:
+    var roads: Dictionary = map_data.get("roads", {})
+    var edges: Dictionary = roads.get("edges", {})
+    var base_scale: float = _base_scale()
+    var draw_scale: float = base_scale * zoom_level
+    var offset: Vector2 = _base_offset(base_scale) - pan_offset * draw_scale
+    for id in edges.keys():
+        var edge = edges[id]
+        var pts: Array = edge.polyline
+        for i in range(pts.size() - 1):
+            var a: Vector2 = pts[i] * draw_scale + offset
+            var b: Vector2 = pts[i + 1] * draw_scale + offset
+            var closest_point: Vector2 = Geometry2D.get_closest_point_to_segment(screen_pos, a, b)
+            if closest_point.distance_to(screen_pos) <= 3.0:
+                return id
     return -1
 
 func _screen_to_map(screen_pos: Vector2) -> Vector2:

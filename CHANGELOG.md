@@ -1,5 +1,15 @@
 Changelog
 
+0.1.30 — 2025-09-10
+Changed
+- Updated Phase-03 map plan with villages, forts, road types and finalization workflow.
+
+0.1.29 — 2025-09-10
+Added
+- Validate Map control to run road and river checks from map setup screen.
+- Road network cleanup helper to prune invalid edges and orphan nodes.
+- Automatic bridge insertion where roads cross rivers.
+
 0.1.28 — 2025-09-10
 Removed
 - Reverted addition of `version` and `rng_seed` to unsafe variable names list.

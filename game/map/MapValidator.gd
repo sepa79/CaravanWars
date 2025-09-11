@@ -1,6 +1,8 @@
 extends RefCounted
 class_name MapValidator
 
+const RoadNetworkModule = preload("res://map/RoadNetwork.gd")
+
 func validate(roads: Dictionary, rivers: Array, margin: float = 5.0) -> Array[String]:
     var errors: Array[String] = []
     if not _road_network_connected(roads):
@@ -8,7 +10,10 @@ func validate(roads: Dictionary, rivers: Array, margin: float = 5.0) -> Array[St
     if not _no_dangling_edges(roads):
         errors.append("dangling edges present")
     if not _valid_river_intersections(roads, rivers):
-        errors.append("river-road intersection missing bridge or ford")
+        var helper: RoadNetwork = RoadNetworkModule.new(RandomNumberGenerator.new())
+        helper.insert_river_crossings(roads, rivers)
+        if not _valid_river_intersections(roads, rivers):
+            errors.append("river-road intersection missing bridge or ford")
     if not _no_crossing_duplicates(roads, margin):
         errors.append("redundant direct roads")
     return errors
@@ -122,8 +127,7 @@ func _no_crossing_duplicates(roads: Dictionary, margin: float) -> bool:
                 var key := _pair_key(a_id, b_id)
                 if city_edges.has(key):
                     var direct_len: float = nodes[a_id].pos2d.distance_to(nodes[b_id].pos2d)
-                    var crossing_len: float = nodes[a_id].pos2d.distance_to(nodes[cross_id].pos2d) +
-                        nodes[cross_id].pos2d.distance_to(nodes[b_id].pos2d)
+                    var crossing_len: float = nodes[a_id].pos2d.distance_to(nodes[cross_id].pos2d) + nodes[cross_id].pos2d.distance_to(nodes[b_id].pos2d)
                     if crossing_len - direct_len <= margin:
                         return false
     return true

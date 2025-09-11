@@ -3,6 +3,18 @@ PHASE‑03 — Map (vector; seeded; validations)
 Cel:
 - Opisać deterministyczny pipeline generacji wektorowej mapy wraz z walidacjami i modelem danych.
 
+Plan i status:
+
+| Obszar | Status | Następne kroki |
+| --- | --- | --- |
+| Edycja dróg | ✅ Dodawanie/usuwanie dróg; wybór węzłów/krawędzi z podświetleniem; przesuwanie miast ograniczone do granic mapy; czyszczenie usuwa tylko osierocone skrzyżowania | — |
+| Walidacja i czyszczenie | ✅ Przycisk „Validate Map” uruchamia `MapValidator` oraz `RoadNetwork.cleanup`, odświeża podgląd i snapshot | — |
+| Przejścia przez rzeki | ✅ Walidator automatycznie wstawia węzły `bridge` w miejscach przecięcia dróg z rzekami | — |
+| Wsie i forty na drogach | ⏳ Brak | • Podczas generacji rozkładać wsie i forty na krawędziach (forty przy mostach i wąskich gardłach)<br>• Narzędzia edycji („Add Village”, „Add Fort”, przesuwanie/usuwanie) |
+| Typy dróg | ⏳ Brak | • Obsługa klas dróg (`path`, `dirt`, `roman`) w modelu danych<br>• UI do wyboru typu podczas rysowania lub zmiany istniejących dróg |
+| Finalizacja mapy | ⏳ Planowane | • Zastąpić walidację po każdej edycji akcją „Finalize Map” walidującą i czyszczącą mapę tylko raz oraz wysyłającą całość do serwera |
+| Snapshot i diff | ⏳ Częściowo | • Snapshot zawiera wsie/forty i typy dróg<br>• Strukturalne zdarzenia diff (`add_node`, `remove_edge`, itp.) |
+
 Map-setup flow:
 - Podgląd mapy pojawia się przed stanami READY i GAME.
 - Zmiana parametrów (seed, rozmiar itp.) natychmiast aktualizuje podgląd.

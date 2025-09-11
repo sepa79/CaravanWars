@@ -92,6 +92,178 @@ func build_roads(
         "next_edge_id": result["next_edge_id"],
     }
 
+## Links two nodes with a road, inserting villages and crossings as needed.
+func connect_nodes(roads: Dictionary, a_id: int, b_id: int, village_spacing: float = 25.0, crossing_margin: float = 5.0) -> void:
+    var nodes: Dictionary = roads.get("nodes", {})
+    var edges: Dictionary = roads.get("edges", {})
+    var next_node_id: int = roads.get("next_node_id", 1)
+    var next_edge_id: int = roads.get("next_edge_id", 1)
+    var start: MapNode = nodes.get(a_id)
+    var end: MapNode = nodes.get(b_id)
+    if start == null or end == null:
+        return
+    var length: float = start.pos2d.distance_to(end.pos2d)
+    var dir: Vector2 = (end.pos2d - start.pos2d).normalized()
+    var dist: float = village_spacing
+    var last_node: MapNode = start
+    while dist < length:
+        var pos: Vector2 = start.pos2d + dir * dist
+        var n_node: MapNode = MapNodeModule.new(next_node_id, "village", pos, {})
+        nodes[next_node_id] = n_node
+        edges[next_edge_id] = EdgeModule.new(next_edge_id, "trade_route", [last_node.pos2d, pos], [last_node.id, next_node_id], {})
+        last_node = n_node
+        next_node_id += 1
+        next_edge_id += 1
+        dist += village_spacing
+    edges[next_edge_id] = EdgeModule.new(next_edge_id, "trade_route", [last_node.pos2d, end.pos2d], [last_node.id, end.id], {})
+    next_edge_id += 1
+    var res: Dictionary = _insert_crossings(nodes, edges, next_node_id, next_edge_id)
+    roads["next_node_id"] = res["next_node_id"]
+    roads["next_edge_id"] = res["next_edge_id"]
+    _prune_crossing_duplicates(nodes, edges, crossing_margin)
+
+func remove_edge(roads: Dictionary, edge_id: int, crossing_margin: float = 5.0) -> void:
+    var nodes: Dictionary = roads.get("nodes", {})
+    var edges: Dictionary = roads.get("edges", {})
+    var edge: Edge = edges.get(edge_id)
+    if edge == null:
+        return
+
+    var endpoints: Array[int] = [edge.endpoints[0], edge.endpoints[1]]
+    edges.erase(edge_id)
+
+    var next_edge_id: int = roads.get("next_edge_id", 1)
+    for nid in endpoints:
+        var node: MapNode = nodes.get(nid)
+        if node == null or node.type != "crossing":
+            continue
+        var incident: Array[int] = []
+        for eid in edges.keys():
+            var e: Edge = edges[eid]
+            if e.endpoints.has(nid):
+                incident.append(eid)
+        if incident.size() == 0:
+            nodes.erase(nid)
+        elif incident.size() == 1:
+            edges.erase(incident[0])
+            nodes.erase(nid)
+        elif incident.size() == 2:
+            var e1: Edge = edges[incident[0]]
+            var e2: Edge = edges[incident[1]]
+            var other1: int = e1.endpoints[0] if e1.endpoints[1] == nid else e1.endpoints[1]
+            var other2: int = e2.endpoints[0] if e2.endpoints[1] == nid else e2.endpoints[1]
+            edges.erase(incident[0])
+            edges.erase(incident[1])
+            edges[next_edge_id] = EdgeModule.new(next_edge_id, "trade_route", [nodes[other1].pos2d, nodes[other2].pos2d], [other1, other2], {})
+            next_edge_id += 1
+            nodes.erase(nid)
+        # if more than two incident edges remain, keep crossing as is
+
+    roads["next_edge_id"] = max(next_edge_id, roads.get("next_edge_id", 1))
+
+    var used: Dictionary = {}
+    for e in edges.values():
+        used[e.endpoints[0]] = true
+        used[e.endpoints[1]] = true
+    var to_remove: Array[int] = []
+    for id in nodes.keys():
+        if nodes[id].type != "city" and not used.has(id):
+            to_remove.append(id)
+    for id in to_remove:
+        nodes.erase(id)
+
+    var res2: Dictionary = _insert_crossings(nodes, edges, roads.get("next_node_id", 1), roads.get("next_edge_id", 1))
+    roads["next_node_id"] = res2["next_node_id"]
+    roads["next_edge_id"] = res2["next_edge_id"]
+    _prune_crossing_duplicates(nodes, edges, crossing_margin)
+
+## Splits roads where they cross rivers and inserts bridge nodes.
+func insert_river_crossings(roads: Dictionary, rivers: Array, crossing_margin: float = 5.0) -> void:
+    var nodes: Dictionary = roads.get("nodes", {})
+    var edges: Dictionary = roads.get("edges", {})
+    var next_node_id: int = roads.get("next_node_id", 1)
+    var next_edge_id: int = roads.get("next_edge_id", 1)
+
+    var changed := true
+    while changed:
+        changed = false
+        var edge_ids: Array = edges.keys()
+        for eid in edge_ids:
+            var edge: Edge = edges[eid]
+            var road_start: Vector2 = edge.polyline[0]
+            var road_end: Vector2 = edge.polyline[edge.polyline.size() - 1]
+            for poly in rivers:
+                for i in range(poly.size() - 1):
+                    var river_a: Vector2 = poly[i]
+                    var river_b: Vector2 = poly[i + 1]
+                    var inter: Variant = Geometry2D.segment_intersects_segment(road_start, road_end, river_a, river_b)
+                    if inter == null:
+                        continue
+                    var cross: Vector2 = inter
+                    if _point_on_endpoint(cross, road_start, road_end):
+                        var node_id: int = edge.endpoints[0] if cross == road_start else edge.endpoints[1]
+                        var node: MapNode = nodes.get(node_id)
+                        if node != null and node.type != "bridge" and node.type != "ford":
+                            node.type = "bridge"
+                            changed = true
+                        continue
+
+                    var cross_id: int = next_node_id
+                    next_node_id += 1
+                    nodes[cross_id] = MapNodeModule.new(cross_id, "bridge", cross, {})
+                    var a_id: int = edge.endpoints[0]
+                    var b_id: int = edge.endpoints[1]
+                    edges.erase(eid)
+                    edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [road_start, cross], [a_id, cross_id], {})
+                    next_edge_id += 1
+                    edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [cross, road_end], [cross_id, b_id], {})
+                    next_edge_id += 1
+                    changed = true
+                    break
+                if changed:
+                    break
+            if changed:
+                break
+
+    var res: Dictionary = _insert_crossings(nodes, edges, next_node_id, next_edge_id)
+    roads["next_node_id"] = res["next_node_id"]
+    roads["next_edge_id"] = res["next_edge_id"]
+    _prune_crossing_duplicates(nodes, edges, crossing_margin)
+
+## Sanitizes a road network dictionary by pruning invalid edges and nodes.
+func cleanup(roads: Dictionary, crossing_margin: float = 5.0) -> void:
+    var nodes: Dictionary = roads.get("nodes", {})
+    var edges: Dictionary = roads.get("edges", {})
+
+    var remove_edges: Array[int] = []
+    for eid in edges.keys():
+        var edge: Edge = edges[eid]
+        var endpoints: Array[int] = edge.endpoints
+        if endpoints.size() != 2 or not nodes.has(endpoints[0]) or not nodes.has(endpoints[1]):
+            remove_edges.append(eid)
+            continue
+        var length: float = 0.0
+        for i in range(edge.polyline.size() - 1):
+            length += edge.polyline[i].distance_to(edge.polyline[i + 1])
+        if length <= 0.001:
+            remove_edges.append(eid)
+    for eid in remove_edges:
+        edges.erase(eid)
+
+    var used: Dictionary = {}
+    for e in edges.values():
+        used[e.endpoints[0]] = true
+        used[e.endpoints[1]] = true
+
+    for nid in nodes.keys():
+        if nodes[nid].type != "city" and not used.has(nid):
+            nodes.erase(nid)
+
+    var res: Dictionary = _insert_crossings(nodes, edges, roads.get("next_node_id", 1), roads.get("next_edge_id", 1))
+    roads["next_node_id"] = res["next_node_id"]
+    roads["next_edge_id"] = res["next_edge_id"]
+    _prune_crossing_duplicates(nodes, edges, crossing_margin)
+
 func _pair_key(a: int, b: int) -> String:
     return "%d_%d" % [min(a, b), max(a, b)]
 

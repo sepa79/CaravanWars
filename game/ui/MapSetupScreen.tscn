@@ -187,3 +187,11 @@ button_pressed = true
 [node name="EditCities" type="CheckBox" parent="Layers"]
 button_pressed = false
 
+[node name="AddRoad" type="Button" parent="Layers"]
+toggle_mode = true
+
+[node name="DeleteRoad" type="Button" parent="Layers"]
+toggle_mode = true
+
+[node name="ValidateMap" type="Button" parent="Layers"]
+
