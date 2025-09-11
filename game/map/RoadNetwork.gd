@@ -127,7 +127,8 @@ func insert_villages(
         var node: MapNode = nodes[nid]
         if node.type != MapNodeModule.TYPE_CITY:
             continue
-        var edge_ids: Array[int] = adjacency.get(nid, []).duplicate()
+        var edge_ids: Array[int] = []
+        edge_ids.append_array(adjacency.get(nid, []) as Array)
         if edge_ids.is_empty():
             continue
         # Fisher-Yates shuffle using our RNG

@@ -5,7 +5,6 @@ const RegionGeneratorModule = preload("res://map/RegionGenerator.gd")
 const RoadNetworkModule = preload("res://map/RoadNetwork.gd")
 const MapSnapshotModule = preload("res://map/MapSnapshot.gd")
 const MapValidatorModule = preload("res://map/MapValidator.gd")
-const LegendIconButton = preload("res://ui/LegendIconButton.gd")
 
 @onready var title_label: Label = $HBox/ControlsScroll/Controls/Title
 @onready var params: GridContainer = $HBox/ControlsScroll/Controls/Params
