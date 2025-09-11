@@ -255,6 +255,62 @@ func insert_river_crossings(roads: Dictionary, rivers: Array, crossing_margin: f
     roads["next_edge_id"] = res["next_edge_id"]
     _prune_crossing_duplicates(nodes, edges, crossing_margin)
 
+## Adds a fort near each road segment that crosses between different kingdoms.
+func insert_border_forts(roads: Dictionary, regions: Dictionary, offset: float = 2.0) -> void:
+    var nodes: Dictionary = roads.get("nodes", {})
+    var edges: Dictionary = roads.get("edges", {})
+    var next_node_id: int = roads.get("next_node_id", 1)
+    var next_edge_id: int = roads.get("next_edge_id", 1)
+    var keys: Array = edges.keys()
+    for eid in keys:
+        var edge: Edge = edges[eid]
+        var a_id: int = edge.endpoints[0]
+        var b_id: int = edge.endpoints[1]
+        var a_region: Region = _region_for_point(nodes[a_id].pos2d, regions)
+        var b_region: Region = _region_for_point(nodes[b_id].pos2d, regions)
+        if a_region == null or b_region == null:
+            continue
+        if a_region.kingdom_id == b_region.kingdom_id:
+            continue
+        var cross: Vector2 = _border_intersection(nodes[a_id].pos2d, nodes[b_id].pos2d, a_region)
+        var dir: Vector2 = (nodes[b_id].pos2d - nodes[a_id].pos2d).normalized()
+        var perp: Vector2 = Vector2(-dir.y, dir.x)
+        var junction_id: int = next_node_id
+        next_node_id += 1
+        nodes[junction_id] = MapNodeModule.new(junction_id, MapNodeModule.TYPE_CROSSING, cross, {})
+        var fort_pos: Vector2 = cross + perp * offset
+        var fort_id: int = next_node_id
+        next_node_id += 1
+        nodes[fort_id] = MapNodeModule.new(fort_id, MapNodeModule.TYPE_FORT, fort_pos, {})
+        edges.erase(eid)
+        edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [nodes[a_id].pos2d, cross], [a_id, junction_id], edge.road_class, edge.attrs)
+        next_edge_id += 1
+        edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [cross, nodes[b_id].pos2d], [junction_id, b_id], edge.road_class, edge.attrs)
+        next_edge_id += 1
+        edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [cross, fort_pos], [junction_id, fort_id], edge.road_class, edge.attrs)
+        next_edge_id += 1
+    roads["next_node_id"] = next_node_id
+    roads["next_edge_id"] = next_edge_id
+
+func _region_for_point(p: Vector2, regions: Dictionary) -> Region:
+    for region in regions.values():
+        var pts := PackedVector2Array()
+        for v in region.boundary_nodes:
+            pts.append(v)
+        if Geometry2D.is_point_in_polygon(p, pts):
+            return region
+    return null
+
+func _border_intersection(a: Vector2, b: Vector2, region: Region) -> Vector2:
+    var pts: Array[Vector2] = region.boundary_nodes
+    for i in range(pts.size()):
+        var p1: Vector2 = pts[i]
+        var p2: Vector2 = pts[(i + 1) % pts.size()]
+        var inter: Variant = Geometry2D.segment_intersects_segment(a, b, p1, p2)
+        if inter != null:
+            return inter
+    return (a + b) * 0.5
+
 ## Sanitizes a road network dictionary by pruning invalid edges and nodes.
 func cleanup(roads: Dictionary, crossing_margin: float = 5.0) -> void:
     var nodes: Dictionary = roads.get("nodes", {})

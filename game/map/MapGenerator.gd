@@ -84,6 +84,7 @@ func generate() -> Dictionary:
         25.0,
         "road"
     )
+    road_stage.insert_border_forts(roads, regions)
     map_data["roads"] = roads
 
     var river_stage = RiverGeneratorModule.new(rng)

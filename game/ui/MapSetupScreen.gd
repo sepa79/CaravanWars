@@ -104,9 +104,9 @@ func _ready() -> void:
     layers.add_child(add_fort_button)
     add_fort_button.toggled.connect(_on_add_fort_toggled)
     road_class_selector = OptionButton.new()
-    road_class_selector.add_item(I18N.t("setup.road_class_trail"))
+    road_class_selector.add_item(I18N.t("setup.road_class_path"))
     road_class_selector.add_item(I18N.t("setup.road_class_road"))
-    road_class_selector.add_item(I18N.t("setup.road_class_highway"))
+    road_class_selector.add_item(I18N.t("setup.road_class_roman"))
     road_class_selector.select(1)
     layers.add_child(road_class_selector)
     road_class_selector.item_selected.connect(_on_road_class_selected)
@@ -185,9 +185,9 @@ func _update_texts() -> void:
     add_village_button.text = I18N.t("setup.add_village")
     add_fort_button.text = I18N.t("setup.add_fort")
     finalize_button.text = I18N.t("setup.finalize_map")
-    road_class_selector.set_item_text(0, I18N.t("setup.road_class_trail"))
+    road_class_selector.set_item_text(0, I18N.t("setup.road_class_path"))
     road_class_selector.set_item_text(1, I18N.t("setup.road_class_road"))
-    road_class_selector.set_item_text(2, I18N.t("setup.road_class_highway"))
+    road_class_selector.set_item_text(2, I18N.t("setup.road_class_roman"))
     start_button.text = I18N.t("setup.start")
     back_button.text = I18N.t("menu.back")
     for key in legend_labels.keys():
@@ -328,11 +328,11 @@ func _on_add_fort_toggled(pressed: bool) -> void:
         map_view.set_road_mode("")
 
 func _on_road_class_selected(index: int) -> void:
-    var cls: String = "trail"
+    var cls: String = "path"
     if index == 1:
         cls = "road"
     elif index == 2:
-        cls = "highway"
+        cls = "roman"
     map_view.set_road_class(cls)
 
 func _on_finalize_map_pressed() -> void:

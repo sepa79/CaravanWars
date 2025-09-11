@@ -20,9 +20,9 @@ Namespace `setup.*`
 | setup.add_village | Add Village | Dodaj wioskę | insert village node |
 | setup.add_fort | Add Fort | Dodaj fort | insert fort node |
 | setup.finalize_map | Finalize Map | Finalizuj mapę | lock map and send to host |
-| setup.road_class_trail | Trail | Szlak | road type option |
+| setup.road_class_path | Path | Ścieżka | road type option |
 | setup.road_class_road | Road | Droga | road type option |
-| setup.road_class_highway | Highway | Gościniec | road type option |
+| setup.road_class_roman | Roman Road | Droga rzymska | road type option |
 | setup.legend_roads | Roads | Drogi | legend toggle |
 | setup.legend_rivers | Rivers | Rzeki | legend toggle |
 | setup.legend_cities | Cities | Miasta | legend toggle |

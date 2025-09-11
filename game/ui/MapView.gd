@@ -189,17 +189,23 @@ func _draw() -> void:
         var edges: Dictionary = roads.get("edges", {})
         var nodes: Dictionary = roads.get("nodes", {})
         var class_colors: Dictionary = {
-            "trail": Color.GRAY,
-            "road": Color.WHITE,
-            "highway": Color.YELLOW,
+            "path": Color(0.6, 0.6, 0.6),
+            "road": Color(0.8, 0.7, 0.5),
+            "roman": Color(1.0, 0.9, 0.3),
+        }
+        var class_widths: Dictionary = {
+            "path": 1.0,
+            "road": 2.0,
+            "roman": 3.0,
         }
         for edge in edges.values():
             var pts: PackedVector2Array = edge.polyline
             var col: Color = class_colors.get(edge.road_class, Color.WHITE)
+            var w: float = class_widths.get(edge.road_class, 1.0)
             for i in range(pts.size() - 1):
                 var a: Vector2 = pts[i]
                 var b: Vector2 = pts[i + 1]
-                draw_line(a * draw_scale + offset, b * draw_scale + offset, col, 1.0)
+                draw_line(a * draw_scale + offset, b * draw_scale + offset, col, w)
 
         if road_mode == "add":
             if hovered_node != -1 and nodes.has(hovered_node):

@@ -1,5 +1,11 @@
 Changelog
 
+0.1.35 — 2025-09-10
+Added
+- Forts spawn near kingdom borders with short spurs off main roads.
+Changed
+- Path, road and Roman road classes render with distinct widths and colors.
+
 0.1.34 — 2025-09-10
 Changed
 - Removed automatic fort placement at road crossings.
