@@ -21,8 +21,10 @@ var edit_mode: bool = false
 var dragging_city: bool = false
 var selected_city: int = -1
 const RoadNetworkModule = preload("res://map/RoadNetwork.gd")
+const MapNodeModule = preload("res://map/MapNode.gd")
 var road_helper: RoadNetwork = RoadNetworkModule.new(RandomNumberGenerator.new())
 var road_mode: String = ""
+var selected_road_class: String = "road"
 var selected_node: int = -1
 var hovered_node: int = -1
 var hovered_edge: int = -1
@@ -51,6 +53,9 @@ func set_road_mode(mode: String) -> void:
     hovered_edge = -1
     queue_redraw()
 
+func set_road_class(cls: String) -> void:
+    selected_road_class = cls
+
 func get_kingdom_colors() -> Dictionary:
     var colors: Dictionary = {}
     var regions: Dictionary = map_data.get("regions", {})
@@ -76,13 +81,20 @@ func _gui_input(event: InputEvent) -> void:
                         if selected_node == -1:
                             selected_node = node_id
                         else:
-                            road_helper.connect_nodes(map_data.get("roads", {}), selected_node, node_id)
+                            road_helper.connect_nodes(map_data.get("roads", {}), selected_node, node_id, 25.0, 5.0, selected_road_class)
                             selected_node = -1
                             queue_redraw()
                 elif road_mode == "delete":
                     var edge_id: int = _road_edge_at_point(mb.position)
                     if edge_id != -1:
                         road_helper.remove_edge(map_data.get("roads", {}), edge_id)
+                        hovered_edge = -1
+                        queue_redraw()
+                elif road_mode == "village" or road_mode == "fort":
+                    var v_edge: int = _road_edge_at_point(mb.position)
+                    if v_edge != -1:
+                        var ntype: String = MapNodeModule.TYPE_VILLAGE if road_mode == "village" else MapNodeModule.TYPE_FORT
+                        road_helper.insert_node_on_edge(map_data.get("roads", {}), v_edge, ntype)
                         hovered_edge = -1
                         queue_redraw()
                 elif edit_mode:
@@ -114,7 +126,7 @@ func _gui_input(event: InputEvent) -> void:
             hovered_node = _road_node_at_point(mm.position)
             queue_redraw()
             accept_event()
-        elif road_mode == "delete":
+        elif road_mode == "delete" or road_mode == "village" or road_mode == "fort":
             hovered_edge = _road_edge_at_point(mm.position)
             queue_redraw()
             accept_event()
@@ -174,12 +186,18 @@ func _draw() -> void:
     if show_roads:
         var edges: Dictionary = roads.get("edges", {})
         var nodes: Dictionary = roads.get("nodes", {})
+        var class_colors: Dictionary = {
+            "trail": Color.GRAY,
+            "road": Color.WHITE,
+            "highway": Color.YELLOW,
+        }
         for edge in edges.values():
             var pts: PackedVector2Array = edge.polyline
+            var col: Color = class_colors.get(edge.road_class, Color.WHITE)
             for i in range(pts.size() - 1):
                 var a: Vector2 = pts[i]
                 var b: Vector2 = pts[i + 1]
-                draw_line(a * draw_scale + offset, b * draw_scale + offset, Color.WHITE, 1.0)
+                draw_line(a * draw_scale + offset, b * draw_scale + offset, col, 1.0)
 
         if road_mode == "add":
             if hovered_node != -1 and nodes.has(hovered_node):
@@ -188,14 +206,15 @@ func _draw() -> void:
             if selected_node != -1 and nodes.has(selected_node):
                 var spos: Vector2 = nodes[selected_node].pos2d * draw_scale + offset
                 draw_circle(spos, 6.0, Color.GREEN)
-        elif road_mode == "delete":
+        elif road_mode == "delete" or road_mode == "village" or road_mode == "fort":
             if hovered_edge != -1 and edges.has(hovered_edge):
                 var hedge = edges[hovered_edge]
                 var hpts: PackedVector2Array = hedge.polyline
+                var hcolor: Color = Color.RED if road_mode == "delete" else Color.YELLOW
                 for i in range(hpts.size() - 1):
                     var ha: Vector2 = hpts[i] * draw_scale + offset
                     var hb: Vector2 = hpts[i + 1] * draw_scale + offset
-                    draw_line(ha, hb, Color.RED, 2.0)
+                    draw_line(ha, hb, hcolor, 2.0)
 
         var font: Font = get_theme_default_font()
         var font_size: int = get_theme_default_font_size()

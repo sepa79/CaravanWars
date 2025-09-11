@@ -1,5 +1,10 @@
 Changelog
 
+0.1.32 — 2025-09-10
+Added
+- Village and fort nodes with road class support and editing tools.
+- Finalize Map action validating, cleaning, snapshotting and locking edits.
+
 0.1.31 — 2025-09-10
 Added
 - World autoload for game state.

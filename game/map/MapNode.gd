@@ -1,6 +1,13 @@
 extends RefCounted
 class_name MapNode
 
+const TYPE_CITY := "city"
+const TYPE_VILLAGE := "village"
+const TYPE_FORT := "fort"
+const TYPE_CROSSING := "crossing"
+const TYPE_BRIDGE := "bridge"
+const TYPE_FORD := "ford"
+
 var id: int
 var type: String
 var pos2d: Vector2

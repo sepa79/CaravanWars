@@ -49,8 +49,7 @@ func _process_intersections(poly: Array[Vector2], roads: Dictionary) -> void:
             var intersection: Variant = Geometry2D.segment_intersects_segment(river_a, river_b, road_start, road_end)
             if intersection != null:
                 var cross: Vector2 = intersection
-                # Use Python-style conditional expression; '?' operator is disallowed.
-                var bridge_type: String = "bridge" if rng.randf() < 0.5 else "ford"
+                var bridge_type: String = MapNodeModule.TYPE_BRIDGE if rng.randf() < 0.5 else MapNodeModule.TYPE_FORD
                 var bridge_id: int = next_node_id
                 next_node_id += 1
                 var bridge_node: MapNode = MapNodeModule.new(bridge_id, bridge_type, cross, {})
@@ -59,9 +58,9 @@ func _process_intersections(poly: Array[Vector2], roads: Dictionary) -> void:
                 var start_id: int = edge.endpoints[0]
                 var end_id: int = edge.endpoints[1]
                 edges.erase(edge_id)
-                edges[next_edge_id] = EdgeModule.new(next_edge_id, "trade_route", [road_start, cross], [start_id, bridge_id], {})
+                edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [road_start, cross], [start_id, bridge_id], edge.road_class, edge.attrs)
                 next_edge_id += 1
-                edges[next_edge_id] = EdgeModule.new(next_edge_id, "trade_route", [cross, road_end], [bridge_id, end_id], {})
+                edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [cross, road_end], [bridge_id, end_id], edge.road_class, edge.attrs)
                 next_edge_id += 1
 
                 var dir: Vector2 = (road_end - road_start).normalized()
@@ -69,9 +68,9 @@ func _process_intersections(poly: Array[Vector2], roads: Dictionary) -> void:
                 var fort_pos: Vector2 = cross + perp * 2.0
                 var fort_id: int = next_node_id
                 next_node_id += 1
-                var fort_node: MapNode = MapNodeModule.new(fort_id, "fort", fort_pos, {})
+                var fort_node: MapNode = MapNodeModule.new(fort_id, MapNodeModule.TYPE_FORT, fort_pos, {})
                 nodes[fort_id] = fort_node
-                edges[next_edge_id] = EdgeModule.new(next_edge_id, "trade_route", [cross, fort_pos], [bridge_id, fort_id], {})
+                edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [cross, fort_pos], [bridge_id, fort_id], edge.road_class, edge.attrs)
                 next_edge_id += 1
 
                 poly.insert(i + 1, cross)

@@ -80,7 +80,9 @@ func generate() -> Dictionary:
         cities,
         params.min_connections,
         params.max_connections,
-        params.crossing_detour_margin
+        params.crossing_detour_margin,
+        25.0,
+        "road"
     )
     map_data["roads"] = roads
 

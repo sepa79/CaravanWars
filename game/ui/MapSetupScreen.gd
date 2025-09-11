@@ -42,6 +42,11 @@ const MapValidatorModule = preload("res://map/MapValidator.gd")
 @onready var add_road_button: Button = $Layers/AddRoad
 @onready var delete_road_button: Button = $Layers/DeleteRoad
 @onready var validate_button: Button = $Layers/ValidateMap
+@onready var layers: HBoxContainer = $Layers
+var add_village_button: Button
+var add_fort_button: Button
+var road_class_selector: OptionButton
+var finalize_button: Button
 @onready var start_button: Button = $HBox/ControlsScroll/Controls/Buttons/Start
 @onready var back_button: Button = $HBox/ControlsScroll/Controls/Buttons/Back
 @onready var main_ui: HBoxContainer = $HBox
@@ -88,6 +93,25 @@ func _ready() -> void:
     add_road_button.toggled.connect(_on_add_road_toggled)
     delete_road_button.toggled.connect(_on_delete_road_toggled)
     validate_button.pressed.connect(_on_validate_map_pressed)
+    add_village_button = Button.new()
+    add_village_button.toggle_mode = true
+    layers.add_child(add_village_button)
+    add_village_button.toggled.connect(_on_add_village_toggled)
+    add_fort_button = Button.new()
+    add_fort_button.toggle_mode = true
+    layers.add_child(add_fort_button)
+    add_fort_button.toggled.connect(_on_add_fort_toggled)
+    road_class_selector = OptionButton.new()
+    road_class_selector.add_item(I18N.t("setup.road_class_trail"))
+    road_class_selector.add_item(I18N.t("setup.road_class_road"))
+    road_class_selector.add_item(I18N.t("setup.road_class_highway"))
+    road_class_selector.select(1)
+    layers.add_child(road_class_selector)
+    road_class_selector.item_selected.connect(_on_road_class_selected)
+    map_view.set_road_class("road")
+    finalize_button = Button.new()
+    layers.add_child(finalize_button)
+    finalize_button.pressed.connect(_on_finalize_map_pressed)
     map_view.set_show_roads(show_roads_check.button_pressed)
     map_view.set_show_rivers(show_rivers_check.button_pressed)
     map_view.set_show_cities(show_cities_check.button_pressed)
@@ -121,6 +145,12 @@ func _update_texts() -> void:
     add_road_button.text = I18N.t("setup.add_road")
     delete_road_button.text = I18N.t("setup.delete_road")
     validate_button.text = I18N.t("setup.validate_map")
+    add_village_button.text = I18N.t("setup.add_village")
+    add_fort_button.text = I18N.t("setup.add_fort")
+    finalize_button.text = I18N.t("setup.finalize_map")
+    road_class_selector.set_item_text(0, I18N.t("setup.road_class_trail"))
+    road_class_selector.set_item_text(1, I18N.t("setup.road_class_road"))
+    road_class_selector.set_item_text(2, I18N.t("setup.road_class_highway"))
     start_button.text = I18N.t("setup.start")
     back_button.text = I18N.t("menu.back")
 
@@ -225,6 +255,8 @@ func _on_edit_cities_toggled(pressed: bool) -> void:
 func _on_add_road_toggled(pressed: bool) -> void:
     if pressed:
         delete_road_button.button_pressed = false
+        add_village_button.button_pressed = false
+        add_fort_button.button_pressed = false
         map_view.set_road_mode("add")
     else:
         map_view.set_road_mode("")
@@ -232,9 +264,59 @@ func _on_add_road_toggled(pressed: bool) -> void:
 func _on_delete_road_toggled(pressed: bool) -> void:
     if pressed:
         add_road_button.button_pressed = false
+        add_village_button.button_pressed = false
+        add_fort_button.button_pressed = false
         map_view.set_road_mode("delete")
     else:
         map_view.set_road_mode("")
+
+func _on_add_village_toggled(pressed: bool) -> void:
+    if pressed:
+        add_road_button.button_pressed = false
+        delete_road_button.button_pressed = false
+        add_fort_button.button_pressed = false
+        map_view.set_road_mode("village")
+    else:
+        map_view.set_road_mode("")
+
+func _on_add_fort_toggled(pressed: bool) -> void:
+    if pressed:
+        add_road_button.button_pressed = false
+        delete_road_button.button_pressed = false
+        add_village_button.button_pressed = false
+        map_view.set_road_mode("fort")
+    else:
+        map_view.set_road_mode("")
+
+func _on_road_class_selected(index: int) -> void:
+    var cls: String = "trail"
+    if index == 1:
+        cls = "road"
+    elif index == 2:
+        cls = "highway"
+    map_view.set_road_class(cls)
+
+func _on_finalize_map_pressed() -> void:
+    var validator: MapValidator = MapValidatorModule.new()
+    var errors: Array[String] = validator.validate(current_map["roads"], current_map.get("rivers", []))
+    if errors.is_empty():
+        var helper: RoadNetwork = RoadNetworkModule.new(RandomNumberGenerator.new())
+        helper.cleanup(current_map["roads"])
+        map_view.set_map_data(current_map)
+        map_view.set_edit_mode(false)
+        map_view.set_road_mode("")
+        edit_cities_check.disabled = true
+        add_road_button.disabled = true
+        delete_road_button.disabled = true
+        add_village_button.disabled = true
+        add_fort_button.disabled = true
+        road_class_selector.disabled = true
+        validate_button.disabled = true
+        _update_snapshot()
+        # Placeholder for sending snapshot to host
+    else:
+        for err in errors:
+            push_warning(err)
 
 func _on_validate_map_pressed() -> void:
     var validator: MapValidator = MapValidatorModule.new()

@@ -17,3 +17,9 @@ Namespace `setup.*`
 | setup.max_connections | Max Connections | Maks. połączeń | maximum road connections |
 | setup.crossing_margin | Crossing Margin | Margines objazdu | detour threshold for removing direct road |
 | setup.show_regions | Show Regions | Pokaż regiony | toggle region overlay |
+| setup.add_village | Add Village | Dodaj wioskę | insert village node |
+| setup.add_fort | Add Fort | Dodaj fort | insert fort node |
+| setup.finalize_map | Finalize Map | Finalizuj mapę | lock map and send to host |
+| setup.road_class_trail | Trail | Szlak | road type option |
+| setup.road_class_road | Road | Droga | road type option |
+| setup.road_class_highway | Highway | Gościniec | road type option |
