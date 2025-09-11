@@ -1,5 +1,10 @@
 Changelog
 
+0.1.40 — 2025-09-11
+Changed
+- Capped road connection options at 7 and stopped auto-increasing when adding more cities.
+- Rivers now end at the map edge and villages and forts clamp to map bounds.
+
 0.1.39 — 2025-09-10
 Changed
 - Villages now form path-focused clusters and only hook into towns or Roman roads when necessary.

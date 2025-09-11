@@ -37,7 +37,7 @@ class MapGenParams:
         rng_seed = p_rng_seed if p_rng_seed != 0 else Time.get_ticks_msec()
         city_count = p_city_count
         max_river_count = p_max_river_count
-        var max_possible: int = max(1, p_city_count - 1)
+        var max_possible: int = min(7, max(1, p_city_count - 1))
         min_connections = clamp(p_min_connections, 1, max_possible)
         max_connections = clamp(p_max_connections, min_connections, max_possible)
         min_city_distance = min(p_min_city_distance, p_max_city_distance)
@@ -92,12 +92,12 @@ func generate() -> Dictionary:
         params.crossroad_detour_margin,
         "roman"
     )
-    road_stage.insert_villages(roads, params.min_villages_per_city, params.max_villages_per_city)
-    road_stage.insert_border_forts(roads, regions, 10.0, params.max_forts_per_kingdom)
+    road_stage.insert_villages(roads, params.min_villages_per_city, params.max_villages_per_city, 5.0, params.width, params.height)
+    road_stage.insert_border_forts(roads, regions, 10.0, params.max_forts_per_kingdom, params.width, params.height)
     map_data["roads"] = roads
 
     var river_stage = RiverGeneratorModule.new(rng)
-    var rivers: Array = river_stage.generate_rivers(roads, params.max_river_count)
+    var rivers: Array = river_stage.generate_rivers(roads, params.max_river_count, params.width, params.height)
     map_data["rivers"] = rivers
 
     return map_data

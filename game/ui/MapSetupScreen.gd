@@ -253,10 +253,9 @@ func _generate_map() -> void:
         kingdoms_spin.set_block_signals(true)
         kingdoms_spin.value = map_params.kingdom_count
         kingdoms_spin.set_block_signals(false)
-    var max_possible: int = max(1, map_params.city_count - 1)
-    var prev_max_possible: int = int(max_connections_spin.max_value)
+    var max_possible: int = min(7, max(1, map_params.city_count - 1))
     max_connections_spin.max_value = max_possible
-    if int(max_connections_spin.value) == prev_max_possible and prev_max_possible < max_possible:
+    if map_params.max_connections > max_possible:
         map_params.max_connections = max_possible
         max_connections_spin.set_block_signals(true)
         max_connections_spin.value = map_params.max_connections

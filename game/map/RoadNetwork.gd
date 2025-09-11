@@ -45,7 +45,7 @@ func build_roads(
     for e in mst_edges:
         final_edge_set[_pair_key(e.x, e.y)] = e
 
-    var max_possible: int = cities.size() - 1
+    var max_possible: int = min(7, cities.size() - 1)
     min_connections = clamp(min_connections, 1, max_possible)
     max_connections = clamp(max_connections, min_connections, max_possible)
     var k_values: Array[int] = []
@@ -112,7 +112,9 @@ func insert_villages(
     roads: Dictionary,
     min_per_city: int,
     max_per_city: int,
-    radius: float = 5.0
+    radius: float = 5.0,
+    width: float = 100.0,
+    height: float = 100.0
 ) -> void:
     var nodes: Dictionary = roads.get("nodes", {})
     var edges: Dictionary = roads.get("edges", {})
@@ -131,6 +133,8 @@ func insert_villages(
         for i in range(count):
             var angle: float = start_angle + angle_step * float(i)
             var pos: Vector2 = city.pos2d + Vector2(cos(angle), sin(angle)) * radius
+            pos.x = clamp(pos.x, 0.0, width)
+            pos.y = clamp(pos.y, 0.0, height)
             var vid: int = next_node_id
             next_node_id += 1
             nodes[vid] = MapNodeModule.new(vid, MapNodeModule.TYPE_VILLAGE, pos, {})
@@ -334,7 +338,14 @@ func insert_river_crossings(roads: Dictionary, rivers: Array, crossroad_margin: 
     _prune_crossroad_duplicates(nodes, edges, crossroad_margin)
 
 ## Adds a fort near each road segment that crosses between different kingdoms.
-func insert_border_forts(roads: Dictionary, regions: Dictionary, offset: float = 10.0, max_per_kingdom: int = 1) -> void:
+func insert_border_forts(
+    roads: Dictionary,
+    regions: Dictionary,
+    offset: float = 10.0,
+    max_per_kingdom: int = 1,
+    width: float = 100.0,
+    height: float = 100.0
+) -> void:
     var nodes: Dictionary = roads.get("nodes", {})
     var edges: Dictionary = roads.get("edges", {})
     var next_node_id: int = roads.get("next_node_id", 1)
@@ -352,6 +363,8 @@ func insert_border_forts(roads: Dictionary, regions: Dictionary, offset: float =
         if a_region.kingdom_id == b_region.kingdom_id:
             continue
         var cross: Vector2 = _border_intersection(nodes[a_id].pos2d, nodes[b_id].pos2d, a_region)
+        cross.x = clamp(cross.x, 0.0, width)
+        cross.y = clamp(cross.y, 0.0, height)
         var dir: Vector2 = (nodes[b_id].pos2d - nodes[a_id].pos2d).normalized()
         var junction_id: int = next_node_id
         next_node_id += 1
@@ -365,6 +378,8 @@ func insert_border_forts(roads: Dictionary, regions: Dictionary, offset: float =
         var kid_a: int = a_region.kingdom_id
         if fort_counts.get(kid_a, 0) < max_per_kingdom:
             var fort_pos_a: Vector2 = cross - dir * offset
+            fort_pos_a.x = clamp(fort_pos_a.x, 0.0, width)
+            fort_pos_a.y = clamp(fort_pos_a.y, 0.0, height)
             var fort_id_a: int = next_node_id
             next_node_id += 1
             nodes[fort_id_a] = MapNodeModule.new(fort_id_a, MapNodeModule.TYPE_FORT, fort_pos_a, {})
@@ -374,6 +389,8 @@ func insert_border_forts(roads: Dictionary, regions: Dictionary, offset: float =
         var kid_b: int = b_region.kingdom_id
         if fort_counts.get(kid_b, 0) < max_per_kingdom:
             var fort_pos_b: Vector2 = cross + dir * offset
+            fort_pos_b.x = clamp(fort_pos_b.x, 0.0, width)
+            fort_pos_b.y = clamp(fort_pos_b.y, 0.0, height)
             var fort_id_b: int = next_node_id
             next_node_id += 1
             nodes[fort_id_b] = MapNodeModule.new(fort_id_b, MapNodeModule.TYPE_FORT, fort_pos_b, {})
