@@ -1,5 +1,9 @@
 Changelog
 
+0.1.39 — 2025-09-10
+Changed
+- Villages now form path-focused clusters and only hook into towns or Roman roads when necessary.
+
 0.1.38 — 2025-09-10
 Changed
 - Town routes now use the Roman road class.

@@ -105,7 +105,9 @@ func connect_nodes(
     roads["next_edge_id"] = res["next_edge_id"]
     _prune_crossroad_duplicates(nodes, edges, crossroad_margin)
 
-## Generates per-city village clusters with road links to towns and path connections between villages.
+## Generates per-city village clusters.
+## Villages prefer linking to nearby villages with paths and only
+## a minimal set of roads ties the cluster back to the town or a main road.
 func insert_villages(
     roads: Dictionary,
     min_per_city: int,
@@ -132,8 +134,6 @@ func insert_villages(
             var vid: int = next_node_id
             next_node_id += 1
             nodes[vid] = MapNodeModule.new(vid, MapNodeModule.TYPE_VILLAGE, pos, {})
-            edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [city.pos2d, pos], [nid, vid], "road", {})
-            next_edge_id += 1
             village_ids.append(vid)
         if village_ids.size() > 1:
             village_ids.sort_custom(func(a_id, b_id):
@@ -148,6 +148,56 @@ func insert_villages(
                 var b_pos: Vector2 = nodes[b_id].pos2d
                 edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [a_pos, b_pos], [a_id, b_id], "path", {})
                 next_edge_id += 1
+        var connected_to_town: bool = false
+        for vid in village_ids:
+            var vpos: Vector2 = nodes[vid].pos2d
+            var attached: bool = false
+            var roman_ids: Array[int] = []
+            for eid in edges.keys():
+                var e: Edge = edges[eid]
+                if e.road_class == "roman":
+                    roman_ids.append(eid)
+            for eid in roman_ids:
+                var e: Edge = edges.get(eid)
+                if e == null:
+                    continue
+                var seg_start: Vector2 = e.polyline[0]
+                var seg_end: Vector2 = e.polyline[e.polyline.size() - 1]
+                var closest: Vector2 = Geometry2D.get_closest_point_to_segment(vpos, seg_start, seg_end)
+                if vpos.distance_to(closest) > radius * 0.5:
+                    continue
+                var cross_id: int
+                if closest.is_equal_approx(seg_start):
+                    cross_id = e.endpoints[0]
+                elif closest.is_equal_approx(seg_end):
+                    cross_id = e.endpoints[1]
+                else:
+                    cross_id = next_node_id
+                    nodes[cross_id] = MapNodeModule.new(cross_id, MapNodeModule.TYPE_CROSSROAD, closest, {})
+                    next_node_id += 1
+                    var orig: Edge = e
+                    edges.erase(eid)
+                    edges[next_edge_id] = EdgeModule.new(next_edge_id, orig.type, [seg_start, closest], [orig.endpoints[0], cross_id], orig.road_class, orig.attrs)
+                    next_edge_id += 1
+                    edges[next_edge_id] = EdgeModule.new(next_edge_id, orig.type, [closest, seg_end], [cross_id, orig.endpoints[1]], orig.road_class, orig.attrs)
+                    next_edge_id += 1
+                edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [vpos, closest], [vid, cross_id], "road", {})
+                next_edge_id += 1
+                attached = true
+                connected_to_town = true
+                break
+            if not attached:
+                pass
+        if not connected_to_town and village_ids.size() > 0:
+            var nearest: int = village_ids[0]
+            var best: float = INF
+            for vid in village_ids:
+                var d: float = nodes[vid].pos2d.distance_to(city.pos2d)
+                if d < best:
+                    best = d
+                    nearest = vid
+            edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [city.pos2d, nodes[nearest].pos2d], [nid, nearest], "road", {})
+            next_edge_id += 1
     var res: Dictionary = _insert_crossroads(nodes, edges, next_node_id, next_edge_id)
     roads["next_node_id"] = res["next_node_id"]
     roads["next_edge_id"] = res["next_edge_id"]
