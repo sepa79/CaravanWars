@@ -5,6 +5,11 @@ extends Control
 @onready var multiplayer_menu: VBoxContainer = $MultiplayerMenu
 @onready var not_available_panel: Panel = $NotAvailable
 @onready var not_available_label: Label = $NotAvailable/Label
+@onready var join_address_panel: Panel = $JoinAddress
+@onready var join_address_label: Label = $JoinAddress/VBoxContainer/AddressLabel
+@onready var join_address_input: LineEdit = $JoinAddress/VBoxContainer/AddressInput
+@onready var join_address_join_button: Button = $JoinAddress/VBoxContainer/Buttons/Join
+@onready var join_address_cancel_button: Button = $JoinAddress/VBoxContainer/Buttons/Cancel
 @onready var version_label: Label = $Version
 @onready var connecting_ui: Control = preload("res://scenes/Connecting.tscn").instantiate()
 
@@ -34,6 +39,9 @@ func update_texts() -> void:
     multiplayer_menu.get_node("Join").text = I18N.t("menu.join")
     multiplayer_menu.get_node("Back").text = I18N.t("menu.back")
     not_available_label.text = I18N.t("menu.not_available")
+    join_address_label.text = I18N.t("menu.address")
+    join_address_join_button.text = I18N.t("menu.join")
+    join_address_cancel_button.text = I18N.t("common.cancel")
     var build_type := "Debug" if OS.is_debug_build() else "Release"
     version_label.text = "%s %s\n%s %s" % [I18N.t("menu.version"), ProjectSettings.get_setting("application/config/version"), I18N.t("menu.build_type"), build_type]
 
@@ -46,6 +54,7 @@ func _on_multiplayer_pressed() -> void:
     _log("multiplayer pressed")
     main_menu.visible = false
     multiplayer_menu.visible = true
+    join_address_panel.visible = false
     not_available_panel.visible = false
     multiplayer_menu.get_node("Host").grab_focus()
 
@@ -68,35 +77,57 @@ func _on_host_pressed() -> void:
 
 func _on_join_pressed() -> void:
     _log("join pressed")
-    Net.start_join("")
+    if join_address_panel.visible:
+        var address := join_address_input.text.strip_edges()
+        join_address_panel.visible = false
+        Net.start_join(address)
+    else:
+        multiplayer_menu.visible = false
+        join_address_panel.visible = true
+        join_address_input.text = ""
+        join_address_input.grab_focus()
 
 func _on_back_pressed() -> void:
     _log("back pressed")
+    join_address_panel.visible = false
     multiplayer_menu.visible = false
     main_menu.visible = true
     not_available_panel.visible = false
     main_menu.get_node("Multiplayer").grab_focus()
+
+func _on_join_cancel_pressed() -> void:
+    _log("join cancel pressed")
+    join_address_panel.visible = false
+    join_address_input.text = ""
+    multiplayer_menu.visible = true
+    multiplayer_menu.get_node("Join").grab_focus()
 
 func show_not_available() -> void:
     _log("show_not_available")
     not_available_panel.visible = true
 
 func _unhandled_input(event: InputEvent) -> void:
-    if event.is_action_pressed("ui_cancel") and multiplayer_menu.visible:
-        _on_back_pressed()
+    if event.is_action_pressed("ui_cancel"):
+        if join_address_panel.visible:
+            _on_join_cancel_pressed()
+        elif multiplayer_menu.visible:
+            _on_back_pressed()
 
 func _on_net_state_changed(state: String) -> void:
     _log("Net state changed to %s" % state)
     if state == Net.STATE_MENU:
         main_menu.visible = true
         multiplayer_menu.visible = false
+        join_address_panel.visible = false
         main_menu.get_node("Multiplayer").grab_focus()
     elif state == Net.STATE_READY:
         main_menu.visible = false
         multiplayer_menu.visible = false
+        join_address_panel.visible = false
         not_available_panel.visible = false
         App.goto_scene("res://scenes/Game.tscn")
     else:
         main_menu.visible = false
         multiplayer_menu.visible = false
+        join_address_panel.visible = false
         not_available_panel.visible = false

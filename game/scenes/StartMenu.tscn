@@ -80,6 +80,40 @@ margin_bottom = -10.0
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="JoinAddress" type="Panel" parent="."]
+visible = false
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+margin_left = -150.0
+margin_top = -75.0
+margin_right = 150.0
+margin_bottom = 75.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="JoinAddress"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 10.0
+margin_top = 10.0
+margin_right = -10.0
+margin_bottom = -10.0
+alignment = 1
+
+[node name="AddressLabel" type="Label" parent="JoinAddress/VBoxContainer"]
+horizontal_alignment = 1
+
+[node name="AddressInput" type="LineEdit" parent="JoinAddress/VBoxContainer"]
+
+[node name="Buttons" type="HBoxContainer" parent="JoinAddress/VBoxContainer"]
+alignment = 1
+
+[node name="Join" type="Button" parent="JoinAddress/VBoxContainer/Buttons"]
+focus_mode = 2
+
+[node name="Cancel" type="Button" parent="JoinAddress/VBoxContainer/Buttons"]
+focus_mode = 2
+
 [node name="Version" type="Label" parent="."]
 anchor_left = 1.0
 anchor_top = 1.0
@@ -100,3 +134,5 @@ vertical_alignment = 2
 [connection signal="pressed" from="MultiplayerMenu/Host" to="." method="_on_host_pressed"]
 [connection signal="pressed" from="MultiplayerMenu/Join" to="." method="_on_join_pressed"]
 [connection signal="pressed" from="MultiplayerMenu/Back" to="." method="_on_back_pressed"]
+[connection signal="pressed" from="JoinAddress/VBoxContainer/Buttons/Join" to="." method="_on_join_pressed"]
+[connection signal="pressed" from="JoinAddress/VBoxContainer/Buttons/Cancel" to="." method="_on_join_cancel_pressed"]
