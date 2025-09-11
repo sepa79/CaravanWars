@@ -10,7 +10,7 @@ class MapGenParams:
     var max_connections: int
     var min_city_distance: float
     var max_city_distance: float
-    var crossing_detour_margin: float
+    var crossroad_detour_margin: float
     var width: float
     var height: float
     var kingdom_count: int
@@ -26,7 +26,7 @@ class MapGenParams:
         p_max_connections: int = 3,
         p_min_city_distance: float = 20.0,
         p_max_city_distance: float = 40.0,
-        p_crossing_detour_margin: float = 5.0,
+        p_crossroad_detour_margin: float = 5.0,
         p_width: float = 100.0,
         p_height: float = 100.0,
         p_kingdom_count: int = 1,
@@ -42,7 +42,7 @@ class MapGenParams:
         max_connections = clamp(p_max_connections, min_connections, max_possible)
         min_city_distance = min(p_min_city_distance, p_max_city_distance)
         max_city_distance = max(p_min_city_distance, p_max_city_distance)
-        crossing_detour_margin = p_crossing_detour_margin
+        crossroad_detour_margin = p_crossroad_detour_margin
         width = clamp(p_width, 20.0, 500.0)
         height = clamp(p_height, 20.0, 500.0)
         kingdom_count = max(1, p_kingdom_count)
@@ -89,7 +89,7 @@ func generate() -> Dictionary:
         cities,
         params.min_connections,
         params.max_connections,
-        params.crossing_detour_margin,
+        params.crossroad_detour_margin,
         "road"
     )
     road_stage.insert_villages(roads, params.min_villages_per_city, params.max_villages_per_city)

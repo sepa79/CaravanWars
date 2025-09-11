@@ -1,5 +1,11 @@
 Changelog
 
+0.1.37 — 2025-09-10
+Added
+- Rivers crossing paths create ford nodes while roads and Roman roads receive bridges.
+Changed
+- Road intersections now spawn `crossroad` nodes and skip settlements when roads meet inside existing structures.
+
 0.1.36 — 2025-09-10
 Added
 - Villages branch off main roads with lower-class spurs and per-city count controls.

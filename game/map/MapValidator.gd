@@ -14,7 +14,7 @@ func validate(roads: Dictionary, rivers: Array, margin: float = 5.0) -> Array[St
         helper.insert_river_crossings(roads, rivers)
         if not _valid_river_intersections(roads, rivers):
             errors.append("river-road intersection missing bridge or ford")
-    if not _no_crossing_duplicates(roads, margin):
+      if not _no_crossroad_duplicates(roads, margin):
         errors.append("redundant direct roads")
     return errors
 
@@ -89,7 +89,7 @@ func _valid_river_intersections(roads: Dictionary, rivers: Array) -> bool:
 func _pair_key(a: int, b: int) -> String:
     return "%d_%d" % [min(a, b), max(a, b)]
 
-func _no_crossing_duplicates(roads: Dictionary, margin: float) -> bool:
+func _no_crossroad_duplicates(roads: Dictionary, margin: float) -> bool:
     var nodes: Dictionary = roads.get("nodes", {})
     var edges: Dictionary = roads.get("edges", {})
     var city_edges: Dictionary = {}
@@ -102,24 +102,24 @@ func _no_crossing_duplicates(roads: Dictionary, margin: float) -> bool:
         if a_node.type == "city" and b_node.type == "city":
             city_edges[_pair_key(a_id, b_id)] = id
 
-    var crossing_links: Dictionary = {}
+    var crossroad_links: Dictionary = {}
     for id in edges.keys():
         var edge: Edge = edges[id]
         var a_id: int = edge.endpoints[0]
         var b_id: int = edge.endpoints[1]
         var a_node: MapNode = nodes[a_id]
         var b_node: MapNode = nodes[b_id]
-        if a_node.type == "crossing" and b_node.type == "city":
-            if not crossing_links.has(a_id):
-                crossing_links[a_id] = []
-            crossing_links[a_id].append(b_id)
-        elif b_node.type == "crossing" and a_node.type == "city":
-            if not crossing_links.has(b_id):
-                crossing_links[b_id] = []
-            crossing_links[b_id].append(a_id)
+        if a_node.type == "crossroad" and b_node.type == "city":
+            if not crossroad_links.has(a_id):
+                crossroad_links[a_id] = []
+            crossroad_links[a_id].append(b_id)
+        elif b_node.type == "crossroad" and a_node.type == "city":
+            if not crossroad_links.has(b_id):
+                crossroad_links[b_id] = []
+            crossroad_links[b_id].append(a_id)
 
-    for cross_id in crossing_links.keys():
-        var cities: Array[int] = crossing_links[cross_id]
+    for cross_id in crossroad_links.keys():
+        var cities: Array[int] = crossroad_links[cross_id]
         for i in range(cities.size()):
             for j in range(i + 1, cities.size()):
                 var a_id: int = cities[i]
@@ -127,7 +127,7 @@ func _no_crossing_duplicates(roads: Dictionary, margin: float) -> bool:
                 var key := _pair_key(a_id, b_id)
                 if city_edges.has(key):
                     var direct_len: float = nodes[a_id].pos2d.distance_to(nodes[b_id].pos2d)
-                    var crossing_len: float = nodes[a_id].pos2d.distance_to(nodes[cross_id].pos2d) + nodes[cross_id].pos2d.distance_to(nodes[b_id].pos2d)
-                    if crossing_len - direct_len <= margin:
+                    var crossroad_len: float = nodes[a_id].pos2d.distance_to(nodes[cross_id].pos2d) + nodes[cross_id].pos2d.distance_to(nodes[b_id].pos2d)
+                    if crossroad_len - direct_len <= margin:
                         return false
     return true

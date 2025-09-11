@@ -49,7 +49,7 @@ func _process_intersections(poly: Array[Vector2], roads: Dictionary) -> void:
             var intersection: Variant = Geometry2D.segment_intersects_segment(river_a, river_b, road_start, road_end)
             if intersection != null:
                 var cross: Vector2 = intersection
-                var bridge_type: String = MapNodeModule.TYPE_BRIDGE if rng.randf() < 0.5 else MapNodeModule.TYPE_FORD
+                var bridge_type: String = MapNodeModule.TYPE_BRIDGE if edge.road_class in ["road", "roman"] else MapNodeModule.TYPE_FORD
                 var bridge_id: int = next_node_id
                 next_node_id += 1
                 var bridge_node: MapNode = MapNodeModule.new(bridge_id, bridge_type, cross, {})

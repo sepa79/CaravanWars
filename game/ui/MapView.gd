@@ -14,9 +14,13 @@ var show_rivers: bool = true
 var show_cities: bool = true
 var show_villages: bool = true
 var show_forts: bool = true
-var show_crossings: bool = true
-@export var crossing_color: Color = Color.YELLOW
-@export var crossing_size: float = 8.0
+var show_crossroads: bool = true
+var show_bridges: bool = true
+var show_fords: bool = true
+@export var crossroad_color: Color = Color.YELLOW
+@export var crossroad_size: float = 8.0
+@export var bridge_color: Color = Color(0.6, 0.4, 0.2)
+@export var ford_color: Color = Color.CYAN
 var show_regions: bool = true
 var debug_logged: bool = false
 var edit_mode: bool = false
@@ -273,7 +277,7 @@ func _draw() -> void:
     if show_cities:
         for city in map_data.get("cities", []):
             draw_circle(city * draw_scale + offset, 4.0, Color.RED)
-    if show_villages or show_forts or show_crossings:
+    if show_villages or show_forts or show_crossroads or show_bridges or show_fords:
         for node in roads.get("nodes", {}).values():
             var center: Vector2 = node.pos2d * draw_scale + offset
             if node.type == MapNodeModule.TYPE_VILLAGE and show_villages:
@@ -293,15 +297,26 @@ func _draw() -> void:
                     center + Vector2(-s_f, s_f),
                 ])
                 draw_polygon(rect, PackedColorArray([Color.ORANGE]))
-            elif node.type == MapNodeModule.TYPE_CROSSING and show_crossings:
-                var s: float = crossing_size
+            elif node.type == MapNodeModule.TYPE_CROSSROAD and show_crossroads:
+                var s_cr: float = crossroad_size
                 var diamond := PackedVector2Array([
-                    center + Vector2(0, -s),
-                    center + Vector2(s, 0),
-                    center + Vector2(0, s),
-                    center + Vector2(-s, 0),
+                    center + Vector2(0, -s_cr),
+                    center + Vector2(s_cr, 0),
+                    center + Vector2(0, s_cr),
+                    center + Vector2(-s_cr, 0),
                 ])
-                draw_polygon(diamond, PackedColorArray([crossing_color]))
+                draw_polygon(diamond, PackedColorArray([crossroad_color]))
+            elif node.type == MapNodeModule.TYPE_BRIDGE and show_bridges:
+                var s_b: float = crossroad_size
+                var rect := PackedVector2Array([
+                    center + Vector2(-s_b, -s_b * 0.5),
+                    center + Vector2(s_b, -s_b * 0.5),
+                    center + Vector2(s_b, s_b * 0.5),
+                    center + Vector2(-s_b, s_b * 0.5),
+                ])
+                draw_polygon(rect, PackedColorArray([bridge_color]))
+            elif node.type == MapNodeModule.TYPE_FORD and show_fords:
+                draw_circle(center, crossroad_size * 0.5, ford_color)
 
 func _polyline_midpoint(points: Array, total_length: float) -> Vector2:
     var half: float = total_length / 2.0
@@ -383,8 +398,16 @@ func set_show_forts(value: bool) -> void:
     show_forts = value
     queue_redraw()
 
-func set_show_crossings(value: bool) -> void:
-    show_crossings = value
+func set_show_crossroads(value: bool) -> void:
+    show_crossroads = value
+    queue_redraw()
+
+func set_show_bridges(value: bool) -> void:
+    show_bridges = value
+    queue_redraw()
+
+func set_show_fords(value: bool) -> void:
+    show_fords = value
     queue_redraw()
 
 func set_show_regions(value: bool) -> void:

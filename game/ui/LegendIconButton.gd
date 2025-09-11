@@ -17,7 +17,9 @@ func _draw() -> void:
         "city": Color.RED,
         "village": Color.GREEN,
         "fort": Color.ORANGE,
-        "crossing": Color.YELLOW,
+        "crossroad": Color.YELLOW,
+        "bridge": Color(0.6, 0.4, 0.2),
+        "ford": Color.CYAN,
         "region": Color.MAGENTA,
     }.get(icon_type, Color.WHITE)
     var col: Color = base_color if button_pressed else base_color.darkened(0.5)
@@ -45,7 +47,7 @@ func _draw() -> void:
                 c + Vector2(-s, s),
             ])
             draw_polygon(rect, PackedColorArray([col]))
-        "crossing":
+        "crossroad":
             var diamond := PackedVector2Array([
                 c + Vector2(0, -s),
                 c + Vector2(s, 0),
@@ -53,6 +55,16 @@ func _draw() -> void:
                 c + Vector2(-s, 0),
             ])
             draw_polygon(diamond, PackedColorArray([col]))
+        "bridge":
+            var rect := PackedVector2Array([
+                c + Vector2(-s, -s * 0.5),
+                c + Vector2(s, -s * 0.5),
+                c + Vector2(s, s * 0.5),
+                c + Vector2(-s, s * 0.5),
+            ])
+            draw_polygon(rect, PackedColorArray([col]))
+        "ford":
+            draw_circle(c, s * 0.5, col)
         "region":
             var r := Rect2(c - Vector2(s, s), Vector2(s * 2.0, s * 2.0))
             draw_rect(r, col)

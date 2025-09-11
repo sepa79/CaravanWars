@@ -36,7 +36,7 @@ const MapValidatorModule = preload("res://map/MapValidator.gd")
 @onready var show_roads_check: CheckBox = $Layers/ShowRoads
 @onready var show_rivers_check: CheckBox = $Layers/ShowRivers
 @onready var show_cities_check: CheckBox = $Layers/ShowCities
-@onready var show_crossings_check: CheckBox = $Layers/ShowCrossings
+@onready var show_crossroads_check: CheckBox = $Layers/ShowCrossings
 @onready var show_regions_check: CheckBox = $Layers/ShowRegions
 @onready var edit_cities_check: CheckBox = $Layers/EditCities
 @onready var add_road_button: Button = $Layers/AddRoad
@@ -117,7 +117,7 @@ func _ready() -> void:
     show_roads_check.toggled.connect(_on_show_roads_toggled)
     show_rivers_check.toggled.connect(_on_show_rivers_toggled)
     show_cities_check.toggled.connect(_on_show_cities_toggled)
-    show_crossings_check.toggled.connect(_on_show_crossings_toggled)
+    show_crossroads_check.toggled.connect(_on_show_crossroads_toggled)
     show_regions_check.toggled.connect(_on_show_regions_toggled)
     edit_cities_check.toggled.connect(_on_edit_cities_toggled)
     add_road_button.toggled.connect(_on_add_road_toggled)
@@ -145,17 +145,19 @@ func _ready() -> void:
     show_roads_check.button_pressed = true
     show_rivers_check.button_pressed = true
     show_cities_check.button_pressed = true
-    show_crossings_check.button_pressed = true
+    show_crossroads_check.button_pressed = true
     show_regions_check.button_pressed = true
     show_roads_check.hide()
     show_rivers_check.hide()
     show_cities_check.hide()
-    show_crossings_check.hide()
+    show_crossroads_check.hide()
     show_regions_check.hide()
     map_view.set_show_roads(true)
     map_view.set_show_rivers(true)
     map_view.set_show_cities(true)
-    map_view.set_show_crossings(true)
+    map_view.set_show_crossroads(true)
+    map_view.set_show_bridges(true)
+    map_view.set_show_fords(true)
     map_view.set_show_regions(true)
     map_view.set_show_villages(true)
     map_view.set_show_forts(true)
@@ -168,7 +170,9 @@ func _ready() -> void:
         {"key": "setup.legend_cities", "type": "city", "func": Callable(map_view, "set_show_cities")},
         {"key": "setup.legend_villages", "type": "village", "func": Callable(map_view, "set_show_villages")},
         {"key": "setup.legend_forts", "type": "fort", "func": Callable(map_view, "set_show_forts")},
-        {"key": "setup.legend_crossings", "type": "crossing", "func": Callable(map_view, "set_show_crossings")},
+        {"key": "setup.legend_crossroads", "type": "crossroad", "func": Callable(map_view, "set_show_crossroads")},
+        {"key": "setup.legend_bridges", "type": "bridge", "func": Callable(map_view, "set_show_bridges")},
+        {"key": "setup.legend_fords", "type": "ford", "func": Callable(map_view, "set_show_fords")},
         {"key": "setup.legend_regions", "type": "region", "func": Callable(map_view, "set_show_regions")},
     ]
     for item in items:
@@ -198,13 +202,13 @@ func _update_texts() -> void:
     kingdoms_label.text = I18N.t("setup.kingdoms")
     min_connections_label.text = I18N.t("setup.min_connections")
     max_connections_label.text = I18N.t("setup.max_connections")
-    crossing_margin_label.text = I18N.t("setup.crossing_margin")
+    crossing_margin_label.text = I18N.t("setup.crossroad_margin")
     width_label.text = I18N.t("setup.width")
     height_label.text = I18N.t("setup.height")
     show_roads_check.text = I18N.t("setup.show_roads")
     show_rivers_check.text = I18N.t("setup.show_rivers")
     show_cities_check.text = I18N.t("setup.show_cities")
-    show_crossings_check.text = I18N.t("setup.show_crossings")
+    show_crossroads_check.text = I18N.t("setup.show_crossroads")
     show_regions_check.text = I18N.t("setup.show_regions")
     edit_cities_check.text = I18N.t("setup.edit_cities")
     add_road_button.text = I18N.t("setup.add_road")
@@ -330,8 +334,8 @@ func _on_show_rivers_toggled(pressed: bool) -> void:
 func _on_show_cities_toggled(pressed: bool) -> void:
     map_view.set_show_cities(pressed)
 
-func _on_show_crossings_toggled(pressed: bool) -> void:
-    map_view.set_show_crossings(pressed)
+func _on_show_crossroads_toggled(pressed: bool) -> void:
+    map_view.set_show_crossroads(pressed)
 
 func _on_show_regions_toggled(pressed: bool) -> void:
     map_view.set_show_regions(pressed)

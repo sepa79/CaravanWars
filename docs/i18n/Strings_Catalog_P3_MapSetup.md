@@ -15,7 +15,7 @@ Namespace `setup.*`
 | setup.kingdoms | Kingdoms   | Królestwa        | number of kingdoms |
 | setup.min_connections | Min Connections | Min. połączeń | minimum road connections |
 | setup.max_connections | Max Connections | Maks. połączeń | maximum road connections |
-| setup.crossing_margin | Crossing Margin | Margines objazdu | detour threshold for removing direct road |
+| setup.crossroad_margin | Crossroad Margin | Margines objazdu | detour threshold for removing direct road |
 | setup.show_regions | Show Regions | Pokaż regiony | toggle region overlay |
 | setup.add_village | Add Village | Dodaj wioskę | insert village node |
 | setup.add_fort | Add Fort | Dodaj fort | insert fort node |
@@ -28,7 +28,9 @@ Namespace `setup.*`
 | setup.legend_cities | Cities | Miasta | legend toggle |
 | setup.legend_villages | Villages | Wioski | legend toggle |
 | setup.legend_forts | Forts | Fortece | legend toggle |
-| setup.legend_crossings | Crossings | Skrzyżowania | legend toggle |
+| setup.legend_crossroads | Crossroads | Skrzyżowania | legend toggle |
+| setup.legend_bridges | Bridges | Mosty | legend toggle |
+| setup.legend_fords | Fords | Brody | legend toggle |
 | setup.legend_regions | Regions | Regiony | legend toggle |
 | setup.max_forts_per_kingdom | Max Forts/Kingdom | Maks. fortów/królestwo | limit forts per kingdom |
 | setup.min_villages_per_city | Min Villages/City | Min. wiosek/miasto | minimum villages near each city |
