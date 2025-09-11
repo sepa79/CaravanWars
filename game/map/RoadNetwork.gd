@@ -289,14 +289,14 @@ func insert_villages(
         var parent: Dictionary = {}
         for id in cluster:
             parent[id] = id
-        func find_root_local(x):
+        var find_root_local = func(x):
             while parent[x] != x:
                 x = parent[x]
             return x
         var mst: Array = []
         for p in proposals:
-            var ra = find_root_local(p["a"])
-            var rb = find_root_local(p["b"])
+            var ra = find_root_local.call(p["a"])
+            var rb = find_root_local.call(p["b"])
             if ra != rb:
                 parent[rb] = ra
                 mst.append(p)
@@ -446,7 +446,7 @@ func insert_river_crossings(roads: Dictionary, rivers: Array, crossroad_margin: 
                     if bridge_type == MapNodeModule.TYPE_BRIDGE and edge.road_class == "road":
                         for sid in [seg1_id, seg2_id]:
                             var seg: Edge = edges[sid]
-                            var idx: int = seg.endpoints[0] == cross_id ? 0 : 1
+                            var idx: int = 0 if seg.endpoints[0] == cross_id else 1
                             var other: int = seg.endpoints[1 - idx]
                             var len: float = nodes[cross_id].pos2d.distance_to(nodes[other].pos2d)
                             if len > 0.2:

@@ -4,6 +4,8 @@ Changelog
 Changed
 - Crossroads merge when within 0.3 U and validation uses the same tighter detour margin.
 - Road bridges keep 0.2 U of Road approaches before downgrading.
+Fixed
+- Removed nested functions and ternary operator usage in road network generation.
 
 0.1.46 — 2025-09-12
 Changed
