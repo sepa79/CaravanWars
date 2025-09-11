@@ -187,7 +187,7 @@ func insert_villages(
                 target_point = q
 
         if target_edge != -1:
-            var edge := edges[target_edge]
+            var edge: Edge = edges[target_edge]
             var cross_id: int = next_node_id
             next_node_id += 1
             nodes[cross_id] = MapNodeModule.new(cross_id, MapNodeModule.TYPE_CROSSROAD, target_point, {})
