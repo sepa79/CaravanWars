@@ -1,5 +1,37 @@
 Changelog
 
+0.1.37 — 2025-09-10
+Added
+- Rivers crossing paths create ford nodes while roads and Roman roads receive bridges.
+Changed
+- Road intersections now spawn `crossroad` nodes and skip settlements when roads meet inside existing structures.
+
+0.1.36 — 2025-09-10
+Added
+- Villages branch off main roads with lower-class spurs and per-city count controls.
+- Border forts spawn on both sides of kingdom borders with configurable per-kingdom limits.
+Changed
+- Fort spurs and village roads use lower classes than their parent roads.
+
+0.1.35 — 2025-09-10
+Added
+- Forts spawn near kingdom borders with short spurs off main roads.
+Changed
+- Path, road and Roman road classes render with distinct widths and colors.
+
+0.1.34 — 2025-09-10
+Changed
+- Removed automatic fort placement at road crossings.
+
+0.1.33 — 2025-09-10
+Added
+- Legend with clickable icons toggling roads, rivers, settlements, crossings and regions.
+
+0.1.32 — 2025-09-10
+Added
+- Village and fort nodes with road class support and editing tools.
+- Finalize Map action validating, cleaning, snapshotting and locking edits.
+
 0.1.31 — 2025-09-10
 Added
 - World autoload for game state.

@@ -12,17 +12,25 @@ var dragging: bool = false
 var show_roads: bool = true
 var show_rivers: bool = true
 var show_cities: bool = true
-var show_crossings: bool = false
-@export var crossing_color: Color = Color.YELLOW
-@export var crossing_size: float = 8.0
+var show_villages: bool = true
+var show_forts: bool = true
+var show_crossroads: bool = true
+var show_bridges: bool = true
+var show_fords: bool = true
+@export var crossroad_color: Color = Color.YELLOW
+@export var crossroad_size: float = 8.0
+@export var bridge_color: Color = Color(0.6, 0.4, 0.2)
+@export var ford_color: Color = Color.CYAN
 var show_regions: bool = true
 var debug_logged: bool = false
 var edit_mode: bool = false
 var dragging_city: bool = false
 var selected_city: int = -1
 const RoadNetworkModule = preload("res://map/RoadNetwork.gd")
+const MapNodeModule = preload("res://map/MapNode.gd")
 var road_helper: RoadNetwork = RoadNetworkModule.new(RandomNumberGenerator.new())
 var road_mode: String = ""
+var selected_road_class: String = "road"
 var selected_node: int = -1
 var hovered_node: int = -1
 var hovered_edge: int = -1
@@ -51,6 +59,9 @@ func set_road_mode(mode: String) -> void:
     hovered_edge = -1
     queue_redraw()
 
+func set_road_class(cls: String) -> void:
+    selected_road_class = cls
+
 func get_kingdom_colors() -> Dictionary:
     var colors: Dictionary = {}
     var regions: Dictionary = map_data.get("regions", {})
@@ -76,13 +87,20 @@ func _gui_input(event: InputEvent) -> void:
                         if selected_node == -1:
                             selected_node = node_id
                         else:
-                            road_helper.connect_nodes(map_data.get("roads", {}), selected_node, node_id)
+                            road_helper.connect_nodes(map_data.get("roads", {}), selected_node, node_id, 5.0, selected_road_class)
                             selected_node = -1
                             queue_redraw()
                 elif road_mode == "delete":
                     var edge_id: int = _road_edge_at_point(mb.position)
                     if edge_id != -1:
                         road_helper.remove_edge(map_data.get("roads", {}), edge_id)
+                        hovered_edge = -1
+                        queue_redraw()
+                elif road_mode == "village" or road_mode == "fort":
+                    var v_edge: int = _road_edge_at_point(mb.position)
+                    if v_edge != -1:
+                        var ntype: String = MapNodeModule.TYPE_VILLAGE if road_mode == "village" else MapNodeModule.TYPE_FORT
+                        road_helper.insert_node_on_edge(map_data.get("roads", {}), v_edge, ntype)
                         hovered_edge = -1
                         queue_redraw()
                 elif edit_mode:
@@ -114,7 +132,7 @@ func _gui_input(event: InputEvent) -> void:
             hovered_node = _road_node_at_point(mm.position)
             queue_redraw()
             accept_event()
-        elif road_mode == "delete":
+        elif road_mode == "delete" or road_mode == "village" or road_mode == "fort":
             hovered_edge = _road_edge_at_point(mm.position)
             queue_redraw()
             accept_event()
@@ -174,12 +192,24 @@ func _draw() -> void:
     if show_roads:
         var edges: Dictionary = roads.get("edges", {})
         var nodes: Dictionary = roads.get("nodes", {})
+        var class_colors: Dictionary = {
+            "path": Color(0.6, 0.6, 0.6),
+            "road": Color(0.8, 0.7, 0.5),
+            "roman": Color(1.0, 0.9, 0.3),
+        }
+        var class_widths: Dictionary = {
+            "path": 1.0,
+            "road": 2.0,
+            "roman": 3.0,
+        }
         for edge in edges.values():
             var pts: PackedVector2Array = edge.polyline
+            var col: Color = class_colors.get(edge.road_class, Color.WHITE)
+            var w: float = class_widths.get(edge.road_class, 1.0)
             for i in range(pts.size() - 1):
                 var a: Vector2 = pts[i]
                 var b: Vector2 = pts[i + 1]
-                draw_line(a * draw_scale + offset, b * draw_scale + offset, Color.WHITE, 1.0)
+                draw_line(a * draw_scale + offset, b * draw_scale + offset, col, w)
 
         if road_mode == "add":
             if hovered_node != -1 and nodes.has(hovered_node):
@@ -188,14 +218,15 @@ func _draw() -> void:
             if selected_node != -1 and nodes.has(selected_node):
                 var spos: Vector2 = nodes[selected_node].pos2d * draw_scale + offset
                 draw_circle(spos, 6.0, Color.GREEN)
-        elif road_mode == "delete":
+        elif road_mode == "delete" or road_mode == "village" or road_mode == "fort":
             if hovered_edge != -1 and edges.has(hovered_edge):
                 var hedge = edges[hovered_edge]
                 var hpts: PackedVector2Array = hedge.polyline
+                var hcolor: Color = Color.RED if road_mode == "delete" else Color.YELLOW
                 for i in range(hpts.size() - 1):
                     var ha: Vector2 = hpts[i] * draw_scale + offset
                     var hb: Vector2 = hpts[i + 1] * draw_scale + offset
-                    draw_line(ha, hb, Color.RED, 2.0)
+                    draw_line(ha, hb, hcolor, 2.0)
 
         var font: Font = get_theme_default_font()
         var font_size: int = get_theme_default_font_size()
@@ -246,18 +277,46 @@ func _draw() -> void:
     if show_cities:
         for city in map_data.get("cities", []):
             draw_circle(city * draw_scale + offset, 4.0, Color.RED)
-    if show_crossings:
+    if show_villages or show_forts or show_crossroads or show_bridges or show_fords:
         for node in roads.get("nodes", {}).values():
-            if node.type == "crossing":
-                var center: Vector2 = node.pos2d * draw_scale + offset
-                var s: float = crossing_size
-                var diamond := PackedVector2Array([
-                    center + Vector2(0, -s),
-                    center + Vector2(s, 0),
-                    center + Vector2(0, s),
-                    center + Vector2(-s, 0),
+            var center: Vector2 = node.pos2d * draw_scale + offset
+            if node.type == MapNodeModule.TYPE_VILLAGE and show_villages:
+                var s_v: float = 4.0
+                var tri := PackedVector2Array([
+                    center + Vector2(-s_v, s_v),
+                    center + Vector2(s_v, s_v),
+                    center + Vector2(0, -s_v),
                 ])
-                draw_polygon(diamond, PackedColorArray([crossing_color]))
+                draw_polygon(tri, PackedColorArray([Color.GREEN]))
+            elif node.type == MapNodeModule.TYPE_FORT and show_forts:
+                var s_f: float = 4.0
+                var rect := PackedVector2Array([
+                    center + Vector2(-s_f, -s_f),
+                    center + Vector2(s_f, -s_f),
+                    center + Vector2(s_f, s_f),
+                    center + Vector2(-s_f, s_f),
+                ])
+                draw_polygon(rect, PackedColorArray([Color.ORANGE]))
+            elif node.type == MapNodeModule.TYPE_CROSSROAD and show_crossroads:
+                var s_cr: float = crossroad_size
+                var diamond := PackedVector2Array([
+                    center + Vector2(0, -s_cr),
+                    center + Vector2(s_cr, 0),
+                    center + Vector2(0, s_cr),
+                    center + Vector2(-s_cr, 0),
+                ])
+                draw_polygon(diamond, PackedColorArray([crossroad_color]))
+            elif node.type == MapNodeModule.TYPE_BRIDGE and show_bridges:
+                var s_b: float = crossroad_size
+                var rect := PackedVector2Array([
+                    center + Vector2(-s_b, -s_b * 0.5),
+                    center + Vector2(s_b, -s_b * 0.5),
+                    center + Vector2(s_b, s_b * 0.5),
+                    center + Vector2(-s_b, s_b * 0.5),
+                ])
+                draw_polygon(rect, PackedColorArray([bridge_color]))
+            elif node.type == MapNodeModule.TYPE_FORD and show_fords:
+                draw_circle(center, crossroad_size * 0.5, ford_color)
 
 func _polyline_midpoint(points: Array, total_length: float) -> Vector2:
     var half: float = total_length / 2.0
@@ -331,8 +390,24 @@ func set_show_cities(value: bool) -> void:
     show_cities = value
     queue_redraw()
 
-func set_show_crossings(value: bool) -> void:
-    show_crossings = value
+func set_show_villages(value: bool) -> void:
+    show_villages = value
+    queue_redraw()
+
+func set_show_forts(value: bool) -> void:
+    show_forts = value
+    queue_redraw()
+
+func set_show_crossroads(value: bool) -> void:
+    show_crossroads = value
+    queue_redraw()
+
+func set_show_bridges(value: bool) -> void:
+    show_bridges = value
+    queue_redraw()
+
+func set_show_fords(value: bool) -> void:
+    show_fords = value
     queue_redraw()
 
 func set_show_regions(value: bool) -> void:

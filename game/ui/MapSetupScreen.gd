@@ -36,12 +36,23 @@ const MapValidatorModule = preload("res://map/MapValidator.gd")
 @onready var show_roads_check: CheckBox = $Layers/ShowRoads
 @onready var show_rivers_check: CheckBox = $Layers/ShowRivers
 @onready var show_cities_check: CheckBox = $Layers/ShowCities
-@onready var show_crossings_check: CheckBox = $Layers/ShowCrossings
+@onready var show_crossroads_check: CheckBox = $Layers/ShowCrossings
 @onready var show_regions_check: CheckBox = $Layers/ShowRegions
 @onready var edit_cities_check: CheckBox = $Layers/EditCities
 @onready var add_road_button: Button = $Layers/AddRoad
 @onready var delete_road_button: Button = $Layers/DeleteRoad
 @onready var validate_button: Button = $Layers/ValidateMap
+@onready var layers: HBoxContainer = $Layers
+var add_village_button: Button
+var add_fort_button: Button
+var road_class_selector: OptionButton
+var finalize_button: Button
+var max_forts_label: Label
+var max_forts_spin: SpinBox
+var min_villages_label: Label
+var min_villages_spin: SpinBox
+var max_villages_label: Label
+var max_villages_spin: SpinBox
 @onready var start_button: Button = $HBox/ControlsScroll/Controls/Buttons/Start
 @onready var back_button: Button = $HBox/ControlsScroll/Controls/Buttons/Back
 @onready var main_ui: HBoxContainer = $HBox
@@ -52,6 +63,7 @@ var debounce_timer: Timer = Timer.new()
 var current_map: Dictionary = {}
 var previous_state: String = Net.state
 var app_version: String = ""
+var legend_labels: Dictionary = {}
 
 func _ready() -> void:
     I18N.language_changed.connect(_update_texts)
@@ -79,21 +91,102 @@ func _ready() -> void:
     crossing_margin_spin.value_changed.connect(_on_params_changed)
     width_spin.value_changed.connect(_on_params_changed)
     height_spin.value_changed.connect(_on_params_changed)
+    max_forts_label = Label.new()
+    params.add_child(max_forts_label)
+    max_forts_spin = SpinBox.new()
+    max_forts_spin.min_value = 0
+    max_forts_spin.max_value = 10
+    max_forts_spin.value = 1
+    params.add_child(max_forts_spin)
+    max_forts_spin.value_changed.connect(_on_params_changed)
+    min_villages_label = Label.new()
+    params.add_child(min_villages_label)
+    min_villages_spin = SpinBox.new()
+    min_villages_spin.min_value = 0
+    min_villages_spin.max_value = 10
+    params.add_child(min_villages_spin)
+    min_villages_spin.value_changed.connect(_on_params_changed)
+    max_villages_label = Label.new()
+    params.add_child(max_villages_label)
+    max_villages_spin = SpinBox.new()
+    max_villages_spin.min_value = 0
+    max_villages_spin.max_value = 10
+    max_villages_spin.value = 2
+    params.add_child(max_villages_spin)
+    max_villages_spin.value_changed.connect(_on_params_changed)
     show_roads_check.toggled.connect(_on_show_roads_toggled)
     show_rivers_check.toggled.connect(_on_show_rivers_toggled)
     show_cities_check.toggled.connect(_on_show_cities_toggled)
-    show_crossings_check.toggled.connect(_on_show_crossings_toggled)
+    show_crossroads_check.toggled.connect(_on_show_crossroads_toggled)
     show_regions_check.toggled.connect(_on_show_regions_toggled)
     edit_cities_check.toggled.connect(_on_edit_cities_toggled)
     add_road_button.toggled.connect(_on_add_road_toggled)
     delete_road_button.toggled.connect(_on_delete_road_toggled)
     validate_button.pressed.connect(_on_validate_map_pressed)
-    map_view.set_show_roads(show_roads_check.button_pressed)
-    map_view.set_show_rivers(show_rivers_check.button_pressed)
-    map_view.set_show_cities(show_cities_check.button_pressed)
-    map_view.set_show_crossings(show_crossings_check.button_pressed)
-    map_view.set_show_regions(show_regions_check.button_pressed)
+    add_village_button = Button.new()
+    add_village_button.toggle_mode = true
+    layers.add_child(add_village_button)
+    add_village_button.toggled.connect(_on_add_village_toggled)
+    add_fort_button = Button.new()
+    add_fort_button.toggle_mode = true
+    layers.add_child(add_fort_button)
+    add_fort_button.toggled.connect(_on_add_fort_toggled)
+    road_class_selector = OptionButton.new()
+    road_class_selector.add_item(I18N.t("setup.road_class_path"))
+    road_class_selector.add_item(I18N.t("setup.road_class_road"))
+    road_class_selector.add_item(I18N.t("setup.road_class_roman"))
+    road_class_selector.select(1)
+    layers.add_child(road_class_selector)
+    road_class_selector.item_selected.connect(_on_road_class_selected)
+    map_view.set_road_class("road")
+    finalize_button = Button.new()
+    layers.add_child(finalize_button)
+    finalize_button.pressed.connect(_on_finalize_map_pressed)
+    show_roads_check.button_pressed = true
+    show_rivers_check.button_pressed = true
+    show_cities_check.button_pressed = true
+    show_crossroads_check.button_pressed = true
+    show_regions_check.button_pressed = true
+    show_roads_check.hide()
+    show_rivers_check.hide()
+    show_cities_check.hide()
+    show_crossroads_check.hide()
+    show_regions_check.hide()
+    map_view.set_show_roads(true)
+    map_view.set_show_rivers(true)
+    map_view.set_show_cities(true)
+    map_view.set_show_crossroads(true)
+    map_view.set_show_bridges(true)
+    map_view.set_show_fords(true)
+    map_view.set_show_regions(true)
+    map_view.set_show_villages(true)
+    map_view.set_show_forts(true)
     map_view.cities_changed.connect(_on_cities_changed)
+    var entity_legend := VBoxContainer.new()
+    $HBox/MapRow.add_child(entity_legend)
+    var items := [
+        {"key": "setup.legend_roads", "type": "road", "func": Callable(map_view, "set_show_roads")},
+        {"key": "setup.legend_rivers", "type": "river", "func": Callable(map_view, "set_show_rivers")},
+        {"key": "setup.legend_cities", "type": "city", "func": Callable(map_view, "set_show_cities")},
+        {"key": "setup.legend_villages", "type": "village", "func": Callable(map_view, "set_show_villages")},
+        {"key": "setup.legend_forts", "type": "fort", "func": Callable(map_view, "set_show_forts")},
+        {"key": "setup.legend_crossroads", "type": "crossroad", "func": Callable(map_view, "set_show_crossroads")},
+        {"key": "setup.legend_bridges", "type": "bridge", "func": Callable(map_view, "set_show_bridges")},
+        {"key": "setup.legend_fords", "type": "ford", "func": Callable(map_view, "set_show_fords")},
+        {"key": "setup.legend_regions", "type": "region", "func": Callable(map_view, "set_show_regions")},
+    ]
+    for item in items:
+        var row := HBoxContainer.new()
+        var icon := LegendIconButton.new()
+        icon.icon_type = item.type
+        icon.custom_minimum_size = Vector2(24, 24)
+        icon.toggled.connect(item.func)
+        row.add_child(icon)
+        var lbl := Label.new()
+        lbl.text = I18N.t(item.key)
+        row.add_child(lbl)
+        entity_legend.add_child(row)
+        legend_labels[item.key] = lbl
     _update_texts()
     _generate_map()
     _on_net_state_changed(Net.state)
@@ -109,20 +202,31 @@ func _update_texts() -> void:
     kingdoms_label.text = I18N.t("setup.kingdoms")
     min_connections_label.text = I18N.t("setup.min_connections")
     max_connections_label.text = I18N.t("setup.max_connections")
-    crossing_margin_label.text = I18N.t("setup.crossing_margin")
+    crossing_margin_label.text = I18N.t("setup.crossroad_margin")
     width_label.text = I18N.t("setup.width")
     height_label.text = I18N.t("setup.height")
     show_roads_check.text = I18N.t("setup.show_roads")
     show_rivers_check.text = I18N.t("setup.show_rivers")
     show_cities_check.text = I18N.t("setup.show_cities")
-    show_crossings_check.text = I18N.t("setup.show_crossings")
+    show_crossroads_check.text = I18N.t("setup.show_crossroads")
     show_regions_check.text = I18N.t("setup.show_regions")
     edit_cities_check.text = I18N.t("setup.edit_cities")
     add_road_button.text = I18N.t("setup.add_road")
     delete_road_button.text = I18N.t("setup.delete_road")
     validate_button.text = I18N.t("setup.validate_map")
+    add_village_button.text = I18N.t("setup.add_village")
+    add_fort_button.text = I18N.t("setup.add_fort")
+    finalize_button.text = I18N.t("setup.finalize_map")
+    max_forts_label.text = I18N.t("setup.max_forts_per_kingdom")
+    min_villages_label.text = I18N.t("setup.min_villages_per_city")
+    max_villages_label.text = I18N.t("setup.max_villages_per_city")
+    road_class_selector.set_item_text(0, I18N.t("setup.road_class_path"))
+    road_class_selector.set_item_text(1, I18N.t("setup.road_class_road"))
+    road_class_selector.set_item_text(2, I18N.t("setup.road_class_roman"))
     start_button.text = I18N.t("setup.start")
     back_button.text = I18N.t("menu.back")
+    for key in legend_labels.keys():
+        legend_labels[key].text = I18N.t(key)
 
 func _generate_map() -> void:
     start_button.disabled = true
@@ -139,7 +243,10 @@ func _generate_map() -> void:
         crossing_margin_spin.value,
         width_spin.value,
         height_spin.value,
-        kingdoms
+        kingdoms,
+        int(max_forts_spin.value),
+        int(min_villages_spin.value),
+        int(max_villages_spin.value)
     )
     kingdoms_spin.max_value = map_params.city_count
     if int(kingdoms_spin.value) != map_params.kingdom_count:
@@ -186,6 +293,20 @@ func _generate_map() -> void:
         height_spin.set_block_signals(true)
         height_spin.value = map_params.height
         height_spin.set_block_signals(false)
+    if max_forts_spin.value != map_params.max_forts_per_kingdom:
+        max_forts_spin.set_block_signals(true)
+        max_forts_spin.value = map_params.max_forts_per_kingdom
+        max_forts_spin.set_block_signals(false)
+    if min_villages_spin.value != map_params.min_villages_per_city:
+        min_villages_spin.set_block_signals(true)
+        min_villages_spin.value = map_params.min_villages_per_city
+        min_villages_spin.set_block_signals(false)
+    if max_villages_spin.value != map_params.max_villages_per_city:
+        max_villages_spin.set_block_signals(true)
+        max_villages_spin.value = map_params.max_villages_per_city
+        max_villages_spin.set_block_signals(false)
+    max_villages_spin.min_value = min_villages_spin.value
+    min_villages_spin.max_value = max_villages_spin.value
     var generator := MapGeneratorModule.new(map_params)
     current_map = generator.generate()
     map_view.set_map_data(current_map)
@@ -213,8 +334,8 @@ func _on_show_rivers_toggled(pressed: bool) -> void:
 func _on_show_cities_toggled(pressed: bool) -> void:
     map_view.set_show_cities(pressed)
 
-func _on_show_crossings_toggled(pressed: bool) -> void:
-    map_view.set_show_crossings(pressed)
+func _on_show_crossroads_toggled(pressed: bool) -> void:
+    map_view.set_show_crossroads(pressed)
 
 func _on_show_regions_toggled(pressed: bool) -> void:
     map_view.set_show_regions(pressed)
@@ -225,6 +346,8 @@ func _on_edit_cities_toggled(pressed: bool) -> void:
 func _on_add_road_toggled(pressed: bool) -> void:
     if pressed:
         delete_road_button.button_pressed = false
+        add_village_button.button_pressed = false
+        add_fort_button.button_pressed = false
         map_view.set_road_mode("add")
     else:
         map_view.set_road_mode("")
@@ -232,9 +355,59 @@ func _on_add_road_toggled(pressed: bool) -> void:
 func _on_delete_road_toggled(pressed: bool) -> void:
     if pressed:
         add_road_button.button_pressed = false
+        add_village_button.button_pressed = false
+        add_fort_button.button_pressed = false
         map_view.set_road_mode("delete")
     else:
         map_view.set_road_mode("")
+
+func _on_add_village_toggled(pressed: bool) -> void:
+    if pressed:
+        add_road_button.button_pressed = false
+        delete_road_button.button_pressed = false
+        add_fort_button.button_pressed = false
+        map_view.set_road_mode("village")
+    else:
+        map_view.set_road_mode("")
+
+func _on_add_fort_toggled(pressed: bool) -> void:
+    if pressed:
+        add_road_button.button_pressed = false
+        delete_road_button.button_pressed = false
+        add_village_button.button_pressed = false
+        map_view.set_road_mode("fort")
+    else:
+        map_view.set_road_mode("")
+
+func _on_road_class_selected(index: int) -> void:
+    var cls: String = "path"
+    if index == 1:
+        cls = "road"
+    elif index == 2:
+        cls = "roman"
+    map_view.set_road_class(cls)
+
+func _on_finalize_map_pressed() -> void:
+    var validator: MapValidator = MapValidatorModule.new()
+    var errors: Array[String] = validator.validate(current_map["roads"], current_map.get("rivers", []))
+    if errors.is_empty():
+        var helper: RoadNetwork = RoadNetworkModule.new(RandomNumberGenerator.new())
+        helper.cleanup(current_map["roads"])
+        map_view.set_map_data(current_map)
+        map_view.set_edit_mode(false)
+        map_view.set_road_mode("")
+        edit_cities_check.disabled = true
+        add_road_button.disabled = true
+        delete_road_button.disabled = true
+        add_village_button.disabled = true
+        add_fort_button.disabled = true
+        road_class_selector.disabled = true
+        validate_button.disabled = true
+        _update_snapshot()
+        # Placeholder for sending snapshot to host
+    else:
+        for err in errors:
+            push_warning(err)
 
 func _on_validate_map_pressed() -> void:
     var validator: MapValidator = MapValidatorModule.new()
