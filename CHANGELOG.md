@@ -1,5 +1,9 @@
 Changelog
 
+0.1.41 — 2025-09-11
+Fixed
+- Villages spawn via Poisson clusters, remain within map bounds, and each connects to its town with roads while paths link villages.
+
 0.1.40 — 2025-09-11
 Changed
 - Capped road connection options at 7 and stopped auto-increasing when adding more cities.
