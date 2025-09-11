@@ -1,12 +1,11 @@
 Changelog
 
-0.1.31 — 2025-09-10
-Added
-- Work logs for phases 1-3 with acceptance checklist links.
-
 0.1.30 — 2025-09-10
 Added
 - Address input for joining sessions with connection retry and handshake timeouts.
+
+Fixed
+- Synchronized VERSION file with project.godot and added consistency check.
 
 0.1.29 — 2025-09-10
 Added

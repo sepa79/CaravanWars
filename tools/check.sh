@@ -14,6 +14,9 @@ if [[ "$PROJECT_DIR" == "both" || "$PROJECT_DIR" == "game" ]]; then
   PROJECT_DIR="game"
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+"$SCRIPT_DIR/check_version.sh"
+
 if [[ -n "${GODOT_BIN:-}" ]]; then
   GODOT="$GODOT_BIN"
 else
