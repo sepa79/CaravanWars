@@ -11,7 +11,7 @@ func _init(_rng: RandomNumberGenerator) -> void:
 
 ## Builds primary trade routes between cities.
 ## Pipeline: Delaunay triangulation → MST → per-city k-nearest edges.
-## Villages are inserted every `village_spacing` units; a fort is placed near the center.
+## Villages are inserted every `village_spacing` units.
 func build_roads(
     cities: Array[Vector2],
     min_connections: int = 1,
@@ -67,14 +67,9 @@ func build_roads(
         var dir: Vector2 = (end_node.pos2d - start_node.pos2d).normalized()
         var dist: float = village_spacing
         var last_node: MapNode = start_node
-        var fort_placed: bool = false
         while dist < length:
             var pos: Vector2 = start_node.pos2d + dir * dist
-            var node_type: String = MapNodeModule.TYPE_VILLAGE
-            if not fort_placed and abs(dist - length / 2.0) < village_spacing / 2.0:
-                node_type = MapNodeModule.TYPE_FORT
-                fort_placed = true
-            var n_node: MapNode = MapNodeModule.new(node_id, node_type, pos, {})
+            var n_node: MapNode = MapNodeModule.new(node_id, MapNodeModule.TYPE_VILLAGE, pos, {})
             nodes[node_id] = n_node
             edges[edge_id] = EdgeModule.new(edge_id, "road", [last_node.pos2d, pos], [last_node.id, node_id], road_class, {})
             edge_id += 1

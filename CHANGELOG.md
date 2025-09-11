@@ -1,5 +1,9 @@
 Changelog
 
+0.1.34 — 2025-09-10
+Changed
+- Removed automatic fort placement at road crossings.
+
 0.1.33 — 2025-09-10
 Added
 - Legend with clickable icons toggling roads, rivers, settlements, crossings and regions.

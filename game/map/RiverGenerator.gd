@@ -10,7 +10,7 @@ func _init(_rng: RandomNumberGenerator) -> void:
     rng = _rng
 
 ## Generates simple river polylines. Intersections with roads are converted
-## to `bridge` or `ford` nodes with nearby forts.
+## to `bridge` or `ford` nodes.
 func generate_rivers(roads: Dictionary, count: int = 1) -> Array:
     var rivers: Array = []
 
@@ -61,16 +61,6 @@ func _process_intersections(poly: Array[Vector2], roads: Dictionary) -> void:
                 edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [road_start, cross], [start_id, bridge_id], edge.road_class, edge.attrs)
                 next_edge_id += 1
                 edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [cross, road_end], [bridge_id, end_id], edge.road_class, edge.attrs)
-                next_edge_id += 1
-
-                var dir: Vector2 = (road_end - road_start).normalized()
-                var perp: Vector2 = Vector2(-dir.y, dir.x)
-                var fort_pos: Vector2 = cross + perp * 2.0
-                var fort_id: int = next_node_id
-                next_node_id += 1
-                var fort_node: MapNode = MapNodeModule.new(fort_id, MapNodeModule.TYPE_FORT, fort_pos, {})
-                nodes[fort_id] = fort_node
-                edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [cross, fort_pos], [bridge_id, fort_id], edge.road_class, edge.attrs)
                 next_edge_id += 1
 
                 poly.insert(i + 1, cross)
