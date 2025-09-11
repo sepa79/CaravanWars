@@ -90,7 +90,7 @@ func generate() -> Dictionary:
         params.min_connections,
         params.max_connections,
         params.crossroad_detour_margin,
-        "road"
+        "roman"
     )
     road_stage.insert_villages(roads, params.min_villages_per_city, params.max_villages_per_city)
     road_stage.insert_border_forts(roads, regions, 10.0, params.max_forts_per_kingdom)

@@ -1,5 +1,10 @@
 Changelog
 
+0.1.38 — 2025-09-10
+Changed
+- Town routes now use the Roman road class.
+- Villages connect to towns by roads and link to each other with paths.
+
 0.1.37 — 2025-09-10
 Added
 - Rivers crossing paths create ford nodes while roads and Roman roads receive bridges.

@@ -105,71 +105,52 @@ func connect_nodes(
     roads["next_edge_id"] = res["next_edge_id"]
     _prune_crossroad_duplicates(nodes, edges, crossroad_margin)
 
-## Branches villages off roads near cities.
+## Generates per-city village clusters with road links to towns and path connections between villages.
 func insert_villages(
     roads: Dictionary,
     min_per_city: int,
     max_per_city: int,
-    offset: float = 5.0
+    radius: float = 5.0
 ) -> void:
     var nodes: Dictionary = roads.get("nodes", {})
     var edges: Dictionary = roads.get("edges", {})
     var next_node_id: int = roads.get("next_node_id", 1)
     var next_edge_id: int = roads.get("next_edge_id", 1)
-    var adjacency: Dictionary = {}
-    for eid in edges.keys():
-        var e: Edge = edges[eid]
-        for nid in e.endpoints:
-            if not adjacency.has(nid):
-                adjacency[nid] = []
-            adjacency[nid].append(eid)
     for nid in nodes.keys():
-        var node: MapNode = nodes[nid]
-        if node.type != MapNodeModule.TYPE_CITY:
+        var city: MapNode = nodes[nid]
+        if city.type != MapNodeModule.TYPE_CITY:
             continue
-        var edge_ids: Array[int] = []
-        edge_ids.append_array(adjacency.get(nid, []) as Array)
-        if edge_ids.is_empty():
+        var count: int = max(0, rng.randi_range(min_per_city, max_per_city))
+        if count == 0:
             continue
-        # Fisher-Yates shuffle using our RNG
-        for i in range(edge_ids.size() - 1, 0, -1):
-            var j = rng.randi_range(0, i)
-            var tmp = edge_ids[i]
-            edge_ids[i] = edge_ids[j]
-            edge_ids[j] = tmp
-        var count: int = clamp(rng.randi_range(min_per_city, max_per_city), 0, edge_ids.size())
+        var village_ids: Array[int] = []
+        var angle_step: float = TAU / float(count)
+        var start_angle: float = rng.randf() * TAU
         for i in range(count):
-            var eid: int = edge_ids[i]
-            if not edges.has(eid):
-                continue
-            var edge: Edge = edges[eid]
-            var other_id: int = edge.endpoints[0] if edge.endpoints[1] == nid else edge.endpoints[1]
-            var start_pos: Vector2 = nodes[nid].pos2d
-            var end_pos: Vector2 = nodes[other_id].pos2d
-            var length: float = start_pos.distance_to(end_pos)
-            var dir: Vector2 = (end_pos - start_pos).normalized()
-            var dist_along: float = clamp(length * 0.3, 10.0, length - 10.0)
-            var junction_pos: Vector2 = start_pos + dir * dist_along
-            var junction_id: int = next_node_id
+            var angle: float = start_angle + angle_step * float(i)
+            var pos: Vector2 = city.pos2d + Vector2(cos(angle), sin(angle)) * radius
+            var vid: int = next_node_id
             next_node_id += 1
-            nodes[junction_id] = MapNodeModule.new(junction_id, MapNodeModule.TYPE_CROSSROAD, junction_pos, {})
-            edges.erase(eid)
-            edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [start_pos, junction_pos], [nid, junction_id], edge.road_class, edge.attrs)
+            nodes[vid] = MapNodeModule.new(vid, MapNodeModule.TYPE_VILLAGE, pos, {})
+            edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [city.pos2d, pos], [nid, vid], "road", {})
             next_edge_id += 1
-            edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [junction_pos, end_pos], [junction_id, other_id], edge.road_class, edge.attrs)
-            next_edge_id += 1
-            var perp: Vector2 = Vector2(-dir.y, dir.x)
-            if rng.randf() < 0.5:
-                perp = -perp
-            var village_pos: Vector2 = junction_pos + perp * offset
-            var village_id: int = next_node_id
-            next_node_id += 1
-            nodes[village_id] = MapNodeModule.new(village_id, MapNodeModule.TYPE_VILLAGE, village_pos, {})
-            var v_class: String = _lower_class(edge.road_class)
-            edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [junction_pos, village_pos], [junction_id, village_id], v_class, edge.attrs)
-            next_edge_id += 1
-    roads["next_node_id"] = next_node_id
-    roads["next_edge_id"] = next_edge_id
+            village_ids.append(vid)
+        if village_ids.size() > 1:
+            village_ids.sort_custom(func(a_id, b_id):
+                var va: Vector2 = nodes[a_id].pos2d - city.pos2d
+                var vb: Vector2 = nodes[b_id].pos2d - city.pos2d
+                return va.angle() < vb.angle()
+            )
+            for i in range(village_ids.size()):
+                var a_id: int = village_ids[i]
+                var b_id: int = village_ids[(i + 1) % village_ids.size()]
+                var a_pos: Vector2 = nodes[a_id].pos2d
+                var b_pos: Vector2 = nodes[b_id].pos2d
+                edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [a_pos, b_pos], [a_id, b_id], "path", {})
+                next_edge_id += 1
+    var res: Dictionary = _insert_crossroads(nodes, edges, next_node_id, next_edge_id)
+    roads["next_node_id"] = res["next_node_id"]
+    roads["next_edge_id"] = res["next_edge_id"]
 
 ## Inserts a node in the middle of an edge and splits the edge.
 func insert_node_on_edge(roads: Dictionary, edge_id: int, node_type: String) -> void:
