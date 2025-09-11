@@ -1,8 +1,12 @@
 Changelog
 
-0.1.29 — 2025-09-10
+0.1.30 — 2025-09-10
 Added
 - Address input for joining sessions with connection retry and handshake timeouts.
+
+0.1.29 — 2025-09-10
+Added
+- Support editing city positions.
 
 0.1.28 — 2025-09-10
 Removed
