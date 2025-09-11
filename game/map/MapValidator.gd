@@ -14,7 +14,7 @@ func validate(roads: Dictionary, rivers: Array, margin: float = 5.0) -> Array[St
         helper.insert_river_crossings(roads, rivers)
         if not _valid_river_intersections(roads, rivers):
             errors.append("river-road intersection missing bridge or ford")
-      if not _no_crossroad_duplicates(roads, margin):
+    if not _no_crossroad_duplicates(roads, margin):
         errors.append("redundant direct roads")
     return errors
 
