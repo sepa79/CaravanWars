@@ -7,6 +7,11 @@ Added
 0.1.29 — 2025-09-10
 Added
 - Support editing city positions.
+- Validate Map control to run road and river checks from map setup screen.
+- Road network cleanup helper to prune invalid edges and orphan nodes.
+- Automatic bridge insertion where roads cross rivers.
+Changed
+- Updated Phase-03 map plan with villages, forts, road types and finalization workflow.
 
 0.1.28 — 2025-09-10
 Removed
