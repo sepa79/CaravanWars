@@ -1,5 +1,9 @@
 Changelog
 
+0.1.30 — 2025-09-10
+Changed
+- Updated Phase-03 map plan with villages, forts, road types and finalization workflow.
+
 0.1.29 — 2025-09-10
 Added
 - Validate Map control to run road and river checks from map setup screen.
