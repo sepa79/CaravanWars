@@ -23,3 +23,10 @@ Namespace `setup.*`
 | setup.road_class_trail | Trail | Szlak | road type option |
 | setup.road_class_road | Road | Droga | road type option |
 | setup.road_class_highway | Highway | Gościniec | road type option |
+| setup.legend_roads | Roads | Drogi | legend toggle |
+| setup.legend_rivers | Rivers | Rzeki | legend toggle |
+| setup.legend_cities | Cities | Miasta | legend toggle |
+| setup.legend_villages | Villages | Wioski | legend toggle |
+| setup.legend_forts | Forts | Fortece | legend toggle |
+| setup.legend_crossings | Crossings | Skrzyżowania | legend toggle |
+| setup.legend_regions | Regions | Regiony | legend toggle |

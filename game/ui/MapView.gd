@@ -12,7 +12,9 @@ var dragging: bool = false
 var show_roads: bool = true
 var show_rivers: bool = true
 var show_cities: bool = true
-var show_crossings: bool = false
+var show_villages: bool = true
+var show_forts: bool = true
+var show_crossings: bool = true
 @export var crossing_color: Color = Color.YELLOW
 @export var crossing_size: float = 8.0
 var show_regions: bool = true
@@ -265,10 +267,27 @@ func _draw() -> void:
     if show_cities:
         for city in map_data.get("cities", []):
             draw_circle(city * draw_scale + offset, 4.0, Color.RED)
-    if show_crossings:
+    if show_villages or show_forts or show_crossings:
         for node in roads.get("nodes", {}).values():
-            if node.type == "crossing":
-                var center: Vector2 = node.pos2d * draw_scale + offset
+            var center: Vector2 = node.pos2d * draw_scale + offset
+            if node.type == MapNodeModule.TYPE_VILLAGE and show_villages:
+                var s_v: float = 4.0
+                var tri := PackedVector2Array([
+                    center + Vector2(-s_v, s_v),
+                    center + Vector2(s_v, s_v),
+                    center + Vector2(0, -s_v),
+                ])
+                draw_polygon(tri, PackedColorArray([Color.GREEN]))
+            elif node.type == MapNodeModule.TYPE_FORT and show_forts:
+                var s_f: float = 4.0
+                var rect := PackedVector2Array([
+                    center + Vector2(-s_f, -s_f),
+                    center + Vector2(s_f, -s_f),
+                    center + Vector2(s_f, s_f),
+                    center + Vector2(-s_f, s_f),
+                ])
+                draw_polygon(rect, PackedColorArray([Color.ORANGE]))
+            elif node.type == MapNodeModule.TYPE_CROSSING and show_crossings:
                 var s: float = crossing_size
                 var diamond := PackedVector2Array([
                     center + Vector2(0, -s),
@@ -348,6 +367,14 @@ func set_show_rivers(value: bool) -> void:
 
 func set_show_cities(value: bool) -> void:
     show_cities = value
+    queue_redraw()
+
+func set_show_villages(value: bool) -> void:
+    show_villages = value
+    queue_redraw()
+
+func set_show_forts(value: bool) -> void:
+    show_forts = value
     queue_redraw()
 
 func set_show_crossings(value: bool) -> void:

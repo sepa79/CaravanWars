@@ -5,6 +5,7 @@ const RegionGeneratorModule = preload("res://map/RegionGenerator.gd")
 const RoadNetworkModule = preload("res://map/RoadNetwork.gd")
 const MapSnapshotModule = preload("res://map/MapSnapshot.gd")
 const MapValidatorModule = preload("res://map/MapValidator.gd")
+const LegendIconButton = preload("res://ui/LegendIconButton.gd")
 
 @onready var title_label: Label = $HBox/ControlsScroll/Controls/Title
 @onready var params: GridContainer = $HBox/ControlsScroll/Controls/Params
@@ -57,6 +58,7 @@ var debounce_timer: Timer = Timer.new()
 var current_map: Dictionary = {}
 var previous_state: String = Net.state
 var app_version: String = ""
+var legend_labels: Dictionary = {}
 
 func _ready() -> void:
     I18N.language_changed.connect(_update_texts)
@@ -112,12 +114,47 @@ func _ready() -> void:
     finalize_button = Button.new()
     layers.add_child(finalize_button)
     finalize_button.pressed.connect(_on_finalize_map_pressed)
-    map_view.set_show_roads(show_roads_check.button_pressed)
-    map_view.set_show_rivers(show_rivers_check.button_pressed)
-    map_view.set_show_cities(show_cities_check.button_pressed)
-    map_view.set_show_crossings(show_crossings_check.button_pressed)
-    map_view.set_show_regions(show_regions_check.button_pressed)
+    show_roads_check.button_pressed = true
+    show_rivers_check.button_pressed = true
+    show_cities_check.button_pressed = true
+    show_crossings_check.button_pressed = true
+    show_regions_check.button_pressed = true
+    show_roads_check.hide()
+    show_rivers_check.hide()
+    show_cities_check.hide()
+    show_crossings_check.hide()
+    show_regions_check.hide()
+    map_view.set_show_roads(true)
+    map_view.set_show_rivers(true)
+    map_view.set_show_cities(true)
+    map_view.set_show_crossings(true)
+    map_view.set_show_regions(true)
+    map_view.set_show_villages(true)
+    map_view.set_show_forts(true)
     map_view.cities_changed.connect(_on_cities_changed)
+    var entity_legend := VBoxContainer.new()
+    $HBox/MapRow.add_child(entity_legend)
+    var items := [
+        {"key": "setup.legend_roads", "type": "road", "func": Callable(map_view, "set_show_roads")},
+        {"key": "setup.legend_rivers", "type": "river", "func": Callable(map_view, "set_show_rivers")},
+        {"key": "setup.legend_cities", "type": "city", "func": Callable(map_view, "set_show_cities")},
+        {"key": "setup.legend_villages", "type": "village", "func": Callable(map_view, "set_show_villages")},
+        {"key": "setup.legend_forts", "type": "fort", "func": Callable(map_view, "set_show_forts")},
+        {"key": "setup.legend_crossings", "type": "crossing", "func": Callable(map_view, "set_show_crossings")},
+        {"key": "setup.legend_regions", "type": "region", "func": Callable(map_view, "set_show_regions")},
+    ]
+    for item in items:
+        var row := HBoxContainer.new()
+        var icon := LegendIconButton.new()
+        icon.icon_type = item.type
+        icon.custom_minimum_size = Vector2(24, 24)
+        icon.toggled.connect(item.func)
+        row.add_child(icon)
+        var lbl := Label.new()
+        lbl.text = I18N.t(item.key)
+        row.add_child(lbl)
+        entity_legend.add_child(row)
+        legend_labels[item.key] = lbl
     _update_texts()
     _generate_map()
     _on_net_state_changed(Net.state)
@@ -153,6 +190,8 @@ func _update_texts() -> void:
     road_class_selector.set_item_text(2, I18N.t("setup.road_class_highway"))
     start_button.text = I18N.t("setup.start")
     back_button.text = I18N.t("menu.back")
+    for key in legend_labels.keys():
+        legend_labels[key].text = I18N.t(key)
 
 func _generate_map() -> void:
     start_button.disabled = true

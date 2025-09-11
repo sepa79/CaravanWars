@@ -1,5 +1,9 @@
 Changelog
 
+0.1.33 — 2025-09-10
+Added
+- Legend with clickable icons toggling roads, rivers, settlements, crossings and regions.
+
 0.1.32 — 2025-09-10
 Added
 - Village and fort nodes with road class support and editing tools.
