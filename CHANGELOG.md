@@ -1,5 +1,9 @@
 Changelog
 
+0.1.47 — 2025-09-11
+Fixed
+- Corrected constant syntax in organic village generator to prevent parse errors.
+
 0.1.46 — 2025-09-11
 Added
 - Organic village generation with hubs and local road loops.

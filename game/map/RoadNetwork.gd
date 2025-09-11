@@ -251,9 +251,9 @@ func insert_organic_villages(
     var edges: Dictionary = roads.get("edges", {})
     var next_node_id: int = roads.get("next_node_id", 1)
     var next_edge_id: int = roads.get("next_edge_id", 1)
-    const float RMIN := 0.8
-    const float RPEAK := 2.2
-    const float RMAX := 4.0
+    const RMIN: float = 0.8
+    const RPEAK: float = 2.2
+    const RMAX: float = 4.0
     for cid in nodes.keys():
         var city: MapNode = nodes[cid]
         if city.type != MapNodeModule.TYPE_CITY:
