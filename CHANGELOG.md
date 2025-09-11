@@ -1,5 +1,9 @@
 Changelog
 
+0.1.42 — 2025-09-11
+Changed
+- Villages spawn from a global Poisson layer and connect to the nearest town or Roman road, downgrading leaf branches to paths.
+
 0.1.41 — 2025-09-11
 Fixed
 - Villages spawn via Poisson clusters, remain within map bounds, and each connects to its town with roads while paths link villages.

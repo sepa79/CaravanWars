@@ -49,10 +49,10 @@ var road_class_selector: OptionButton
 var finalize_button: Button
 var max_forts_label: Label
 var max_forts_spin: SpinBox
-var min_villages_label: Label
-var min_villages_spin: SpinBox
-var max_villages_label: Label
-var max_villages_spin: SpinBox
+var village_density_label: Label
+var village_density_spin: SpinBox
+var village_threshold_label: Label
+var village_threshold_spin: SpinBox
 @onready var start_button: Button = $HBox/ControlsScroll/Controls/Buttons/Start
 @onready var back_button: Button = $HBox/ControlsScroll/Controls/Buttons/Back
 @onready var main_ui: HBoxContainer = $HBox
@@ -99,21 +99,23 @@ func _ready() -> void:
     max_forts_spin.value = 1
     params.add_child(max_forts_spin)
     max_forts_spin.value_changed.connect(_on_params_changed)
-    min_villages_label = Label.new()
-    params.add_child(min_villages_label)
-    min_villages_spin = SpinBox.new()
-    min_villages_spin.min_value = 0
-    min_villages_spin.max_value = 10
-    params.add_child(min_villages_spin)
-    min_villages_spin.value_changed.connect(_on_params_changed)
-    max_villages_label = Label.new()
-    params.add_child(max_villages_label)
-    max_villages_spin = SpinBox.new()
-    max_villages_spin.min_value = 0
-    max_villages_spin.max_value = 10
-    max_villages_spin.value = 2
-    params.add_child(max_villages_spin)
-    max_villages_spin.value_changed.connect(_on_params_changed)
+    village_density_label = Label.new()
+    params.add_child(village_density_label)
+    village_density_spin = SpinBox.new()
+    village_density_spin.min_value = 0.0
+    village_density_spin.max_value = 0.01
+    village_density_spin.step = 0.0001
+    village_density_spin.value = 0.0005
+    params.add_child(village_density_spin)
+    village_density_spin.value_changed.connect(_on_params_changed)
+    village_threshold_label = Label.new()
+    params.add_child(village_threshold_label)
+    village_threshold_spin = SpinBox.new()
+    village_threshold_spin.min_value = 1
+    village_threshold_spin.max_value = 5
+    village_threshold_spin.value = 1
+    params.add_child(village_threshold_spin)
+    village_threshold_spin.value_changed.connect(_on_params_changed)
     show_roads_check.toggled.connect(_on_show_roads_toggled)
     show_rivers_check.toggled.connect(_on_show_rivers_toggled)
     show_cities_check.toggled.connect(_on_show_cities_toggled)
@@ -218,8 +220,8 @@ func _update_texts() -> void:
     add_fort_button.text = I18N.t("setup.add_fort")
     finalize_button.text = I18N.t("setup.finalize_map")
     max_forts_label.text = I18N.t("setup.max_forts_per_kingdom")
-    min_villages_label.text = I18N.t("setup.min_villages_per_city")
-    max_villages_label.text = I18N.t("setup.max_villages_per_city")
+    village_density_label.text = I18N.t("setup.village_density")
+    village_threshold_label.text = I18N.t("setup.village_path_threshold")
     road_class_selector.set_item_text(0, I18N.t("setup.road_class_path"))
     road_class_selector.set_item_text(1, I18N.t("setup.road_class_road"))
     road_class_selector.set_item_text(2, I18N.t("setup.road_class_roman"))
@@ -245,8 +247,8 @@ func _generate_map() -> void:
         height_spin.value,
         kingdoms,
         int(max_forts_spin.value),
-        int(min_villages_spin.value),
-        int(max_villages_spin.value)
+        village_density_spin.value,
+        int(village_threshold_spin.value)
     )
     kingdoms_spin.max_value = map_params.city_count
     if int(kingdoms_spin.value) != map_params.kingdom_count:
@@ -296,16 +298,14 @@ func _generate_map() -> void:
         max_forts_spin.set_block_signals(true)
         max_forts_spin.value = map_params.max_forts_per_kingdom
         max_forts_spin.set_block_signals(false)
-    if min_villages_spin.value != map_params.min_villages_per_city:
-        min_villages_spin.set_block_signals(true)
-        min_villages_spin.value = map_params.min_villages_per_city
-        min_villages_spin.set_block_signals(false)
-    if max_villages_spin.value != map_params.max_villages_per_city:
-        max_villages_spin.set_block_signals(true)
-        max_villages_spin.value = map_params.max_villages_per_city
-        max_villages_spin.set_block_signals(false)
-    max_villages_spin.min_value = min_villages_spin.value
-    min_villages_spin.max_value = max_villages_spin.value
+    if village_density_spin.value != map_params.village_density:
+        village_density_spin.set_block_signals(true)
+        village_density_spin.value = map_params.village_density
+        village_density_spin.set_block_signals(false)
+    if village_threshold_spin.value != map_params.village_downgrade_threshold:
+        village_threshold_spin.set_block_signals(true)
+        village_threshold_spin.value = map_params.village_downgrade_threshold
+        village_threshold_spin.set_block_signals(false)
     var generator := MapGeneratorModule.new(map_params)
     current_map = generator.generate()
     map_view.set_map_data(current_map)
