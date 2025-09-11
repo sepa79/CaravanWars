@@ -3,7 +3,7 @@ class_name MapValidator
 
 const RoadNetworkModule = preload("res://map/RoadNetwork.gd")
 
-func validate(roads: Dictionary, rivers: Array, margin: float = 5.0) -> Array[String]:
+func validate(roads: Dictionary, rivers: Array, margin: float = 0.3) -> Array[String]:
     var errors: Array[String] = []
     if not _road_network_connected(roads):
         errors.append("road network disconnected")

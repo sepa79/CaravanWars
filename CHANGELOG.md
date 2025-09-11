@@ -1,5 +1,18 @@
 Changelog
 
+0.1.47 — 2025-09-12
+Changed
+- Crossroads merge when within 0.3 U and validation uses the same tighter detour margin.
+- Road bridges keep 0.2 U of Road approaches before downgrading.
+
+0.1.46 — 2025-09-12
+Changed
+- Villages spawn via hub-based clusters around cities, forming local MST networks and inheriting road classes.
+
+0.1.45 — 2025-09-12
+Changed
+- Border forts now use per-kingdom caps based on city counts and avoid mirrored placement across borders.
+
 0.1.44 — 2025-09-11
 Changed
 - Villages spawn around each town with per-city count controls, linking locally via paths and only attaching to towns or nearby Roman roads with a single road connection.

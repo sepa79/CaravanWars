@@ -14,10 +14,6 @@ class MapGenParams:
     var width: float
     var height: float
     var kingdom_count: int
-    var max_forts_per_kingdom: int
-    var min_villages_per_city: int
-    var max_villages_per_city: int
-    var village_downgrade_threshold: int
 
     func _init(
         p_rng_seed: int = 0,
@@ -27,14 +23,10 @@ class MapGenParams:
         p_max_connections: int = 3,
         p_min_city_distance: float = 20.0,
         p_max_city_distance: float = 40.0,
-        p_crossroad_detour_margin: float = 5.0,
+        p_crossroad_detour_margin: float = 0.3,
         p_width: float = 100.0,
         p_height: float = 100.0,
-        p_kingdom_count: int = 1,
-        p_max_forts_per_kingdom: int = 1,
-        p_min_villages_per_city: int = 0,
-        p_max_villages_per_city: int = 2,
-        p_village_downgrade_threshold: int = 1
+        p_kingdom_count: int = 1
     ) -> void:
         rng_seed = p_rng_seed if p_rng_seed != 0 else Time.get_ticks_msec()
         city_count = p_city_count
@@ -48,10 +40,6 @@ class MapGenParams:
         width = clamp(p_width, 20.0, 500.0)
         height = clamp(p_height, 20.0, 500.0)
         kingdom_count = max(1, p_kingdom_count)
-        max_forts_per_kingdom = max(0, p_max_forts_per_kingdom)
-        min_villages_per_city = max(0, p_min_villages_per_city)
-        max_villages_per_city = max(min_villages_per_city, p_max_villages_per_city)
-        village_downgrade_threshold = max(1, p_village_downgrade_threshold)
 
 var params: MapGenParams
 var rng: RandomNumberGenerator
@@ -95,12 +83,11 @@ func generate() -> Dictionary:
         params.crossroad_detour_margin,
         "roman"
     )
-    road_stage.insert_villages(roads, params.min_villages_per_city, params.max_villages_per_city, 5.0, params.width, params.height, params.village_downgrade_threshold)
-    road_stage.insert_border_forts(roads, regions, 10.0, params.max_forts_per_kingdom, params.width, params.height)
-    map_data["roads"] = roads
-
     var river_stage = RiverGeneratorModule.new(rng)
     var rivers: Array = river_stage.generate_rivers(roads, params.max_river_count, params.width, params.height)
     map_data["rivers"] = rivers
+    road_stage.insert_villages(roads, rivers, params.width, params.height)
+    road_stage.insert_border_forts(roads, regions, params.width, params.height)
+    map_data["roads"] = roads
 
     return map_data
