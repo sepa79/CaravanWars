@@ -35,18 +35,23 @@ func _update_status() -> void:
         Net.STATE_CONNECTING_STARTING_HOST:
             status_label.text = I18N.t("net.hosting_session")
             retry_button.visible = false
+            retry_button.disabled = true
         Net.STATE_CONNECTING_JOINING_HOST:
             status_label.text = I18N.t("net.connecting")
             retry_button.visible = false
+            retry_button.disabled = true
         Net.STATE_CONNECTING_RETRYING:
             status_label.text = I18N.t("net.retrying")
             retry_button.visible = false
+            retry_button.disabled = true
         Net.STATE_FAILED:
-            status_label.text = I18N.t("errors.generic")
+            status_label.text = I18N.t(Net.fail_reason)
             retry_button.visible = true
+            retry_button.disabled = false
         _:
             status_label.text = ""
             retry_button.visible = false
+            retry_button.disabled = true
 
 func _on_retry_pressed() -> void:
     _log("retry pressed")
