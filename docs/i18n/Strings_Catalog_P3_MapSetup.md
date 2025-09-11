@@ -30,3 +30,6 @@ Namespace `setup.*`
 | setup.legend_forts | Forts | Fortece | legend toggle |
 | setup.legend_crossings | Crossings | Skrzyżowania | legend toggle |
 | setup.legend_regions | Regions | Regiony | legend toggle |
+| setup.max_forts_per_kingdom | Max Forts/Kingdom | Maks. fortów/królestwo | limit forts per kingdom |
+| setup.min_villages_per_city | Min Villages/City | Min. wiosek/miasto | minimum villages near each city |
+| setup.max_villages_per_city | Max Villages/City | Maks. wiosek/miasto | maximum villages near each city |

@@ -83,7 +83,7 @@ func _gui_input(event: InputEvent) -> void:
                         if selected_node == -1:
                             selected_node = node_id
                         else:
-                            road_helper.connect_nodes(map_data.get("roads", {}), selected_node, node_id, 25.0, 5.0, selected_road_class)
+                            road_helper.connect_nodes(map_data.get("roads", {}), selected_node, node_id, 5.0, selected_road_class)
                             selected_node = -1
                             queue_redraw()
                 elif road_mode == "delete":

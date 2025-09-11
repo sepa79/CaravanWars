@@ -14,6 +14,9 @@ class MapGenParams:
     var width: float
     var height: float
     var kingdom_count: int
+    var max_forts_per_kingdom: int
+    var min_villages_per_city: int
+    var max_villages_per_city: int
 
     func _init(
         p_rng_seed: int = 0,
@@ -26,7 +29,10 @@ class MapGenParams:
         p_crossing_detour_margin: float = 5.0,
         p_width: float = 100.0,
         p_height: float = 100.0,
-        p_kingdom_count: int = 1
+        p_kingdom_count: int = 1,
+        p_max_forts_per_kingdom: int = 1,
+        p_min_villages_per_city: int = 0,
+        p_max_villages_per_city: int = 2
     ) -> void:
         rng_seed = p_rng_seed if p_rng_seed != 0 else Time.get_ticks_msec()
         city_count = p_city_count
@@ -40,6 +46,9 @@ class MapGenParams:
         width = clamp(p_width, 20.0, 500.0)
         height = clamp(p_height, 20.0, 500.0)
         kingdom_count = max(1, p_kingdom_count)
+        max_forts_per_kingdom = max(0, p_max_forts_per_kingdom)
+        min_villages_per_city = max(0, min(p_min_villages_per_city, p_max_villages_per_city))
+        max_villages_per_city = max(min_villages_per_city, p_max_villages_per_city)
 
 var params: MapGenParams
 var rng: RandomNumberGenerator
@@ -81,10 +90,10 @@ func generate() -> Dictionary:
         params.min_connections,
         params.max_connections,
         params.crossing_detour_margin,
-        25.0,
         "road"
     )
-    road_stage.insert_border_forts(roads, regions)
+    road_stage.insert_villages(roads, params.min_villages_per_city, params.max_villages_per_city)
+    road_stage.insert_border_forts(roads, regions, 10.0, params.max_forts_per_kingdom)
     map_data["roads"] = roads
 
     var river_stage = RiverGeneratorModule.new(rng)

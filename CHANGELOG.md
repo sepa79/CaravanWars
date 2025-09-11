@@ -1,5 +1,12 @@
 Changelog
 
+0.1.36 — 2025-09-10
+Added
+- Villages branch off main roads with lower-class spurs and per-city count controls.
+- Border forts spawn on both sides of kingdom borders with configurable per-kingdom limits.
+Changed
+- Fort spurs and village roads use lower classes than their parent roads.
+
 0.1.35 — 2025-09-10
 Added
 - Forts spawn near kingdom borders with short spurs off main roads.

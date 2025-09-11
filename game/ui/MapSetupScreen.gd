@@ -48,6 +48,12 @@ var add_village_button: Button
 var add_fort_button: Button
 var road_class_selector: OptionButton
 var finalize_button: Button
+var max_forts_label: Label
+var max_forts_spin: SpinBox
+var min_villages_label: Label
+var min_villages_spin: SpinBox
+var max_villages_label: Label
+var max_villages_spin: SpinBox
 @onready var start_button: Button = $HBox/ControlsScroll/Controls/Buttons/Start
 @onready var back_button: Button = $HBox/ControlsScroll/Controls/Buttons/Back
 @onready var main_ui: HBoxContainer = $HBox
@@ -86,6 +92,29 @@ func _ready() -> void:
     crossing_margin_spin.value_changed.connect(_on_params_changed)
     width_spin.value_changed.connect(_on_params_changed)
     height_spin.value_changed.connect(_on_params_changed)
+    max_forts_label = Label.new()
+    params.add_child(max_forts_label)
+    max_forts_spin = SpinBox.new()
+    max_forts_spin.min_value = 0
+    max_forts_spin.max_value = 10
+    max_forts_spin.value = 1
+    params.add_child(max_forts_spin)
+    max_forts_spin.value_changed.connect(_on_params_changed)
+    min_villages_label = Label.new()
+    params.add_child(min_villages_label)
+    min_villages_spin = SpinBox.new()
+    min_villages_spin.min_value = 0
+    min_villages_spin.max_value = 10
+    params.add_child(min_villages_spin)
+    min_villages_spin.value_changed.connect(_on_params_changed)
+    max_villages_label = Label.new()
+    params.add_child(max_villages_label)
+    max_villages_spin = SpinBox.new()
+    max_villages_spin.min_value = 0
+    max_villages_spin.max_value = 10
+    max_villages_spin.value = 2
+    params.add_child(max_villages_spin)
+    max_villages_spin.value_changed.connect(_on_params_changed)
     show_roads_check.toggled.connect(_on_show_roads_toggled)
     show_rivers_check.toggled.connect(_on_show_rivers_toggled)
     show_cities_check.toggled.connect(_on_show_cities_toggled)
@@ -185,6 +214,9 @@ func _update_texts() -> void:
     add_village_button.text = I18N.t("setup.add_village")
     add_fort_button.text = I18N.t("setup.add_fort")
     finalize_button.text = I18N.t("setup.finalize_map")
+    max_forts_label.text = I18N.t("setup.max_forts_per_kingdom")
+    min_villages_label.text = I18N.t("setup.min_villages_per_city")
+    max_villages_label.text = I18N.t("setup.max_villages_per_city")
     road_class_selector.set_item_text(0, I18N.t("setup.road_class_path"))
     road_class_selector.set_item_text(1, I18N.t("setup.road_class_road"))
     road_class_selector.set_item_text(2, I18N.t("setup.road_class_roman"))
@@ -208,7 +240,10 @@ func _generate_map() -> void:
         crossing_margin_spin.value,
         width_spin.value,
         height_spin.value,
-        kingdoms
+        kingdoms,
+        int(max_forts_spin.value),
+        int(min_villages_spin.value),
+        int(max_villages_spin.value)
     )
     kingdoms_spin.max_value = map_params.city_count
     if int(kingdoms_spin.value) != map_params.kingdom_count:
@@ -255,6 +290,20 @@ func _generate_map() -> void:
         height_spin.set_block_signals(true)
         height_spin.value = map_params.height
         height_spin.set_block_signals(false)
+    if max_forts_spin.value != map_params.max_forts_per_kingdom:
+        max_forts_spin.set_block_signals(true)
+        max_forts_spin.value = map_params.max_forts_per_kingdom
+        max_forts_spin.set_block_signals(false)
+    if min_villages_spin.value != map_params.min_villages_per_city:
+        min_villages_spin.set_block_signals(true)
+        min_villages_spin.value = map_params.min_villages_per_city
+        min_villages_spin.set_block_signals(false)
+    if max_villages_spin.value != map_params.max_villages_per_city:
+        max_villages_spin.set_block_signals(true)
+        max_villages_spin.value = map_params.max_villages_per_city
+        max_villages_spin.set_block_signals(false)
+    max_villages_spin.min_value = min_villages_spin.value
+    min_villages_spin.max_value = max_villages_spin.value
     var generator := MapGeneratorModule.new(map_params)
     current_map = generator.generate()
     map_view.set_map_data(current_map)
