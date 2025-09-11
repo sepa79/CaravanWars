@@ -1,5 +1,9 @@
 Changelog
 
+0.1.49 — 2025-09-12
+Fixed
+- Preloaded custom MapNode, Edge, and Region classes so headless map generation runs without hanging.
+
 0.1.48 — 2025-09-12
 Changed
 - River crossings detour to nearby bridges, enforce fort buffers and spacing, and split river polylines at crossing nodes.

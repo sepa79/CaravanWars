@@ -1,7 +1,9 @@
 extends RefCounted
 class_name MapValidator
 
-const RoadNetworkModule = preload("res://map/RoadNetwork.gd")
+const RoadNetwork = preload("res://map/RoadNetwork.gd")
+const MapNode = preload("res://map/MapNode.gd")
+const Edge = preload("res://map/Edge.gd")
 
 func validate(roads: Dictionary, rivers: Array, margin: float = 0.3) -> Array[String]:
     var errors: Array[String] = []
@@ -10,7 +12,7 @@ func validate(roads: Dictionary, rivers: Array, margin: float = 0.3) -> Array[St
     if not _no_dangling_edges(roads):
         errors.append("dangling edges present")
     if not _valid_river_intersections(roads, rivers):
-        var helper: RoadNetwork = RoadNetworkModule.new(RandomNumberGenerator.new())
+        var helper: RoadNetwork = RoadNetwork.new(RandomNumberGenerator.new())
         helper.insert_river_crossings(roads, rivers)
         if not _valid_river_intersections(roads, rivers):
             errors.append("river-road intersection missing bridge or ford")
