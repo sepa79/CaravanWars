@@ -178,8 +178,6 @@ func insert_villages(
 
         for eid in edges.keys():
             var edge: Edge = edges[eid]
-            if edge.road_class != "roman":
-                continue
             var q: Vector2 = _closest_point_on_polyline(pos, edge.polyline)
             var d_edge: float = pos.distance_to(q)
             if d_edge < best_dist:

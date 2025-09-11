@@ -1,5 +1,9 @@
 Changelog
 
+0.1.43 — 2025-09-11
+Changed
+- Villages now connect to the nearest town or existing road of any class, not just Roman roads.
+
 0.1.42 — 2025-09-11
 Changed
 - Villages spawn from a global Poisson layer and connect to the nearest town or Roman road, downgrading leaf branches to paths.
