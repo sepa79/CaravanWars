@@ -259,6 +259,9 @@
           "id": {
             "type": "integer"
           },
+          "kingdom_id": {
+            "type": "integer"
+          },
           "name": {
             "type": "string"
           },
@@ -277,6 +280,7 @@
         },
         "required": [
           "id",
+          "kingdom_id",
           "capital_city_id",
           "polygon"
         ]

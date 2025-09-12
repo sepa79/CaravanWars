@@ -112,9 +112,11 @@ func _convert(bundle: Dictionary) -> Dictionary:
         var poly: Array[Vector2] = []
         for p in k.get("polygon", []):
             poly.append(Vector2(p[0], p[1]))
-        var region := RegionModule.new(k.get("id"), poly, "", k.get("id"))
+        var rid: int = int(k.get("id"))
+        var kid: int = int(k.get("kingdom_id", rid))
+        var region := RegionModule.new(rid, poly, "", kid)
         regions[region.id] = region
-        kingdom_names[region.id] = k.get("name", "")
+        kingdom_names[kid] = k.get("name", "")
     map["regions"] = regions
     map["kingdom_names"] = kingdom_names
     return map
