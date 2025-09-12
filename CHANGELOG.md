@@ -1,5 +1,9 @@
 Changelog
 
+0.1.48 — 2025-09-12
+Changed
+- CI checks now run `godot --headless --check-only` for each module to validate scripts on commit.
+
 0.1.47 — 2025-09-12
 Added
 - Choose city sites from fertility noise peaks with spacing and mark 1–3 capitals.
