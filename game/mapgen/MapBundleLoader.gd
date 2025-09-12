@@ -90,12 +90,13 @@ func _convert(bundle: Dictionary) -> Dictionary:
         if node_a == null or node_b == null:
             push_warning("Edge %s references missing node %s or %s" % [e.get("id"), a, b])
             continue
-        var poly := [node_a.pos2d, node_b.pos2d]
+        var poly: Array[Vector2] = [node_a.pos2d, node_b.pos2d]
         var cls: String = String(e.get("class", "Road")).to_lower()
         var attrs: Dictionary = {}
         if e.has("crossing_id") and e.get("crossing_id") != null:
             attrs["crossing_id"] = e.get("crossing_id")
-        edges[int(e.get("id"))] = EdgeModule.new(int(e.get("id")), "road", poly, [a, b], cls, attrs)
+        var endpoints: Array[int] = [a, b]
+        edges[int(e.get("id"))] = EdgeModule.new(int(e.get("id")), "road", poly, endpoints, cls, attrs)
     map["roads"] = {"nodes": nodes, "edges": edges}
     map["cities"] = cities
     var rivers: Array = []
@@ -108,7 +109,7 @@ func _convert(bundle: Dictionary) -> Dictionary:
     var regions: Dictionary = {}
     var kingdom_names: Dictionary = {}
     for k in bundle.get("kingdoms", []):
-        var poly: Array = []
+        var poly: Array[Vector2] = []
         for p in k.get("polygon", []):
             poly.append(Vector2(p[0], p[1]))
         var region := RegionModule.new(k.get("id"), poly, "", k.get("id"))
