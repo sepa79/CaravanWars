@@ -1,5 +1,9 @@
 Changelog
 
+0.1.52 — 2025-09-12
+Fixed
+- Capital selection shuffles city indices with the seeded RNG for deterministic results.
+
 0.1.51 — 2025-09-12
 Fixed
 - Map bundle import restores road lengths and map view respects them, keeping distances unchanged after export/import.

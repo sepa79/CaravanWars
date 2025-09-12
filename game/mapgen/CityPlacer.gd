@@ -134,7 +134,12 @@ func select_city_sites(field: Array, cities_target: int, min_distance: float) ->
         var indices: Array[int] = []
         for i in range(cities.size()):
             indices.append(i)
-        indices.shuffle()
+        # Shuffle indices deterministically using the injected RNG
+        for i in range(indices.size() - 1, 0, -1):
+            var j: int = rng.randi_range(0, i)
+            var tmp: int = indices[i]
+            indices[i] = indices[j]
+            indices[j] = tmp
         for i in range(cap_count):
             result["capitals"].append(indices[i])
     return result
