@@ -63,11 +63,19 @@ func _convert(bundle: Dictionary) -> Dictionary:
         var pos := Vector2(n.get("x", 0.0), n.get("y", 0.0))
         nodes[id] = MapNodeModule.new(id, MapNodeModule.TYPE_CROSSROAD, pos, {})
     var cities: Array = []
+    var capitals: Array[int] = []
     for c in bundle.get("cities", []):
         var id: int = int(c.get("id"))
         var pos := Vector2(c.get("x", 0.0), c.get("y", 0.0))
-        nodes[id] = MapNodeModule.new(id, MapNodeModule.TYPE_CITY, pos, {"kingdom_id": c.get("kingdom_id", 0), "is_capital": c.get("is_capital", false)})
+        var attrs: Dictionary = {
+            "kingdom_id": c.get("kingdom_id", 0),
+            "is_capital": c.get("is_capital", false),
+        }
+        nodes[id] = MapNodeModule.new(id, MapNodeModule.TYPE_CITY, pos, attrs)
+        var city_index: int = cities.size()
         cities.append(pos)
+        if attrs.get("is_capital", false):
+            capitals.append(city_index)
     for v in bundle.get("villages", []):
         var id: int = int(v.get("id"))
         var pos := Vector2(v.get("x", 0.0), v.get("y", 0.0))
@@ -114,6 +122,7 @@ func _convert(bundle: Dictionary) -> Dictionary:
         "next_edge_id": max_edge_id + 1,
     }
     map["cities"] = cities
+    map["capitals"] = capitals
     var rivers: Array = []
     for r in bundle.get("rivers", []):
         var poly: Array = []
@@ -123,6 +132,7 @@ func _convert(bundle: Dictionary) -> Dictionary:
     map["rivers"] = rivers
     var regions: Dictionary = {}
     var kingdom_names: Dictionary = {}
+    var kingdom_capitals: Dictionary = {}
     for k in bundle.get("kingdoms", []):
         var poly: Array[Vector2] = []
         for p in k.get("polygon", []):
@@ -135,6 +145,8 @@ func _convert(bundle: Dictionary) -> Dictionary:
         if name.is_empty():
             name = "Kingdom %d" % kid
         kingdom_names[kid] = name
+        kingdom_capitals[kid] = int(k.get("capital_city_id", 0))
     map["regions"] = regions
     map["kingdom_names"] = kingdom_names
+    map["kingdom_capitals"] = kingdom_capitals
     return map

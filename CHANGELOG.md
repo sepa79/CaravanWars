@@ -1,5 +1,9 @@
 Changelog
 
+0.1.50 — 2025-09-12
+Fixed
+- Map bundle export sets kingdom capital IDs and import restores capital indices.
+
 0.1.49 — 2025-09-12
 Fixed
 - Annotated capital road node in map generator to satisfy typed GDScript.

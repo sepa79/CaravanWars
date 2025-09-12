@@ -152,11 +152,16 @@ static func _bundle_from_map(map_data: Dictionary, rng_seed: int, version: Strin
     }
     var roads: Dictionary = map_data.get("roads", {})
     var nodes: Dictionary = roads.get("nodes", {})
+    var capital_by_kingdom: Dictionary = {}
     for node in nodes.values():
         bundle["nodes"].append({"id": node.id, "x": node.pos2d.x, "y": node.pos2d.y})
         match node.type:
             MapNodeModule.TYPE_CITY:
-                bundle["cities"].append({"id": node.id, "x": node.pos2d.x, "y": node.pos2d.y, "kingdom_id": node.attrs.get("kingdom_id", 0), "is_capital": node.attrs.get("is_capital", false)})
+                var kid: int = node.attrs.get("kingdom_id", 0)
+                var is_cap: bool = node.attrs.get("is_capital", false)
+                bundle["cities"].append({"id": node.id, "x": node.pos2d.x, "y": node.pos2d.y, "kingdom_id": kid, "is_capital": is_cap})
+                if is_cap:
+                    capital_by_kingdom[kid] = node.id
             MapNodeModule.TYPE_VILLAGE:
                 bundle["villages"].append({"id": node.id, "x": node.pos2d.x, "y": node.pos2d.y, "city_id": node.attrs.get("city_id", 0), "road_node_id": node.attrs.get("road_node_id", 0), "production": node.attrs.get("production", {})})
             MapNodeModule.TYPE_FORT:
@@ -194,11 +199,12 @@ static func _bundle_from_map(map_data: Dictionary, rng_seed: int, version: Strin
         for p in region.boundary_nodes:
             poly.append([p.x, p.y])
         var kname: String = String(names.get(region.kingdom_id, "Kingdom %d" % region.kingdom_id))
+        var cap_id: int = capital_by_kingdom.get(region.kingdom_id, 0)
         bundle["kingdoms"].append({
             "id": region.id,
             "kingdom_id": region.kingdom_id,
             "name": kname,
-            "capital_city_id": 0,
+            "capital_city_id": cap_id,
             "polygon": poly,
         })
     return bundle
