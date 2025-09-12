@@ -31,6 +31,7 @@ func compute_roughness(field: Array) -> Array:
         return []
     var w: int = field[0].size()
     var rough: Array = []
+    var max_val: float = 0.0
     for y in range(h):
         var row: Array = []
         for x in range(w):
@@ -43,6 +44,13 @@ func compute_roughness(field: Array) -> Array:
                 if nx >= 0 and nx < w and ny >= 0 and ny < h:
                     diff += abs(v - field[ny][nx])
                     count += 1
-            row.append(diff / count if count > 0 else 0.0)
+            var r: float = diff / count if count > 0 else 0.0
+            row.append(r)
+            if r > max_val:
+                max_val = r
         rough.append(row)
+    if max_val > 0.0:
+        for y in range(h):
+            for x in range(w):
+                rough[y][x] /= max_val
     return rough
