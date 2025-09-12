@@ -269,7 +269,7 @@ func _draw() -> void:
                 for edge in adjacency.get(node_id, []):
                     var other_id: int = edge.endpoints[0] if edge.endpoints[1] == node_id else edge.endpoints[1]
                     var path: Array[Vector2] = edge.polyline.duplicate()
-                    var length: float = edge.polyline[0].distance_to(edge.polyline[1])
+                    var length: float = edge.attrs.get("length", edge.polyline[0].distance_to(edge.polyline[1]))
                     var cur_edge = edge
                     var cur_node = other_id
                     while nodes[cur_node].type != "city":
@@ -279,7 +279,7 @@ func _draw() -> void:
                         var next_edge = conn[0] if conn[0] != cur_edge else conn[1]
                         var next_node: int = next_edge.endpoints[0] if next_edge.endpoints[1] == cur_node else next_edge.endpoints[1]
                         path.append(nodes[next_node].pos2d)
-                        length += nodes[cur_node].pos2d.distance_to(nodes[next_node].pos2d)
+                        length += next_edge.attrs.get("length", nodes[cur_node].pos2d.distance_to(nodes[next_node].pos2d))
                         cur_edge = next_edge
                         cur_node = next_node
                     var other_city_id: int = cur_node

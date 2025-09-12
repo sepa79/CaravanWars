@@ -100,7 +100,9 @@ func _convert(bundle: Dictionary) -> Dictionary:
             continue
         var poly: Array[Vector2] = [node_a.pos2d, node_b.pos2d]
         var cls: String = String(e.get("class", "Road")).to_lower()
-        var attrs: Dictionary = {}
+        var attrs: Dictionary = {
+            "length": float(e.get("length", node_a.pos2d.distance_to(node_b.pos2d))),
+        }
         if e.has("crossing_id") and e.get("crossing_id") != null:
             attrs["crossing_id"] = e.get("crossing_id")
         var endpoints: Array[int] = [a, b]

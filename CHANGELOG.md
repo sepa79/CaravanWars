@@ -1,5 +1,9 @@
 Changelog
 
+0.1.51 — 2025-09-12
+Fixed
+- Map bundle import restores road lengths and map view respects them, keeping distances unchanged after export/import.
+
 0.1.50 — 2025-09-12
 Fixed
 - Map bundle export sets kingdom capital IDs and import restores capital indices.
