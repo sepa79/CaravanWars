@@ -1,5 +1,9 @@
 Changelog
 
+0.1.54 — 2025-09-11
+Fixed
+- Added explicit float types for road cleanup scoring to prevent Variant inference warnings.
+
 0.1.53 — 2025-09-11
 Changed
 - Enforced spacing and fort-clearance rules for new river crossings, dropping connectors that would place bridges or fords too close.

@@ -779,10 +779,10 @@ func _split_near_x_junctions(
             dirs.append((nodes[other].pos2d - node.pos2d).normalized())
         var best_i := 0
         var best_j := 1
-        var best_score := abs(PI - dirs[0].angle_to(dirs[1]))
+        var best_score: float = abs(PI - dirs[0].angle_to(dirs[1]))
         for i in range(dirs.size()):
             for j in range(i + 1, dirs.size()):
-                var score := abs(PI - dirs[i].angle_to(dirs[j]))
+                var score: float = abs(PI - dirs[i].angle_to(dirs[j]))
                 if score < best_score:
                     best_score = score
                     best_i = i
