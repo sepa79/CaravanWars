@@ -109,9 +109,10 @@ func generate() -> Dictionary:
         params.crossroad_detour_margin,
         "roman"
     )
+    var nodes: Dictionary = roads.get("nodes", {})
     for idx in map_data.get("capitals", []):
         var nid: int = idx + 1
-        var node := roads.get("nodes", {}).get(nid)
+        var node: MapViewNode = nodes.get(nid) as MapViewNode
         if node != null:
             node.attrs["is_capital"] = true
     road_stage.insert_villages(roads, params.min_villages_per_city, params.max_villages_per_city, 5.0, params.width, params.height, params.village_downgrade_threshold)

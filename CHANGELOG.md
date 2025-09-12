@@ -1,5 +1,9 @@
 Changelog
 
+0.1.49 — 2025-09-12
+Fixed
+- Annotated capital road node in map generator to satisfy typed GDScript.
+
 0.1.48 — 2025-09-12
 Changed
 - CI checks now run `godot --headless --check-only` for each module to validate scripts on commit.
