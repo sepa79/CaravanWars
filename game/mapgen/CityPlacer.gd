@@ -84,3 +84,57 @@ func _is_valid(
             if index != -1 and samples[index].distance_to(p) < min_distance:
                 return false
     return true
+
+## Selects city locations from a fertility field.
+## Finds local maxima and keeps those spaced by at least `min_distance`.
+## Returns a dictionary with `cities` Array[Vector2] and `capitals` Array[int]
+## containing indexes of cities chosen as capitals.
+func select_city_sites(field: Array, cities_target: int, min_distance: float) -> Dictionary:
+    var result: Dictionary = {"cities": [], "capitals": []}
+    var h: int = field.size()
+    if h == 0:
+        return result
+    var w: int = field[0].size()
+    var candidates: Array = []
+    for y in range(h):
+        for x in range(w):
+            var v: float = field[y][x]
+            var is_peak: bool = true
+            for dy in range(-1, 2):
+                for dx in range(-1, 2):
+                    if dx == 0 and dy == 0:
+                        continue
+                    var nx: int = x + dx
+                    var ny: int = y + dy
+                    if nx >= 0 and nx < w and ny >= 0 and ny < h:
+                        if field[ny][nx] > v:
+                            is_peak = false
+                            break
+                if not is_peak:
+                    break
+            if is_peak:
+                candidates.append({"pos": Vector2(x + 0.5, y + 0.5), "score": v})
+    candidates.sort_custom(func(a, b): return a["score"] > b["score"])
+    var cities: Array[Vector2] = []
+    for c in candidates:
+        var p: Vector2 = c["pos"]
+        var valid: bool = true
+        for existing in cities:
+            if existing.distance_to(p) < min_distance:
+                valid = false
+                break
+        if not valid:
+            continue
+        cities.append(p)
+        if cities.size() >= cities_target:
+            break
+    result["cities"] = cities
+    if cities.size() > 0:
+        var cap_count: int = rng.randi_range(1, min(3, cities.size()))
+        var indices: Array[int] = []
+        for i in range(cities.size()):
+            indices.append(i)
+        indices.shuffle()
+        for i in range(cap_count):
+            result["capitals"].append(indices[i])
+    return result

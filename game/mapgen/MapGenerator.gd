@@ -86,14 +86,14 @@ func generate() -> Dictionary:
     map_data["fertility"] = fertility_field
     map_data["roughness"] = roughness_field
     var city_stage := CityPlacerModule.new(rng)
-    var cities := city_stage.place_cities(
+    var city_info: Dictionary = city_stage.select_city_sites(
+        fertility_field,
         params.city_count,
-        params.min_city_distance,
-        params.max_city_distance,
-        params.width,
-        params.height
+        params.min_city_distance
     )
+    var cities: Array[Vector2] = city_info.get("cities", [])
     map_data["cities"] = cities
+    map_data["capitals"] = city_info.get("capitals", [])
     print("[MapGenerator] placed %s cities" % cities.size())
 
     var region_stage = RegionGeneratorModule.new()
@@ -109,6 +109,11 @@ func generate() -> Dictionary:
         params.crossroad_detour_margin,
         "roman"
     )
+    for idx in map_data.get("capitals", []):
+        var nid: int = idx + 1
+        var node := roads.get("nodes", {}).get(nid)
+        if node != null:
+            node.attrs["is_capital"] = true
     road_stage.insert_villages(roads, params.min_villages_per_city, params.max_villages_per_city, 5.0, params.width, params.height, params.village_downgrade_threshold)
     road_stage.insert_border_forts(roads, regions, 10.0, params.max_forts_per_kingdom, params.width, params.height)
     map_data["roads"] = roads

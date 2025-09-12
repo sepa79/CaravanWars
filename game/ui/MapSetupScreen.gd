@@ -358,6 +358,7 @@ func _on_params_changed(_value: float) -> void:
     start_button.disabled = true
     debounce_timer.stop()
     debounce_timer.start()
+    map_view.queue_redraw()
 
 func _on_show_roads_toggled(pressed: bool) -> void:
     map_view.set_show_roads(pressed)
@@ -544,6 +545,11 @@ func _on_cities_changed(cities: Array) -> void:
     rng.seed = int(seed_spin.value)
     var road_stage := RoadNetworkModule.new(rng)
     var roads = road_stage.build_roads(cities, int(min_connections_spin.value), int(max_connections_spin.value), crossing_margin_spin.value)
+    for idx in current_map.get("capitals", []):
+        var nid: int = idx + 1
+        var node := roads.get("nodes", {}).get(nid)
+        if node != null:
+            node.attrs["is_capital"] = true
     current_map["roads"] = roads
     map_view.set_map_data(current_map)
     _update_snapshot()

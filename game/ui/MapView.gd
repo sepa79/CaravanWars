@@ -295,8 +295,16 @@ func _draw() -> void:
             for i in range(river.size() - 1):
                 draw_line(river[i] * draw_scale + offset, river[i + 1] * draw_scale + offset, Color.BLUE, 1.0)
     if show_cities:
-        for city in map_data.get("cities", []):
-            draw_circle(city * draw_scale + offset, 4.0, Color.RED)
+        var capitals: Array = map_data.get("capitals", [])
+        var cities: Array = map_data.get("cities", [])
+        for i in range(cities.size()):
+            var city: Vector2 = cities[i]
+            var pos: Vector2 = city * draw_scale + offset
+            if capitals.has(i):
+                draw_circle(pos, 6.0, Color.YELLOW)
+                draw_circle(pos, 3.0, Color.RED)
+            else:
+                draw_circle(pos, 4.0, Color.RED)
     if show_villages or show_forts or show_crossroads or show_bridges or show_fords:
         for node in roads.get("nodes", {}).values():
             var center: Vector2 = node.pos2d * draw_scale + offset
