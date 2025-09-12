@@ -59,33 +59,43 @@ func _convert(bundle: Dictionary) -> Dictionary:
     map["height"] = size
     var nodes: Dictionary = {}
     for n in bundle.get("nodes", []):
+        var id: int = int(n.get("id"))
         var pos := Vector2(n.get("x", 0.0), n.get("y", 0.0))
-        nodes[n.get("id")] = MapNodeModule.new(n.get("id"), MapNodeModule.TYPE_CROSSROAD, pos, {})
+        nodes[id] = MapNodeModule.new(id, MapNodeModule.TYPE_CROSSROAD, pos, {})
     var cities: Array = []
     for c in bundle.get("cities", []):
+        var id: int = int(c.get("id"))
         var pos := Vector2(c.get("x", 0.0), c.get("y", 0.0))
-        nodes[c.get("id")] = MapNodeModule.new(c.get("id"), MapNodeModule.TYPE_CITY, pos, {"kingdom_id": c.get("kingdom_id", 0), "is_capital": c.get("is_capital", false)})
+        nodes[id] = MapNodeModule.new(id, MapNodeModule.TYPE_CITY, pos, {"kingdom_id": c.get("kingdom_id", 0), "is_capital": c.get("is_capital", false)})
         cities.append(pos)
     for v in bundle.get("villages", []):
+        var id: int = int(v.get("id"))
         var pos := Vector2(v.get("x", 0.0), v.get("y", 0.0))
-        nodes[v.get("id")] = MapNodeModule.new(v.get("id"), MapNodeModule.TYPE_VILLAGE, pos, {"city_id": v.get("city_id", 0), "road_node_id": v.get("road_node_id", 0), "production": v.get("production", {})})
+        nodes[id] = MapNodeModule.new(id, MapNodeModule.TYPE_VILLAGE, pos, {"city_id": v.get("city_id", 0), "road_node_id": v.get("road_node_id", 0), "production": v.get("production", {})})
     for cr in bundle.get("crossings", []):
+        var id: int = int(cr.get("id"))
         var pos := Vector2(cr.get("x", 0.0), cr.get("y", 0.0))
         var ntype := MapNodeModule.TYPE_BRIDGE if cr.get("type", "bridge") == "bridge" else MapNodeModule.TYPE_FORD
-        nodes[cr.get("id")] = MapNodeModule.new(cr.get("id"), ntype, pos, {"river_id": cr.get("river_id", null)})
+        nodes[id] = MapNodeModule.new(id, ntype, pos, {"river_id": cr.get("river_id", null)})
     for f in bundle.get("forts", []):
+        var id: int = int(f.get("id"))
         var pos := Vector2(f.get("x", 0.0), f.get("y", 0.0))
-        nodes[f.get("id")] = MapNodeModule.new(f.get("id"), MapNodeModule.TYPE_FORT, pos, {"edge_id": f.get("edge_id", null), "crossing_id": f.get("crossing_id", null), "pair_id": f.get("pair_id", null)})
+        nodes[id] = MapNodeModule.new(id, MapNodeModule.TYPE_FORT, pos, {"edge_id": f.get("edge_id", null), "crossing_id": f.get("crossing_id", null), "pair_id": f.get("pair_id", null)})
     var edges: Dictionary = {}
     for e in bundle.get("edges", []):
-        var a: int = e.get("a")
-        var b: int = e.get("b")
-        var poly := [nodes[a].pos2d, nodes[b].pos2d]
+        var a: int = int(e.get("a"))
+        var b: int = int(e.get("b"))
+        var node_a = nodes.get(a)
+        var node_b = nodes.get(b)
+        if node_a == null or node_b == null:
+            push_warning("Edge %s references missing node %s or %s" % [e.get("id"), a, b])
+            continue
+        var poly := [node_a.pos2d, node_b.pos2d]
         var cls: String = String(e.get("class", "Road")).to_lower()
         var attrs: Dictionary = {}
         if e.has("crossing_id") and e.get("crossing_id") != null:
             attrs["crossing_id"] = e.get("crossing_id")
-        edges[e.get("id")] = EdgeModule.new(e.get("id"), "road", poly, [a, b], cls, attrs)
+        edges[int(e.get("id"))] = EdgeModule.new(int(e.get("id")), "road", poly, [a, b], cls, attrs)
     map["roads"] = {"nodes": nodes, "edges": edges}
     map["cities"] = cities
     var rivers: Array = []

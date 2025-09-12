@@ -5,6 +5,7 @@ Removed
 - Removed obsolete Map Data Model spec in favor of `/docs/map`.
 Fixed
 - Renamed map export seed parameter to avoid shadowing the built-in function.
+- Map bundle import now casts node IDs and skips edges with missing endpoints to avoid out-of-bounds errors.
 
 0.1.45 — 2025-09-11
 Changed
