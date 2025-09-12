@@ -407,7 +407,12 @@ func _on_finalize_map_pressed() -> void:
     var errors: Array[String] = validator.validate(current_map["roads"], current_map.get("rivers", []))
     if errors.is_empty():
         var helper: RoadNetwork = RoadNetworkModule.new(RandomNumberGenerator.new())
-        helper.cleanup(current_map["roads"])
+        helper.cleanup(
+            current_map["roads"],
+            5.0,
+            current_map.get("width", 100.0),
+            current_map.get("height", 100.0)
+        )
         map_view.set_map_data(current_map)
         map_view.set_edit_mode(false)
         map_view.set_road_mode("")
@@ -429,7 +434,12 @@ func _on_validate_map_pressed() -> void:
     var errors: Array[String] = validator.validate(current_map["roads"], current_map.get("rivers", []))
     if errors.is_empty():
         var road_helper: RoadNetwork = RoadNetworkModule.new(RandomNumberGenerator.new())
-        road_helper.cleanup(current_map["roads"])
+        road_helper.cleanup(
+            current_map["roads"],
+            5.0,
+            current_map.get("width", 100.0),
+            current_map.get("height", 100.0)
+        )
         map_view.set_map_data(current_map)
         map_view.queue_redraw()
         _update_snapshot()

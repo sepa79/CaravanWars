@@ -1,5 +1,42 @@
 Changelog
 
+0.1.53 — 2025-09-11
+Changed
+- Enforced spacing and fort-clearance rules for new river crossings, dropping connectors that would place bridges or fords too close.
+
+0.1.52 — 2025-09-11
+Changed
+- River-road intersections now split the river polyline and snap to nearby
+  river vertices within 0.3 U to avoid sharp bends.
+
+0.1.51 — 2025-09-11
+Changed
+- Border forts now respect per-kingdom caps, avoid mirrored pairs, and place a single offset fort inside each kingdom.
+
+0.1.50 — 2025-09-11
+Changed
+- Split near four-way road junctions into two offset T-junctions to enforce 60–120° angles.
+
+0.1.49 — 2025-09-11
+Changed
+- Linked road segments that run within 1 U in parallel and dropped the shorter duplicate during cleanup.
+
+0.1.48 — 2025-09-11
+Changed
+- Pruned dead-end road spurs shorter than 0.4 U during map cleanup.
+
+0.1.47 — 2025-09-11
+Changed
+- Road branches now automatically downgrade one class when leaving higher-grade routes, enforcing Roman→Road→Path hierarchy.
+
+0.1.46 — 2025-09-11
+Changed
+- Enforced boundary checks across map entities and added utilities to clamp roads and rivers.
+
+0.1.45 — 2025-09-11
+Added
+- Road nodes closer than 0.3U automatically merge after generation, ensuring clean junctions.
+
 0.1.44 — 2025-09-11
 Changed
 - Villages spawn around each town with per-city count controls, linking locally via paths and only attaching to towns or nearby Roman roads with a single road connection.

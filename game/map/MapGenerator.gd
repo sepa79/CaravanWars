@@ -60,6 +60,7 @@ const CityPlacerModule = preload("res://map/CityPlacer.gd")
 const RoadNetworkModule = preload("res://map/RoadNetwork.gd")
 const RiverGeneratorModule: Script = preload("res://map/RiverGenerator.gd")
 const RegionGeneratorModule: Script = preload("res://map/RegionGenerator.gd")
+const MapUtils = preload("res://map/MapUtils.gd")
 
 func _init(_params: MapGenParams = MapGenParams.new()) -> void:
     params = _params
@@ -96,11 +97,13 @@ func generate() -> Dictionary:
         "roman"
     )
     road_stage.insert_villages(roads, params.min_villages_per_city, params.max_villages_per_city, 5.0, params.width, params.height, params.village_downgrade_threshold)
-    road_stage.insert_border_forts(roads, regions, 10.0, params.max_forts_per_kingdom, params.width, params.height)
+    road_stage.insert_border_forts(roads, regions, params.width, params.height)
     map_data["roads"] = roads
 
     var river_stage = RiverGeneratorModule.new(rng)
     var rivers: Array = river_stage.generate_rivers(roads, params.max_river_count, params.width, params.height)
+    road_stage.merge_close_nodes(roads, 0.3)
+    road_stage.cleanup(roads, params.crossroad_detour_margin, params.width, params.height)
     map_data["rivers"] = rivers
-
+    MapUtils.clamp_map_data(map_data)
     return map_data

@@ -5,6 +5,8 @@ var rng: RandomNumberGenerator
 var map_width: float = 100.0
 var map_height: float = 100.0
 
+const MapUtils = preload("res://map/MapUtils.gd")
+
 func _init(_rng: RandomNumberGenerator) -> void:
     rng = _rng
 
@@ -32,6 +34,7 @@ func place_cities(
     var active: Array[int] = []
 
     var initial_point := Vector2(rng.randf() * map_width, rng.randf() * map_height)
+    initial_point = MapUtils.ensure_within_bounds(initial_point, map_width, map_height)
     samples.append(initial_point)
     var initial_index: int = _grid_index(initial_point, cell_size, grid_width)
     grid[initial_index] = 0
@@ -58,7 +61,8 @@ func place_cities(
 func _generate_point_around(p: Vector2, min_distance: float, max_distance: float) -> Vector2:
     var r: float = rng.randf_range(min_distance, max_distance)
     var angle: float = rng.randf() * TAU
-    return Vector2(p.x + r * cos(angle), p.y + r * sin(angle))
+    var candidate := Vector2(p.x + r * cos(angle), p.y + r * sin(angle))
+    return MapUtils.ensure_within_bounds(candidate, map_width, map_height)
 
 func _grid_index(p: Vector2, cell_size: float, grid_width: int) -> int:
     var gx: int = int(p.x / cell_size)
@@ -74,7 +78,7 @@ func _is_valid(
     samples: Array[Vector2],
     min_distance: float
 ) -> bool:
-    if p.x < 0.0 or p.y < 0.0 or p.x >= map_width or p.y >= map_height:
+    if not MapUtils.is_within_bounds(p, map_width, map_height):
         return false
     var gx: int = int(p.x / cell_size)
     var gy: int = int(p.y / cell_size)

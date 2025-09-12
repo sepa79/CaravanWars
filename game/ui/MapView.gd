@@ -100,7 +100,7 @@ func _gui_input(event: InputEvent) -> void:
                     var v_edge: int = _road_edge_at_point(mb.position)
                     if v_edge != -1:
                         var ntype: String = MapNodeModule.TYPE_VILLAGE if road_mode == "village" else MapNodeModule.TYPE_FORT
-                        road_helper.insert_node_on_edge(map_data.get("roads", {}), v_edge, ntype)
+                        road_helper.insert_node_on_edge(map_data.get("roads", {}), v_edge, ntype, map_width, map_height)
                         hovered_edge = -1
                         queue_redraw()
                 elif edit_mode:
