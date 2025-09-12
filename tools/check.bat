@@ -30,29 +30,20 @@ if "%GODOT%"=="" (
 
 echo [check] Using Godot: %GODOT%
 echo [check] Project: %PROJECT_DIR%
+echo [check] Running --check-only
+set CI_AUTO_QUIT=1
+"%GODOT%" --headless --check-only --path "%PROJECT_DIR%"
 
-if /I "%MODE%"=="check" (
-  echo [check] Running --check-only
-  "%GODOT%" --headless --check-only --path "%PROJECT_DIR%"
-  goto :done
-)
-
-if /I "%MODE%"=="quick" (
-  echo [check] Running quick boot (1 frame)
-  "%GODOT%" --headless --quit-after 1 --path "%PROJECT_DIR%"
-  goto :done
-)
-
-if /I "%MODE%"=="both" (
-  echo [check] Running --check-only
-  "%GODOT%" --headless --check-only --path "%PROJECT_DIR%"
-  echo [check] Running quick boot (1 frame)
-  "%GODOT%" --headless --quit-after 1 --path "%PROJECT_DIR%"
-  goto :done
-)
+if /I "%MODE%"=="check" goto :done
+if /I "%MODE%"=="quick" goto :quick
+if /I "%MODE%"=="both" goto :quick
 
 echo [check] Unknown mode: %MODE% (use: check^|quick^|both)
 exit /b 2
+
+:quick
+echo [check] Running quick boot (1 frame)
+"%GODOT%" --headless --quit-after 1 --path "%PROJECT_DIR%"
 
 :done
 echo [check] OK

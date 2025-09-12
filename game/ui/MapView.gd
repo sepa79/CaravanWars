@@ -269,7 +269,7 @@ func _draw() -> void:
                 for edge in adjacency.get(node_id, []):
                     var other_id: int = edge.endpoints[0] if edge.endpoints[1] == node_id else edge.endpoints[1]
                     var path: Array[Vector2] = edge.polyline.duplicate()
-                    var length: float = edge.polyline[0].distance_to(edge.polyline[1])
+                    var length: float = edge.attrs.get("length", edge.polyline[0].distance_to(edge.polyline[1]))
                     var cur_edge = edge
                     var cur_node = other_id
                     while nodes[cur_node].type != "city":
@@ -279,7 +279,7 @@ func _draw() -> void:
                         var next_edge = conn[0] if conn[0] != cur_edge else conn[1]
                         var next_node: int = next_edge.endpoints[0] if next_edge.endpoints[1] == cur_node else next_edge.endpoints[1]
                         path.append(nodes[next_node].pos2d)
-                        length += nodes[cur_node].pos2d.distance_to(nodes[next_node].pos2d)
+                        length += next_edge.attrs.get("length", nodes[cur_node].pos2d.distance_to(nodes[next_node].pos2d))
                         cur_edge = next_edge
                         cur_node = next_node
                     var other_city_id: int = cur_node
@@ -295,8 +295,16 @@ func _draw() -> void:
             for i in range(river.size() - 1):
                 draw_line(river[i] * draw_scale + offset, river[i + 1] * draw_scale + offset, Color.BLUE, 1.0)
     if show_cities:
-        for city in map_data.get("cities", []):
-            draw_circle(city * draw_scale + offset, 4.0, Color.RED)
+        var capitals: Array = map_data.get("capitals", [])
+        var cities: Array = map_data.get("cities", [])
+        for i in range(cities.size()):
+            var city: Vector2 = cities[i]
+            var pos: Vector2 = city * draw_scale + offset
+            if capitals.has(i):
+                draw_circle(pos, 6.0, Color.YELLOW)
+                draw_circle(pos, 3.0, Color.RED)
+            else:
+                draw_circle(pos, 4.0, Color.RED)
     if show_villages or show_forts or show_crossroads or show_bridges or show_fords:
         for node in roads.get("nodes", {}).values():
             var center: Vector2 = node.pos2d * draw_scale + offset

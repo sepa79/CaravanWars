@@ -4,12 +4,11 @@ set -euo pipefail
 # Godot headless check for Linux/macOS.
 # Usage: tools/check.sh [project_dir] [mode]
 # If project_dir is omitted, pass mode as the first argument.
-# mode: game (default) | both
-# check and quick modes have been deprecated in favor of the CI auto-quit game run
+# mode: game (default) | both | check
 
 PROJECT_DIR="${1:-game}"
 MODE="${2:-game}"
-if [[ "$PROJECT_DIR" == "both" || "$PROJECT_DIR" == "game" ]]; then
+if [[ $# -eq 1 && ( "$PROJECT_DIR" == "both" || "$PROJECT_DIR" == "game" || "$PROJECT_DIR" == "check" ) ]]; then
   MODE="$PROJECT_DIR"
   PROJECT_DIR="game"
 fi
@@ -31,15 +30,10 @@ fi
 echo "[check] Using Godot: $GODOT"
 echo "[check] Project: $PROJECT_DIR"
 
-#run_check_only() {
-#  echo "[check] Running --check-only"
-#  "$GODOT" --headless --check-only --path "$PROJECT_DIR"
-#}
-
-#run_quick_boot() {
-#  echo "[check] Running quick boot (1 frame)"
-#  "$GODOT" --headless --quit-after 1 --path "$PROJECT_DIR"
-#}
+run_check_only() {
+  echo "[check] Running --check-only"
+  CI_AUTO_QUIT=1 "$GODOT" --headless --check-only --path "$PROJECT_DIR"
+}
 
 run_game() {
   echo "[check] Running game with CI auto quit"
@@ -47,11 +41,10 @@ run_game() {
 }
 
 case "$MODE" in
-#  check) run_check_only ;;
-#  quick) run_quick_boot ;;
-  both) run_game ;;
-  game) run_game ;;
-  *) echo "[check] Unknown mode: $MODE (use: both|game)" >&2; exit 2 ;;
+  check) run_check_only ;;
+  both) run_check_only; run_game ;;
+  game) run_check_only; run_game ;;
+  *) echo "[check] Unknown mode: $MODE (use: both|game|check)" >&2; exit 2 ;;
 esac
 
 echo "[check] OK"

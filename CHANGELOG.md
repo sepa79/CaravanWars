@@ -1,5 +1,33 @@
 Changelog
 
+0.1.52 — 2025-09-12
+Fixed
+- Capital selection shuffles city indices with the seeded RNG for deterministic results.
+
+0.1.51 — 2025-09-12
+Fixed
+- Map bundle import restores road lengths and map view respects them, keeping distances unchanged after export/import.
+
+0.1.50 — 2025-09-12
+Fixed
+- Map bundle export sets kingdom capital IDs and import restores capital indices.
+
+0.1.49 — 2025-09-12
+Fixed
+- Annotated capital road node in map generator to satisfy typed GDScript.
+
+0.1.48 — 2025-09-12
+Changed
+- CI checks now run `godot --headless --check-only` for each module to validate scripts on commit.
+
+0.1.47 — 2025-09-12
+Added
+- Choose city sites from fertility noise peaks with spacing and mark 1–3 capitals.
+- Highlight capitals in the map view and preserve them when editing.
+- Refresh map setup view on parameter tweaks.
+Fixed
+- Annotated capital road node type in map setup screen to satisfy typed GDScript.
+
 0.1.46 — 2025-09-11
 Removed
 - Removed obsolete Map Data Model spec in favor of `/docs/map`.
