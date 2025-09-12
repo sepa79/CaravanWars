@@ -220,7 +220,9 @@ func insert_villages(
     roads: Dictionary,
     min_per_city: int,
     max_per_city: int,
-    radius: float = 5.0,
+    r_min: float = 8.0,
+    r_peak: float = 22.0,
+    r_max: float = 40.0,
     width: float = 100.0,
     height: float = 100.0,
     downgrade_threshold: int = 1
@@ -238,10 +240,27 @@ func insert_villages(
         var count: int = rng.randi_range(min_per_city, max_per_city)
         if count <= 0:
             continue
-        var local: Array[Vector2] = placer.place_cities(count, radius, radius * 2.0, radius * 2.0, radius * 2.0)
+
+        var attempts: Array[Vector2] = placer.place_cities(count * 2, r_min, r_max, r_max * 2.0, r_max * 2.0)
+        var chosen: Array[Vector2] = []
+        for p in attempts:
+            var rel: Vector2 = p - Vector2(r_max, r_max)
+            var dist: float = rel.length()
+            if dist < r_min or dist > r_max:
+                continue
+            var weight: float = 1.0 - abs(dist - r_peak) / (r_max - r_min)
+            if rng.randf() <= max(0.0, weight):
+                chosen.append(rel)
+            if chosen.size() >= count:
+                break
+        while chosen.size() < count:
+            var angle: float = rng.randf() * TAU
+            var rad: float = rng.randf_range(r_min, r_max)
+            chosen.append(Vector2(cos(angle), sin(angle)) * rad)
+
         var cluster: Array[int] = []
-        for p in local:
-            var pos: Vector2 = city.pos2d + p - Vector2(radius, radius)
+        for rel in chosen:
+            var pos: Vector2 = city.pos2d + rel
             pos = MapUtils.ensure_within_bounds(pos, width, height)
             var vid: int = next_node_id
             next_node_id += 1
@@ -256,8 +275,6 @@ func insert_villages(
             var best_dist: float = INF
             for eid in edges.keys():
                 var edge: Edge = edges[eid]
-                if edge.road_class != "roman":
-                    continue
                 var q: Vector2 = _closest_point_on_polyline(vpos, edge.polyline)
                 q = MapUtils.ensure_within_bounds(q, width, height)
                 var d: float = vpos.distance_to(q)
@@ -265,7 +282,7 @@ func insert_villages(
                     best_dist = d
                     best_edge = eid
                     best_point = q
-            if best_edge != -1 and best_dist <= radius * 3.0:
+            if best_edge != -1 and best_dist <= r_max:
                 var edge: Edge = edges[best_edge]
                 var cross_id: int = next_node_id
                 next_node_id += 1
@@ -300,25 +317,75 @@ func insert_villages(
             next_edge_id += 1
             connected.append(nearest)
 
-        var processed: Array[int] = connected.duplicate()
-        if processed.is_empty() and cluster.size() > 0:
-            processed.append(cluster[0])
+        var candidates: Array[Dictionary] = []
+        for i in range(cluster.size()):
+            for j in range(i + 1, cluster.size()):
+                var a_id: int = cluster[i]
+                var b_id: int = cluster[j]
+                var dist: float = nodes[a_id].pos2d.distance_to(nodes[b_id].pos2d)
+                if dist < 6.0 or dist > 12.0:
+                    continue
+                candidates.append({"dist": dist, "a": a_id, "b": b_id})
+        candidates.sort_custom(func(x, y): return x["dist"] < y["dist"])  # ascending
+
+        var parent: Dictionary = {}
         for vid in cluster:
-            if processed.has(vid):
-                continue
-            var best_id: int = processed[0]
-            var best_d: float = INF
-            for pid in processed:
-                var d: float = nodes[vid].pos2d.distance_to(nodes[pid].pos2d)
-                if d < best_d:
-                    best_d = d
-                    best_id = pid
-            var a_pos := MapUtils.ensure_within_bounds(nodes[vid].pos2d, width, height)
-            var b_pos := MapUtils.ensure_within_bounds(nodes[best_id].pos2d, width, height)
-            var p_cls := _resolve_branch_class(nodes, edges, vid, best_id, "path")
-            edges[next_edge_id] = EdgeModule.new(next_edge_id, "path", [a_pos, b_pos], [vid, best_id], p_cls, {})
+            parent[vid] = vid
+        func find(v):
+            while parent[v] != v:
+                v = parent[v]
+            return v
+        func unite(a, b):
+            parent[find(a)] = find(b)
+
+        var mst: Array[Dictionary] = []
+        for c in candidates:
+            var a_root = find(c["a"])
+            var b_root = find(c["b"])
+            if a_root != b_root:
+                unite(a_root, b_root)
+                mst.append(c)
+
+        for c in mst:
+            var a_id = c["a"]
+            var b_id = c["b"]
+            var a_pos := MapUtils.ensure_within_bounds(nodes[a_id].pos2d, width, height)
+            var b_pos := MapUtils.ensure_within_bounds(nodes[b_id].pos2d, width, height)
+            var p_cls := _resolve_branch_class(nodes, edges, a_id, b_id, "path")
+            edges[next_edge_id] = EdgeModule.new(next_edge_id, "path", [a_pos, b_pos], [a_id, b_id], p_cls, {})
             next_edge_id += 1
-            processed.append(vid)
+
+        var remaining: Array[Dictionary] = []
+        for c in candidates:
+            if mst.has(c):
+                continue
+            remaining.append(c)
+        var extra_count: int = int(ceil(float(mst.size()) * 0.2))
+        var added: int = 0
+        for c in remaining:
+            if added >= extra_count:
+                break
+            var a_id = c["a"]
+            var b_id = c["b"]
+            var a_pos := MapUtils.ensure_within_bounds(nodes[a_id].pos2d, width, height)
+            var b_pos := MapUtils.ensure_within_bounds(nodes[b_id].pos2d, width, height)
+            var p_cls := _resolve_branch_class(nodes, edges, a_id, b_id, "path")
+            edges[next_edge_id] = EdgeModule.new(next_edge_id, "path", [a_pos, b_pos], [a_id, b_id], p_cls, {})
+            next_edge_id += 1
+            added += 1
+
+        if mst.size() + added < cluster.size():
+            for c in remaining.slice(added, remaining.size()):
+                if c["dist"] > 8.0:
+                    continue
+                var a_id = c["a"]
+                var b_id = c["b"]
+                var a_pos := MapUtils.ensure_within_bounds(nodes[a_id].pos2d, width, height)
+                var b_pos := MapUtils.ensure_within_bounds(nodes[b_id].pos2d, width, height)
+                var p_cls := _resolve_branch_class(nodes, edges, a_id, b_id, "path")
+                edges[next_edge_id] = EdgeModule.new(next_edge_id, "path", [a_pos, b_pos], [a_id, b_id], p_cls, {})
+                next_edge_id += 1
+                break
 
     var res: Dictionary = _insert_crossroads(nodes, edges, next_node_id, next_edge_id)
     roads["next_node_id"] = res["next_node_id"]

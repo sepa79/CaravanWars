@@ -1,5 +1,9 @@
 Changelog
 
+0.1.55 — 2025-09-11
+Changed
+- Villages now spawn in a city-centered annulus and connect through an MST with extra edges to guarantee at least one loop per cluster.
+
 0.1.54 — 2025-09-11
 Fixed
 - Added explicit float types for road cleanup scoring to prevent Variant inference warnings.
