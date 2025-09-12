@@ -106,18 +106,18 @@ func generate() -> Dictionary:
 
     return map_data
 
-static func export_bundle(path: String, map_data: Dictionary, seed: int, version: String, width: float, height: float, unit_scale: float = 1.0) -> void:
-    var bundle: Dictionary = _bundle_from_map(map_data, seed, version, width, height, unit_scale)
+static func export_bundle(path: String, map_data: Dictionary, rng_seed: int, version: String, width: float, height: float, unit_scale: float = 1.0) -> void:
+    var bundle: Dictionary = _bundle_from_map(map_data, rng_seed, version, width, height, unit_scale)
     var file := FileAccess.open(path, FileAccess.WRITE)
     if file != null:
         file.store_string(JSON.stringify(bundle, "\t"))
         file.close()
 
-static func _bundle_from_map(map_data: Dictionary, seed: int, version: String, width: float, height: float, unit_scale: float) -> Dictionary:
+static func _bundle_from_map(map_data: Dictionary, rng_seed: int, version: String, width: float, height: float, unit_scale: float) -> Dictionary:
     var bundle: Dictionary = {
         "meta": {
             "version": version,
-            "seed": seed,
+            "seed": rng_seed,
             "map_size": int(max(width, height)),
             "unit_scale": unit_scale,
         },

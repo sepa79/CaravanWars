@@ -3,6 +3,8 @@ Changelog
 0.1.46 — 2025-09-11
 Removed
 - Removed obsolete Map Data Model spec in favor of `/docs/map`.
+Fixed
+- Renamed map export seed parameter to avoid shadowing the built-in function.
 
 0.1.45 — 2025-09-11
 Changed
