@@ -6,6 +6,7 @@ var rng: RandomNumberGenerator
 const MapNodeModule = preload("res://mapview/MapNode.gd")
 const EdgeModule = preload("res://mapview/Edge.gd")
 const CityPlacerModule = preload("res://mapgen/CityPlacer.gd")
+const DelaunayModule = preload("res://mapgen/Delaunay.gd")
 
 func _lower_class(cls: String) -> String:
     match cls:
@@ -39,7 +40,7 @@ func build_roads(
         city_ids.append(node_id)
         node_id += 1
 
-    var candidate_edges: Array[Vector2i] = _delaunay_edges(cities)
+    var candidate_edges: Array[Vector2i] = DelaunayModule.edges(cities)
     var mst_edges: Array[Vector2i] = _minimum_spanning_tree(cities, candidate_edges)
 
     var final_edge_set: Dictionary = {}
@@ -482,30 +483,6 @@ func cleanup(roads: Dictionary, crossroad_margin: float = 5.0) -> void:
 
 func _pair_key(a: int, b: int) -> String:
     return "%d_%d" % [min(a, b), max(a, b)]
-
-func _delaunay_edges(points: Array[Vector2]) -> Array[Vector2i]:
-    var pts := PackedVector2Array(points)
-    var tri := Geometry2D.triangulate_delaunay(pts)
-    var edges_dict: Dictionary = {}
-    for i in range(0, tri.size(), 3):
-        _add_edge(edges_dict, tri[i], tri[i + 1])
-        _add_edge(edges_dict, tri[i + 1], tri[i + 2])
-        _add_edge(edges_dict, tri[i + 2], tri[i])
-    if edges_dict.is_empty():
-        var all_pairs: Array[Vector2i] = []
-        for i in range(points.size()):
-            for j in range(i + 1, points.size()):
-                all_pairs.append(Vector2i(i, j))
-        return all_pairs
-    var result: Array[Vector2i] = []
-    for v in edges_dict.values():
-        result.append(v)
-    return result
-
-func _add_edge(container: Dictionary, a: int, b: int) -> void:
-    var key := _pair_key(a, b)
-    if not container.has(key):
-        container[key] = Vector2i(a, b)
 
 func _minimum_spanning_tree(points: Array[Vector2], edges: Array[Vector2i]) -> Array[Vector2i]:
     var adjacency: Dictionary = {}

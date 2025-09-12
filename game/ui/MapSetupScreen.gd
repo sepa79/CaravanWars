@@ -170,11 +170,6 @@ func _ready() -> void:
     show_cities_check.button_pressed = true
     show_crossroads_check.button_pressed = true
     show_regions_check.button_pressed = true
-    show_roads_check.hide()
-    show_rivers_check.hide()
-    show_cities_check.hide()
-    show_crossroads_check.hide()
-    show_regions_check.hide()
     map_view.set_show_roads(true)
     map_view.set_show_rivers(true)
     map_view.set_show_cities(true)

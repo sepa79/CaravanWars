@@ -38,6 +38,24 @@
         "map_size"
       ]
     },
+    "fertility": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        }
+      }
+    },
+    "roughness": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        }
+      }
+    },
     "nodes": {
       "type": "array",
       "items": {

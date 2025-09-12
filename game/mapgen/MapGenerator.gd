@@ -140,6 +140,8 @@ static func _bundle_from_map(map_data: Dictionary, rng_seed: int, version: Strin
             "map_size": int(max(width, height)),
             "unit_scale": unit_scale,
         },
+        "fertility": map_data.get("fertility", []),
+        "roughness": map_data.get("roughness", []),
         "nodes": [],
         "edges": [],
         "cities": [],
