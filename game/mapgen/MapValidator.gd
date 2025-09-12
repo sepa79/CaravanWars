@@ -1,7 +1,7 @@
 extends RefCounted
-class_name MapValidator
+class_name MapGenValidator
 
-const RoadNetworkModule = preload("res://map/RoadNetwork.gd")
+const RoadNetworkModule = preload("res://mapview/RoadNetwork.gd")
 
 func validate(roads: Dictionary, rivers: Array, margin: float = 5.0) -> Array[String]:
     var errors: Array[String] = []
@@ -10,7 +10,7 @@ func validate(roads: Dictionary, rivers: Array, margin: float = 5.0) -> Array[St
     if not _no_dangling_edges(roads):
         errors.append("dangling edges present")
     if not _valid_river_intersections(roads, rivers):
-        var helper: RoadNetwork = RoadNetworkModule.new(RandomNumberGenerator.new())
+        var helper: MapViewRoadNetwork = RoadNetworkModule.new(RandomNumberGenerator.new())
         helper.insert_river_crossings(roads, rivers)
         if not _valid_river_intersections(roads, rivers):
             errors.append("river-road intersection missing bridge or ford")
@@ -55,8 +55,8 @@ func _no_dangling_edges(roads: Dictionary) -> bool:
         var end_id: int = edge.endpoints[1]
         if not nodes.has(start_id) or not nodes.has(end_id):
             return false
-        var start_node: MapNode = nodes[start_id]
-        var end_node: MapNode = nodes[end_id]
+        var start_node: MapViewNode = nodes[start_id]
+        var end_node: MapViewNode = nodes[end_id]
         if edge.polyline.size() < 2:
             return false
         var a: Vector2 = edge.polyline[0]
@@ -81,7 +81,7 @@ func _valid_river_intersections(roads: Dictionary, rivers: Array) -> bool:
                     if intersection != road_start and intersection != road_end:
                         return false
                     var node_index: int = edge.endpoints[0] if intersection == road_start else edge.endpoints[1]
-                    var node: MapNode = nodes[node_index]
+                    var node: MapViewNode = nodes[node_index]
                     if node.type != "bridge" and node.type != "ford":
                         return false
     return true
@@ -94,21 +94,21 @@ func _no_crossroad_duplicates(roads: Dictionary, margin: float) -> bool:
     var edges: Dictionary = roads.get("edges", {})
     var city_edges: Dictionary = {}
     for id in edges.keys():
-        var edge: Edge = edges[id]
+        var edge: MapViewEdge = edges[id]
         var a_id: int = edge.endpoints[0]
         var b_id: int = edge.endpoints[1]
-        var a_node: MapNode = nodes[a_id]
-        var b_node: MapNode = nodes[b_id]
+        var a_node: MapViewNode = nodes[a_id]
+        var b_node: MapViewNode = nodes[b_id]
         if a_node.type == "city" and b_node.type == "city":
             city_edges[_pair_key(a_id, b_id)] = id
 
     var crossroad_links: Dictionary = {}
     for id in edges.keys():
-        var edge: Edge = edges[id]
+        var edge: MapViewEdge = edges[id]
         var a_id: int = edge.endpoints[0]
         var b_id: int = edge.endpoints[1]
-        var a_node: MapNode = nodes[a_id]
-        var b_node: MapNode = nodes[b_id]
+        var a_node: MapViewNode = nodes[a_id]
+        var b_node: MapViewNode = nodes[b_id]
         if a_node.type == "crossroad" and b_node.type == "city":
             if not crossroad_links.has(a_id):
                 crossroad_links[a_id] = []

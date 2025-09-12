@@ -1,5 +1,5 @@
 extends RefCounted
-class_name MapGenerator
+class_name MapGenGenerator
 
 ## Parameter container for map generation.
 class MapGenParams:
@@ -56,10 +56,10 @@ class MapGenParams:
 var params: MapGenParams
 var rng: RandomNumberGenerator
 
-const CityPlacerModule = preload("res://map/CityPlacer.gd")
-const RoadNetworkModule = preload("res://map/RoadNetwork.gd")
-const RiverGeneratorModule: Script = preload("res://map/RiverGenerator.gd")
-const RegionGeneratorModule: Script = preload("res://map/RegionGenerator.gd")
+const CityPlacerModule = preload("res://mapgen/CityPlacer.gd")
+const RoadNetworkModule = preload("res://mapview/RoadNetwork.gd")
+const RiverGeneratorModule: Script = preload("res://mapgen/RiverGenerator.gd")
+const RegionGeneratorModule: Script = preload("res://mapgen/RegionGenerator.gd")
 
 func _init(_params: MapGenParams = MapGenParams.new()) -> void:
     params = _params

@@ -1,7 +1,7 @@
 extends RefCounted
-class_name RegionGenerator
+class_name MapGenRegionGenerator
 
-const RegionModule = preload("res://map/Region.gd")
+const RegionModule = preload("res://mapview/Region.gd")
 
 const EPS: float = 0.001
 

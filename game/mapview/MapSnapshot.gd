@@ -1,5 +1,5 @@
 extends RefCounted
-class_name MapSnapshot
+class_name MapViewSnapshot
 
 var rng_seed: int
 var version: String
@@ -14,8 +14,8 @@ func _init(p_rng_seed: int, p_version: String) -> void:
     edges = {}
     regions = {}
 
-static func from_map(map_data: Dictionary, p_rng_seed: int, p_version: String) -> MapSnapshot:
-    var snapshot := MapSnapshot.new(p_rng_seed, p_version)
+static func from_map(map_data: Dictionary, p_rng_seed: int, p_version: String) -> MapViewSnapshot:
+    var snapshot := MapViewSnapshot.new(p_rng_seed, p_version)
     var roads: Dictionary = map_data.get("roads", {})
     for node in roads.get("nodes", {}).values():
         snapshot.nodes[node.id] = node
@@ -42,7 +42,7 @@ func to_dict() -> Dictionary:
         "regions": region_list,
     }
 
-func diff(previous: MapSnapshot) -> Dictionary:
+func diff(previous: MapViewSnapshot) -> Dictionary:
     return {
         "meta": {"seed": rng_seed, "version": version},
         "nodes": _diff_section(nodes, previous.nodes),

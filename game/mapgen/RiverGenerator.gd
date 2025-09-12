@@ -1,10 +1,10 @@
 extends RefCounted
-class_name RiverGenerator
+class_name MapGenRiverGenerator
 
 var rng: RandomNumberGenerator
 
-const MapNodeModule = preload("res://map/MapNode.gd")
-const EdgeModule = preload("res://map/Edge.gd")
+const MapNodeModule = preload("res://mapview/MapNode.gd")
+const EdgeModule = preload("res://mapview/Edge.gd")
 
 func _init(_rng: RandomNumberGenerator) -> void:
     rng = _rng
@@ -53,7 +53,7 @@ func _process_intersections(poly: Array[Vector2], roads: Dictionary) -> void:
     var next_edge_id: int = roads.get("next_edge_id", 1)
 
     for edge_id in edges.keys():
-        var edge: Edge = edges[edge_id]
+        var edge: MapViewEdge = edges[edge_id]
         var road_start: Vector2 = edge.polyline[0]
         var road_end: Vector2 = edge.polyline[1]
         for i in range(poly.size() - 1):
@@ -65,7 +65,7 @@ func _process_intersections(poly: Array[Vector2], roads: Dictionary) -> void:
                 var bridge_type: String = MapNodeModule.TYPE_BRIDGE if edge.road_class in ["road", "roman"] else MapNodeModule.TYPE_FORD
                 var bridge_id: int = next_node_id
                 next_node_id += 1
-                var bridge_node: MapNode = MapNodeModule.new(bridge_id, bridge_type, cross, {})
+                var bridge_node: MapViewNode = MapNodeModule.new(bridge_id, bridge_type, cross, {})
                 nodes[bridge_id] = bridge_node
 
                 var start_id: int = edge.endpoints[0]

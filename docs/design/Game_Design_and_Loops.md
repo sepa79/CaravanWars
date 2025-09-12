@@ -56,8 +56,8 @@ flowchart LR
 ```
 
 ## Implementacja
-- Szczegóły generacji mapy: [MapGenerator.gd](../../game/map/MapGenerator.gd).
-- Przydział i kształt regionów: [RegionGenerator.gd](../../game/map/RegionGenerator.gd).
+- Szczegóły generacji mapy: [MapGenerator.gd](../../game/mapgen/MapGenerator.gd).
+- Przydział i kształt regionów: [RegionGenerator.gd](../../game/mapgen/RegionGenerator.gd).
 
 ## Rozszerzenia
 - Wyznaczanie tras, czasy przejazdu, blokady mostów, proste cele dostawy A→B.

@@ -1,5 +1,5 @@
 extends RefCounted
-class_name MapNode
+class_name MapViewNode
 
 const TYPE_CITY := "city"
 const TYPE_VILLAGE := "village"

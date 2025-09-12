@@ -1,10 +1,10 @@
 extends Control
 
-const MapGeneratorModule = preload("res://map/MapGenerator.gd")
-const RegionGeneratorModule = preload("res://map/RegionGenerator.gd")
-const RoadNetworkModule = preload("res://map/RoadNetwork.gd")
-const MapSnapshotModule = preload("res://map/MapSnapshot.gd")
-const MapValidatorModule = preload("res://map/MapValidator.gd")
+const MapGeneratorModule = preload("res://mapgen/MapGenerator.gd")
+const RegionGeneratorModule = preload("res://mapgen/RegionGenerator.gd")
+const RoadNetworkModule = preload("res://mapview/RoadNetwork.gd")
+const MapSnapshotModule = preload("res://mapview/MapSnapshot.gd")
+const MapValidatorModule = preload("res://mapgen/MapValidator.gd")
 
 @onready var title_label: Label = $HBox/ControlsScroll/Controls/Title
 @onready var params: GridContainer = $HBox/ControlsScroll/Controls/Params
@@ -403,10 +403,10 @@ func _on_road_class_selected(index: int) -> void:
     map_view.set_road_class(cls)
 
 func _on_finalize_map_pressed() -> void:
-    var validator: MapValidator = MapValidatorModule.new()
+    var validator: MapGenValidator = MapValidatorModule.new()
     var errors: Array[String] = validator.validate(current_map["roads"], current_map.get("rivers", []))
     if errors.is_empty():
-        var helper: RoadNetwork = RoadNetworkModule.new(RandomNumberGenerator.new())
+        var helper: MapViewRoadNetwork = RoadNetworkModule.new(RandomNumberGenerator.new())
         helper.cleanup(current_map["roads"])
         map_view.set_map_data(current_map)
         map_view.set_edit_mode(false)
@@ -425,10 +425,10 @@ func _on_finalize_map_pressed() -> void:
             push_warning(err)
 
 func _on_validate_map_pressed() -> void:
-    var validator: MapValidator = MapValidatorModule.new()
+    var validator: MapGenValidator = MapValidatorModule.new()
     var errors: Array[String] = validator.validate(current_map["roads"], current_map.get("rivers", []))
     if errors.is_empty():
-        var road_helper: RoadNetwork = RoadNetworkModule.new(RandomNumberGenerator.new())
+        var road_helper: MapViewRoadNetwork = RoadNetworkModule.new(RandomNumberGenerator.new())
         road_helper.cleanup(current_map["roads"])
         map_view.set_map_data(current_map)
         map_view.queue_redraw()
