@@ -1,5 +1,7 @@
 Map Setup Checklist
 
+Refer to `/docs/map` for the authoritative map behaviour and configuration guidance.
+
 - Parameter adjustment:
     - Modify map parameters (size, seed).
     - Preview updates immediately.

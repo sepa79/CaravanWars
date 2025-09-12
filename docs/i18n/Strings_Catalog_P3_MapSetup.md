@@ -1,5 +1,7 @@
 Strings Catalog — Phase 3 (Map Setup Screen)
 
+Refer to `/docs/map` for map behaviour; this catalog lists only localization keys.
+
 Namespace `setup.*`
 
 | key           | en          | pl               | note |

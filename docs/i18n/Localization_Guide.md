@@ -5,7 +5,7 @@ Cel:
 
 Zasady kluczy:
 - Nazwy kropkowane, stabilne, lower_snake_case w segmentach: `menu.start_single`, `ui.status.latency`.
-- Przestrzenie nazw: menu.*, ui.*, net.*, errors.*, map.*, debug.*, roles.*, common.*
+- Przestrzenie nazw: menu.*, ui.*, net.*, errors.*, map.*, debug.*, roles.*, common.* (`map.*` specyfikowane w `/docs/map`)
 - Nie używaj kluczy opisujących wygląd („big_button”). Klucze opisują **znaczenie**.
 
 Pluralizacja i gramatyka (PL/EN):

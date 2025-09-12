@@ -3,6 +3,8 @@ PHASE‑03 — Map (vector; seeded; validations)
 Cel:
 - Opisać deterministyczny pipeline generacji wektorowej mapy wraz z walidacjami i modelem danych.
 
+For complete map behaviour and the data model, refer to `/docs/map`, which is the single source of truth.
+
 Plan i status:
 
 | Obszar | Status | Następne kroki |
@@ -32,7 +34,7 @@ Pipeline szczegółowy:
 Implementacja walidacji: `game/mapgen/MapValidator.gd`.
 Manualne testy: `docs/checks/Map_Generation_Checklist.md` oraz `docs/checks/Map_Setup_Checklist.md`.
 
-Model danych — patrz `docs/specs/Map_Data_Model.md`.
+Model danych — patrz `/docs/map`.
 
 Snapshot i diff:
 - Snapshot zawiera: meta (seed, wersja), listy node/edge/region.  

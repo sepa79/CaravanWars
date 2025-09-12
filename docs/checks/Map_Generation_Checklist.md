@@ -1,5 +1,7 @@
 Map Generation Checklist
 
+Refer to `/docs/map` for the authoritative map behaviour and data definitions.
+
 - Same seed:
     - Generate a map twice with the same seed.
     - The resulting nodes, edges and rivers are identical, including IDs.
