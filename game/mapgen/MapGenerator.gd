@@ -72,6 +72,19 @@ func generate() -> Dictionary:
         "width": params.width,
         "height": params.height,
     }
+    var width_i: int = int(params.width)
+    var height_i: int = int(params.height)
+    var noise_seed: int = rng.randi()
+    var nutil := NoiseUtil.new()
+    var fertility_field: Array = nutil.generate_field(
+        nutil.create_simplex(noise_seed, 3),
+        width_i,
+        height_i,
+        0.1
+    )
+    var roughness_field: Array = nutil.compute_roughness(fertility_field)
+    map_data["fertility"] = fertility_field
+    map_data["roughness"] = roughness_field
     var city_stage := CityPlacerModule.new(rng)
     var cities := city_stage.place_cities(
         params.city_count,

@@ -17,6 +17,8 @@ var show_forts: bool = true
 var show_crossroads: bool = true
 var show_bridges: bool = true
 var show_fords: bool = true
+var show_fertility: bool = false
+var show_roughness: bool = false
 @export var crossroad_color: Color = Color.YELLOW
 @export var crossroad_size: float = 8.0
 @export var bridge_color: Color = Color(0.6, 0.4, 0.2)
@@ -188,6 +190,24 @@ func _draw() -> void:
         if not debug_logged:
             print("[MapView] drew %s regions" % regions.size())
             debug_logged = true
+    if show_fertility:
+        var fert: Array = map_data.get("fertility", [])
+        var rect_size: Vector2 = Vector2(draw_scale, draw_scale)
+        for y in range(fert.size()):
+            var row: Array = fert[y]
+            for x in range(row.size()):
+                var col: Color = Color(0, row[x], 0, 0.4)
+                var pos: Vector2 = Vector2(x, y) * draw_scale + offset
+                draw_rect(Rect2(pos, rect_size), col, true)
+    if show_roughness:
+        var rough: Array = map_data.get("roughness", [])
+        var rect_size_r: Vector2 = Vector2(draw_scale, draw_scale)
+        for ry in range(rough.size()):
+            var rrow: Array = rough[ry]
+            for rx in range(rrow.size()):
+                var rcol: Color = Color(rrow[rx], 0, 0, 0.4)
+                var rpos: Vector2 = Vector2(rx, ry) * draw_scale + offset
+                draw_rect(Rect2(rpos, rect_size_r), rcol, true)
     var roads: Dictionary = map_data.get("roads", {})
     if show_roads:
         var edges: Dictionary = roads.get("edges", {})
@@ -412,4 +432,12 @@ func set_show_fords(value: bool) -> void:
 
 func set_show_regions(value: bool) -> void:
     show_regions = value
+    queue_redraw()
+
+func set_show_fertility(value: bool) -> void:
+    show_fertility = value
+    queue_redraw()
+
+func set_show_roughness(value: bool) -> void:
+    show_roughness = value
     queue_redraw()

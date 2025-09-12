@@ -184,6 +184,12 @@ button_pressed = false
 [node name="ShowRegions" type="CheckBox" parent="Layers"]
 button_pressed = true
 
+[node name="ShowFertility" type="CheckBox" parent="Layers"]
+button_pressed = false
+
+[node name="ShowRoughness" type="CheckBox" parent="Layers"]
+button_pressed = false
+
 [node name="EditCities" type="CheckBox" parent="Layers"]
 button_pressed = false
 

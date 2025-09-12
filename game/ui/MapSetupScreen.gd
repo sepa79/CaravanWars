@@ -39,6 +39,8 @@ const MapBundleLoaderModule = preload("res://mapgen/MapBundleLoader.gd")
 @onready var show_cities_check: CheckBox = $Layers/ShowCities
 @onready var show_crossroads_check: CheckBox = $Layers/ShowCrossings
 @onready var show_regions_check: CheckBox = $Layers/ShowRegions
+@onready var show_fertility_check: CheckBox = $Layers/ShowFertility
+@onready var show_roughness_check: CheckBox = $Layers/ShowRoughness
 @onready var edit_cities_check: CheckBox = $Layers/EditCities
 @onready var add_road_button: Button = $Layers/AddRoad
 @onready var delete_road_button: Button = $Layers/DeleteRoad
@@ -132,6 +134,8 @@ func _ready() -> void:
     show_cities_check.toggled.connect(_on_show_cities_toggled)
     show_crossroads_check.toggled.connect(_on_show_crossroads_toggled)
     show_regions_check.toggled.connect(_on_show_regions_toggled)
+    show_fertility_check.toggled.connect(_on_show_fertility_toggled)
+    show_roughness_check.toggled.connect(_on_show_roughness_toggled)
     edit_cities_check.toggled.connect(_on_edit_cities_toggled)
     add_road_button.toggled.connect(_on_add_road_toggled)
     delete_road_button.toggled.connect(_on_delete_road_toggled)
@@ -180,6 +184,8 @@ func _ready() -> void:
     map_view.set_show_regions(true)
     map_view.set_show_villages(true)
     map_view.set_show_forts(true)
+    map_view.set_show_fertility(false)
+    map_view.set_show_roughness(false)
     map_view.cities_changed.connect(_on_cities_changed)
     var entity_legend := VBoxContainer.new()
     $HBox/MapRow.add_child(entity_legend)
@@ -229,6 +235,8 @@ func _update_texts() -> void:
     show_cities_check.text = I18N.t("setup.show_cities")
     show_crossroads_check.text = I18N.t("setup.show_crossroads")
     show_regions_check.text = I18N.t("setup.show_regions")
+    show_fertility_check.text = I18N.t("setup.show_fertility")
+    show_roughness_check.text = I18N.t("setup.show_roughness")
     edit_cities_check.text = I18N.t("setup.edit_cities")
     add_road_button.text = I18N.t("setup.add_road")
     delete_road_button.text = I18N.t("setup.delete_road")
@@ -365,6 +373,12 @@ func _on_show_crossroads_toggled(pressed: bool) -> void:
 
 func _on_show_regions_toggled(pressed: bool) -> void:
     map_view.set_show_regions(pressed)
+
+func _on_show_fertility_toggled(pressed: bool) -> void:
+    map_view.set_show_fertility(pressed)
+
+func _on_show_roughness_toggled(pressed: bool) -> void:
+    map_view.set_show_roughness(pressed)
 
 func _on_edit_cities_toggled(pressed: bool) -> void:
     map_view.set_edit_mode(pressed)
