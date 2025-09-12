@@ -1,5 +1,13 @@
 Changelog
 
+0.1.46 — 2025-09-11
+Removed
+- Removed obsolete Map Data Model spec in favor of `/docs/map`.
+
+0.1.45 — 2025-09-11
+Changed
+- Documentation now references `/docs/map` as the single source of truth for map behaviour.
+
 0.1.44 — 2025-09-11
 Changed
 - Villages spawn around each town with per-city count controls, linking locally via paths and only attaching to towns or nearby Roman roads with a single road connection.

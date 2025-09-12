@@ -3,6 +3,8 @@ PHASE‑04 — Player UI (map view + side panel + status + log)
 Cel:
 - Zaprojektować UI gracza w szczegółach opisowych.
 
+For map behaviour refer to `/docs/map` — this phase covers only the player interface.
+
 Elementy UI (opis):
 - Mapa na całym ekranie.  
 - Panel boczny: przełączniki warstw (nodes/edges/regions), sekcja szczegółów zaznaczonego elementu (nazwa, typ, atrybuty).  

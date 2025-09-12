@@ -26,3 +26,5 @@ Checklist testów ręcznych:
 
 Definition of Done:
 - Dokumentacja kompletna; przypadki błędów i retry opisane; i18n klucze uwzględnione.
+
+Map behaviour and generation are documented in `/docs/map`.

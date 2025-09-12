@@ -3,6 +3,8 @@ Game Design & Loops
 Temat:
 - Handel i logistyka na grafie wektorowym (węzły i krawędzie).
 
+For map behaviour and generation specifics, see `/docs/map` — the single source of truth.
+
 ## Konfiguracja Królestw
 - Liczba królestw, kolory i miasta startowe definiują układ polityczny mapy.
 - Regiony są przydzielane kolejno tak, by każde królestwo zachowało ciągłość terytorialną.
@@ -56,7 +58,8 @@ flowchart LR
 ```
 
 ## Implementacja
-- Szczegóły generacji mapy: [MapGenerator.gd](../../game/mapgen/MapGenerator.gd).
+- Specyfikacja i zachowanie mapy: `/docs/map`.
+- Implementacja referencyjna: [MapGenerator.gd](../../game/mapgen/MapGenerator.gd).
 - Przydział i kształt regionów: [RegionGenerator.gd](../../game/mapgen/RegionGenerator.gd).
 
 ## Rozszerzenia

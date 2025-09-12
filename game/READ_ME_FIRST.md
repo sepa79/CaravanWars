@@ -10,7 +10,7 @@ Katalogi:
 - scenes/ — Main.tscn, StartMenu.tscn (PHASE‑01), później Game.tscn, DebugUi.tscn
 - ui/ — panele, dialogi; **tylko klucze i18n** w tekstach
 - net/ — logika połączeń i trybów (host/client) — w późniejszych fazach
-- map/ — generacja i model mapy (spec w PHASE‑03)
+- map/ — generacja i model mapy (szczegóły w `/docs/map`)
 - systems/ — reguły gry (PHASE‑08)
 - i18n/ — katalogi językowe (EN/PL)
 

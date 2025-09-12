@@ -8,7 +8,7 @@
 
 ## References
 - [PHASE-03 Map](../phases/PHASE-03_Map.md)
-- [Map Data Model Spec](../specs/Map_Data_Model.md)
+- [Map Documentation](../map/README.md)
 - [Map Generation Checklist](../checks/Map_Generation_Checklist.md)
 
 ## Acceptance Checklist

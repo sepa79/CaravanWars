@@ -16,7 +16,7 @@ PHASE‑02:
 - Stan maszyny stanów opisany; retry i błędy (keys `errors.*`) zdefiniowane.
 
 PHASE‑03:
-- Pipeline mapy z walidacjami; snapshot/diff opisane.
+- Pipeline mapy z walidacjami; snapshot/diff opisane (szczegóły w `/docs/map`).
 - Manual map generation tests documented in `docs/checks/Map_Generation_Checklist.md`.
 
 PHASE‑04:
