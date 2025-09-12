@@ -5,6 +5,7 @@ const RegionGeneratorModule = preload("res://mapgen/RegionGenerator.gd")
 const RoadNetworkModule = preload("res://mapview/RoadNetwork.gd")
 const MapSnapshotModule = preload("res://mapview/MapSnapshot.gd")
 const MapValidatorModule = preload("res://mapgen/MapValidator.gd")
+const MapBundleLoaderModule = preload("res://mapgen/MapBundleLoader.gd")
 
 @onready var title_label: Label = $HBox/ControlsScroll/Controls/Title
 @onready var params: GridContainer = $HBox/ControlsScroll/Controls/Params
@@ -47,6 +48,8 @@ var add_village_button: Button
 var add_fort_button: Button
 var road_class_selector: OptionButton
 var finalize_button: Button
+var export_button: Button
+var import_button: Button
 var max_forts_label: Label
 var max_forts_spin: SpinBox
 var min_villages_label: Label
@@ -152,6 +155,12 @@ func _ready() -> void:
     finalize_button = Button.new()
     layers.add_child(finalize_button)
     finalize_button.pressed.connect(_on_finalize_map_pressed)
+    export_button = Button.new()
+    layers.add_child(export_button)
+    export_button.pressed.connect(_on_export_map_pressed)
+    import_button = Button.new()
+    layers.add_child(import_button)
+    import_button.pressed.connect(_on_import_map_pressed)
     show_roads_check.button_pressed = true
     show_rivers_check.button_pressed = true
     show_cities_check.button_pressed = true
@@ -227,6 +236,8 @@ func _update_texts() -> void:
     add_village_button.text = I18N.t("setup.add_village")
     add_fort_button.text = I18N.t("setup.add_fort")
     finalize_button.text = I18N.t("setup.finalize_map")
+    export_button.text = I18N.t("setup.export")
+    import_button.text = I18N.t("setup.import")
     max_forts_label.text = I18N.t("setup.max_forts_per_kingdom")
     min_villages_label.text = I18N.t("setup.min_villages_per_city")
     max_villages_label.text = I18N.t("setup.max_villages_per_city")
@@ -436,6 +447,22 @@ func _on_validate_map_pressed() -> void:
     else:
         for err in errors:
             push_warning(err)
+
+func _on_export_map_pressed() -> void:
+    MapGeneratorModule.export_bundle("user://MapBundle.json", current_map, int(seed_spin.value), app_version, width_spin.value, height_spin.value)
+
+func _on_import_map_pressed() -> void:
+    var loader: MapBundleLoader = MapBundleLoaderModule.new()
+    var data: Dictionary = loader.load("user://MapBundle.json")
+    if data.is_empty():
+        return
+    current_map = data
+    seed_spin.set_block_signals(true)
+    seed_spin.value = current_map.get("meta", {}).get("seed", seed_spin.value)
+    seed_spin.set_block_signals(false)
+    map_view.set_map_data(current_map)
+    _populate_kingdom_legend()
+    _update_snapshot()
 
 func _on_random_seed_pressed() -> void:
     seed_spin.set_block_signals(true)
