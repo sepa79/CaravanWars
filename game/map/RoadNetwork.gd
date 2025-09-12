@@ -338,14 +338,14 @@ func insert_villages(
             return v
 
         var unite = func(a, b):
-            parent[find(a)] = find(b)
+            parent[find.call(a)] = find.call(b)
 
         var mst: Array[Dictionary] = []
         for c in candidates:
-            var a_root = find(c["a"])
-            var b_root = find(c["b"])
+            var a_root = find.call(c["a"])
+            var b_root = find.call(c["b"])
             if a_root != b_root:
-                unite(a_root, b_root)
+                unite.call(a_root, b_root)
                 mst.append(c)
 
         for c in mst:

@@ -1,5 +1,9 @@
 Changelog
 
+0.1.57 — 2025-09-12
+Fixed
+- Invoked local MST helper lambdas via `Callable.call` to prevent missing function errors.
+
 0.1.56 — 2025-09-12
 Fixed
 - Assigned local MST helper functions to variables to avoid standalone lambda errors.
