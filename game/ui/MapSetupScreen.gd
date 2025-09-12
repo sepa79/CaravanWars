@@ -547,7 +547,7 @@ func _on_cities_changed(cities: Array) -> void:
     var roads = road_stage.build_roads(cities, int(min_connections_spin.value), int(max_connections_spin.value), crossing_margin_spin.value)
     for idx in current_map.get("capitals", []):
         var nid: int = idx + 1
-        var node := roads.get("nodes", {}).get(nid)
+        var node: MapViewNode = (roads.get("nodes", {}) as Dictionary).get(nid, null)
         if node != null:
             node.attrs["is_capital"] = true
     current_map["roads"] = roads

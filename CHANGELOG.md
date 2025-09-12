@@ -1,5 +1,13 @@
 Changelog
 
+0.1.47 — 2025-09-12
+Added
+- Choose city sites from fertility noise peaks with spacing and mark 1–3 capitals.
+- Highlight capitals in the map view and preserve them when editing.
+- Refresh map setup view on parameter tweaks.
+Fixed
+- Annotated capital road node type in map setup screen to satisfy typed GDScript.
+
 0.1.46 — 2025-09-11
 Removed
 - Removed obsolete Map Data Model spec in favor of `/docs/map`.
