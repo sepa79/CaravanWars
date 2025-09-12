@@ -3,6 +3,13 @@ Changelog
 0.1.46 — 2025-09-11
 Removed
 - Removed obsolete Map Data Model spec in favor of `/docs/map`.
+Fixed
+- Renamed map export seed parameter to avoid shadowing the built-in function.
+- Map bundle import now casts node IDs and skips edges with missing endpoints to avoid out-of-bounds errors.
+- Map bundle loader uses typed arrays for edges and region polygons to satisfy map view constructors.
+- Map bundle export now preserves distinct region IDs and includes kingdom assignments so all regions load correctly.
+- Map bundle import restores missing kingdom names with defaults so legend entries survive export and reimport.
+- Map bundle import sets road ID counters to the next available values so editing imported maps doesn't overwrite nodes or edges.
 
 0.1.45 — 2025-09-11
 Changed
