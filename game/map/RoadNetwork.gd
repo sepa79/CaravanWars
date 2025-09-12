@@ -331,11 +331,13 @@ func insert_villages(
         var parent: Dictionary = {}
         for vid in cluster:
             parent[vid] = vid
-        func find(v):
+        
+        var find = func(v):
             while parent[v] != v:
                 v = parent[v]
             return v
-        func unite(a, b):
+
+        var unite = func(a, b):
             parent[find(a)] = find(b)
 
         var mst: Array[Dictionary] = []

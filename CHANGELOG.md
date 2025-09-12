@@ -1,5 +1,9 @@
 Changelog
 
+0.1.56 — 2025-09-12
+Fixed
+- Assigned local MST helper functions to variables to avoid standalone lambda errors.
+
 0.1.55 — 2025-09-11
 Changed
 - Villages now spawn in a city-centered annulus and connect through an MST with extra edges to guarantee at least one loop per cluster.
