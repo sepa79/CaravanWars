@@ -1,9 +1,9 @@
 Map Data Model
 
 Elementy:
-- Node: id, typ (city, village, fort, crossroad, bridge, ford), pos2d, attrs.
-- Edge: id, typ (trade_route, river), polyline, endpoints (node ids), attrs.  
-- Region: id, granica logiczna (lista node'ów lub bbox), narrator.  
+- MapViewNode: id, typ (city, village, fort, crossroad, bridge, ford), pos2d, attrs.
+- MapViewEdge: id, typ (trade_route, river), polyline, endpoints (node ids), attrs.  
+- MapViewRegion: id, granica logiczna (lista node'ów lub bbox), narrator.  
 - Meta: seed, version, generated_at, rules.
 
 Inwarianty:

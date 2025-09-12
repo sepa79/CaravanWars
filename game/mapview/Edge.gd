@@ -1,5 +1,5 @@
 extends RefCounted
-class_name Edge
+class_name MapViewEdge
 
 var id: int
 var type: String

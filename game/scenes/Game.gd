@@ -1,6 +1,6 @@
 extends Node
 
-const MapGeneratorModule = preload("res://map/MapGenerator.gd")
+const MapGeneratorModule = preload("res://mapgen/MapGenerator.gd")
 
 var map_data: Dictionary
 

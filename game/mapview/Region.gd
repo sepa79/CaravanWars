@@ -1,5 +1,5 @@
 extends RefCounted
-class_name Region
+class_name MapViewRegion
 
 var id: int
 # Boundary of the region represented as a list of Vector2 points.

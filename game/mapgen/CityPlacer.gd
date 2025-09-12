@@ -1,5 +1,5 @@
 extends RefCounted
-class_name CityPlacer
+class_name MapGenCityPlacer
 
 var rng: RandomNumberGenerator
 var map_width: float = 100.0
