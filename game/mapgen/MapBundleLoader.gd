@@ -97,7 +97,22 @@ func _convert(bundle: Dictionary) -> Dictionary:
             attrs["crossing_id"] = e.get("crossing_id")
         var endpoints: Array[int] = [a, b]
         edges[int(e.get("id"))] = EdgeModule.new(int(e.get("id")), "road", poly, endpoints, cls, attrs)
-    map["roads"] = {"nodes": nodes, "edges": edges}
+
+    var max_node_id: int = 0
+    for nid in nodes.keys():
+        if nid > max_node_id:
+            max_node_id = nid
+    var max_edge_id: int = 0
+    for eid in edges.keys():
+        if eid > max_edge_id:
+            max_edge_id = eid
+
+    map["roads"] = {
+        "nodes": nodes,
+        "edges": edges,
+        "next_node_id": max_node_id + 1,
+        "next_edge_id": max_edge_id + 1,
+    }
     map["cities"] = cities
     var rivers: Array = []
     for r in bundle.get("rivers", []):
