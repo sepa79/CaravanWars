@@ -9,3 +9,4 @@
 .DS_Store
 # CaravanWars local index
 _cw_index/
+_pycache_/
