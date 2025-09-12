@@ -116,7 +116,10 @@ func _convert(bundle: Dictionary) -> Dictionary:
         var kid: int = int(k.get("kingdom_id", rid))
         var region := RegionModule.new(rid, poly, "", kid)
         regions[region.id] = region
-        kingdom_names[kid] = k.get("name", "")
+        var name: String = String(k.get("name", "Kingdom %d" % kid))
+        if name.is_empty():
+            name = "Kingdom %d" % kid
+        kingdom_names[kid] = name
     map["regions"] = regions
     map["kingdom_names"] = kingdom_names
     return map

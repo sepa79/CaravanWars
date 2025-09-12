@@ -8,6 +8,7 @@ Fixed
 - Map bundle import now casts node IDs and skips edges with missing endpoints to avoid out-of-bounds errors.
 - Map bundle loader uses typed arrays for edges and region polygons to satisfy map view constructors.
 - Map bundle export now preserves distinct region IDs and includes kingdom assignments so all regions load correctly.
+- Map bundle import restores missing kingdom names with defaults so legend entries survive export and reimport.
 
 0.1.45 — 2025-09-11
 Changed

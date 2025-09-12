@@ -174,10 +174,11 @@ static func _bundle_from_map(map_data: Dictionary, rng_seed: int, version: Strin
         var poly: Array = []
         for p in region.boundary_nodes:
             poly.append([p.x, p.y])
+        var kname: String = String(names.get(region.kingdom_id, "Kingdom %d" % region.kingdom_id))
         bundle["kingdoms"].append({
             "id": region.id,
             "kingdom_id": region.kingdom_id,
-            "name": names.get(region.kingdom_id, ""),
+            "name": kname,
             "capital_city_id": 0,
             "polygon": poly,
         })
