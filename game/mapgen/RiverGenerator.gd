@@ -22,27 +22,27 @@ func generate_rivers(roads: Dictionary, count: int = 0, width: float = 100.0, he
         while start == end:
             end = _random_edge_point(width, height)
 
-        var curve := Curve2D.new()
+        var curve: Curve2D = Curve2D.new()
         curve.add_point(start)
-        var noise := OpenSimplexNoise.new()
+        var noise: FastNoiseLite = FastNoiseLite.new()
         noise.seed = rng.randi()
-        noise.period = max(width, height)
-        var steps := 8
+        noise.frequency = 1.0 / max(width, height)
+        var steps: int = 8
         for i in range(1, steps):
-            var t := float(i) / float(steps)
-            var pos := start.lerp(end, t)
-            var dir := (end - start).normalized()
-            var perp := Vector2(-dir.y, dir.x)
-            var nval := noise.get_noise_2d(pos.x, pos.y)
-            var p := pos + perp * nval * 20.0
+            var t: float = float(i) / float(steps)
+            var pos: Vector2 = start.lerp(end, t)
+            var dir: Vector2 = (end - start).normalized()
+            var perp: Vector2 = Vector2(-dir.y, dir.x)
+            var nval: float = noise.get_noise_2d(pos.x, pos.y)
+            var p: Vector2 = pos + perp * nval * 20.0
             p.x = clamp(p.x, 0.0, width)
             p.y = clamp(p.y, 0.0, height)
             curve.add_point(p)
         curve.add_point(end)
-        var baked := curve.tessellate()
+        var baked: PackedVector2Array = curve.tessellate()
         var polyline: Array[Vector2] = []
-        for p in baked:
-            polyline.append(p)
+        for point: Vector2 in baked:
+            polyline.append(point)
         _process_intersections(polyline, roads, rid + 1)
         rivers.append(polyline)
     return rivers
