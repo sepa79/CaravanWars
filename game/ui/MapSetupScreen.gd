@@ -71,6 +71,8 @@ var current_map: Dictionary = {}
 var previous_state: String = Net.state
 var app_version: String = ""
 var legend_labels: Dictionary = {}
+var show_bridges_check: CheckBox
+var show_fords_check: CheckBox
 
 func _ready() -> void:
     I18N.language_changed.connect(_update_texts)
@@ -90,6 +92,8 @@ func _ready() -> void:
     seed_spin.value_changed.connect(_on_params_changed)
     cities_spin.value_changed.connect(_on_params_changed)
     rivers_spin.value_changed.connect(_on_params_changed)
+    rivers_spin.min_value = 0
+    rivers_spin.max_value = 6
     kingdoms_spin.value_changed.connect(_on_params_changed)
     min_connections_spin.value_changed.connect(_on_params_changed)
     max_connections_spin.value_changed.connect(_on_params_changed)
@@ -136,6 +140,12 @@ func _ready() -> void:
     show_regions_check.toggled.connect(_on_show_regions_toggled)
     show_fertility_check.toggled.connect(_on_show_fertility_toggled)
     show_roughness_check.toggled.connect(_on_show_roughness_toggled)
+    show_bridges_check = CheckBox.new()
+    layers.add_child(show_bridges_check)
+    show_bridges_check.toggled.connect(_on_show_bridges_toggled)
+    show_fords_check = CheckBox.new()
+    layers.add_child(show_fords_check)
+    show_fords_check.toggled.connect(_on_show_fords_toggled)
     edit_cities_check.toggled.connect(_on_edit_cities_toggled)
     add_road_button.toggled.connect(_on_add_road_toggled)
     delete_road_button.toggled.connect(_on_delete_road_toggled)
@@ -170,6 +180,8 @@ func _ready() -> void:
     show_cities_check.button_pressed = true
     show_crossroads_check.button_pressed = true
     show_regions_check.button_pressed = true
+    show_bridges_check.button_pressed = true
+    show_fords_check.button_pressed = true
     map_view.set_show_roads(true)
     map_view.set_show_rivers(true)
     map_view.set_show_cities(true)
@@ -232,6 +244,8 @@ func _update_texts() -> void:
     show_regions_check.text = I18N.t("setup.show_regions")
     show_fertility_check.text = I18N.t("setup.show_fertility")
     show_roughness_check.text = I18N.t("setup.show_roughness")
+    show_bridges_check.text = I18N.t("setup.show_bridges")
+    show_fords_check.text = I18N.t("setup.show_fords")
     edit_cities_check.text = I18N.t("setup.edit_cities")
     add_road_button.text = I18N.t("setup.add_road")
     delete_road_button.text = I18N.t("setup.delete_road")
@@ -375,6 +389,12 @@ func _on_show_fertility_toggled(pressed: bool) -> void:
 
 func _on_show_roughness_toggled(pressed: bool) -> void:
     map_view.set_show_roughness(pressed)
+
+func _on_show_bridges_toggled(pressed: bool) -> void:
+    map_view.set_show_bridges(pressed)
+
+func _on_show_fords_toggled(pressed: bool) -> void:
+    map_view.set_show_fords(pressed)
 
 func _on_edit_cities_toggled(pressed: bool) -> void:
     map_view.set_edit_mode(pressed)

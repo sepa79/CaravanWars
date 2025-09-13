@@ -293,8 +293,14 @@ func _draw() -> void:
                     draw_string(font, pos, "%d" % int(round(length)), HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color.WHITE)
     if show_rivers:
         for river in map_data.get("rivers", []):
-            for i in range(river.size() - 1):
-                draw_line(river[i] * draw_scale + offset, river[i + 1] * draw_scale + offset, Color.BLUE, 1.0)
+            var pts: Array[Vector2] = []
+            if river is Curve2D:
+                for p in river.tessellate():
+                    pts.append(p)
+            else:
+                pts = river
+            for i in range(pts.size() - 1):
+                draw_line(pts[i] * draw_scale + offset, pts[i + 1] * draw_scale + offset, Color.BLUE, 1.0)
     if show_cities:
         var capitals: Array = map_data.get("capitals", [])
         var cities: Array = map_data.get("cities", [])
