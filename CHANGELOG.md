@@ -1,5 +1,13 @@
 Changelog
 
+0.1.54 — 2025-09-13
+Added
+- Generate up to six noise-based rivers that create bridge crossings when intersecting roads.
+- Support drawing spline rivers and new crossing icons in map view.
+- Expose river count and crossing layer toggles on the map setup screen.
+Fixed
+- Replace OpenSimplexNoise with FastNoiseLite and annotate noise variables to satisfy typed GDScript.
+
 0.1.53 — 2025-09-12
 Fixed
 - Map bundle export/import now preserves fertility and roughness fields.
