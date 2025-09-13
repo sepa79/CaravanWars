@@ -223,9 +223,10 @@ func _draw() -> void:
             "roman": 3.0,
         }
         for edge in edges.values():
+            var cls: String = String(edge.road_class).to_lower()
             var pts: PackedVector2Array = edge.polyline
-            var col: Color = class_colors.get(edge.road_class, Color.WHITE)
-            var w: float = class_widths.get(edge.road_class, 1.0)
+            var col: Color = class_colors.get(cls, Color.WHITE)
+            var w: float = class_widths.get(cls, 1.0)
             for i in range(pts.size() - 1):
                 var a: Vector2 = pts[i]
                 var b: Vector2 = pts[i + 1]

@@ -1,5 +1,9 @@
 Changelog
 
+0.1.53 — 2025-09-12
+Fixed
+- Map bundle export/import now preserves fertility and roughness fields.
+
 0.1.52 — 2025-09-12
 Fixed
 - Capital selection shuffles city indices with the seeded RNG for deterministic results.
