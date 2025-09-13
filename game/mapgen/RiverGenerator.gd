@@ -3,8 +3,8 @@ class_name MapGenRiverGenerator
 
 var rng: RandomNumberGenerator
 
-const MapNodeModule = preload("res://mapview/MapNode.gd")
-const EdgeModule = preload("res://mapview/Edge.gd")
+const MapViewNode = preload("res://mapview/MapNode.gd")
+const MapViewEdge = preload("res://mapview/Edge.gd")
 
 func _init(_rng: RandomNumberGenerator) -> void:
     rng = _rng
@@ -77,19 +77,19 @@ func _process_intersections(poly: Array[Vector2], roads: Dictionary, river_id: i
                 var cross: Vector2 = intersection
                 var cross_id: int = next_node_id
                 next_node_id += 1
-                var cross_node: MapViewNode = MapNodeModule.new(cross_id, MapNodeModule.TYPE_BRIDGE, cross, {"river_id": river_id})
+                var cross_node: MapViewNode = MapViewNode.new(cross_id, MapViewNode.TYPE_BRIDGE, cross, {"river_id": river_id})
                 nodes[cross_id] = cross_node
 
                 var start_id: int = edge.endpoints[0]
                 var end_id: int = edge.endpoints[1]
-                var attrs_a := edge.attrs.duplicate()
+                var attrs_a: Dictionary = edge.attrs.duplicate()
                 attrs_a["crossing_id"] = cross_id
-                var attrs_b := edge.attrs.duplicate()
+                var attrs_b: Dictionary = edge.attrs.duplicate()
                 attrs_b["crossing_id"] = cross_id
                 edges.erase(edge_id)
-                edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [road_start, cross], [start_id, cross_id], edge.road_class, attrs_a)
+                edges[next_edge_id] = MapViewEdge.new(next_edge_id, edge.type, [road_start, cross], [start_id, cross_id], edge.road_class, attrs_a)
                 next_edge_id += 1
-                edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [cross, road_end], [cross_id, end_id], edge.road_class, attrs_b)
+                edges[next_edge_id] = MapViewEdge.new(next_edge_id, edge.type, [cross, road_end], [cross_id, end_id], edge.road_class, attrs_b)
                 next_edge_id += 1
 
                 poly.insert(i + 1, cross)
