@@ -1,4 +1,4 @@
 Agents
 ======
-- Follow rules in ../RULES_ALWAYS_READ.md.
-- Run `godot --headless --path game --check` on any GDScript files modified under `game/` before committing.
+ - Follow rules in `../RULES_ALWAYS_READ.md`.
+ - For each modified `.gd` file under `game/`, run `godot --headless --path game --check <file>` before committing.

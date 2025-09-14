@@ -162,7 +162,7 @@ func generate() -> Dictionary:
         for p: Vector2 in grouped[key]:
             pts.append("(%0.1f,%0.1f)" % [p.x, p.y])
         if pts.size() > 0:
-            var joined := pts.join(", ")
+            var joined: String = ", ".join(pts)
             print("[MapGenerator] %s: %s" % [labels[key], joined])
 
     return map_data

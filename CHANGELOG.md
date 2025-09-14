@@ -1,5 +1,11 @@
 Changelog
 
+0.1.72 — 2025-09-13
+Fixed
+- Logged node positions using String.join to avoid PackedStringArray errors.
+Changed
+- Clarified agent guidelines to always run Godot checks on changed scripts.
+
 0.1.71 — 2025-09-13
 Fixed
 - Replaced unsupported Array.join call in map generation logging.
