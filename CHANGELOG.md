@@ -1,5 +1,10 @@
 Changelog
 
+0.1.70 — 2025-09-13
+Changed
+- Removed duplicate layer checkboxes; legend buttons now control map element visibility.
+- Logged positions of cities, villages, forts, and crossings during map generation.
+
 0.1.69 — 2025-09-13
 Added
 - Village visibility toggle and legend entry in the map setup UI.

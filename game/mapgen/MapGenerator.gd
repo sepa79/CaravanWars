@@ -138,6 +138,32 @@ func generate() -> Dictionary:
     var rivers: Array = river_stage.generate_rivers(roads, params.max_river_count, params.width, params.height)
     map_data["rivers"] = rivers
 
+    var grouped: Dictionary = {
+        MapNodeModule.TYPE_CITY: [],
+        MapNodeModule.TYPE_VILLAGE: [],
+        MapNodeModule.TYPE_FORT: [],
+        MapNodeModule.TYPE_BRIDGE: [],
+        MapNodeModule.TYPE_FORD: [],
+        MapNodeModule.TYPE_CROSSROAD: [],
+    }
+    for node in nodes.values():
+        if grouped.has(node.type):
+            grouped[node.type].append(node.pos2d)
+    var labels: Dictionary = {
+        MapNodeModule.TYPE_CITY: "cities",
+        MapNodeModule.TYPE_VILLAGE: "villages",
+        MapNodeModule.TYPE_FORT: "forts",
+        MapNodeModule.TYPE_BRIDGE: "bridges",
+        MapNodeModule.TYPE_FORD: "fords",
+        MapNodeModule.TYPE_CROSSROAD: "crossroads",
+    }
+    for key in grouped.keys():
+        var pts: Array[String] = []
+        for p: Vector2 in grouped[key]:
+            pts.append("(%0.1f,%0.1f)" % [p.x, p.y])
+        if pts.size() > 0:
+            print("[MapGenerator] %s: %s" % [labels[key], pts.join(", ")])
+
     return map_data
 
 static func export_bundle(path: String, map_data: Dictionary, rng_seed: int, version: String, width: float, height: float, unit_scale: float = 1.0) -> void:

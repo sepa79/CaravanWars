@@ -34,13 +34,6 @@ const MapBundleLoaderModule = preload("res://mapgen/MapBundleLoader.gd")
 @onready var height_spin: SpinBox = params.get_node("Height")
 @onready var map_view: MapView = $HBox/MapRow/MapView
 @onready var kingdom_legend: VBoxContainer = $HBox/MapRow/KingdomLegend
-@onready var show_roads_check: CheckBox = $Layers/ShowRoads
-@onready var show_rivers_check: CheckBox = $Layers/ShowRivers
-@onready var show_cities_check: CheckBox = $Layers/ShowCities
-@onready var show_crossroads_check: CheckBox = $Layers/ShowCrossings
-@onready var show_regions_check: CheckBox = $Layers/ShowRegions
-@onready var show_fertility_check: CheckBox = $Layers/ShowFertility
-@onready var show_roughness_check: CheckBox = $Layers/ShowRoughness
 @onready var edit_cities_check: CheckBox = $Layers/EditCities
 @onready var add_road_button: Button = $Layers/AddRoad
 @onready var delete_road_button: Button = $Layers/DeleteRoad
@@ -66,9 +59,6 @@ var current_map: Dictionary = {}
 var previous_state: String = Net.state
 var app_version: String = ""
 var legend_labels: Dictionary = {}
-var show_bridges_check: CheckBox
-var show_fords_check: CheckBox
-var show_villages_check: CheckBox
 
 func _ready() -> void:
     I18N.language_changed.connect(_update_texts)
@@ -123,23 +113,13 @@ func _ready() -> void:
     villages_spin.value = 0
     params.add_child(villages_spin)
     villages_spin.value_changed.connect(_on_params_changed)
-    show_roads_check.toggled.connect(_on_show_roads_toggled)
-    show_rivers_check.toggled.connect(_on_show_rivers_toggled)
-    show_cities_check.toggled.connect(_on_show_cities_toggled)
-    show_crossroads_check.toggled.connect(_on_show_crossroads_toggled)
-    show_regions_check.toggled.connect(_on_show_regions_toggled)
-    show_fertility_check.toggled.connect(_on_show_fertility_toggled)
-    show_roughness_check.toggled.connect(_on_show_roughness_toggled)
-    show_villages_check = CheckBox.new()
-    layers.add_child(show_villages_check)
-    show_villages_check.button_pressed = true
-    show_villages_check.toggled.connect(_on_show_villages_toggled)
-    show_bridges_check = CheckBox.new()
-    layers.add_child(show_bridges_check)
-    show_bridges_check.toggled.connect(_on_show_bridges_toggled)
-    show_fords_check = CheckBox.new()
-    layers.add_child(show_fords_check)
-    show_fords_check.toggled.connect(_on_show_fords_toggled)
+    layers.get_node("ShowRoads").queue_free()
+    layers.get_node("ShowRivers").queue_free()
+    layers.get_node("ShowCities").queue_free()
+    layers.get_node("ShowCrossings").queue_free()
+    layers.get_node("ShowRegions").queue_free()
+    layers.get_node("ShowFertility").queue_free()
+    layers.get_node("ShowRoughness").queue_free()
     edit_cities_check.toggled.connect(_on_edit_cities_toggled)
     add_road_button.toggled.connect(_on_add_road_toggled)
     delete_road_button.toggled.connect(_on_delete_road_toggled)
@@ -165,13 +145,6 @@ func _ready() -> void:
     import_button = Button.new()
     layers.add_child(import_button)
     import_button.pressed.connect(_on_import_map_pressed)
-    show_roads_check.button_pressed = true
-    show_rivers_check.button_pressed = true
-    show_cities_check.button_pressed = true
-    show_crossroads_check.button_pressed = true
-    show_regions_check.button_pressed = true
-    show_bridges_check.button_pressed = true
-    show_fords_check.button_pressed = true
     map_view.set_show_roads(true)
     map_view.set_show_rivers(true)
     map_view.set_show_cities(true)
@@ -227,16 +200,6 @@ func _update_texts() -> void:
     crossing_margin_label.text = I18N.t("setup.crossroad_margin")
     width_label.text = I18N.t("setup.width")
     height_label.text = I18N.t("setup.height")
-    show_roads_check.text = I18N.t("setup.show_roads")
-    show_rivers_check.text = I18N.t("setup.show_rivers")
-    show_cities_check.text = I18N.t("setup.show_cities")
-    show_crossroads_check.text = I18N.t("setup.show_crossroads")
-    show_regions_check.text = I18N.t("setup.show_regions")
-    show_fertility_check.text = I18N.t("setup.show_fertility")
-    show_roughness_check.text = I18N.t("setup.show_roughness")
-    show_villages_check.text = I18N.t("setup.show_villages")
-    show_bridges_check.text = I18N.t("setup.show_bridges")
-    show_fords_check.text = I18N.t("setup.show_fords")
     edit_cities_check.text = I18N.t("setup.edit_cities")
     add_road_button.text = I18N.t("setup.add_road")
     delete_road_button.text = I18N.t("setup.delete_road")
@@ -340,36 +303,6 @@ func _on_params_changed(_value: float) -> void:
     debounce_timer.stop()
     debounce_timer.start()
     map_view.queue_redraw()
-
-func _on_show_roads_toggled(pressed: bool) -> void:
-    map_view.set_show_roads(pressed)
-
-func _on_show_rivers_toggled(pressed: bool) -> void:
-    map_view.set_show_rivers(pressed)
-
-func _on_show_cities_toggled(pressed: bool) -> void:
-    map_view.set_show_cities(pressed)
-
-func _on_show_crossroads_toggled(pressed: bool) -> void:
-    map_view.set_show_crossroads(pressed)
-
-func _on_show_regions_toggled(pressed: bool) -> void:
-    map_view.set_show_regions(pressed)
-
-func _on_show_fertility_toggled(pressed: bool) -> void:
-    map_view.set_show_fertility(pressed)
-
-func _on_show_roughness_toggled(pressed: bool) -> void:
-    map_view.set_show_roughness(pressed)
-
-func _on_show_villages_toggled(pressed: bool) -> void:
-    map_view.set_show_villages(pressed)
-
-func _on_show_bridges_toggled(pressed: bool) -> void:
-    map_view.set_show_bridges(pressed)
-
-func _on_show_fords_toggled(pressed: bool) -> void:
-    map_view.set_show_fords(pressed)
 
 func _on_edit_cities_toggled(pressed: bool) -> void:
     map_view.set_edit_mode(pressed)
