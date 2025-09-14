@@ -1,5 +1,9 @@
 Changelog
 
+0.1.71 — 2025-09-13
+Fixed
+- Replaced unsupported Array.join call in map generation logging.
+
 0.1.70 — 2025-09-13
 Changed
 - Removed duplicate layer checkboxes; legend buttons now control map element visibility.

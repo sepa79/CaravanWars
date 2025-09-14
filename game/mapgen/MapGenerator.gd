@@ -158,11 +158,12 @@ func generate() -> Dictionary:
         MapNodeModule.TYPE_CROSSROAD: "crossroads",
     }
     for key in grouped.keys():
-        var pts: Array[String] = []
+        var pts: PackedStringArray = []
         for p: Vector2 in grouped[key]:
             pts.append("(%0.1f,%0.1f)" % [p.x, p.y])
         if pts.size() > 0:
-            print("[MapGenerator] %s: %s" % [labels[key], pts.join(", ")])
+            var joined := pts.join(", ")
+            print("[MapGenerator] %s: %s" % [labels[key], joined])
 
     return map_data
 
