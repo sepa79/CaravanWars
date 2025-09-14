@@ -2,8 +2,9 @@ extends RefCounted
 class_name MapGenCityPlacer
 
 var rng: RandomNumberGenerator
-var map_width: float = 100.0
-var map_height: float = 100.0
+var map_width: float = 150.0
+var map_height: float = 150.0
+var border_margin: float = 30.0
 
 func _init(_rng: RandomNumberGenerator) -> void:
     rng = _rng
@@ -14,11 +15,13 @@ func place_cities(
     count: int = 3,
     min_distance: float = 20.0,
     max_distance: float = 40.0,
-    width: float = 100.0,
-    height: float = 100.0
+    width: float = 150.0,
+    height: float = 150.0,
+    p_border_margin: float = 30.0
 ) -> Array[Vector2]:
     map_width = width
     map_height = height
+    border_margin = p_border_margin
     var radius: float = min_distance
     var k: int = 30
     var cell_size: float = radius / sqrt(2.0)
@@ -31,13 +34,18 @@ func place_cities(
     var samples: Array[Vector2] = []
     var active: Array[int] = []
 
-    var initial_point := Vector2(rng.randf() * map_width, rng.randf() * map_height)
+    var initial_point := Vector2(
+        rng.randf_range(border_margin, map_width - border_margin),
+        rng.randf_range(border_margin, map_height - border_margin)
+    )
     samples.append(initial_point)
     var initial_index: int = _grid_index(initial_point, cell_size, grid_width)
     grid[initial_index] = 0
     active.append(0)
 
-    while active.size() > 0 and samples.size() < count:
+    var attempts: int = 0
+    var max_attempts: int = count * k * 2
+    while active.size() > 0 and samples.size() < count and attempts < max_attempts:
         var idx: int = active[rng.randi_range(0, active.size() - 1)]
         var point: Vector2 = samples[idx]
         var found: bool = false
@@ -52,6 +60,7 @@ func place_cities(
                     break
         if not found:
             active.erase(idx)
+        attempts += 1
 
     return samples
 
@@ -74,7 +83,7 @@ func _is_valid(
     samples: Array[Vector2],
     min_distance: float
 ) -> bool:
-    if p.x < 0.0 or p.y < 0.0 or p.x >= map_width or p.y >= map_height:
+    if p.x < border_margin or p.y < border_margin or p.x >= map_width - border_margin or p.y >= map_height - border_margin:
         return false
     var gx: int = int(p.x / cell_size)
     var gy: int = int(p.y / cell_size)
@@ -89,8 +98,9 @@ func _is_valid(
 ## Finds local maxima and keeps those spaced by at least `min_distance`.
 ## Returns a dictionary with `cities` Array[Vector2] and `capitals` Array[int]
 ## containing indexes of cities chosen as capitals.
-func select_city_sites(field: Array, cities_target: int, min_distance: float) -> Dictionary:
-    var result: Dictionary = {"cities": [], "capitals": []}
+func select_city_sites(field: Array, cities_target: int, min_distance: float, p_border_margin: float = 30.0) -> Dictionary:
+    border_margin = p_border_margin
+    var result: Dictionary = {"cities": [], "capitals": [], "leftovers": []}
     var h: int = field.size()
     if h == 0:
         return result
@@ -98,6 +108,8 @@ func select_city_sites(field: Array, cities_target: int, min_distance: float) ->
     var candidates: Array = []
     for y in range(h):
         for x in range(w):
+            if x < border_margin or x > w - border_margin or y < border_margin or y > h - border_margin:
+                continue
             var v: float = field[y][x]
             var is_peak: bool = true
             for dy in range(-1, 2):
@@ -116,6 +128,7 @@ func select_city_sites(field: Array, cities_target: int, min_distance: float) ->
                 candidates.append({"pos": Vector2(x + 0.5, y + 0.5), "score": v})
     candidates.sort_custom(func(a, b): return a["score"] > b["score"])
     var cities: Array[Vector2] = []
+    var leftovers: Array[Vector2] = []
     for c in candidates:
         var p: Vector2 = c["pos"]
         var valid: bool = true
@@ -123,12 +136,12 @@ func select_city_sites(field: Array, cities_target: int, min_distance: float) ->
             if existing.distance_to(p) < min_distance:
                 valid = false
                 break
-        if not valid:
-            continue
-        cities.append(p)
-        if cities.size() >= cities_target:
-            break
+        if valid and cities.size() < cities_target:
+            cities.append(p)
+        else:
+            leftovers.append(p)
     result["cities"] = cities
+    result["leftovers"] = leftovers
     if cities.size() > 0:
         var cap_count: int = rng.randi_range(1, min(3, cities.size()))
         var indices: Array[int] = []

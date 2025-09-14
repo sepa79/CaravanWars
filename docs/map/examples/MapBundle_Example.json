@@ -2,7 +2,7 @@
   "meta": {
     "version": "1.0",
     "seed": 12345,
-    "map_size": 100,
+    "map_size": 150,
     "unit_scale": 4
   },
   "nodes": [
@@ -76,19 +76,6 @@
         "food": 1.0,
         "wood": 1.1,
         "ore": 0.7
-      }
-    }
-  ],
-  "villages": [
-    {
-      "id": 201,
-      "x": 42,
-      "y": 40,
-      "city_id": 101,
-      "road_node_id": 4,
-      "production": {
-        "food": 1.1,
-        "wood": 0.9
       }
     }
   ],

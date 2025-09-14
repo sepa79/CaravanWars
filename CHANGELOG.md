@@ -1,5 +1,91 @@
 Changelog
 
+0.1.72 — 2025-09-13
+Fixed
+- Logged node positions using String.join to avoid PackedStringArray errors.
+Changed
+- Clarified agent guidelines to always run Godot checks on changed scripts.
+
+0.1.71 — 2025-09-13
+Fixed
+- Replaced unsupported Array.join call in map generation logging.
+
+0.1.70 — 2025-09-13
+Changed
+- Removed duplicate layer checkboxes; legend buttons now control map element visibility.
+- Logged positions of cities, villages, forts, and crossings during map generation.
+
+0.1.69 — 2025-09-13
+Added
+- Village visibility toggle and legend entry in the map setup UI.
+
+0.1.68 — 2025-09-13
+Fixed
+- Shuffled extra village road candidates using the road RNG to avoid invalid function calls.
+
+0.1.67 — 2025-09-13
+Added
+- Converted unused city-site candidates into villages and linked them to the nearest roads with local path networks.
+
+0.1.66 — 2025-09-13
+Removed
+- Village generation code, leaving cities and forts as the only settlements.
+
+0.1.65 — 2025-09-13
+Fixed
+- Village generation starts with at least one site per city, restoring default village spawning.
+
+0.1.64 — 2025-09-13
+Fixed
+- Annular Poisson sampling now yields village candidates, preventing empty clusters.
+- Renamed modules and parameters to avoid shadowing global classes and built-in functions.
+
+0.1.63 — 2025-09-13
+Changed
+- Villages attach to the nearest roman road, linking to their city only when no major route is nearby.
+- Direct village paths appear only when the existing road network is over twice as long.
+Fixed
+- Bounded shortest-path search iterations to prevent road computations from hanging.
+
+0.1.62 — 2025-09-13
+Added
+- Village placement favours fertile terrain and proximity to existing roads.
+- Neighbouring regions of the same kingdom link their closest villages when no shorter route exists.
+Fixed
+- Cities keep a literal 30-unit buffer from map borders.
+
+0.1.61 — 2025-09-13
+Added
+- Villages sample via Poisson disks in 8–30 u rings and stay within their city regions.
+
+0.1.60 — 2025-09-13
+Fixed
+- Preloaded NoiseUtil and capped city sampler iterations to keep map generation from hanging.
+
+0.1.59 — 2025-09-13
+Fixed
+- Village cluster spacing scales with city spacing to stay below half the minimum city distance.
+
+0.1.58 — 2025-09-13
+Fixed
+- City generator accepts configurable `border_margin` (default 60 u) and samples extra cities when fertility peaks are insufficient.
+
+0.1.57 — 2025-09-13
+Added
+- `AGENTS.md` directs contributors to `RULES_ALWAYS_READ.md`.
+Fixed
+- Road network uses `if/else` instead of banned `?:` operator.
+
+0.1.56 — 2025-09-13
+Changed
+- Default map size is now 150×150 U and initial kingdom count is 2.
+
+0.1.55 — 2025-09-13
+Added
+- City placement now keeps 30 u from map edges.
+- Village clusters sample in 8–30 u rings and connect via MST with random shortcuts and hierarchical road classes.
+- Repo guidelines require `godot --headless --check` for modified scripts.
+
 0.1.54 — 2025-09-13
 Added
 - Generate up to six noise-based rivers that create bridge crossings when intersecting roads.

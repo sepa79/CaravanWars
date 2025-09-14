@@ -43,7 +43,7 @@ func _validate(bundle: Dictionary) -> bool:
                     return false
             return true
     # Fallback basic check
-    var fallback := ["meta", "nodes", "edges", "cities", "villages", "crossings", "forts", "kingdoms", "climate_cells"]
+    var fallback := ["meta", "nodes", "edges", "cities", "crossings", "forts", "kingdoms", "climate_cells"]
     for key in fallback:
         if not bundle.has(key):
             push_warning("Missing key %s" % key)
@@ -54,7 +54,7 @@ func _convert(bundle: Dictionary) -> Dictionary:
     var map: Dictionary = {}
     var meta: Dictionary = bundle.get("meta", {})
     map["meta"] = meta
-    var size: float = float(meta.get("map_size", 100))
+    var size: float = float(meta.get("map_size", 150))
     map["width"] = size
     map["height"] = size
     map["fertility"] = bundle.get("fertility", [])
@@ -78,10 +78,6 @@ func _convert(bundle: Dictionary) -> Dictionary:
         cities.append(pos)
         if attrs.get("is_capital", false):
             capitals.append(city_index)
-    for v in bundle.get("villages", []):
-        var id: int = int(v.get("id"))
-        var pos := Vector2(v.get("x", 0.0), v.get("y", 0.0))
-        nodes[id] = MapNodeModule.new(id, MapNodeModule.TYPE_VILLAGE, pos, {"city_id": v.get("city_id", 0), "road_node_id": v.get("road_node_id", 0), "production": v.get("production", {})})
     for cr in bundle.get("crossings", []):
         var id: int = int(cr.get("id"))
         var pos := Vector2(cr.get("x", 0.0), cr.get("y", 0.0))

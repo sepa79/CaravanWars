@@ -15,9 +15,7 @@ class MapGenParams:
     var height: float
     var kingdom_count: int
     var max_forts_per_kingdom: int
-    var min_villages_per_city: int
-    var max_villages_per_city: int
-    var village_downgrade_threshold: int
+    var village_count: int
 
     func _init(
         p_rng_seed: int = 0,
@@ -28,13 +26,11 @@ class MapGenParams:
         p_min_city_distance: float = 20.0,
         p_max_city_distance: float = 40.0,
         p_crossroad_detour_margin: float = 5.0,
-        p_width: float = 100.0,
-        p_height: float = 100.0,
-        p_kingdom_count: int = 1,
+        p_width: float = 150.0,
+        p_height: float = 150.0,
+        p_kingdom_count: int = 2,
         p_max_forts_per_kingdom: int = 1,
-        p_min_villages_per_city: int = 0,
-        p_max_villages_per_city: int = 2,
-        p_village_downgrade_threshold: int = 1
+        p_village_count: int = 0
     ) -> void:
         rng_seed = p_rng_seed if p_rng_seed != 0 else Time.get_ticks_msec()
         city_count = p_city_count
@@ -49,9 +45,7 @@ class MapGenParams:
         height = clamp(p_height, 20.0, 500.0)
         kingdom_count = max(1, p_kingdom_count)
         max_forts_per_kingdom = max(0, p_max_forts_per_kingdom)
-        min_villages_per_city = max(0, p_min_villages_per_city)
-        max_villages_per_city = max(min_villages_per_city, p_max_villages_per_city)
-        village_downgrade_threshold = max(1, p_village_downgrade_threshold)
+        village_count = max(0, p_village_count)
 
 var params: MapGenParams
 var rng: RandomNumberGenerator
@@ -61,6 +55,7 @@ const RoadNetworkModule = preload("res://mapview/RoadNetwork.gd")
 const RiverGeneratorModule: Script = preload("res://mapgen/RiverGenerator.gd")
 const RegionGeneratorModule: Script = preload("res://mapgen/RegionGenerator.gd")
 const MapNodeModule = preload("res://mapview/MapNode.gd")
+const NoiseUtilModule = preload("res://mapgen/NoiseUtil.gd")
 
 func _init(_params: MapGenParams = MapGenParams.new()) -> void:
     params = _params
@@ -75,7 +70,7 @@ func generate() -> Dictionary:
     var width_i: int = int(params.width)
     var height_i: int = int(params.height)
     var noise_seed: int = rng.randi()
-    var nutil := NoiseUtil.new()
+    var nutil := NoiseUtilModule.new()
     var fertility_field: Array = nutil.generate_field(
         nutil.create_simplex(noise_seed, 3),
         width_i,
@@ -86,13 +81,32 @@ func generate() -> Dictionary:
     map_data["fertility"] = fertility_field
     map_data["roughness"] = roughness_field
     var city_stage := CityPlacerModule.new(rng)
+    var city_margin: float = 30.0
     var city_info: Dictionary = city_stage.select_city_sites(
         fertility_field,
         params.city_count,
-        params.min_city_distance
+        params.min_city_distance,
+        city_margin
     )
     var cities: Array[Vector2] = city_info.get("cities", [])
+    var village_candidates: Array[Vector2] = city_info.get("leftovers", [])
+    var villages: Array[Vector2] = []
+    if village_candidates.size() > 0 and params.village_count > 0:
+        var take: int = min(village_candidates.size(), params.village_count)
+        for i in range(take):
+            villages.append(village_candidates[i])
+    if cities.size() < params.city_count:
+        var extra: Array[Vector2] = city_stage.place_cities(
+            params.city_count - cities.size(),
+            params.min_city_distance,
+            params.max_city_distance,
+            params.width,
+            params.height,
+            city_margin
+        )
+        cities.append_array(extra)
     map_data["cities"] = cities
+    map_data["villages"] = villages
     map_data["capitals"] = city_info.get("capitals", [])
     print("[MapGenerator] placed %s cities" % cities.size())
 
@@ -109,19 +123,47 @@ func generate() -> Dictionary:
         params.crossroad_detour_margin,
         "roman"
     )
+    if villages.size() > 0:
+        road_stage.insert_villages(roads, villages)
     var nodes: Dictionary = roads.get("nodes", {})
     for idx in map_data.get("capitals", []):
         var nid: int = idx + 1
-        var node: MapViewNode = nodes.get(nid) as MapViewNode
+        var node = nodes.get(nid)
         if node != null:
             node.attrs["is_capital"] = true
-    road_stage.insert_villages(roads, params.min_villages_per_city, params.max_villages_per_city, 5.0, params.width, params.height, params.village_downgrade_threshold)
     road_stage.insert_border_forts(roads, regions, 10.0, params.max_forts_per_kingdom, params.width, params.height)
     map_data["roads"] = roads
 
     var river_stage = RiverGeneratorModule.new(rng)
     var rivers: Array = river_stage.generate_rivers(roads, params.max_river_count, params.width, params.height)
     map_data["rivers"] = rivers
+
+    var grouped: Dictionary = {
+        MapNodeModule.TYPE_CITY: [],
+        MapNodeModule.TYPE_VILLAGE: [],
+        MapNodeModule.TYPE_FORT: [],
+        MapNodeModule.TYPE_BRIDGE: [],
+        MapNodeModule.TYPE_FORD: [],
+        MapNodeModule.TYPE_CROSSROAD: [],
+    }
+    for node in nodes.values():
+        if grouped.has(node.type):
+            grouped[node.type].append(node.pos2d)
+    var labels: Dictionary = {
+        MapNodeModule.TYPE_CITY: "cities",
+        MapNodeModule.TYPE_VILLAGE: "villages",
+        MapNodeModule.TYPE_FORT: "forts",
+        MapNodeModule.TYPE_BRIDGE: "bridges",
+        MapNodeModule.TYPE_FORD: "fords",
+        MapNodeModule.TYPE_CROSSROAD: "crossroads",
+    }
+    for key in grouped.keys():
+        var pts: PackedStringArray = []
+        for p: Vector2 in grouped[key]:
+            pts.append("(%0.1f,%0.1f)" % [p.x, p.y])
+        if pts.size() > 0:
+            var joined: String = ", ".join(pts)
+            print("[MapGenerator] %s: %s" % [labels[key], joined])
 
     return map_data
 
@@ -145,7 +187,6 @@ static func _bundle_from_map(map_data: Dictionary, rng_seed: int, version: Strin
         "nodes": [],
         "edges": [],
         "cities": [],
-        "villages": [],
         "crossings": [],
         "forts": [],
         "kingdoms": [],
@@ -164,8 +205,6 @@ static func _bundle_from_map(map_data: Dictionary, rng_seed: int, version: Strin
                 bundle["cities"].append({"id": node.id, "x": node.pos2d.x, "y": node.pos2d.y, "kingdom_id": kid, "is_capital": is_cap})
                 if is_cap:
                     capital_by_kingdom[kid] = node.id
-            MapNodeModule.TYPE_VILLAGE:
-                bundle["villages"].append({"id": node.id, "x": node.pos2d.x, "y": node.pos2d.y, "city_id": node.attrs.get("city_id", 0), "road_node_id": node.attrs.get("road_node_id", 0), "production": node.attrs.get("production", {})})
             MapNodeModule.TYPE_FORT:
                 bundle["forts"].append({"id": node.id, "x": node.pos2d.x, "y": node.pos2d.y, "edge_id": node.attrs.get("edge_id", null), "crossing_id": node.attrs.get("crossing_id", null), "pair_id": node.attrs.get("pair_id", null)})
             MapNodeModule.TYPE_BRIDGE:

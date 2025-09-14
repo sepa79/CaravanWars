@@ -2,11 +2,11 @@ extends RefCounted
 class_name MapViewNode
 
 const TYPE_CITY := "city"
-const TYPE_VILLAGE := "village"
 const TYPE_FORT := "fort"
 const TYPE_CROSSROAD := "crossroad"
 const TYPE_BRIDGE := "bridge"
 const TYPE_FORD := "ford"
+const TYPE_VILLAGE := "village"
 
 var id: int
 var type: String

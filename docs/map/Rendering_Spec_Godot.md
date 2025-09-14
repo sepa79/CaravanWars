@@ -11,7 +11,7 @@
    - **Path**: cienka, przerywana.
 5) Crossingi (bridge/ford) — **ikony** na węzłach.
 6) Fortece — ikony (fort/fort‑pair).
-7) Osady — ikony (city, city‑capital, village, village‑hub).
+7) Osady — ikony (city, city‑capital, fort).
 8) Granice — linia przerywana shaderem (dash w screen space).
 9) Etykiety — nazwy królestw/miast/rzek; MSDF font.
 
@@ -23,7 +23,7 @@
 ## LOD
 - Daleko: granice, Roman, miasta, nazwy królestw.
 - Średnio: drogi Road, rzeki, fortece, crossingi, nazwy miast.
-- Blisko: Path, wsie, etykiety rzek, patterny biomów.
+- Blisko: Path, etykiety rzek, patterny biomów.
 
 ## Wydajność
 - Batch per klasa drogi (łącz polilinie w chunkach).
@@ -33,8 +33,6 @@
 ## Mapowanie ikon
 - city → `cw-icon-city(-color).svg`
 - city-capital → `cw-icon-city-capital(-color).svg`
-- village → `cw-icon-village(-color).svg`
-- village-hub → `cw-icon-village-hub(-color).svg`
 - bridge → `cw-icon-bridge(-color).svg`
 - ford → `cw-icon-ford(-color).svg`
 - fort → `cw-icon-fort(-color).svg`

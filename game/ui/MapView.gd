@@ -2,8 +2,8 @@ extends Control
 class_name MapView
 
 var map_data: Dictionary = {}
-var map_width: float = 100.0
-var map_height: float = 100.0
+var map_width: float = 150.0
+var map_height: float = 150.0
 @export var min_zoom: float = 0.5
 @export var max_zoom: float = 3.0
 var zoom_level: float = 1.0
@@ -98,11 +98,10 @@ func _gui_input(event: InputEvent) -> void:
                         road_helper.remove_edge(map_data.get("roads", {}), edge_id)
                         hovered_edge = -1
                         queue_redraw()
-                elif road_mode == "village" or road_mode == "fort":
+                elif road_mode == "fort":
                     var v_edge: int = _road_edge_at_point(mb.position)
                     if v_edge != -1:
-                        var ntype: String = MapNodeModule.TYPE_VILLAGE if road_mode == "village" else MapNodeModule.TYPE_FORT
-                        road_helper.insert_node_on_edge(map_data.get("roads", {}), v_edge, ntype)
+                        road_helper.insert_node_on_edge(map_data.get("roads", {}), v_edge, MapNodeModule.TYPE_FORT)
                         hovered_edge = -1
                         queue_redraw()
                 elif edit_mode:
@@ -134,7 +133,7 @@ func _gui_input(event: InputEvent) -> void:
             hovered_node = _road_node_at_point(mm.position)
             queue_redraw()
             accept_event()
-        elif road_mode == "delete" or road_mode == "village" or road_mode == "fort":
+        elif road_mode == "delete" or road_mode == "fort":
             hovered_edge = _road_edge_at_point(mm.position)
             queue_redraw()
             accept_event()
@@ -239,7 +238,7 @@ func _draw() -> void:
             if selected_node != -1 and nodes.has(selected_node):
                 var spos: Vector2 = nodes[selected_node].pos2d * draw_scale + offset
                 draw_circle(spos, 6.0, Color.GREEN)
-        elif road_mode == "delete" or road_mode == "village" or road_mode == "fort":
+        elif road_mode == "delete" or road_mode == "fort":
             if hovered_edge != -1 and edges.has(hovered_edge):
                 var hedge = edges[hovered_edge]
                 var hpts: PackedVector2Array = hedge.polyline
@@ -312,18 +311,14 @@ func _draw() -> void:
                 draw_circle(pos, 3.0, Color.RED)
             else:
                 draw_circle(pos, 4.0, Color.RED)
-    if show_villages or show_forts or show_crossroads or show_bridges or show_fords:
+    if show_villages:
+        for village in map_data.get("villages", []):
+            var vpos: Vector2 = village * draw_scale + offset
+            draw_circle(vpos, 3.0, Color(0.8, 0.6, 0.4))
+    if show_forts or show_crossroads or show_bridges or show_fords:
         for node in roads.get("nodes", {}).values():
             var center: Vector2 = node.pos2d * draw_scale + offset
-            if node.type == MapNodeModule.TYPE_VILLAGE and show_villages:
-                var s_v: float = 4.0
-                var tri := PackedVector2Array([
-                    center + Vector2(-s_v, s_v),
-                    center + Vector2(s_v, s_v),
-                    center + Vector2(0, -s_v),
-                ])
-                draw_polygon(tri, PackedColorArray([Color.GREEN]))
-            elif node.type == MapNodeModule.TYPE_FORT and show_forts:
+            if node.type == MapNodeModule.TYPE_FORT and show_forts:
                 var s_f: float = 4.0
                 var rect := PackedVector2Array([
                     center + Vector2(-s_f, -s_f),
@@ -427,6 +422,8 @@ func set_show_cities(value: bool) -> void:
 
 func set_show_villages(value: bool) -> void:
     show_villages = value
+    queue_redraw()
+
     queue_redraw()
 
 func set_show_forts(value: bool) -> void:
