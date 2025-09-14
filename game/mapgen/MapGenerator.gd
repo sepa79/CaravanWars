@@ -32,8 +32,8 @@ class MapGenParams:
         p_height: float = 150.0,
         p_kingdom_count: int = 2,
         p_max_forts_per_kingdom: int = 1,
-        p_min_villages_per_city: int = 0,
-        p_max_villages_per_city: int = 2,
+        p_min_villages_per_city: int = 1,
+        p_max_villages_per_city: int = 3,
         p_village_downgrade_threshold: int = 1
     ) -> void:
         rng_seed = p_rng_seed if p_rng_seed != 0 else Time.get_ticks_msec()

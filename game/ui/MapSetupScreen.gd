@@ -124,6 +124,7 @@ func _ready() -> void:
     min_villages_spin = SpinBox.new()
     min_villages_spin.min_value = 0
     min_villages_spin.max_value = 10
+    min_villages_spin.value = 1
     params.add_child(min_villages_spin)
     min_villages_spin.value_changed.connect(_on_params_changed)
     max_villages_label = Label.new()
@@ -131,7 +132,7 @@ func _ready() -> void:
     max_villages_spin = SpinBox.new()
     max_villages_spin.min_value = 0
     max_villages_spin.max_value = 10
-    max_villages_spin.value = 2
+    max_villages_spin.value = 3
     params.add_child(max_villages_spin)
     max_villages_spin.value_changed.connect(_on_params_changed)
     village_threshold_label = Label.new()

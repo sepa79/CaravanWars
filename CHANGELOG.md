@@ -1,5 +1,9 @@
 Changelog
 
+0.1.65 — 2025-09-13
+Fixed
+- Village generation starts with at least one site per city, restoring default village spawning.
+
 0.1.64 — 2025-09-13
 Fixed
 - Annular Poisson sampling now yields village candidates, preventing empty clusters.
