@@ -83,6 +83,10 @@ static func sample_village_ring(
     var result: Array[Vector2] = []
     var attempts: int = 0
     var limit: int = count * 5
+    var origin := Vector2(VILLAGE_EDGE_MARGIN, VILLAGE_EDGE_MARGIN)
+    var usable_width: float = width - VILLAGE_EDGE_MARGIN * 2.0
+    var usable_height: float = height - VILLAGE_EDGE_MARGIN * 2.0
+    var center_local: Vector2 = center - origin
     while result.size() < count and attempts < limit:
         var needed: int = count - result.size()
         var samples: Array[Vector2] = placer.place_cities(
@@ -93,11 +97,12 @@ static func sample_village_ring(
             outer_radius * 2.0
         )
         for p in samples:
-            var pos: Vector2 = center + p - Vector2(outer_radius, outer_radius)
+            var local: Vector2 = center_local + p - Vector2(outer_radius, outer_radius)
+            var pos: Vector2 = local + origin
             var dist: float = pos.distance_to(center)
             if dist < inner_radius or dist > outer_radius:
                 continue
-            if pos.x < VILLAGE_EDGE_MARGIN or pos.y < VILLAGE_EDGE_MARGIN or pos.x > width - VILLAGE_EDGE_MARGIN or pos.y > height - VILLAGE_EDGE_MARGIN:
+            if local.x < 0.0 or local.y < 0.0 or local.x > usable_width or local.y > usable_height:
                 continue
             var ok: bool = true
             for existing in result:

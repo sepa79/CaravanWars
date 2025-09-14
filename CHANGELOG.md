@@ -1,5 +1,9 @@
 Changelog
 
+0.1.57 — 2025-09-13
+Fixed
+- Sample cities and villages inside inset map bounds instead of culling edge candidates.
+
 0.1.56 — 2025-09-13
 Fixed
 - Prevent cities spawning within 20 U of the map border and villages within 5 U.

@@ -87,7 +87,7 @@ func _is_valid(
 
 ## Selects city locations from a fertility field.
 ## Finds local maxima, keeps them spaced by at least `min_distance`,
-## and rejects sites closer than `edge_margin` to the map border.
+## and searches only within the area that leaves `edge_margin` from the border.
 ## Returns a dictionary with `cities` Array[Vector2] and `capitals` Array[int]
 ## containing indexes of cities chosen as capitals.
 func select_city_sites(field: Array, cities_target: int, min_distance: float, edge_margin: float = 0.0) -> Dictionary:
@@ -97,8 +97,11 @@ func select_city_sites(field: Array, cities_target: int, min_distance: float, ed
         return result
     var w: int = field[0].size()
     var candidates: Array = []
-    for y in range(h):
-        for x in range(w):
+    var margin: int = int(edge_margin)
+    var x_end: int = w - margin
+    var y_end: int = h - margin
+    for y in range(margin, y_end):
+        for x in range(margin, x_end):
             var v: float = field[y][x]
             var is_peak: bool = true
             for dy in range(-1, 2):
@@ -116,8 +119,6 @@ func select_city_sites(field: Array, cities_target: int, min_distance: float, ed
             if is_peak:
                 var px: float = x + 0.5
                 var py: float = y + 0.5
-                if px < edge_margin or px > w - edge_margin or py < edge_margin or py > h - edge_margin:
-                    continue
                 candidates.append({"pos": Vector2(px, py), "score": v})
     candidates.sort_custom(func(a, b): return a["score"] > b["score"])
     var cities: Array[Vector2] = []
