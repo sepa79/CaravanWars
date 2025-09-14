@@ -1,5 +1,9 @@
 Changelog
 
+0.1.69 — 2025-09-13
+Added
+- Village visibility toggle and legend entry in the map setup UI.
+
 0.1.68 — 2025-09-13
 Fixed
 - Shuffled extra village road candidates using the road RNG to avoid invalid function calls.

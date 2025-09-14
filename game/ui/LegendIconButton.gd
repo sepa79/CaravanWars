@@ -15,6 +15,7 @@ func _draw() -> void:
         "road": Color.WHITE,
         "river": Color.BLUE,
         "city": Color.RED,
+        "village": Color(0.8, 0.6, 0.4),
         "fort": Color.ORANGE,
         "crossroad": Color.YELLOW,
         "bridge": Color(0.6, 0.4, 0.2),
@@ -31,6 +32,8 @@ func _draw() -> void:
             draw_line(Vector2(2, c.y), Vector2(size.x - 2, c.y), col, 2.0)
         "city":
             draw_circle(c, s, col)
+        "village":
+            draw_circle(c, s * 0.6, col)
         "fort":
             var rect := PackedVector2Array([
                 c + Vector2(-s, -s),

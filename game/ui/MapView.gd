@@ -12,6 +12,7 @@ var dragging: bool = false
 var show_roads: bool = true
 var show_rivers: bool = true
 var show_cities: bool = true
+var show_villages: bool = true
 var show_forts: bool = true
 var show_crossroads: bool = true
 var show_bridges: bool = true
@@ -310,6 +311,7 @@ func _draw() -> void:
                 draw_circle(pos, 3.0, Color.RED)
             else:
                 draw_circle(pos, 4.0, Color.RED)
+    if show_villages:
         for village in map_data.get("villages", []):
             var vpos: Vector2 = village * draw_scale + offset
             draw_circle(vpos, 3.0, Color(0.8, 0.6, 0.4))
@@ -416,6 +418,10 @@ func set_show_rivers(value: bool) -> void:
 
 func set_show_cities(value: bool) -> void:
     show_cities = value
+    queue_redraw()
+
+func set_show_villages(value: bool) -> void:
+    show_villages = value
     queue_redraw()
 
     queue_redraw()

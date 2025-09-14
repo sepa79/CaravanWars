@@ -68,6 +68,7 @@ var app_version: String = ""
 var legend_labels: Dictionary = {}
 var show_bridges_check: CheckBox
 var show_fords_check: CheckBox
+var show_villages_check: CheckBox
 
 func _ready() -> void:
     I18N.language_changed.connect(_update_texts)
@@ -129,6 +130,10 @@ func _ready() -> void:
     show_regions_check.toggled.connect(_on_show_regions_toggled)
     show_fertility_check.toggled.connect(_on_show_fertility_toggled)
     show_roughness_check.toggled.connect(_on_show_roughness_toggled)
+    show_villages_check = CheckBox.new()
+    layers.add_child(show_villages_check)
+    show_villages_check.button_pressed = true
+    show_villages_check.toggled.connect(_on_show_villages_toggled)
     show_bridges_check = CheckBox.new()
     layers.add_child(show_bridges_check)
     show_bridges_check.toggled.connect(_on_show_bridges_toggled)
@@ -170,6 +175,7 @@ func _ready() -> void:
     map_view.set_show_roads(true)
     map_view.set_show_rivers(true)
     map_view.set_show_cities(true)
+    map_view.set_show_villages(true)
     map_view.set_show_crossroads(true)
     map_view.set_show_bridges(true)
     map_view.set_show_fords(true)
@@ -184,6 +190,7 @@ func _ready() -> void:
         {"key": "setup.legend_roads", "type": "road", "func": Callable(map_view, "set_show_roads")},
         {"key": "setup.legend_rivers", "type": "river", "func": Callable(map_view, "set_show_rivers")},
         {"key": "setup.legend_cities", "type": "city", "func": Callable(map_view, "set_show_cities")},
+        {"key": "setup.legend_villages", "type": "village", "func": Callable(map_view, "set_show_villages")},
         {"key": "setup.legend_forts", "type": "fort", "func": Callable(map_view, "set_show_forts")},
         {"key": "setup.legend_crossroads", "type": "crossroad", "func": Callable(map_view, "set_show_crossroads")},
         {"key": "setup.legend_bridges", "type": "bridge", "func": Callable(map_view, "set_show_bridges")},
@@ -227,6 +234,7 @@ func _update_texts() -> void:
     show_regions_check.text = I18N.t("setup.show_regions")
     show_fertility_check.text = I18N.t("setup.show_fertility")
     show_roughness_check.text = I18N.t("setup.show_roughness")
+    show_villages_check.text = I18N.t("setup.show_villages")
     show_bridges_check.text = I18N.t("setup.show_bridges")
     show_fords_check.text = I18N.t("setup.show_fords")
     edit_cities_check.text = I18N.t("setup.edit_cities")
@@ -353,6 +361,9 @@ func _on_show_fertility_toggled(pressed: bool) -> void:
 
 func _on_show_roughness_toggled(pressed: bool) -> void:
     map_view.set_show_roughness(pressed)
+
+func _on_show_villages_toggled(pressed: bool) -> void:
+    map_view.set_show_villages(pressed)
 
 func _on_show_bridges_toggled(pressed: bool) -> void:
     map_view.set_show_bridges(pressed)
