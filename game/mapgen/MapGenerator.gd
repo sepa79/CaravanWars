@@ -61,7 +61,7 @@ const RoadNetworkModule = preload("res://mapview/RoadNetwork.gd")
 const RiverGeneratorModule: Script = preload("res://mapgen/RiverGenerator.gd")
 const RegionGeneratorModule: Script = preload("res://mapgen/RegionGenerator.gd")
 const MapNodeModule = preload("res://mapview/MapNode.gd")
-const NoiseUtil = preload("res://mapgen/NoiseUtil.gd")
+const NoiseUtilModule = preload("res://mapgen/NoiseUtil.gd")
 
 func _init(_params: MapGenParams = MapGenParams.new()) -> void:
     params = _params
@@ -73,21 +73,25 @@ func _poisson_ring(
     inner: float,
     outer: float,
     spacing: float,
+    target: int,
     regions: Dictionary,
     region_id: int
 ) -> Array[Vector2]:
     var points: Array[Vector2] = []
     var attempts: int = 0
-    var max_attempts: int = 1000
+    var max_attempts: int = max(1000, target * 20)
+    var region_poly: PackedVector2Array = PackedVector2Array()
     var region = regions.get(region_id)
-    while attempts < max_attempts:
+    if region != null:
+        region_poly = PackedVector2Array(region.boundary_nodes)
+    while points.size() < target and attempts < max_attempts:
         var r: float = rng.randf_range(inner, outer)
         var angle: float = rng.randf() * TAU
         var p: Vector2 = center + Vector2(r * cos(angle), r * sin(angle))
         if p.x < 5.0 or p.y < 5.0 or p.x > params.width - 5.0 or p.y > params.height - 5.0:
             attempts += 1
             continue
-        if region != null and not Geometry2D.is_point_in_polygon(p, region.boundary_nodes):
+        if region_poly.size() > 2 and not Geometry2D.is_point_in_polygon(p, region_poly):
             attempts += 1
             continue
         var ok: bool = true
@@ -141,7 +145,7 @@ func _sample_village_clusters(
         if count <= 0:
             continue
         var region_id: int = i + 1
-        var samples: Array[Vector2] = _poisson_ring(cities[i], 8.0, 30.0, spacing, regions, region_id)
+        var samples: Array[Vector2] = _poisson_ring(cities[i], 8.0, 30.0, spacing, count * 5, regions, region_id)
         var scored: Array = []
         for p in samples:
             var fert: float = _sample_field(fertility_field, p)
@@ -166,7 +170,7 @@ func generate() -> Dictionary:
     var width_i: int = int(params.width)
     var height_i: int = int(params.height)
     var noise_seed: int = rng.randi()
-    var nutil := NoiseUtil.new()
+    var nutil := NoiseUtilModule.new()
     var fertility_field: Array = nutil.generate_field(
         nutil.create_simplex(noise_seed, 3),
         width_i,

@@ -2,9 +2,9 @@ extends RefCounted
 class_name NoiseUtil
 
 ## Creates a FastNoiseLite configured to approximate OpenSimplex noise.
-func create_simplex(seed: int, octaves: int = 3, frequency: float = 0.05, gain: float = 0.5, lacunarity: float = 2.0) -> FastNoiseLite:
+func create_simplex(rng_seed: int, octaves: int = 3, frequency: float = 0.05, gain: float = 0.5, lacunarity: float = 2.0) -> FastNoiseLite:
     var noise := FastNoiseLite.new()
-    noise.seed = seed
+    noise.seed = rng_seed
     noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
     noise.frequency = frequency
     noise.fractal_type = FastNoiseLite.FRACTAL_FBM

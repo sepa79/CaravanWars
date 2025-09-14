@@ -1,11 +1,9 @@
 Changelog
 
-0.1.62 — 2025-09-13
-Added
-- Village placement favours fertile terrain and proximity to existing roads.
-- Neighbouring regions of the same kingdom link their closest villages when no shorter route exists.
+0.1.64 — 2025-09-13
 Fixed
-- Cities keep a literal 30-unit buffer from map borders.
+- Annular Poisson sampling now yields village candidates, preventing empty clusters.
+- Renamed modules and parameters to avoid shadowing global classes and built-in functions.
 
 0.1.63 — 2025-09-13
 Changed
@@ -13,6 +11,13 @@ Changed
 - Direct village paths appear only when the existing road network is over twice as long.
 Fixed
 - Bounded shortest-path search iterations to prevent road computations from hanging.
+
+0.1.62 — 2025-09-13
+Added
+- Village placement favours fertile terrain and proximity to existing roads.
+- Neighbouring regions of the same kingdom link their closest villages when no shorter route exists.
+Fixed
+- Cities keep a literal 30-unit buffer from map borders.
 
 0.1.61 — 2025-09-13
 Added
