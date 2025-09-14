@@ -9,7 +9,7 @@ const EPS: float = 0.001
 # Returns a dictionary mapping region id -> Region instance.
 func generate_regions(
     cities: Array[Vector2],
-    kingdom_count: int = 2,
+    kingdom_count: int = 3,
     width: float = 150.0,
     height: float = 150.0
 ) -> Dictionary:

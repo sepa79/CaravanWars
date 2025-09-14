@@ -1,5 +1,9 @@
 Changelog
 
+0.1.73 — 2025-09-14
+Changed
+- Default map parameters: 6 cities, 10 villages, and 3 kingdoms.
+
 0.1.72 — 2025-09-13
 Fixed
 - Logged node positions using String.join to avoid PackedStringArray errors.

@@ -19,7 +19,7 @@ class MapGenParams:
 
     func _init(
         p_rng_seed: int = 0,
-        p_city_count: int = 3,
+        p_city_count: int = 6,
         p_max_river_count: int = 1,
         p_min_connections: int = 1,
         p_max_connections: int = 3,
@@ -28,9 +28,9 @@ class MapGenParams:
         p_crossroad_detour_margin: float = 5.0,
         p_width: float = 150.0,
         p_height: float = 150.0,
-        p_kingdom_count: int = 2,
+        p_kingdom_count: int = 3,
         p_max_forts_per_kingdom: int = 1,
-        p_village_count: int = 0
+        p_village_count: int = 10
     ) -> void:
         rng_seed = p_rng_seed if p_rng_seed != 0 else Time.get_ticks_msec()
         city_count = p_city_count

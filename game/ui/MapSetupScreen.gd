@@ -91,12 +91,15 @@ func _ready() -> void:
     width_spin.set_block_signals(true)
     height_spin.set_block_signals(true)
     kingdoms_spin.set_block_signals(true)
+    cities_spin.set_block_signals(true)
     width_spin.value = 150.0
     height_spin.value = 150.0
-    kingdoms_spin.value = 2
+    kingdoms_spin.value = 3
+    cities_spin.value = 6
     width_spin.set_block_signals(false)
     height_spin.set_block_signals(false)
     kingdoms_spin.set_block_signals(false)
+    cities_spin.set_block_signals(false)
     max_forts_label = Label.new()
     params.add_child(max_forts_label)
     max_forts_spin = SpinBox.new()
@@ -110,7 +113,7 @@ func _ready() -> void:
     villages_spin = SpinBox.new()
     villages_spin.min_value = 0
     villages_spin.max_value = 100
-    villages_spin.value = 0
+    villages_spin.value = 10
     params.add_child(villages_spin)
     villages_spin.value_changed.connect(_on_params_changed)
     layers.get_node("ShowRoads").queue_free()
