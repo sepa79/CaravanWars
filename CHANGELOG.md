@@ -1,5 +1,9 @@
 Changelog
 
+0.1.68 — 2025-09-13
+Fixed
+- Shuffled extra village road candidates using the road RNG to avoid invalid function calls.
+
 0.1.67 — 2025-09-13
 Added
 - Converted unused city-site candidates into villages and linked them to the nearest roads with local path networks.

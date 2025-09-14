@@ -192,7 +192,11 @@ func _connect_village_network(roads: Dictionary, village_ids: Array[int]) -> voi
             if not exists:
                 extra_candidates.append({"a": a_id, "b": b_id})
     var extras: int = int(floor(extra_candidates.size() * 0.2))
-    rng.shuffle(extra_candidates)
+    for i in range(extra_candidates.size() - 1, 0, -1):
+        var j: int = rng.randi_range(0, i)
+        var tmp = extra_candidates[i]
+        extra_candidates[i] = extra_candidates[j]
+        extra_candidates[j] = tmp
     for k in range(extras):
         var pair = extra_candidates[k]
         var a_id: int = pair["a"]
