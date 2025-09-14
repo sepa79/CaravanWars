@@ -1,5 +1,12 @@
 Changelog
 
+0.1.55 — 2025-09-13
+Added
+- Sample villages in 8–40 U rings around cities using Poisson-disk distribution.
+- Connect village clusters via MST with random shortcuts and hierarchical road classes.
+Fixed
+- Preload script classes so `godot --check-only` validates map generation and road network.
+
 0.1.54 — 2025-09-13
 Added
 - Generate up to six noise-based rivers that create bridge crossings when intersecting roads.

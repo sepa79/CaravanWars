@@ -60,12 +60,54 @@ const CityPlacerModule = preload("res://mapgen/CityPlacer.gd")
 const RoadNetworkModule = preload("res://mapview/RoadNetwork.gd")
 const RiverGeneratorModule: Script = preload("res://mapgen/RiverGenerator.gd")
 const RegionGeneratorModule: Script = preload("res://mapgen/RegionGenerator.gd")
-const MapNodeModule = preload("res://mapview/MapNode.gd")
+const NoiseUtil = preload("res://mapgen/NoiseUtil.gd")
+const MapViewNode = preload("res://mapview/MapNode.gd")
 
 func _init(_params: MapGenParams = MapGenParams.new()) -> void:
     params = _params
     rng = RandomNumberGenerator.new()
     rng.seed = params.rng_seed
+
+static func sample_village_ring(
+    rng: RandomNumberGenerator,
+    center: Vector2,
+    count: int,
+    inner_radius: float = 8.0,
+    outer_radius: float = 40.0,
+    width: float = 100.0,
+    height: float = 100.0
+) -> Array[Vector2]:
+    var placer := CityPlacerModule.new(rng)
+    var result: Array[Vector2] = []
+    var attempts: int = 0
+    var limit: int = count * 5
+    while result.size() < count and attempts < limit:
+        var needed: int = count - result.size()
+        var samples: Array[Vector2] = placer.place_cities(
+            needed,
+            inner_radius,
+            outer_radius,
+            outer_radius * 2.0,
+            outer_radius * 2.0
+        )
+        for p in samples:
+            var pos: Vector2 = center + p - Vector2(outer_radius, outer_radius)
+            var dist: float = pos.distance_to(center)
+            if dist < inner_radius or dist > outer_radius:
+                continue
+            pos.x = clamp(pos.x, 0.0, width)
+            pos.y = clamp(pos.y, 0.0, height)
+            var ok: bool = true
+            for existing in result:
+                if existing.distance_to(pos) < inner_radius:
+                    ok = false
+                    break
+            if ok:
+                result.append(pos)
+                if result.size() >= count:
+                    break
+        attempts += 1
+    return result
 
 func generate() -> Dictionary:
     var map_data: Dictionary = {
@@ -115,7 +157,14 @@ func generate() -> Dictionary:
         var node: MapViewNode = nodes.get(nid) as MapViewNode
         if node != null:
             node.attrs["is_capital"] = true
-    road_stage.insert_villages(roads, params.min_villages_per_city, params.max_villages_per_city, 5.0, params.width, params.height, params.village_downgrade_threshold)
+    road_stage.insert_villages(
+        roads,
+        params.min_villages_per_city,
+        params.max_villages_per_city,
+        params.width,
+        params.height,
+        params.village_downgrade_threshold
+    )
     road_stage.insert_border_forts(roads, regions, 10.0, params.max_forts_per_kingdom, params.width, params.height)
     map_data["roads"] = roads
 
@@ -158,19 +207,19 @@ static func _bundle_from_map(map_data: Dictionary, rng_seed: int, version: Strin
     for node in nodes.values():
         bundle["nodes"].append({"id": node.id, "x": node.pos2d.x, "y": node.pos2d.y})
         match node.type:
-            MapNodeModule.TYPE_CITY:
+            MapViewNode.TYPE_CITY:
                 var kid: int = node.attrs.get("kingdom_id", 0)
                 var is_cap: bool = node.attrs.get("is_capital", false)
                 bundle["cities"].append({"id": node.id, "x": node.pos2d.x, "y": node.pos2d.y, "kingdom_id": kid, "is_capital": is_cap})
                 if is_cap:
                     capital_by_kingdom[kid] = node.id
-            MapNodeModule.TYPE_VILLAGE:
+            MapViewNode.TYPE_VILLAGE:
                 bundle["villages"].append({"id": node.id, "x": node.pos2d.x, "y": node.pos2d.y, "city_id": node.attrs.get("city_id", 0), "road_node_id": node.attrs.get("road_node_id", 0), "production": node.attrs.get("production", {})})
-            MapNodeModule.TYPE_FORT:
+            MapViewNode.TYPE_FORT:
                 bundle["forts"].append({"id": node.id, "x": node.pos2d.x, "y": node.pos2d.y, "edge_id": node.attrs.get("edge_id", null), "crossing_id": node.attrs.get("crossing_id", null), "pair_id": node.attrs.get("pair_id", null)})
-            MapNodeModule.TYPE_BRIDGE:
+            MapViewNode.TYPE_BRIDGE:
                 bundle["crossings"].append({"id": node.id, "x": node.pos2d.x, "y": node.pos2d.y, "type": "bridge", "river_id": node.attrs.get("river_id", null)})
-            MapNodeModule.TYPE_FORD:
+            MapViewNode.TYPE_FORD:
                 bundle["crossings"].append({"id": node.id, "x": node.pos2d.x, "y": node.pos2d.y, "type": "ford", "river_id": node.attrs.get("river_id", null)})
             _:
                 pass

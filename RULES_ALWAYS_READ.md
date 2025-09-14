@@ -29,6 +29,7 @@ RULES_ALWAYS_READ — twarde zasady
 - SemVer + Keep a Changelog. Każda zmiana aktualizuje `CHANGELOG.md`.
 - Conventional Commits: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`.
 - Każdy PR: checklisty akceptacyjne, link do issue, brak zmian „obok tematu”.
+- Zmienione skrypty GDScript muszą przejść `godot --headless --path game --script <plik> --check-only`.
 - Żadnych sekretów, promptów i danych binarnych bez uzasadnienia.
 
 5) Zakres faz
