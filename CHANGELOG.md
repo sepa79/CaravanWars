@@ -1,5 +1,12 @@
 Changelog
 
+0.1.62 — 2025-09-13
+Added
+- Village placement favours fertile terrain and proximity to existing roads.
+- Neighbouring regions of the same kingdom link their closest villages when no shorter route exists.
+Fixed
+- Cities keep a literal 30-unit buffer from map borders.
+
 0.1.61 — 2025-09-13
 Added
 - Villages sample via Poisson disks in 8–30 u rings and stay within their city regions.

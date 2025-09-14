@@ -22,7 +22,7 @@
 
 3) **Miasta:**
    - Kandydaci = lokalne maksima `fertility` na lądzie, min. odstęp `R_city`.
-   - Miasta są ≥ 30U od krawędzi mapy (`border_margin` = 60U) — dodatkowe 30U rezerwuje pierścień wsi.
+   - Miasta są ≥ 30 od krawędzi mapy (stały margines).
    - Preferencja: ≤ 3U od rzeki/wybrzeża, `roughness` poniżej progu.
    - Wybierz `cities_target` najlepszych. 1–3 z nich oznacz jako **stolice**.
 
@@ -33,7 +33,8 @@
 
 5) **Wsie i drogi lokalne:**
    - W pierścieniu 8–30U wokół miasta rozstaw **wsie** metodą Poisson; każda wieś musi pozostać w granicach regionu swojego miasta.
-   - Połącz wsie w klastrze: **MST**, a następnie dodaj ~20% krótkich skrótów.
+   - Selekcja kandydatów uwzględnia `fertility`, unika wysokiego `roughness` i preferuje bliskość dróg i rzek.
+   - Połącz wsie w klastrze: **MST**, a następnie dodaj ~20% krótkich skrótów. Sąsiadujące regiony tego samego królestwa mogą łączyć najbliższe wsie, jeśli brak krótszej trasy.
    - Dziedziczenie klas: gałąź o **jeden poziom niżej** (Roman→Road→Path).
 
 6) **Granice królestw:**

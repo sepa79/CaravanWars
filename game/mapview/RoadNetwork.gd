@@ -6,6 +6,7 @@ var rng: RandomNumberGenerator
 const MapNodeModule = preload("res://mapview/MapNode.gd")
 const EdgeModule = preload("res://mapview/Edge.gd")
 const DelaunayModule = preload("res://mapgen/Delaunay.gd")
+const REGION_EPS: float = 0.001
 
 func _lower_class(cls: String) -> String:
     match cls:
@@ -188,6 +189,124 @@ func insert_villages(
     roads["next_node_id"] = res["next_node_id"]
     roads["next_edge_id"] = res["next_edge_id"]
     _downgrade_village_branches(roads, downgrade_threshold)
+
+func _edge_length(edge: MapViewEdge) -> float:
+    var length: float = 0.0
+    for i in range(edge.polyline.size() - 1):
+        length += edge.polyline[i].distance_to(edge.polyline[i + 1])
+    return length
+
+func _shortest_path_length(nodes: Dictionary, edges: Dictionary, start_id: int, end_id: int) -> float:
+    var dist: Dictionary = {start_id: 0.0}
+    var visited: Dictionary = {}
+    while true:
+        var current: int = -1
+        var best: float = INF
+        for id in dist.keys():
+            if visited.get(id, false):
+                continue
+            var d: float = dist[id]
+            if d < best:
+                best = d
+                current = id
+        if current == -1:
+            break
+        if current == end_id:
+            return best
+        visited[current] = true
+        for e in edges.values():
+            if e.endpoints.has(current):
+                var next: int = e.endpoints[0] if e.endpoints[1] == current else e.endpoints[1]
+                var nd: float = best + _edge_length(e)
+                if nd < dist.get(next, INF):
+                    dist[next] = nd
+    return dist.get(end_id, INF)
+
+func _build_region_adjacency(regions: Dictionary) -> Dictionary:
+    var adjacency: Dictionary = {}
+    var edge_map: Dictionary = {}
+    for region in regions.values():
+        var pts: Array[Vector2] = region.boundary_nodes
+        for i in range(pts.size()):
+            var a: Vector2 = pts[i]
+            var b: Vector2 = pts[(i + 1) % pts.size()]
+            var key: String = _region_edge_key(a, b)
+            if not edge_map.has(key):
+                edge_map[key] = []
+            edge_map[key].append(region.id)
+    for key in edge_map.keys():
+        var ids: Array = edge_map[key]
+        if ids.size() == 2:
+            var a_id: int = ids[0]
+            var b_id: int = ids[1]
+            if not adjacency.has(a_id):
+                adjacency[a_id] = []
+            if not adjacency.has(b_id):
+                adjacency[b_id] = []
+            adjacency[a_id].append(b_id)
+            adjacency[b_id].append(a_id)
+    return adjacency
+
+func _region_edge_key(a: Vector2, b: Vector2) -> String:
+    var ax: int = int(round(a.x / REGION_EPS))
+    var ay: int = int(round(a.y / REGION_EPS))
+    var bx: int = int(round(b.x / REGION_EPS))
+    var by: int = int(round(b.y / REGION_EPS))
+    if ax > bx or (ax == bx and ay > by):
+        var tx: int = ax
+        var ty: int = ay
+        ax = bx
+        ay = by
+        bx = tx
+        by = ty
+    return "%s_%s_%s_%s" % [ax, ay, bx, by]
+
+func connect_neighbouring_villages(roads: Dictionary, regions: Dictionary) -> void:
+    var adjacency: Dictionary = _build_region_adjacency(regions)
+    var nodes: Dictionary = roads.get("nodes", {})
+    var edges: Dictionary = roads.get("edges", {})
+    var next_edge_id: int = roads.get("next_edge_id", 1)
+    var villages_by_region: Dictionary = {}
+    for node in nodes.values():
+        if node.type == MapNodeModule.TYPE_VILLAGE:
+            var rid: int = node.attrs.get("city_id", 0)
+            if not villages_by_region.has(rid):
+                villages_by_region[rid] = []
+            villages_by_region[rid].append(node.id)
+    for a_id in adjacency.keys():
+        for b_id in adjacency[a_id]:
+            if a_id > b_id:
+                continue
+            var ra = regions.get(a_id)
+            var rb = regions.get(b_id)
+            if ra == null or rb == null or ra.kingdom_id != rb.kingdom_id:
+                continue
+            var va: Array = villages_by_region.get(a_id, [])
+            var vb: Array = villages_by_region.get(b_id, [])
+            if va.is_empty() or vb.is_empty():
+                continue
+            var best_a: int = -1
+            var best_b: int = -1
+            var best_dist: float = INF
+            for va_id in va:
+                var va_node = nodes[va_id]
+                for vb_id in vb:
+                    var vb_node = nodes[vb_id]
+                    var d: float = va_node.pos2d.distance_to(vb_node.pos2d)
+                    if d < best_dist:
+                        best_dist = d
+                        best_a = va_id
+                        best_b = vb_id
+            if best_a == -1:
+                continue
+            var existing: float = _shortest_path_length(nodes, edges, best_a, best_b)
+            if existing <= best_dist:
+                continue
+            edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [nodes[best_a].pos2d, nodes[best_b].pos2d], [best_a, best_b], _lower_class("road"), {})
+            next_edge_id += 1
+    var res: Dictionary = _insert_crossroads(nodes, edges, roads.get("next_node_id", 1), next_edge_id)
+    roads["next_node_id"] = res["next_node_id"]
+    roads["next_edge_id"] = res["next_edge_id"]
 
 ## Inserts a node in the middle of an edge and splits the edge.
 func insert_node_on_edge(roads: Dictionary, edge_id: int, node_type: String) -> void:

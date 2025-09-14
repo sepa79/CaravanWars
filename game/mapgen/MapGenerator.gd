@@ -100,11 +100,37 @@ func _poisson_ring(
         attempts += 1
     return points
 
+func _sample_field(field: Array, p: Vector2) -> float:
+    var h: int = field.size()
+    if h == 0:
+        return 0.0
+    var w: int = field[0].size()
+    var x: int = clamp(int(p.x), 0, w - 1)
+    var y: int = clamp(int(p.y), 0, h - 1)
+    return field[y][x]
+
+func _nearest_road_distance(roads: Dictionary, p: Vector2) -> float:
+    var edges: Dictionary = roads.get("edges", {})
+    var best: float = INF
+    for edge in edges.values():
+        var line: Array[Vector2] = edge.polyline
+        for j in range(line.size() - 1):
+            var a: Vector2 = line[j]
+            var b: Vector2 = line[j + 1]
+            var q: Vector2 = Geometry2D.get_closest_point_to_segment(p, a, b)
+            var d: float = p.distance_to(q)
+            if d < best:
+                best = d
+    return best
+
 func _sample_village_clusters(
     cities: Array[Vector2],
     min_per_city: int,
     max_per_city: int,
-    regions: Dictionary
+    regions: Dictionary,
+    roads: Dictionary,
+    fertility_field: Array,
+    roughness_field: Array
 ) -> Dictionary:
     var clusters: Dictionary = {}
     var spacing: float = params.min_city_distance * 0.5 - 0.01
@@ -116,9 +142,20 @@ func _sample_village_clusters(
             continue
         var region_id: int = i + 1
         var samples: Array[Vector2] = _poisson_ring(cities[i], 8.0, 30.0, spacing, regions, region_id)
-        if samples.size() > count:
-            samples.resize(count)
-        clusters[i + 1] = samples
+        var scored: Array = []
+        for p in samples:
+            var fert: float = _sample_field(fertility_field, p)
+            var rough: float = _sample_field(roughness_field, p)
+            var dist: float = _nearest_road_distance(roads, p)
+            var score: float = fert - rough - dist * 0.01
+            scored.append({"pos": p, "score": score})
+        scored.sort_custom(func(a, b): return a["score"] > b["score"])
+        var chosen: Array[Vector2] = []
+        for s in scored:
+            if chosen.size() >= count:
+                break
+            chosen.append(s["pos"])
+        clusters[i + 1] = chosen
     return clusters
 
 func generate() -> Dictionary:
@@ -140,7 +177,7 @@ func generate() -> Dictionary:
     map_data["fertility"] = fertility_field
     map_data["roughness"] = roughness_field
     var city_stage := CityPlacerModule.new(rng)
-    var city_margin: float = 60.0
+    var city_margin: float = 30.0
     var city_info: Dictionary = city_stage.select_city_sites(
         fertility_field,
         params.city_count,
@@ -181,8 +218,17 @@ func generate() -> Dictionary:
         var node = nodes.get(nid)
         if node != null:
             node.attrs["is_capital"] = true
-    var village_clusters: Dictionary = _sample_village_clusters(cities, params.min_villages_per_city, params.max_villages_per_city, regions)
+    var village_clusters: Dictionary = _sample_village_clusters(
+        cities,
+        params.min_villages_per_city,
+        params.max_villages_per_city,
+        regions,
+        roads,
+        fertility_field,
+        roughness_field
+    )
     road_stage.insert_villages(roads, village_clusters, params.village_downgrade_threshold)
+    road_stage.connect_neighbouring_villages(roads, regions)
     road_stage.insert_border_forts(roads, regions, 10.0, params.max_forts_per_kingdom, params.width, params.height)
     map_data["roads"] = roads
 

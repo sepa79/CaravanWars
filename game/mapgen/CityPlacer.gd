@@ -4,7 +4,7 @@ class_name MapGenCityPlacer
 var rng: RandomNumberGenerator
 var map_width: float = 150.0
 var map_height: float = 150.0
-var border_margin: float = 60.0
+var border_margin: float = 30.0
 
 func _init(_rng: RandomNumberGenerator) -> void:
     rng = _rng
@@ -17,7 +17,7 @@ func place_cities(
     max_distance: float = 40.0,
     width: float = 150.0,
     height: float = 150.0,
-    border_margin: float = 60.0
+    border_margin: float = 30.0
 ) -> Array[Vector2]:
     map_width = width
     map_height = height
@@ -98,7 +98,7 @@ func _is_valid(
 ## Finds local maxima and keeps those spaced by at least `min_distance`.
 ## Returns a dictionary with `cities` Array[Vector2] and `capitals` Array[int]
 ## containing indexes of cities chosen as capitals.
-func select_city_sites(field: Array, cities_target: int, min_distance: float, border_margin: float = 60.0) -> Dictionary:
+func select_city_sites(field: Array, cities_target: int, min_distance: float, border_margin: float = 30.0) -> Dictionary:
     self.border_margin = border_margin
     var result: Dictionary = {"cities": [], "capitals": []}
     var h: int = field.size()
