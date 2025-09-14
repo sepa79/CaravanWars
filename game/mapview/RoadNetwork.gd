@@ -162,8 +162,8 @@ func insert_villages(
         var mst_set: Dictionary = {}
         for e in mst:
             mst_set[_pair_key(e.x, e.y)] = true
-            var a_id: int = e.x == 0 ? cid : village_ids[e.x - 1]
-            var b_id: int = e.y == 0 ? cid : village_ids[e.y - 1]
+            var a_id: int = cid if e.x == 0 else village_ids[e.x - 1]
+            var b_id: int = cid if e.y == 0 else village_ids[e.y - 1]
             var cls: String = _lower_class("roman") if e.x == 0 or e.y == 0 else _lower_class(_lower_class("roman"))
             edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [nodes[a_id].pos2d, nodes[b_id].pos2d], [a_id, b_id], cls, {})
             next_edge_id += 1
@@ -178,8 +178,8 @@ func insert_villages(
             var choice: int = rng.randi_range(0, extra_edges.size() - 1)
             var e: Vector2i = extra_edges[choice]
             extra_edges.remove_at(choice)
-            var a_id: int = e.x == 0 ? cid : village_ids[e.x - 1]
-            var b_id: int = e.y == 0 ? cid : village_ids[e.y - 1]
+            var a_id: int = cid if e.x == 0 else village_ids[e.x - 1]
+            var b_id: int = cid if e.y == 0 else village_ids[e.y - 1]
             var cls: String = _lower_class("roman") if e.x == 0 or e.y == 0 else _lower_class(_lower_class("roman"))
             edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [nodes[a_id].pos2d, nodes[b_id].pos2d], [a_id, b_id], cls, {})
             next_edge_id += 1

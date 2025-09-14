@@ -1,5 +1,11 @@
 Changelog
 
+0.1.57 — 2025-09-13
+Added
+- `AGENTS.md` directs contributors to `RULES_ALWAYS_READ.md`.
+Fixed
+- Road network uses `if/else` instead of banned `?:` operator.
+
 0.1.56 — 2025-09-13
 Changed
 - Default map size is now 150×150 U and initial kingdom count is 2.
