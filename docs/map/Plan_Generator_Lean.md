@@ -34,7 +34,8 @@
 5) **Wsie i drogi lokalne:**
    - W pierścieniu 8–30U wokół miasta rozstaw **wsie** metodą Poisson; każda wieś musi pozostać w granicach regionu swojego miasta.
    - Selekcja kandydatów uwzględnia `fertility`, unika wysokiego `roughness` i preferuje bliskość dróg i rzek.
-   - Połącz wsie w klastrze: **MST**, a następnie dodaj ~20% krótkich skrótów. Sąsiadujące regiony tego samego królestwa mogą łączyć najbliższe wsie, jeśli brak krótszej trasy.
+   - Każda wieś najpierw dołącza do najbliższej drogi typu **roman**; jeśli takiej nie ma, łączy się bezpośrednio z miastem.
+   - Wsie łączą się między sobą tylko wtedy, gdy trasa istniejącą siecią dróg byłaby ponad dwukrotnie dłuższa niż połączenie bezpośrednie. Sąsiadujące regiony tego samego królestwa mogą łączyć najbliższe wsie, jeśli brak krótszej trasy.
    - Dziedziczenie klas: gałąź o **jeden poziom niżej** (Roman→Road→Path).
 
 6) **Granice królestw:**

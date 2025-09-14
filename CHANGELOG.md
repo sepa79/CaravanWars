@@ -7,6 +7,13 @@ Added
 Fixed
 - Cities keep a literal 30-unit buffer from map borders.
 
+0.1.63 — 2025-09-13
+Changed
+- Villages attach to the nearest roman road, linking to their city only when no major route is nearby.
+- Direct village paths appear only when the existing road network is over twice as long.
+Fixed
+- Bounded shortest-path search iterations to prevent road computations from hanging.
+
 0.1.61 — 2025-09-13
 Added
 - Villages sample via Poisson disks in 8–30 u rings and stay within their city regions.
