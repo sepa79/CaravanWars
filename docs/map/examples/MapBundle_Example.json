@@ -2,7 +2,7 @@
   "meta": {
     "version": "1.0",
     "seed": 12345,
-    "map_size": 100,
+    "map_size": 150,
     "unit_scale": 4
   },
   "nodes": [

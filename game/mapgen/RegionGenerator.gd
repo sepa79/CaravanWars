@@ -9,9 +9,9 @@ const EPS: float = 0.001
 # Returns a dictionary mapping region id -> Region instance.
 func generate_regions(
     cities: Array[Vector2],
-    kingdom_count: int = 1,
-    width: float = 100.0,
-    height: float = 100.0
+    kingdom_count: int = 2,
+    width: float = 150.0,
+    height: float = 150.0
 ) -> Dictionary:
     print("[RegionGenerator] generating regions for %s cities" % cities.size())
     var bounds := Rect2(Vector2.ZERO, Vector2(width, height))

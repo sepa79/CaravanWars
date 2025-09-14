@@ -5,7 +5,7 @@
 
 ## Wejście
 - `seed` (liczby całkowite per warstwa: osady, drogi, rzeki)
-- `map_size` (np. 100×100 w jednostkach U)
+- `map_size` (np. 150×150 w jednostkach U)
 - `cities_target`, `village_density`
 - opcjonalnie: `has_coast` (true/false), `river_count` (0–6)
 

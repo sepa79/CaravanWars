@@ -2,8 +2,8 @@ extends RefCounted
 class_name MapGenCityPlacer
 
 var rng: RandomNumberGenerator
-var map_width: float = 100.0
-var map_height: float = 100.0
+var map_width: float = 150.0
+var map_height: float = 150.0
 const BORDER_MARGIN: float = 30.0
 
 func _init(_rng: RandomNumberGenerator) -> void:
@@ -15,8 +15,8 @@ func place_cities(
     count: int = 3,
     min_distance: float = 20.0,
     max_distance: float = 40.0,
-    width: float = 100.0,
-    height: float = 100.0
+    width: float = 150.0,
+    height: float = 150.0
 ) -> Array[Vector2]:
     map_width = width
     map_height = height

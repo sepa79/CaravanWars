@@ -1,5 +1,9 @@
 Changelog
 
+0.1.56 — 2025-09-13
+Changed
+- Default map size is now 150×150 U and initial kingdom count is 2.
+
 0.1.55 — 2025-09-13
 Added
 - City placement now keeps 30 u from map edges.

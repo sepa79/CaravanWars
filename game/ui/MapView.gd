@@ -2,8 +2,8 @@ extends Control
 class_name MapView
 
 var map_data: Dictionary = {}
-var map_width: float = 100.0
-var map_height: float = 100.0
+var map_width: float = 150.0
+var map_height: float = 150.0
 @export var min_zoom: float = 0.5
 @export var max_zoom: float = 3.0
 var zoom_level: float = 1.0

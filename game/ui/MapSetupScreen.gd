@@ -102,6 +102,15 @@ func _ready() -> void:
     crossing_margin_spin.value_changed.connect(_on_params_changed)
     width_spin.value_changed.connect(_on_params_changed)
     height_spin.value_changed.connect(_on_params_changed)
+    width_spin.set_block_signals(true)
+    height_spin.set_block_signals(true)
+    kingdoms_spin.set_block_signals(true)
+    width_spin.value = 150.0
+    height_spin.value = 150.0
+    kingdoms_spin.value = 2
+    width_spin.set_block_signals(false)
+    height_spin.set_block_signals(false)
+    kingdoms_spin.set_block_signals(false)
     max_forts_label = Label.new()
     params.add_child(max_forts_label)
     max_forts_spin = SpinBox.new()

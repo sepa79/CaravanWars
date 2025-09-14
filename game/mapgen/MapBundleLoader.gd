@@ -54,7 +54,7 @@ func _convert(bundle: Dictionary) -> Dictionary:
     var map: Dictionary = {}
     var meta: Dictionary = bundle.get("meta", {})
     map["meta"] = meta
-    var size: float = float(meta.get("map_size", 100))
+    var size: float = float(meta.get("map_size", 150))
     map["width"] = size
     map["height"] = size
     map["fertility"] = bundle.get("fertility", [])
