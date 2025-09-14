@@ -76,6 +76,10 @@ func _sample_village_clusters(
 ) -> Dictionary:
     var placer := CityPlacerModule.new(rng)
     var clusters: Dictionary = {}
+    var spacing_min: float = params.min_city_distance * 0.5 - 0.01
+    if spacing_min > 8.0:
+        spacing_min = 8.0
+    var spacing_max: float = spacing_min * 2.0
     for i in range(cities.size()):
         var count: int = rng.randi_range(min_per_city, max_per_city)
         if count <= 0:
@@ -83,7 +87,7 @@ func _sample_village_clusters(
         var cluster: Array[Vector2] = []
         var attempts: int = 0
         while cluster.size() < count and attempts < count * 5:
-            var local: Array[Vector2] = placer.place_cities(count, 8.0, 16.0, 60.0, 60.0, 0.0)
+            var local: Array[Vector2] = placer.place_cities(count, spacing_min, spacing_max, 60.0, 60.0, 0.0)
             for p in local:
                 var offset: Vector2 = p - Vector2(30.0, 30.0)
                 var dist: float = offset.length()

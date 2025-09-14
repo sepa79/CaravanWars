@@ -1,5 +1,9 @@
 Changelog
 
+0.1.59 — 2025-09-13
+Fixed
+- Village cluster spacing scales with city spacing to stay below half the minimum city distance.
+
 0.1.58 — 2025-09-13
 Fixed
 - City generator accepts configurable `border_margin` (default 60 u) and samples extra cities when fertility peaks are insufficient.
