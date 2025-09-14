@@ -1,5 +1,9 @@
 Changelog
 
+0.1.56 — 2025-09-13
+Fixed
+- Prevent cities spawning within 20 U of the map border and villages within 5 U.
+
 0.1.55 — 2025-09-13
 Added
 - Sample villages in 8–40 U rings around cities using Poisson-disk distribution.

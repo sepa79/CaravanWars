@@ -62,6 +62,8 @@ const RiverGeneratorModule: Script = preload("res://mapgen/RiverGenerator.gd")
 const RegionGeneratorModule: Script = preload("res://mapgen/RegionGenerator.gd")
 const NoiseUtil = preload("res://mapgen/NoiseUtil.gd")
 const MapViewNode = preload("res://mapview/MapNode.gd")
+const CITY_EDGE_MARGIN: float = 20.0
+const VILLAGE_EDGE_MARGIN: float = 5.0
 
 func _init(_params: MapGenParams = MapGenParams.new()) -> void:
     params = _params
@@ -95,8 +97,8 @@ static func sample_village_ring(
             var dist: float = pos.distance_to(center)
             if dist < inner_radius or dist > outer_radius:
                 continue
-            pos.x = clamp(pos.x, 0.0, width)
-            pos.y = clamp(pos.y, 0.0, height)
+            if pos.x < VILLAGE_EDGE_MARGIN or pos.y < VILLAGE_EDGE_MARGIN or pos.x > width - VILLAGE_EDGE_MARGIN or pos.y > height - VILLAGE_EDGE_MARGIN:
+                continue
             var ok: bool = true
             for existing in result:
                 if existing.distance_to(pos) < inner_radius:
@@ -131,7 +133,8 @@ func generate() -> Dictionary:
     var city_info: Dictionary = city_stage.select_city_sites(
         fertility_field,
         params.city_count,
-        params.min_city_distance
+        params.min_city_distance,
+        CITY_EDGE_MARGIN
     )
     var cities: Array[Vector2] = city_info.get("cities", [])
     map_data["cities"] = cities
