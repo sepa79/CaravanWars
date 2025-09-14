@@ -1,5 +1,9 @@
 Changelog
 
+0.1.61 — 2025-09-13
+Added
+- Villages sample via Poisson disks in 8–30 u rings and stay within their city regions.
+
 0.1.60 — 2025-09-13
 Fixed
 - Preloaded NoiseUtil and capped city sampler iterations to keep map generation from hanging.

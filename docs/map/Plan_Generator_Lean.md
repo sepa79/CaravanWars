@@ -32,7 +32,7 @@
    - Gdzie droga przecina rzekę → utwórz **crossing** (domyślnie **bridge**).
 
 5) **Wsie i drogi lokalne:**
-   - W promieniu 8–40U od miasta rozstaw **wsie** metodą Poisson (bias przy drogach i mostach).
+   - W pierścieniu 8–30U wokół miasta rozstaw **wsie** metodą Poisson; każda wieś musi pozostać w granicach regionu swojego miasta.
    - Połącz wsie w klastrze: **MST**, a następnie dodaj ~20% krótkich skrótów.
    - Dziedziczenie klas: gałąź o **jeden poziom niżej** (Roman→Road→Path).
 

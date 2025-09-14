@@ -68,38 +68,57 @@ func _init(_params: MapGenParams = MapGenParams.new()) -> void:
     rng = RandomNumberGenerator.new()
     rng.seed = params.rng_seed
 
+func _poisson_ring(
+    center: Vector2,
+    inner: float,
+    outer: float,
+    spacing: float,
+    regions: Dictionary,
+    region_id: int
+) -> Array[Vector2]:
+    var points: Array[Vector2] = []
+    var attempts: int = 0
+    var max_attempts: int = 1000
+    var region = regions.get(region_id)
+    while attempts < max_attempts:
+        var r: float = rng.randf_range(inner, outer)
+        var angle: float = rng.randf() * TAU
+        var p: Vector2 = center + Vector2(r * cos(angle), r * sin(angle))
+        if p.x < 5.0 or p.y < 5.0 or p.x > params.width - 5.0 or p.y > params.height - 5.0:
+            attempts += 1
+            continue
+        if region != null and not Geometry2D.is_point_in_polygon(p, region.boundary_nodes):
+            attempts += 1
+            continue
+        var ok: bool = true
+        for existing in points:
+            if existing.distance_to(p) < spacing:
+                ok = false
+                break
+        if ok:
+            points.append(p)
+        attempts += 1
+    return points
+
 func _sample_village_clusters(
     cities: Array[Vector2],
     min_per_city: int,
     max_per_city: int,
-    width: float,
-    height: float
+    regions: Dictionary
 ) -> Dictionary:
-    var placer := CityPlacerModule.new(rng)
     var clusters: Dictionary = {}
-    var spacing_min: float = params.min_city_distance * 0.5 - 0.01
-    if spacing_min > 8.0:
-        spacing_min = 8.0
-    var spacing_max: float = spacing_min * 2.0
+    var spacing: float = params.min_city_distance * 0.5 - 0.01
+    if spacing > 8.0:
+        spacing = 8.0
     for i in range(cities.size()):
         var count: int = rng.randi_range(min_per_city, max_per_city)
         if count <= 0:
             continue
-        var cluster: Array[Vector2] = []
-        var attempts: int = 0
-        while cluster.size() < count and attempts < count * 5:
-            var local: Array[Vector2] = placer.place_cities(count, spacing_min, spacing_max, 60.0, 60.0, 0.0)
-            for p in local:
-                var offset: Vector2 = p - Vector2(30.0, 30.0)
-                var dist: float = offset.length()
-                if dist >= 8.0 and dist <= 30.0:
-                    var pos: Vector2 = cities[i] + offset
-                    if pos.x >= 0.0 and pos.x <= width and pos.y >= 0.0 and pos.y <= height:
-                        cluster.append(pos)
-                        if cluster.size() >= count:
-                            break
-            attempts += 1
-        clusters[i + 1] = cluster
+        var region_id: int = i + 1
+        var samples: Array[Vector2] = _poisson_ring(cities[i], 8.0, 30.0, spacing, regions, region_id)
+        if samples.size() > count:
+            samples.resize(count)
+        clusters[i + 1] = samples
     return clusters
 
 func generate() -> Dictionary:
@@ -162,7 +181,7 @@ func generate() -> Dictionary:
         var node = nodes.get(nid)
         if node != null:
             node.attrs["is_capital"] = true
-    var village_clusters: Dictionary = _sample_village_clusters(cities, params.min_villages_per_city, params.max_villages_per_city, params.width, params.height)
+    var village_clusters: Dictionary = _sample_village_clusters(cities, params.min_villages_per_city, params.max_villages_per_city, regions)
     road_stage.insert_villages(roads, village_clusters, params.village_downgrade_threshold)
     road_stage.insert_border_forts(roads, regions, 10.0, params.max_forts_per_kingdom, params.width, params.height)
     map_data["roads"] = roads
