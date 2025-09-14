@@ -67,6 +67,36 @@ func _init(_params: MapGenParams = MapGenParams.new()) -> void:
     rng = RandomNumberGenerator.new()
     rng.seed = params.rng_seed
 
+func _sample_village_clusters(
+    cities: Array[Vector2],
+    min_per_city: int,
+    max_per_city: int,
+    width: float,
+    height: float
+) -> Dictionary:
+    var placer := CityPlacerModule.new(rng)
+    var clusters: Dictionary = {}
+    for i in range(cities.size()):
+        var count: int = rng.randi_range(min_per_city, max_per_city)
+        if count <= 0:
+            continue
+        var cluster: Array[Vector2] = []
+        var attempts: int = 0
+        while cluster.size() < count and attempts < count * 5:
+            var local: Array[Vector2] = placer.place_cities(count, 8.0, 16.0, 60.0, 60.0)
+            for p in local:
+                var offset: Vector2 = p - Vector2(30.0, 30.0)
+                var dist: float = offset.length()
+                if dist >= 8.0 and dist <= 30.0:
+                    var pos: Vector2 = cities[i] + offset
+                    if pos.x >= 0.0 and pos.x <= width and pos.y >= 0.0 and pos.y <= height:
+                        cluster.append(pos)
+                        if cluster.size() >= count:
+                            break
+            attempts += 1
+        clusters[i + 1] = cluster
+    return clusters
+
 func generate() -> Dictionary:
     var map_data: Dictionary = {
         "width": params.width,
@@ -115,7 +145,8 @@ func generate() -> Dictionary:
         var node: MapViewNode = nodes.get(nid) as MapViewNode
         if node != null:
             node.attrs["is_capital"] = true
-    road_stage.insert_villages(roads, params.min_villages_per_city, params.max_villages_per_city, 5.0, params.width, params.height, params.village_downgrade_threshold)
+    var village_clusters: Dictionary = _sample_village_clusters(cities, params.min_villages_per_city, params.max_villages_per_city, params.width, params.height)
+    road_stage.insert_villages(roads, village_clusters, params.village_downgrade_threshold)
     road_stage.insert_border_forts(roads, regions, 10.0, params.max_forts_per_kingdom, params.width, params.height)
     map_data["roads"] = roads
 

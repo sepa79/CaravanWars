@@ -4,6 +4,7 @@ class_name MapGenCityPlacer
 var rng: RandomNumberGenerator
 var map_width: float = 100.0
 var map_height: float = 100.0
+const BORDER_MARGIN: float = 30.0
 
 func _init(_rng: RandomNumberGenerator) -> void:
     rng = _rng
@@ -31,7 +32,10 @@ func place_cities(
     var samples: Array[Vector2] = []
     var active: Array[int] = []
 
-    var initial_point := Vector2(rng.randf() * map_width, rng.randf() * map_height)
+    var initial_point := Vector2(
+        rng.randf_range(BORDER_MARGIN, map_width - BORDER_MARGIN),
+        rng.randf_range(BORDER_MARGIN, map_height - BORDER_MARGIN)
+    )
     samples.append(initial_point)
     var initial_index: int = _grid_index(initial_point, cell_size, grid_width)
     grid[initial_index] = 0
@@ -74,7 +78,7 @@ func _is_valid(
     samples: Array[Vector2],
     min_distance: float
 ) -> bool:
-    if p.x < 0.0 or p.y < 0.0 or p.x >= map_width or p.y >= map_height:
+    if p.x < BORDER_MARGIN or p.y < BORDER_MARGIN or p.x >= map_width - BORDER_MARGIN or p.y >= map_height - BORDER_MARGIN:
         return false
     var gx: int = int(p.x / cell_size)
     var gy: int = int(p.y / cell_size)
@@ -98,6 +102,8 @@ func select_city_sites(field: Array, cities_target: int, min_distance: float) ->
     var candidates: Array = []
     for y in range(h):
         for x in range(w):
+            if x < BORDER_MARGIN or x > w - BORDER_MARGIN or y < BORDER_MARGIN or y > h - BORDER_MARGIN:
+                continue
             var v: float = field[y][x]
             var is_peak: bool = true
             for dy in range(-1, 2):

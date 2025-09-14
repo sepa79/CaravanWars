@@ -1,5 +1,11 @@
 Changelog
 
+0.1.55 — 2025-09-13
+Added
+- City placement now keeps 30 u from map edges.
+- Village clusters sample in 8–30 u rings and connect via MST with random shortcuts and hierarchical road classes.
+- Repo guidelines require `godot --headless --check` for modified scripts.
+
 0.1.54 — 2025-09-13
 Added
 - Generate up to six noise-based rivers that create bridge crossings when intersecting roads.
