@@ -15,9 +15,6 @@ class MapGenParams:
     var height: float
     var kingdom_count: int
     var max_forts_per_kingdom: int
-    var min_villages_per_city: int
-    var max_villages_per_city: int
-    var village_downgrade_threshold: int
 
     func _init(
         p_rng_seed: int = 0,
@@ -31,10 +28,7 @@ class MapGenParams:
         p_width: float = 150.0,
         p_height: float = 150.0,
         p_kingdom_count: int = 2,
-        p_max_forts_per_kingdom: int = 1,
-        p_min_villages_per_city: int = 1,
-        p_max_villages_per_city: int = 3,
-        p_village_downgrade_threshold: int = 1
+        p_max_forts_per_kingdom: int = 1
     ) -> void:
         rng_seed = p_rng_seed if p_rng_seed != 0 else Time.get_ticks_msec()
         city_count = p_city_count
@@ -49,9 +43,6 @@ class MapGenParams:
         height = clamp(p_height, 20.0, 500.0)
         kingdom_count = max(1, p_kingdom_count)
         max_forts_per_kingdom = max(0, p_max_forts_per_kingdom)
-        min_villages_per_city = max(0, p_min_villages_per_city)
-        max_villages_per_city = max(min_villages_per_city, p_max_villages_per_city)
-        village_downgrade_threshold = max(1, p_village_downgrade_threshold)
 
 var params: MapGenParams
 var rng: RandomNumberGenerator
@@ -67,100 +58,6 @@ func _init(_params: MapGenParams = MapGenParams.new()) -> void:
     params = _params
     rng = RandomNumberGenerator.new()
     rng.seed = params.rng_seed
-
-func _poisson_ring(
-    center: Vector2,
-    inner: float,
-    outer: float,
-    spacing: float,
-    target: int,
-    regions: Dictionary,
-    region_id: int
-) -> Array[Vector2]:
-    var points: Array[Vector2] = []
-    var attempts: int = 0
-    var max_attempts: int = max(1000, target * 20)
-    var region_poly: PackedVector2Array = PackedVector2Array()
-    var region = regions.get(region_id)
-    if region != null:
-        region_poly = PackedVector2Array(region.boundary_nodes)
-    while points.size() < target and attempts < max_attempts:
-        var r: float = rng.randf_range(inner, outer)
-        var angle: float = rng.randf() * TAU
-        var p: Vector2 = center + Vector2(r * cos(angle), r * sin(angle))
-        if p.x < 5.0 or p.y < 5.0 or p.x > params.width - 5.0 or p.y > params.height - 5.0:
-            attempts += 1
-            continue
-        if region_poly.size() > 2 and not Geometry2D.is_point_in_polygon(p, region_poly):
-            attempts += 1
-            continue
-        var ok: bool = true
-        for existing in points:
-            if existing.distance_to(p) < spacing:
-                ok = false
-                break
-        if ok:
-            points.append(p)
-        attempts += 1
-    return points
-
-func _sample_field(field: Array, p: Vector2) -> float:
-    var h: int = field.size()
-    if h == 0:
-        return 0.0
-    var w: int = field[0].size()
-    var x: int = clamp(int(p.x), 0, w - 1)
-    var y: int = clamp(int(p.y), 0, h - 1)
-    return field[y][x]
-
-func _nearest_road_distance(roads: Dictionary, p: Vector2) -> float:
-    var edges: Dictionary = roads.get("edges", {})
-    var best: float = INF
-    for edge in edges.values():
-        var line: Array[Vector2] = edge.polyline
-        for j in range(line.size() - 1):
-            var a: Vector2 = line[j]
-            var b: Vector2 = line[j + 1]
-            var q: Vector2 = Geometry2D.get_closest_point_to_segment(p, a, b)
-            var d: float = p.distance_to(q)
-            if d < best:
-                best = d
-    return best
-
-func _sample_village_clusters(
-    cities: Array[Vector2],
-    min_per_city: int,
-    max_per_city: int,
-    regions: Dictionary,
-    roads: Dictionary,
-    fertility_field: Array,
-    roughness_field: Array
-) -> Dictionary:
-    var clusters: Dictionary = {}
-    var spacing: float = params.min_city_distance * 0.5 - 0.01
-    if spacing > 8.0:
-        spacing = 8.0
-    for i in range(cities.size()):
-        var count: int = rng.randi_range(min_per_city, max_per_city)
-        if count <= 0:
-            continue
-        var region_id: int = i + 1
-        var samples: Array[Vector2] = _poisson_ring(cities[i], 8.0, 30.0, spacing, count * 5, regions, region_id)
-        var scored: Array = []
-        for p in samples:
-            var fert: float = _sample_field(fertility_field, p)
-            var rough: float = _sample_field(roughness_field, p)
-            var dist: float = _nearest_road_distance(roads, p)
-            var score: float = fert - rough - dist * 0.01
-            scored.append({"pos": p, "score": score})
-        scored.sort_custom(func(a, b): return a["score"] > b["score"])
-        var chosen: Array[Vector2] = []
-        for s in scored:
-            if chosen.size() >= count:
-                break
-            chosen.append(s["pos"])
-        clusters[i + 1] = chosen
-    return clusters
 
 func generate() -> Dictionary:
     var map_data: Dictionary = {
@@ -222,17 +119,6 @@ func generate() -> Dictionary:
         var node = nodes.get(nid)
         if node != null:
             node.attrs["is_capital"] = true
-    var village_clusters: Dictionary = _sample_village_clusters(
-        cities,
-        params.min_villages_per_city,
-        params.max_villages_per_city,
-        regions,
-        roads,
-        fertility_field,
-        roughness_field
-    )
-    road_stage.insert_villages(roads, village_clusters, params.village_downgrade_threshold)
-    road_stage.connect_neighbouring_villages(roads, regions)
     road_stage.insert_border_forts(roads, regions, 10.0, params.max_forts_per_kingdom, params.width, params.height)
     map_data["roads"] = roads
 
@@ -262,7 +148,6 @@ static func _bundle_from_map(map_data: Dictionary, rng_seed: int, version: Strin
         "nodes": [],
         "edges": [],
         "cities": [],
-        "villages": [],
         "crossings": [],
         "forts": [],
         "kingdoms": [],
@@ -281,8 +166,6 @@ static func _bundle_from_map(map_data: Dictionary, rng_seed: int, version: Strin
                 bundle["cities"].append({"id": node.id, "x": node.pos2d.x, "y": node.pos2d.y, "kingdom_id": kid, "is_capital": is_cap})
                 if is_cap:
                     capital_by_kingdom[kid] = node.id
-            MapNodeModule.TYPE_VILLAGE:
-                bundle["villages"].append({"id": node.id, "x": node.pos2d.x, "y": node.pos2d.y, "city_id": node.attrs.get("city_id", 0), "road_node_id": node.attrs.get("road_node_id", 0), "production": node.attrs.get("production", {})})
             MapNodeModule.TYPE_FORT:
                 bundle["forts"].append({"id": node.id, "x": node.pos2d.x, "y": node.pos2d.y, "edge_id": node.attrs.get("edge_id", null), "crossing_id": node.attrs.get("crossing_id", null), "pair_id": node.attrs.get("pair_id", null)})
             MapNodeModule.TYPE_BRIDGE:

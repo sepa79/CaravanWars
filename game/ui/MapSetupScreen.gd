@@ -46,7 +46,6 @@ const MapBundleLoaderModule = preload("res://mapgen/MapBundleLoader.gd")
 @onready var delete_road_button: Button = $Layers/DeleteRoad
 @onready var validate_button: Button = $Layers/ValidateMap
 @onready var layers: HBoxContainer = $Layers
-var add_village_button: Button
 var add_fort_button: Button
 var road_class_selector: OptionButton
 var finalize_button: Button
@@ -54,12 +53,6 @@ var export_button: Button
 var import_button: Button
 var max_forts_label: Label
 var max_forts_spin: SpinBox
-var min_villages_label: Label
-var min_villages_spin: SpinBox
-var max_villages_label: Label
-var max_villages_spin: SpinBox
-var village_threshold_label: Label
-var village_threshold_spin: SpinBox
 @onready var start_button: Button = $HBox/ControlsScroll/Controls/Buttons/Start
 @onready var back_button: Button = $HBox/ControlsScroll/Controls/Buttons/Back
 @onready var main_ui: HBoxContainer = $HBox
@@ -119,30 +112,6 @@ func _ready() -> void:
     max_forts_spin.value = 1
     params.add_child(max_forts_spin)
     max_forts_spin.value_changed.connect(_on_params_changed)
-    min_villages_label = Label.new()
-    params.add_child(min_villages_label)
-    min_villages_spin = SpinBox.new()
-    min_villages_spin.min_value = 0
-    min_villages_spin.max_value = 10
-    min_villages_spin.value = 1
-    params.add_child(min_villages_spin)
-    min_villages_spin.value_changed.connect(_on_params_changed)
-    max_villages_label = Label.new()
-    params.add_child(max_villages_label)
-    max_villages_spin = SpinBox.new()
-    max_villages_spin.min_value = 0
-    max_villages_spin.max_value = 10
-    max_villages_spin.value = 3
-    params.add_child(max_villages_spin)
-    max_villages_spin.value_changed.connect(_on_params_changed)
-    village_threshold_label = Label.new()
-    params.add_child(village_threshold_label)
-    village_threshold_spin = SpinBox.new()
-    village_threshold_spin.min_value = 1
-    village_threshold_spin.max_value = 5
-    village_threshold_spin.value = 1
-    params.add_child(village_threshold_spin)
-    village_threshold_spin.value_changed.connect(_on_params_changed)
     show_roads_check.toggled.connect(_on_show_roads_toggled)
     show_rivers_check.toggled.connect(_on_show_rivers_toggled)
     show_cities_check.toggled.connect(_on_show_cities_toggled)
@@ -160,10 +129,6 @@ func _ready() -> void:
     add_road_button.toggled.connect(_on_add_road_toggled)
     delete_road_button.toggled.connect(_on_delete_road_toggled)
     validate_button.pressed.connect(_on_validate_map_pressed)
-    add_village_button = Button.new()
-    add_village_button.toggle_mode = true
-    layers.add_child(add_village_button)
-    add_village_button.toggled.connect(_on_add_village_toggled)
     add_fort_button = Button.new()
     add_fort_button.toggle_mode = true
     layers.add_child(add_fort_button)
@@ -199,7 +164,6 @@ func _ready() -> void:
     map_view.set_show_bridges(true)
     map_view.set_show_fords(true)
     map_view.set_show_regions(true)
-    map_view.set_show_villages(true)
     map_view.set_show_forts(true)
     map_view.set_show_fertility(false)
     map_view.set_show_roughness(false)
@@ -210,7 +174,6 @@ func _ready() -> void:
         {"key": "setup.legend_roads", "type": "road", "func": Callable(map_view, "set_show_roads")},
         {"key": "setup.legend_rivers", "type": "river", "func": Callable(map_view, "set_show_rivers")},
         {"key": "setup.legend_cities", "type": "city", "func": Callable(map_view, "set_show_cities")},
-        {"key": "setup.legend_villages", "type": "village", "func": Callable(map_view, "set_show_villages")},
         {"key": "setup.legend_forts", "type": "fort", "func": Callable(map_view, "set_show_forts")},
         {"key": "setup.legend_crossroads", "type": "crossroad", "func": Callable(map_view, "set_show_crossroads")},
         {"key": "setup.legend_bridges", "type": "bridge", "func": Callable(map_view, "set_show_bridges")},
@@ -260,15 +223,11 @@ func _update_texts() -> void:
     add_road_button.text = I18N.t("setup.add_road")
     delete_road_button.text = I18N.t("setup.delete_road")
     validate_button.text = I18N.t("setup.validate_map")
-    add_village_button.text = I18N.t("setup.add_village")
     add_fort_button.text = I18N.t("setup.add_fort")
     finalize_button.text = I18N.t("setup.finalize_map")
     export_button.text = I18N.t("setup.export")
     import_button.text = I18N.t("setup.import")
     max_forts_label.text = I18N.t("setup.max_forts_per_kingdom")
-    min_villages_label.text = I18N.t("setup.min_villages_per_city")
-    max_villages_label.text = I18N.t("setup.max_villages_per_city")
-    village_threshold_label.text = I18N.t("setup.village_path_threshold")
     road_class_selector.set_item_text(0, I18N.t("setup.road_class_path"))
     road_class_selector.set_item_text(1, I18N.t("setup.road_class_road"))
     road_class_selector.set_item_text(2, I18N.t("setup.road_class_roman"))
@@ -293,10 +252,7 @@ func _generate_map() -> void:
         width_spin.value,
         height_spin.value,
         kingdoms,
-        int(max_forts_spin.value),
-        int(min_villages_spin.value),
-        int(max_villages_spin.value),
-        int(village_threshold_spin.value)
+        int(max_forts_spin.value)
     )
     kingdoms_spin.max_value = map_params.city_count
     if int(kingdoms_spin.value) != map_params.kingdom_count:
@@ -346,20 +302,6 @@ func _generate_map() -> void:
         max_forts_spin.set_block_signals(true)
         max_forts_spin.value = map_params.max_forts_per_kingdom
         max_forts_spin.set_block_signals(false)
-    if min_villages_spin.value != map_params.min_villages_per_city:
-        min_villages_spin.set_block_signals(true)
-        min_villages_spin.value = map_params.min_villages_per_city
-        min_villages_spin.set_block_signals(false)
-    if max_villages_spin.value != map_params.max_villages_per_city:
-        max_villages_spin.set_block_signals(true)
-        max_villages_spin.value = map_params.max_villages_per_city
-        max_villages_spin.set_block_signals(false)
-    max_villages_spin.min_value = min_villages_spin.value
-    min_villages_spin.max_value = max_villages_spin.value
-    if village_threshold_spin.value != map_params.village_downgrade_threshold:
-        village_threshold_spin.set_block_signals(true)
-        village_threshold_spin.value = map_params.village_downgrade_threshold
-        village_threshold_spin.set_block_signals(false)
     var generator := MapGeneratorModule.new(map_params)
     current_map = generator.generate()
     map_view.set_map_data(current_map)
@@ -412,7 +354,6 @@ func _on_edit_cities_toggled(pressed: bool) -> void:
 func _on_add_road_toggled(pressed: bool) -> void:
     if pressed:
         delete_road_button.button_pressed = false
-        add_village_button.button_pressed = false
         add_fort_button.button_pressed = false
         map_view.set_road_mode("add")
     else:
@@ -421,18 +362,8 @@ func _on_add_road_toggled(pressed: bool) -> void:
 func _on_delete_road_toggled(pressed: bool) -> void:
     if pressed:
         add_road_button.button_pressed = false
-        add_village_button.button_pressed = false
         add_fort_button.button_pressed = false
         map_view.set_road_mode("delete")
-    else:
-        map_view.set_road_mode("")
-
-func _on_add_village_toggled(pressed: bool) -> void:
-    if pressed:
-        add_road_button.button_pressed = false
-        delete_road_button.button_pressed = false
-        add_fort_button.button_pressed = false
-        map_view.set_road_mode("village")
     else:
         map_view.set_road_mode("")
 
@@ -440,7 +371,6 @@ func _on_add_fort_toggled(pressed: bool) -> void:
     if pressed:
         add_road_button.button_pressed = false
         delete_road_button.button_pressed = false
-        add_village_button.button_pressed = false
         map_view.set_road_mode("fort")
     else:
         map_view.set_road_mode("")
@@ -465,7 +395,6 @@ func _on_finalize_map_pressed() -> void:
         edit_cities_check.disabled = true
         add_road_button.disabled = true
         delete_road_button.disabled = true
-        add_village_button.disabled = true
         add_fort_button.disabled = true
         road_class_selector.disabled = true
         validate_button.disabled = true

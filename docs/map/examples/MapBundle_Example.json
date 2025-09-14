@@ -79,19 +79,6 @@
       }
     }
   ],
-  "villages": [
-    {
-      "id": 201,
-      "x": 42,
-      "y": 40,
-      "city_id": 101,
-      "road_node_id": 4,
-      "production": {
-        "food": 1.1,
-        "wood": 0.9
-      }
-    }
-  ],
   "crossings": [
     {
       "id": 1,

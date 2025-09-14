@@ -1,5 +1,9 @@
 Changelog
 
+0.1.66 — 2025-09-13
+Removed
+- Village generation code, leaving cities and forts as the only settlements.
+
 0.1.65 — 2025-09-13
 Fixed
 - Village generation starts with at least one site per city, restoring default village spawning.

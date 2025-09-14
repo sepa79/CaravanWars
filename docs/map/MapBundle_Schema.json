@@ -7,7 +7,6 @@
     "nodes",
     "edges",
     "cities",
-    "villages",
     "crossings",
     "forts",
     "kingdoms",
@@ -134,43 +133,6 @@
           "y",
           "kingdom_id",
           "is_capital",
-          "production"
-        ]
-      }
-    },
-    "villages": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          },
-          "x": {
-            "type": "number"
-          },
-          "y": {
-            "type": "number"
-          },
-          "city_id": {
-            "type": "integer"
-          },
-          "road_node_id": {
-            "type": "integer"
-          },
-          "production": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "number"
-            }
-          }
-        },
-        "required": [
-          "id",
-          "x",
-          "y",
-          "city_id",
-          "road_node_id",
           "production"
         ]
       }
