@@ -43,7 +43,9 @@ func place_cities(
     grid[initial_index] = 0
     active.append(0)
 
-    while active.size() > 0 and samples.size() < count:
+    var attempts: int = 0
+    var max_attempts: int = count * k * 2
+    while active.size() > 0 and samples.size() < count and attempts < max_attempts:
         var idx: int = active[rng.randi_range(0, active.size() - 1)]
         var point: Vector2 = samples[idx]
         var found: bool = false
@@ -58,6 +60,7 @@ func place_cities(
                     break
         if not found:
             active.erase(idx)
+        attempts += 1
 
     return samples
 

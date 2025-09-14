@@ -1,5 +1,9 @@
 Changelog
 
+0.1.60 — 2025-09-13
+Fixed
+- Preloaded NoiseUtil and capped city sampler iterations to keep map generation from hanging.
+
 0.1.59 — 2025-09-13
 Fixed
 - Village cluster spacing scales with city spacing to stay below half the minimum city distance.

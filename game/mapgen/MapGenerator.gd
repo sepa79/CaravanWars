@@ -61,6 +61,7 @@ const RoadNetworkModule = preload("res://mapview/RoadNetwork.gd")
 const RiverGeneratorModule: Script = preload("res://mapgen/RiverGenerator.gd")
 const RegionGeneratorModule: Script = preload("res://mapgen/RegionGenerator.gd")
 const MapNodeModule = preload("res://mapview/MapNode.gd")
+const NoiseUtil = preload("res://mapgen/NoiseUtil.gd")
 
 func _init(_params: MapGenParams = MapGenParams.new()) -> void:
     params = _params
@@ -158,7 +159,7 @@ func generate() -> Dictionary:
     var nodes: Dictionary = roads.get("nodes", {})
     for idx in map_data.get("capitals", []):
         var nid: int = idx + 1
-        var node: MapViewNode = nodes.get(nid) as MapViewNode
+        var node = nodes.get(nid)
         if node != null:
             node.attrs["is_capital"] = true
     var village_clusters: Dictionary = _sample_village_clusters(cities, params.min_villages_per_city, params.max_villages_per_city, params.width, params.height)
