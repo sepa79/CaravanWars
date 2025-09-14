@@ -310,6 +310,9 @@ func _draw() -> void:
                 draw_circle(pos, 3.0, Color.RED)
             else:
                 draw_circle(pos, 4.0, Color.RED)
+        for village in map_data.get("villages", []):
+            var vpos: Vector2 = village * draw_scale + offset
+            draw_circle(vpos, 3.0, Color(0.8, 0.6, 0.4))
     if show_forts or show_crossroads or show_bridges or show_fords:
         for node in roads.get("nodes", {}).values():
             var center: Vector2 = node.pos2d * draw_scale + offset

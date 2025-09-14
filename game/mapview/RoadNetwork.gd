@@ -107,7 +107,99 @@ func connect_nodes(
     roads["next_edge_id"] = res["next_edge_id"]
     _prune_crossroad_duplicates(nodes, edges, crossroad_margin)
 
-
+## Inserts villages into the road network.
+func insert_villages(roads: Dictionary, village_positions: Array[Vector2]) -> void:
+    var nodes: Dictionary = roads.get("nodes", {})
+    var edges: Dictionary = roads.get("edges", {})
+    var next_node_id: int = roads.get("next_node_id", 1)
+    var next_edge_id: int = roads.get("next_edge_id", 1)
+    var village_ids: Array[int] = []
+    for pos in village_positions:
+        var vid: int = next_node_id
+        nodes[vid] = MapNodeModule.new(vid, MapNodeModule.TYPE_VILLAGE, pos, {})
+        next_node_id += 1
+        var best_edge: int = -1
+        var best_point: Vector2 = Vector2.ZERO
+        var best_edge_dist: float = INF
+        for eid in edges.keys():
+            var e: MapViewEdge = edges[eid]
+            var a: Vector2 = nodes[e.endpoints[0]].pos2d
+            var b: Vector2 = nodes[e.endpoints[1]].pos2d
+            var p: Vector2 = Geometry2D.get_closest_point_to_segment(pos, a, b)
+            var d: float = p.distance_to(pos)
+            if d < best_edge_dist:
+                best_edge_dist = d
+                best_edge = eid
+                best_point = p
+        var best_city: int = -1
+        var best_city_dist: float = INF
+        for nid in nodes.keys():
+            var n: MapViewNode = nodes[nid]
+            if n.type == MapNodeModule.TYPE_CITY:
+                var d_city: float = n.pos2d.distance_to(pos)
+                if d_city < best_city_dist:
+                    best_city_dist = d_city
+                    best_city = nid
+        if best_edge != -1 and best_edge_dist < best_city_dist:
+            var edge: MapViewEdge = edges[best_edge]
+            var ecls: String = _lower_class(edge.road_class)
+            var cross_id: int = insert_node_on_edge(roads, best_edge, MapNodeModule.TYPE_CROSSROAD, best_point)
+            nodes = roads.get("nodes", {})
+            edges = roads.get("edges", {})
+            edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [pos, nodes[cross_id].pos2d], [vid, cross_id], ecls, {})
+            next_edge_id += 1
+        elif best_city != -1:
+            edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [pos, nodes[best_city].pos2d], [vid, best_city], "path", {})
+            next_edge_id += 1
+        village_ids.append(vid)
+    roads["next_node_id"] = next_node_id
+    roads["next_edge_id"] = next_edge_id
+    _connect_village_network(roads, village_ids)
+func _connect_village_network(roads: Dictionary, village_ids: Array[int]) -> void:
+    var nodes: Dictionary = roads.get("nodes", {})
+    var edges: Dictionary = roads.get("edges", {})
+    var next_edge_id: int = roads.get("next_edge_id", 1)
+    if village_ids.size() <= 1:
+        return
+    var in_tree: Array[int] = [village_ids[0]]
+    var remaining: Array[int] = village_ids.duplicate()
+    remaining.remove_at(0)
+    while remaining.size() > 0:
+        var best_a: int = -1
+        var best_b: int = -1
+        var best_dist: float = INF
+        for a in in_tree:
+            for b in remaining:
+                var d: float = nodes[a].pos2d.distance_to(nodes[b].pos2d)
+                if d < best_dist:
+                    best_dist = d
+                    best_a = a
+                    best_b = b
+        edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [nodes[best_a].pos2d, nodes[best_b].pos2d], [best_a, best_b], "path", {})
+        next_edge_id += 1
+        in_tree.append(best_b)
+        remaining.erase(best_b)
+    var extra_candidates: Array = []
+    for i in range(village_ids.size()):
+        for j in range(i + 1, village_ids.size()):
+            var a_id: int = village_ids[i]
+            var b_id: int = village_ids[j]
+            var exists: bool = false
+            for e in edges.values():
+                if e.endpoints.has(a_id) and e.endpoints.has(b_id):
+                    exists = true
+                    break
+            if not exists:
+                extra_candidates.append({"a": a_id, "b": b_id})
+    var extras: int = int(floor(extra_candidates.size() * 0.2))
+    rng.shuffle(extra_candidates)
+    for k in range(extras):
+        var pair = extra_candidates[k]
+        var a_id: int = pair["a"]
+        var b_id: int = pair["b"]
+        edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [nodes[a_id].pos2d, nodes[b_id].pos2d], [a_id, b_id], "path", {})
+        next_edge_id += 1
+    roads["next_edge_id"] = next_edge_id
 
 ## Inserts a node in the middle of an edge and splits the edge.
 func insert_node_on_edge(roads: Dictionary, edge_id: int, node_type: String, pos: Variant = null) -> int:

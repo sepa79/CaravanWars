@@ -26,6 +26,8 @@
    - Preferencja: ≤ 3U od rzeki/wybrzeża, `roughness` poniżej progu.
    - Wybierz `cities_target` najlepszych. 1–3 z nich oznacz jako **stolice**.
 
+   - Niewykorzystane maksima służą jako kandydaci na **wsie**; wybieramy żądaną liczbę i łączymy je z najbliższą drogą lub miastem, budując lokalne ścieżki metodą MST z ~20 % skrótów.
+
 4) **Drogi między miastami (Roman):**
    - Graf kandydatów: Delaunay → MST → kilka skrótów (k-nearest).
    - Trasa krawędzi: „najprostsza możliwa” (prosta + 1–2 punkty załamania, unikaj ostrych kątów).

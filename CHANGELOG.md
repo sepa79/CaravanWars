@@ -1,5 +1,9 @@
 Changelog
 
+0.1.67 — 2025-09-13
+Added
+- Converted unused city-site candidates into villages and linked them to the nearest roads with local path networks.
+
 0.1.66 — 2025-09-13
 Removed
 - Village generation code, leaving cities and forts as the only settlements.

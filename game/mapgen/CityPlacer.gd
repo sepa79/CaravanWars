@@ -100,7 +100,7 @@ func _is_valid(
 ## containing indexes of cities chosen as capitals.
 func select_city_sites(field: Array, cities_target: int, min_distance: float, p_border_margin: float = 30.0) -> Dictionary:
     border_margin = p_border_margin
-    var result: Dictionary = {"cities": [], "capitals": []}
+    var result: Dictionary = {"cities": [], "capitals": [], "leftovers": []}
     var h: int = field.size()
     if h == 0:
         return result
@@ -128,6 +128,7 @@ func select_city_sites(field: Array, cities_target: int, min_distance: float, p_
                 candidates.append({"pos": Vector2(x + 0.5, y + 0.5), "score": v})
     candidates.sort_custom(func(a, b): return a["score"] > b["score"])
     var cities: Array[Vector2] = []
+    var leftovers: Array[Vector2] = []
     for c in candidates:
         var p: Vector2 = c["pos"]
         var valid: bool = true
@@ -135,12 +136,12 @@ func select_city_sites(field: Array, cities_target: int, min_distance: float, p_
             if existing.distance_to(p) < min_distance:
                 valid = false
                 break
-        if not valid:
-            continue
-        cities.append(p)
-        if cities.size() >= cities_target:
-            break
+        if valid and cities.size() < cities_target:
+            cities.append(p)
+        else:
+            leftovers.append(p)
     result["cities"] = cities
+    result["leftovers"] = leftovers
     if cities.size() > 0:
         var cap_count: int = rng.randi_range(1, min(3, cities.size()))
         var indices: Array[int] = []

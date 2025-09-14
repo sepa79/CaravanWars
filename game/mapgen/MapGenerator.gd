@@ -15,6 +15,7 @@ class MapGenParams:
     var height: float
     var kingdom_count: int
     var max_forts_per_kingdom: int
+    var village_count: int
 
     func _init(
         p_rng_seed: int = 0,
@@ -28,7 +29,8 @@ class MapGenParams:
         p_width: float = 150.0,
         p_height: float = 150.0,
         p_kingdom_count: int = 2,
-        p_max_forts_per_kingdom: int = 1
+        p_max_forts_per_kingdom: int = 1,
+        p_village_count: int = 0
     ) -> void:
         rng_seed = p_rng_seed if p_rng_seed != 0 else Time.get_ticks_msec()
         city_count = p_city_count
@@ -43,6 +45,7 @@ class MapGenParams:
         height = clamp(p_height, 20.0, 500.0)
         kingdom_count = max(1, p_kingdom_count)
         max_forts_per_kingdom = max(0, p_max_forts_per_kingdom)
+        village_count = max(0, p_village_count)
 
 var params: MapGenParams
 var rng: RandomNumberGenerator
@@ -86,6 +89,12 @@ func generate() -> Dictionary:
         city_margin
     )
     var cities: Array[Vector2] = city_info.get("cities", [])
+    var village_candidates: Array[Vector2] = city_info.get("leftovers", [])
+    var villages: Array[Vector2] = []
+    if village_candidates.size() > 0 and params.village_count > 0:
+        var take: int = min(village_candidates.size(), params.village_count)
+        for i in range(take):
+            villages.append(village_candidates[i])
     if cities.size() < params.city_count:
         var extra: Array[Vector2] = city_stage.place_cities(
             params.city_count - cities.size(),
@@ -97,6 +106,7 @@ func generate() -> Dictionary:
         )
         cities.append_array(extra)
     map_data["cities"] = cities
+    map_data["villages"] = villages
     map_data["capitals"] = city_info.get("capitals", [])
     print("[MapGenerator] placed %s cities" % cities.size())
 
@@ -113,6 +123,8 @@ func generate() -> Dictionary:
         params.crossroad_detour_margin,
         "roman"
     )
+    if villages.size() > 0:
+        road_stage.insert_villages(roads, villages)
     var nodes: Dictionary = roads.get("nodes", {})
     for idx in map_data.get("capitals", []):
         var nid: int = idx + 1
