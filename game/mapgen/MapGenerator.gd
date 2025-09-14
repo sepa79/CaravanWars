@@ -83,7 +83,7 @@ func _sample_village_clusters(
         var cluster: Array[Vector2] = []
         var attempts: int = 0
         while cluster.size() < count and attempts < count * 5:
-            var local: Array[Vector2] = placer.place_cities(count, 8.0, 16.0, 60.0, 60.0)
+            var local: Array[Vector2] = placer.place_cities(count, 8.0, 16.0, 60.0, 60.0, 0.0)
             for p in local:
                 var offset: Vector2 = p - Vector2(30.0, 30.0)
                 var dist: float = offset.length()
@@ -116,12 +116,24 @@ func generate() -> Dictionary:
     map_data["fertility"] = fertility_field
     map_data["roughness"] = roughness_field
     var city_stage := CityPlacerModule.new(rng)
+    var city_margin: float = 60.0
     var city_info: Dictionary = city_stage.select_city_sites(
         fertility_field,
         params.city_count,
-        params.min_city_distance
+        params.min_city_distance,
+        city_margin
     )
     var cities: Array[Vector2] = city_info.get("cities", [])
+    if cities.size() < params.city_count:
+        var extra: Array[Vector2] = city_stage.place_cities(
+            params.city_count - cities.size(),
+            params.min_city_distance,
+            params.max_city_distance,
+            params.width,
+            params.height,
+            city_margin
+        )
+        cities.append_array(extra)
     map_data["cities"] = cities
     map_data["capitals"] = city_info.get("capitals", [])
     print("[MapGenerator] placed %s cities" % cities.size())

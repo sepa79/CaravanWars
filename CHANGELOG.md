@@ -1,5 +1,9 @@
 Changelog
 
+0.1.58 — 2025-09-13
+Fixed
+- City generator accepts configurable `border_margin` (default 60 u) and samples extra cities when fertility peaks are insufficient.
+
 0.1.57 — 2025-09-13
 Added
 - `AGENTS.md` directs contributors to `RULES_ALWAYS_READ.md`.

@@ -4,7 +4,7 @@ class_name MapGenCityPlacer
 var rng: RandomNumberGenerator
 var map_width: float = 150.0
 var map_height: float = 150.0
-const BORDER_MARGIN: float = 30.0
+var border_margin: float = 60.0
 
 func _init(_rng: RandomNumberGenerator) -> void:
     rng = _rng
@@ -16,10 +16,12 @@ func place_cities(
     min_distance: float = 20.0,
     max_distance: float = 40.0,
     width: float = 150.0,
-    height: float = 150.0
+    height: float = 150.0,
+    border_margin: float = 60.0
 ) -> Array[Vector2]:
     map_width = width
     map_height = height
+    self.border_margin = border_margin
     var radius: float = min_distance
     var k: int = 30
     var cell_size: float = radius / sqrt(2.0)
@@ -33,8 +35,8 @@ func place_cities(
     var active: Array[int] = []
 
     var initial_point := Vector2(
-        rng.randf_range(BORDER_MARGIN, map_width - BORDER_MARGIN),
-        rng.randf_range(BORDER_MARGIN, map_height - BORDER_MARGIN)
+        rng.randf_range(border_margin, map_width - border_margin),
+        rng.randf_range(border_margin, map_height - border_margin)
     )
     samples.append(initial_point)
     var initial_index: int = _grid_index(initial_point, cell_size, grid_width)
@@ -78,7 +80,7 @@ func _is_valid(
     samples: Array[Vector2],
     min_distance: float
 ) -> bool:
-    if p.x < BORDER_MARGIN or p.y < BORDER_MARGIN or p.x >= map_width - BORDER_MARGIN or p.y >= map_height - BORDER_MARGIN:
+    if p.x < border_margin or p.y < border_margin or p.x >= map_width - border_margin or p.y >= map_height - border_margin:
         return false
     var gx: int = int(p.x / cell_size)
     var gy: int = int(p.y / cell_size)
@@ -93,7 +95,8 @@ func _is_valid(
 ## Finds local maxima and keeps those spaced by at least `min_distance`.
 ## Returns a dictionary with `cities` Array[Vector2] and `capitals` Array[int]
 ## containing indexes of cities chosen as capitals.
-func select_city_sites(field: Array, cities_target: int, min_distance: float) -> Dictionary:
+func select_city_sites(field: Array, cities_target: int, min_distance: float, border_margin: float = 60.0) -> Dictionary:
+    self.border_margin = border_margin
     var result: Dictionary = {"cities": [], "capitals": []}
     var h: int = field.size()
     if h == 0:
@@ -102,7 +105,7 @@ func select_city_sites(field: Array, cities_target: int, min_distance: float) ->
     var candidates: Array = []
     for y in range(h):
         for x in range(w):
-            if x < BORDER_MARGIN or x > w - BORDER_MARGIN or y < BORDER_MARGIN or y > h - BORDER_MARGIN:
+            if x < border_margin or x > w - border_margin or y < border_margin or y > h - border_margin:
                 continue
             var v: float = field[y][x]
             var is_peak: bool = true

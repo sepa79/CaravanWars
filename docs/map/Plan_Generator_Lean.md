@@ -22,6 +22,7 @@
 
 3) **Miasta:**
    - Kandydaci = lokalne maksima `fertility` na lądzie, min. odstęp `R_city`.
+   - Miasta są ≥ 30U od krawędzi mapy (`border_margin` = 60U) — dodatkowe 30U rezerwuje pierścień wsi.
    - Preferencja: ≤ 3U od rzeki/wybrzeża, `roughness` poniżej progu.
    - Wybierz `cities_target` najlepszych. 1–3 z nich oznacz jako **stolice**.
 
