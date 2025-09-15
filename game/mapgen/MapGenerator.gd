@@ -190,7 +190,7 @@ func generate() -> Dictionary:
     return map_data
 
 func _generate_village_positions(
-    city_stage: MapGenCityPlacer,
+    city_stage: RefCounted,
     roads: Dictionary,
     cities: Array[Vector2],
     border_margin: float
@@ -423,7 +423,7 @@ func _sample_villages_for_city(
     return result
 
 func _fallback_villages(
-    city_stage: MapGenCityPlacer,
+    city_stage: RefCounted,
     cities: Array[Vector2],
     existing_villages: Array[Vector2],
     border_margin: float,
