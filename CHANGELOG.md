@@ -1,5 +1,9 @@
 Changelog
 
+0.1.75 — 2025-09-14
+Fixed
+- Typed capital index filtering to avoid assignment errors.
+
 0.1.74 — 2025-09-14
 Fixed
 - Village sites are selected from extra city candidates, matching the requested village count.
