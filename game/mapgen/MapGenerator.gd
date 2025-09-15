@@ -105,8 +105,11 @@ func generate() -> Dictionary:
             city_margin
         )
         cities.append_array(extra)
-    var capitals: Array[int] = city_info.get("capitals", [] as Array[int])
-    capitals = capitals.filter(func(i): return i < params.city_count) as Array[int]
+    var capitals: Array[int] = []
+    for i in city_info.get("capitals", []):
+        var idx: int = int(i)
+        if idx < params.city_count:
+            capitals.append(idx)
     map_data["cities"] = cities
     map_data["villages"] = villages
     map_data["capitals"] = capitals

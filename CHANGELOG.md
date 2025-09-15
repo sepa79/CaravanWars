@@ -1,5 +1,9 @@
 Changelog
 
+0.1.76 — 2025-09-14
+Fixed
+- Cast capital indices to a typed array before filtering to satisfy typed GDScript.
+
 0.1.75 — 2025-09-14
 Fixed
 - Typed capital index filtering to avoid assignment errors.
