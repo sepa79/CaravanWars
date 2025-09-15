@@ -5,6 +5,7 @@ Added
 - CLI smoke test wiring that runs the map generator when `MAPGEN_SMOKE_TEST=1` or via `tests/MapGeneratorSmokeTest.gd`, enabling automated regression checks.
 Fixed
 - Simplified village road stitching to avoid crossroad explosions and relaxed custom type annotations so the generator can execute under headless tests.
+- Replaced the Game scene's full map dump with a compact summary so launching single player no longer stalls on massive console output.
 
 0.1.80 — 2025-09-14
 Added
