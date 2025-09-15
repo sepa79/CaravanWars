@@ -95,8 +95,9 @@ func generate() -> Dictionary:
         params.city_count,
         params.city_count + params.village_count
     )
+    var city_peak_count: int = cities.size()
     if cities.size() < params.city_count:
-        var extra: Array[Vector2] = city_stage.place_cities(
+        var extra_cities: Array[Vector2] = city_stage.place_cities(
             params.city_count - cities.size(),
             params.min_city_distance,
             params.max_city_distance,
@@ -104,7 +105,20 @@ func generate() -> Dictionary:
             params.height,
             city_margin
         )
-        cities.append_array(extra)
+        cities.append_array(extra_cities)
+    var city_fallback_count: int = cities.size() - city_peak_count
+    var village_peak_count: int = villages.size()
+    if villages.size() < params.village_count:
+        var extra_villages: Array[Vector2] = city_stage.place_cities(
+            params.village_count - villages.size(),
+            params.min_city_distance,
+            params.max_city_distance,
+            params.width,
+            params.height,
+            city_margin
+        )
+        villages.append_array(extra_villages)
+    var village_fallback_count: int = villages.size() - village_peak_count
     var capitals: Array[int] = []
     for i in city_info.get("capitals", []):
         var idx: int = int(i)
@@ -113,7 +127,8 @@ func generate() -> Dictionary:
     map_data["cities"] = cities
     map_data["villages"] = villages
     map_data["capitals"] = capitals
-    print("[MapGenerator] placed %s cities" % cities.size())
+    print("[MapGenerator] cities: %s peaks, %s fallback" % [city_peak_count, city_fallback_count])
+    print("[MapGenerator] villages: %s peaks, %s fallback" % [village_peak_count, village_fallback_count])
 
     var region_stage = RegionGeneratorModule.new()
     var regions: Dictionary = region_stage.generate_regions(cities, params.kingdom_count, params.width, params.height)

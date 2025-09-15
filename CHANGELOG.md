@@ -1,5 +1,11 @@
 Changelog
 
+0.1.77 — 2025-09-14
+Added
+- Logged counts of cities and villages found via peaks and fallback placement.
+Fixed
+- Filled missing village slots with fallback placement when candidate peaks are scarce.
+
 0.1.76 — 2025-09-14
 Fixed
 - Cast capital indices to a typed array before filtering to satisfy typed GDScript.
