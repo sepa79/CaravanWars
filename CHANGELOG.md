@@ -1,5 +1,9 @@
 Changelog
 
+0.1.79 — 2025-09-14
+Added
+- Report how many fertility peaks are skipped by city placement because of border margins or minimum distance checks.
+
 0.1.78 — 2025-09-14
 Fixed
 - Preserved road network ID sequencing while inserting villages so crossroads and village links are created reliably.
