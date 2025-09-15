@@ -1,5 +1,9 @@
 Changelog
 
+0.1.78 — 2025-09-14
+Fixed
+- Preserved road network ID sequencing while inserting villages so crossroads and village links are created reliably.
+
 0.1.77 — 2025-09-14
 Added
 - Logged counts of cities and villages found via peaks and fallback placement.

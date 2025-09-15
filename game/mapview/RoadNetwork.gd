@@ -118,6 +118,7 @@ func insert_villages(roads: Dictionary, village_positions: Array[Vector2]) -> vo
         var vid: int = next_node_id
         nodes[vid] = MapNodeModule.new(vid, MapNodeModule.TYPE_VILLAGE, pos, {})
         next_node_id += 1
+        roads["next_node_id"] = next_node_id
         var best_edge: int = -1
         var best_point: Vector2 = Vector2.ZERO
         var best_edge_dist: float = INF
@@ -143,14 +144,18 @@ func insert_villages(roads: Dictionary, village_positions: Array[Vector2]) -> vo
         if best_edge != -1 and best_edge_dist < best_city_dist:
             var edge: MapViewEdge = edges[best_edge]
             var ecls: String = _lower_class(edge.road_class)
+            roads["next_edge_id"] = next_edge_id
             var cross_id: int = insert_node_on_edge(roads, best_edge, MapNodeModule.TYPE_CROSSROAD, best_point)
             nodes = roads.get("nodes", {})
             edges = roads.get("edges", {})
+            next_node_id = roads.get("next_node_id", next_node_id)
+            next_edge_id = roads.get("next_edge_id", next_edge_id)
             edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [pos, nodes[cross_id].pos2d], [vid, cross_id], ecls, {})
             next_edge_id += 1
         elif best_city != -1:
             edges[next_edge_id] = EdgeModule.new(next_edge_id, "road", [pos, nodes[best_city].pos2d], [vid, best_city], "path", {})
             next_edge_id += 1
+        roads["next_edge_id"] = next_edge_id
         village_ids.append(vid)
     roads["next_node_id"] = next_node_id
     roads["next_edge_id"] = next_edge_id
