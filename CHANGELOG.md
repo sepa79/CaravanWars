@@ -1,5 +1,11 @@
 Changelog
 
+0.1.80 — 2025-09-14
+Added
+- Generated villages per city with road-biased sampling, detailed placement logs, and fallback reporting when space runs out.
+Changed
+- Map setup exposes a villages-per-city default of two and village insertion defers crossroad checks until after batching.
+
 0.1.79 — 2025-09-14
 Added
 - Report how many fertility peaks are skipped by city placement because of border margins or minimum distance checks.

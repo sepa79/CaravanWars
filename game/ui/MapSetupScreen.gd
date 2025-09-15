@@ -48,6 +48,8 @@ var max_forts_label: Label
 var max_forts_spin: SpinBox
 var villages_label: Label
 var villages_spin: SpinBox
+var villages_per_city_label: Label
+var villages_per_city_spin: SpinBox
 @onready var start_button: Button = $HBox/ControlsScroll/Controls/Buttons/Start
 @onready var back_button: Button = $HBox/ControlsScroll/Controls/Buttons/Back
 @onready var main_ui: HBoxContainer = $HBox
@@ -116,6 +118,15 @@ func _ready() -> void:
     villages_spin.value = 10
     params.add_child(villages_spin)
     villages_spin.value_changed.connect(_on_params_changed)
+    villages_per_city_label = Label.new()
+    params.add_child(villages_per_city_label)
+    villages_per_city_spin = SpinBox.new()
+    villages_per_city_spin.min_value = 0
+    villages_per_city_spin.max_value = 10
+    villages_per_city_spin.step = 1
+    villages_per_city_spin.value = 2
+    params.add_child(villages_per_city_spin)
+    villages_per_city_spin.value_changed.connect(_on_params_changed)
     layers.get_node("ShowRoads").queue_free()
     layers.get_node("ShowRivers").queue_free()
     layers.get_node("ShowCities").queue_free()
@@ -213,6 +224,7 @@ func _update_texts() -> void:
     import_button.text = I18N.t("setup.import")
     max_forts_label.text = I18N.t("setup.max_forts_per_kingdom")
     villages_label.text = I18N.t("setup.villages")
+    villages_per_city_label.text = I18N.t("setup.villages_per_city")
     road_class_selector.set_item_text(0, I18N.t("setup.road_class_path"))
     road_class_selector.set_item_text(1, I18N.t("setup.road_class_road"))
     road_class_selector.set_item_text(2, I18N.t("setup.road_class_roman"))
@@ -238,7 +250,8 @@ func _generate_map() -> void:
         height_spin.value,
         kingdoms,
         int(max_forts_spin.value),
-        int(villages_spin.value)
+        int(villages_spin.value),
+        int(villages_per_city_spin.value)
     )
     kingdoms_spin.max_value = map_params.city_count
     if int(kingdoms_spin.value) != map_params.kingdom_count:

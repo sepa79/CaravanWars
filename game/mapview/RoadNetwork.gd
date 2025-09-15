@@ -145,7 +145,13 @@ func insert_villages(roads: Dictionary, village_positions: Array[Vector2]) -> vo
             var edge: MapViewEdge = edges[best_edge]
             var ecls: String = _lower_class(edge.road_class)
             roads["next_edge_id"] = next_edge_id
-            var cross_id: int = insert_node_on_edge(roads, best_edge, MapNodeModule.TYPE_CROSSROAD, best_point)
+            var cross_id: int = insert_node_on_edge(
+                roads,
+                best_edge,
+                MapNodeModule.TYPE_CROSSROAD,
+                best_point,
+                true
+            )
             nodes = roads.get("nodes", {})
             edges = roads.get("edges", {})
             next_node_id = roads.get("next_node_id", next_node_id)
@@ -160,6 +166,13 @@ func insert_villages(roads: Dictionary, village_positions: Array[Vector2]) -> vo
     roads["next_node_id"] = next_node_id
     roads["next_edge_id"] = next_edge_id
     _connect_village_network(roads, village_ids)
+    nodes = roads.get("nodes", nodes)
+    edges = roads.get("edges", edges)
+    next_node_id = roads.get("next_node_id", next_node_id)
+    next_edge_id = roads.get("next_edge_id", next_edge_id)
+    var res: Dictionary = _insert_crossroads(nodes, edges, next_node_id, next_edge_id)
+    roads["next_node_id"] = res["next_node_id"]
+    roads["next_edge_id"] = res["next_edge_id"]
 func _connect_village_network(roads: Dictionary, village_ids: Array[int]) -> void:
     var nodes: Dictionary = roads.get("nodes", {})
     var edges: Dictionary = roads.get("edges", {})
@@ -211,7 +224,13 @@ func _connect_village_network(roads: Dictionary, village_ids: Array[int]) -> voi
     roads["next_edge_id"] = next_edge_id
 
 ## Inserts a node in the middle of an edge and splits the edge.
-func insert_node_on_edge(roads: Dictionary, edge_id: int, node_type: String, pos: Variant = null) -> int:
+func insert_node_on_edge(
+    roads: Dictionary,
+    edge_id: int,
+    node_type: String,
+    pos: Variant = null,
+    defer_crossroads: bool = false
+) -> int:
     var nodes: Dictionary = roads.get("nodes", {})
     var edges: Dictionary = roads.get("edges", {})
     var edge: MapViewEdge = edges.get(edge_id)
@@ -230,6 +249,8 @@ func insert_node_on_edge(roads: Dictionary, edge_id: int, node_type: String, pos
     next_edge_id += 1
     roads["next_node_id"] = new_node_id + 1
     roads["next_edge_id"] = next_edge_id
+    if defer_crossroads:
+        return new_node_id
     var res: Dictionary = _insert_crossroads(nodes, edges, roads["next_node_id"], roads["next_edge_id"])
     roads["next_node_id"] = res["next_node_id"]
     roads["next_edge_id"] = res["next_edge_id"]
