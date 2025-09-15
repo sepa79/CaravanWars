@@ -498,13 +498,14 @@ func _collect_road_segments(roads: Dictionary) -> Array[PackedVector2Array]:
     var segments: Array[PackedVector2Array] = []
     var edges: Dictionary = roads.get("edges", {})
     for edge in edges.values():
-        var polyline: PackedVector2Array = edge.polyline
+        var polyline: Array[Vector2] = edge.polyline
         if polyline.size() < 2:
             continue
-        var pair := PackedVector2Array()
-        pair.append(polyline[0])
-        pair.append(polyline[polyline.size() - 1])
-        segments.append(pair)
+        for idx in range(polyline.size() - 1):
+            var pair := PackedVector2Array()
+            pair.append(polyline[idx])
+            pair.append(polyline[idx + 1])
+            segments.append(pair)
     return segments
 
 func _city_border_clearance(city_pos: Vector2, border_margin: float) -> float:

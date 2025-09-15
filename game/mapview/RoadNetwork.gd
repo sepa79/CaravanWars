@@ -498,67 +498,64 @@ func _minimum_spanning_tree(points: Array[Vector2], edges: Array[Vector2i]) -> A
     return result
 
 func _insert_crossroads(nodes: Dictionary, edges: Dictionary, next_node_id: int, next_edge_id: int) -> Dictionary:
-    var edge_ids = edges.keys()
     var changed := true
     var iterations: int = 0
     var max_iterations: int = 1000
     while changed and iterations < max_iterations:
         changed = false
-        edge_ids = edges.keys()
         iterations += 1
+        var edge_ids: Array = edges.keys()
         for i in range(edge_ids.size()):
             var id_a: int = edge_ids[i]
-            var edge_a: RefCounted = edges[id_a]
-            var a_start: Vector2 = edge_a.polyline[0]
-            var a_end: Vector2 = edge_a.polyline[1]
-            for j in range(i + 1, edge_ids.size()):
-                var id_b: int = edge_ids[j]
-                var edge_b: RefCounted = edges[id_b]
-                var b_start: Vector2 = edge_b.polyline[0]
-                var b_end: Vector2 = edge_b.polyline[1]
-                var inter: Variant = Geometry2D.segment_intersects_segment(a_start, a_end, b_start, b_end)
-                if inter == null:
-                    continue
-                var cross: Vector2 = inter
-                if _point_on_endpoint(cross, a_start, a_end) or _point_on_endpoint(cross, b_start, b_end):
-                    continue
+            var edge_a: RefCounted = edges.get(id_a)
+            if edge_a == null:
+                continue
+            var poly_a: Array[Vector2] = edge_a.polyline
+            for seg_a in range(poly_a.size() - 1):
+                var a_start: Vector2 = poly_a[seg_a]
+                var a_end: Vector2 = poly_a[seg_a + 1]
+                for j in range(i + 1, edge_ids.size()):
+                    var id_b: int = edge_ids[j]
+                    var edge_b: RefCounted = edges.get(id_b)
+                    if edge_b == null:
+                        continue
+                    var poly_b: Array[Vector2] = edge_b.polyline
+                    for seg_b in range(poly_b.size() - 1):
+                        var b_start: Vector2 = poly_b[seg_b]
+                        var b_end: Vector2 = poly_b[seg_b + 1]
+                        var inter: Variant = Geometry2D.segment_intersects_segment(a_start, a_end, b_start, b_end)
+                        if inter == null:
+                            continue
+                        var cross: Vector2 = inter if inter is Vector2 else (inter as PackedVector2Array)[0]
+                        if _point_on_endpoint(cross, a_start, a_end) or _point_on_endpoint(cross, b_start, b_end):
+                            continue
 
-                var cross_id: int = -1
-                for nid in nodes.keys():
-                    var n: RefCounted = nodes[nid]
-                    if n.pos2d.distance_to(cross) <= 0.5:
-                        cross_id = nid
-                        cross = n.pos2d
+                        var cross_id: int = -1
+                        for nid in nodes.keys():
+                            var node = nodes[nid]
+                            if node.pos2d.distance_to(cross) <= 0.5:
+                                cross_id = nid
+                                cross = node.pos2d
+                                break
+                        if cross_id == -1:
+                            cross_id = next_node_id
+                            next_node_id += 1
+                            nodes[cross_id] = MapNodeModule.new(cross_id, MapNodeModule.TYPE_CROSSROAD, cross, {})
+
+                        var modified := false
+                        if cross_id != edge_a.endpoints[0] and cross_id != edge_a.endpoints[1]:
+                            next_edge_id = _split_edge_at_segment(edges, id_a, edge_a, seg_a, cross, cross_id, next_edge_id)
+                            modified = true
+                        if cross_id != edge_b.endpoints[0] and cross_id != edge_b.endpoints[1]:
+                            next_edge_id = _split_edge_at_segment(edges, id_b, edge_b, seg_b, cross, cross_id, next_edge_id)
+                            modified = true
+
+                        if modified:
+                            changed = true
+                            break
+                    if changed:
                         break
-                var modified := false
-                if cross_id == -1:
-                    cross_id = next_node_id
-                    next_node_id += 1
-                    nodes[cross_id] = MapNodeModule.new(cross_id, MapNodeModule.TYPE_CROSSROAD, cross, {})
-                    modified = true
-
-                var a_ep0: int = edge_a.endpoints[0]
-                var a_ep1: int = edge_a.endpoints[1]
-                if cross_id != a_ep0 and cross_id != a_ep1:
-                    edges.erase(id_a)
-                    edges[next_edge_id] = EdgeModule.new(next_edge_id, edge_a.type, [a_start, cross], [a_ep0, cross_id], edge_a.road_class, edge_a.attrs)
-                    next_edge_id += 1
-                    edges[next_edge_id] = EdgeModule.new(next_edge_id, edge_a.type, [cross, a_end], [cross_id, a_ep1], edge_a.road_class, edge_a.attrs)
-                    next_edge_id += 1
-                    modified = true
-
-                var b_ep0: int = edge_b.endpoints[0]
-                var b_ep1: int = edge_b.endpoints[1]
-                if cross_id != b_ep0 and cross_id != b_ep1:
-                    edges.erase(id_b)
-                    edges[next_edge_id] = EdgeModule.new(next_edge_id, edge_b.type, [b_start, cross], [b_ep0, cross_id], edge_b.road_class, edge_b.attrs)
-                    next_edge_id += 1
-                    edges[next_edge_id] = EdgeModule.new(next_edge_id, edge_b.type, [cross, b_end], [cross_id, b_ep1], edge_b.road_class, edge_b.attrs)
-                    next_edge_id += 1
-                    modified = true
-
-                if modified:
-                    changed = true
+                if changed:
                     break
             if changed:
                 break
@@ -568,6 +565,56 @@ func _insert_crossroads(nodes: Dictionary, edges: Dictionary, next_node_id: int,
         "next_node_id": next_node_id,
         "next_edge_id": next_edge_id,
     }
+
+func _split_edge_at_segment(
+    edges: Dictionary,
+    edge_id: int,
+    edge: RefCounted,
+    segment_index: int,
+    split_point: Vector2,
+    crossroad_id: int,
+    next_edge_id: int
+) -> int:
+    var original: Array[Vector2] = edge.polyline
+    if original.size() < 2:
+        return next_edge_id
+    var first_points: Array[Vector2] = []
+    for idx in range(segment_index + 1):
+        first_points.append(original[idx])
+    first_points.append(split_point)
+    var second_points: Array[Vector2] = [split_point]
+    for idx in range(segment_index + 1, original.size()):
+        second_points.append(original[idx])
+    var attrs_a: Dictionary = edge.attrs.duplicate(true)
+    attrs_a["length"] = _edge_length(first_points)
+    var attrs_b: Dictionary = edge.attrs.duplicate(true)
+    attrs_b["length"] = _edge_length(second_points)
+    edges.erase(edge_id)
+    edges[next_edge_id] = EdgeModule.new(
+        next_edge_id,
+        edge.type,
+        first_points,
+        [edge.endpoints[0], crossroad_id],
+        edge.road_class,
+        attrs_a
+    )
+    next_edge_id += 1
+    edges[next_edge_id] = EdgeModule.new(
+        next_edge_id,
+        edge.type,
+        second_points,
+        [crossroad_id, edge.endpoints[1]],
+        edge.road_class,
+        attrs_b
+    )
+    next_edge_id += 1
+    return next_edge_id
+
+func _edge_length(points: Array[Vector2]) -> float:
+    var total: float = 0.0
+    for idx in range(points.size() - 1):
+        total += points[idx].distance_to(points[idx + 1])
+    return total
 
 func _prune_crossroad_duplicates(nodes: Dictionary, edges: Dictionary, margin: float) -> void:
     var city_edges: Dictionary = {}

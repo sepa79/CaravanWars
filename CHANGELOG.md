@@ -6,6 +6,7 @@ Added
 Fixed
 - Simplified village road stitching to avoid crossroad explosions and relaxed custom type annotations so the generator can execute under headless tests.
 - Replaced the Game scene's full map dump with a compact summary so launching single player no longer stalls on massive console output.
+- Treated multi-segment road polylines as individual segments so crossroad insertion no longer loops when forts and village spurs overlap and village scoring can prefer existing bends.
 
 0.1.80 — 2025-09-14
 Added
