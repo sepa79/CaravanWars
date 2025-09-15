@@ -82,19 +82,19 @@ func generate() -> Dictionary:
     map_data["roughness"] = roughness_field
     var city_stage := CityPlacerModule.new(rng)
     var city_margin: float = 30.0
+    var total_sites: int = params.city_count + params.village_count
     var city_info: Dictionary = city_stage.select_city_sites(
         fertility_field,
-        params.city_count,
+        total_sites,
         params.min_city_distance,
         city_margin
     )
-    var cities: Array[Vector2] = city_info.get("cities", [])
-    var village_candidates: Array[Vector2] = city_info.get("leftovers", [])
-    var villages: Array[Vector2] = []
-    if village_candidates.size() > 0 and params.village_count > 0:
-        var take: int = min(village_candidates.size(), params.village_count)
-        for i in range(take):
-            villages.append(village_candidates[i])
+    var all_sites: Array[Vector2] = city_info.get("cities", [])
+    var cities: Array[Vector2] = all_sites.slice(0, params.city_count)
+    var villages: Array[Vector2] = all_sites.slice(
+        params.city_count,
+        params.city_count + params.village_count
+    )
     if cities.size() < params.city_count:
         var extra: Array[Vector2] = city_stage.place_cities(
             params.city_count - cities.size(),
@@ -105,9 +105,11 @@ func generate() -> Dictionary:
             city_margin
         )
         cities.append_array(extra)
+    var capitals: Array[int] = city_info.get("capitals", [])
+    capitals = capitals.filter(func(i): return i < params.city_count)
     map_data["cities"] = cities
     map_data["villages"] = villages
-    map_data["capitals"] = city_info.get("capitals", [])
+    map_data["capitals"] = capitals
     print("[MapGenerator] placed %s cities" % cities.size())
 
     var region_stage = RegionGeneratorModule.new()

@@ -1,5 +1,9 @@
 Changelog
 
+0.1.74 — 2025-09-14
+Fixed
+- Village sites are selected from extra city candidates, matching the requested village count.
+
 0.1.73 — 2025-09-14
 Changed
 - Default map parameters: 6 cities, 10 villages, and 3 kingdoms.
