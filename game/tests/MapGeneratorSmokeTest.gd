@@ -6,7 +6,7 @@ const RegionModule: GDScript = preload("res://mapview/Region.gd")
 const CityPlacerModule: GDScript = preload("res://mapgen/CityPlacer.gd")
 const RoadNetworkModule: GDScript = preload("res://mapview/RoadNetwork.gd")
 const RiverGeneratorModule: GDScript = preload("res://mapgen/RiverGenerator.gd")
-const MapGeneratorModule: GDScript = preload("res://mapgen/MapGenerator.gd")
+const MapGeneratorModule: GDScript = preload("res://mapgen/pipeline/MapGenerationPipeline.gd")
 
 func _init() -> void:
     var generator: RefCounted = MapGeneratorModule.new()

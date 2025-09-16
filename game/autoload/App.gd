@@ -15,7 +15,7 @@ func goto_scene(path: String) -> void:
 
 func _run_map_generator_smoke_test() -> void:
     ResourceLoader.load("res://mapgen/CityPlacer.gd")
-    var generator_script: GDScript = ResourceLoader.load("res://mapgen/MapGenerator.gd")
+    var generator_script: GDScript = ResourceLoader.load("res://mapgen/pipeline/MapGenerationPipeline.gd")
     var generator: RefCounted = generator_script.new()
     var data: Dictionary = generator.generate()
     var cities: Array = data.get("cities", [])
