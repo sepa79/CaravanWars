@@ -3,7 +3,10 @@ Changelog
 Unreleased
 Removed
 - Replaced the map setup screen with a minimal start/back layout and removed the obsolete map view controls and road network helper.
-- Reduced the map generator stub to an empty shell that returns only placeholder metadata.
+Added
+- Implemented a deterministic seven-stage map generation pipeline that emits terrain, rivers, biomes, borders, settlements, roads, and forts as reusable layers.
+Changed
+- Map generation parameters now expose seed, map size, kingdom count (defaulting to three), sea level, and stage tuning knobs to keep runs reproducible per seed.
 
 0.1.81 — 2025-09-14
 Added
