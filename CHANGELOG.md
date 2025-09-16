@@ -8,6 +8,8 @@ Changed
 - Map setup UI now binds seed, map size, kingdom count, terrain, road, and fort parameters directly to the generator and regenerates the MapView preview on each change.
 - Refactored the deterministic map generator into dedicated terrain, river, biome, kingdom, settlement, road, and fort stage scripts with shared utilities so the stub implementation is fully retired.
 - tools/check scripts now detect changed GDScript files and run `godot --check` on each script before executing the broader project checks.
+Fixed
+- Typed the layer toggle callback capture on MapSetupScreen so Godot can infer the signal parameter type.
 
 0.1.81 — 2025-09-14
 Added

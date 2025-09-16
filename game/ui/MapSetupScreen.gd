@@ -169,7 +169,7 @@ func _setup_layer_toggles() -> void:
     }
     for layer_key in _layer_checkboxes.keys():
         var checkbox: CheckBox = _layer_checkboxes[layer_key]
-        var captured_layer := layer_key
+        var captured_layer: String = String(layer_key)
         checkbox.toggled.connect(func(pressed: bool) -> void:
             _on_layer_checkbox_toggled(captured_layer, pressed)
         )
