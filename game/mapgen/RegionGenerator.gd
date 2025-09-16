@@ -21,25 +21,46 @@ func generate_regions(
     print("[RegionGenerator] computed %s raw cells" % voronoi.size())
     var regions: Dictionary = {}
     for i in range(voronoi.size()):
-        var poly: PackedVector2Array = voronoi[i]
-        print("[RegionGenerator] cell %s has %s vertices before filtering" % [i, poly.size()])
-        if poly.size() < 3:
+        var raw: PackedVector2Array = voronoi[i]
+        print("[RegionGenerator] cell %s has %s vertices before filtering" % [i, raw.size()])
+        if raw.size() < 3:
             print("[RegionGenerator] cell %s discarded: less than 3 vertices" % i)
             continue
-        poly = _sort_clockwise(poly)
-        poly = _filter_points(poly)
+        var poly: PackedVector2Array = _prepare_polygon(raw)
         print("[RegionGenerator] cell %s has %s vertices after filtering" % [i, poly.size()])
         if poly.size() < 3:
             print("[RegionGenerator] cell %s discarded after filtering" % i)
             continue
-        var arr: Array[Vector2] = []
-        for p in poly:
-            arr.append(p)
+        var arr: Array[Vector2] = _packed_to_array(poly)
         print("[RegionGenerator] cell %s vertices: %s" % [i, arr])
         regions[i + 1] = RegionModule.new(i + 1, arr, "")
     print("[RegionGenerator] finalized %s regions" % regions.size())
     _assign_kingdoms(regions, kingdom_count)
     return regions
+
+func snap_regions_to_rivers(
+    regions: Dictionary,
+    cities: Array[Vector2],
+    width: float,
+    height: float,
+    rivers: Array
+) -> void:
+    if regions.is_empty() or rivers.is_empty() or cities.is_empty():
+        return
+    var bounds := Rect2(Vector2.ZERO, Vector2(width, height))
+    var snapped_cells: Array[PackedVector2Array] = VoronoiModule.cells(cities, bounds, rivers)
+    if snapped_cells.is_empty():
+        return
+    for idx in range(snapped_cells.size()):
+        var region_id: int = idx + 1
+        if not regions.has(region_id):
+            continue
+        var poly: PackedVector2Array = _prepare_polygon(snapped_cells[idx])
+        if poly.size() < 3:
+            continue
+        var region: MapViewRegion = regions[region_id]
+        region.boundary_nodes = _packed_to_array(poly)
+        print("[RegionGenerator] snapped region %s to %s vertices" % [region_id, poly.size()])
 
 func _assign_kingdoms(regions: Dictionary, kingdom_count: int) -> void:
     var total: int = regions.size()
@@ -143,4 +164,16 @@ func _sort_clockwise(points: PackedVector2Array) -> PackedVector2Array:
     for p in arr:
         sorted.append(p)
     return sorted
+
+func _prepare_polygon(points: PackedVector2Array) -> PackedVector2Array:
+    if points.size() < 3:
+        return PackedVector2Array()
+    var sorted: PackedVector2Array = _sort_clockwise(points)
+    return _filter_points(sorted)
+
+func _packed_to_array(points: PackedVector2Array) -> Array[Vector2]:
+    var result: Array[Vector2] = []
+    for p in points:
+        result.append(p)
+    return result
 

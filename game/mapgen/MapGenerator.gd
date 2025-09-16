@@ -159,6 +159,9 @@ func generate() -> Dictionary:
     var river_stage = RiverGeneratorModule.new(rng)
     var rivers: Array = river_stage.generate_rivers(roads, params.max_river_count, params.width, params.height)
     map_data["rivers"] = rivers
+    if rivers.size() > 0:
+        region_stage.snap_regions_to_rivers(regions, cities, params.width, params.height, rivers)
+        map_data["regions"] = regions
 
     var grouped: Dictionary = {
         MapNodeModule.TYPE_CITY: [],

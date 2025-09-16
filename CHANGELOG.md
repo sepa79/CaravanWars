@@ -5,6 +5,7 @@ Added
 - Introduced a reusable Voronoi map generator module that can snap polygon edges to nearby river polylines.
 Changed
 - Region generation now consumes the Voronoi module so region borders inherit river-aware edge adjustments.
+- Voronoi edge snapping now follows contiguous river runs and MapGenerator reapplies the snapped cells after rivers are created so borders hug the watercourses.
 
 0.1.81 — 2025-09-14
 Added

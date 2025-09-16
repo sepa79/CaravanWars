@@ -109,45 +109,128 @@ static func _edge_with_river(
     rivers: Array,
     tolerance: float
 ) -> PackedVector2Array:
-    var best_path: PackedVector2Array = _find_best_river_path(a, b, rivers, tolerance)
-    if best_path.size() < 2:
+    var sequences: Array[Dictionary] = _collect_river_sequences(a, b, rivers, tolerance)
+    if sequences.is_empty():
         var fallback := PackedVector2Array()
         fallback.append(a)
         fallback.append(b)
         return fallback
-    if best_path[0].distance_to(a) > best_path[best_path.size() - 1].distance_to(a):
-        best_path = _reverse_points(best_path)
+    sequences.sort_custom(func(lhs: Dictionary, rhs: Dictionary) -> bool:
+        return float(lhs.get("start_t", 0.0)) < float(rhs.get("start_t", 0.0))
+    )
     var result := PackedVector2Array()
-    result.append(best_path[0])
-    for i in range(1, best_path.size() - 1):
-        var mid_point: Vector2 = best_path[i]
-        if result[result.size() - 1].distance_to(mid_point) > EPS:
-            result.append(mid_point)
-    var last_point: Vector2 = best_path[best_path.size() - 1]
-    if result[result.size() - 1].distance_to(last_point) > EPS:
-        result.append(last_point)
+    result.append(a)
+    for seq in sequences:
+        var start_point: Vector2 = seq.get("start_closest", a)
+        _append_point(result, start_point)
+        var path: PackedVector2Array = seq.get("path", PackedVector2Array())
+        for point in path:
+            _append_point(result, point)
+        var end_point: Vector2 = seq.get("end_closest", b)
+        _append_point(result, end_point)
+    _append_point(result, b)
     return result
 
-static func _find_best_river_path(
+static func _collect_river_sequences(
     a: Vector2,
     b: Vector2,
     rivers: Array,
     tolerance: float
-) -> PackedVector2Array:
-    var best := PackedVector2Array()
-    var best_score: float = INF
+) -> Array[Dictionary]:
+    var sequences: Array[Dictionary] = []
+    var edge_vec: Vector2 = b - a
+    var length: float = edge_vec.length()
+    if length <= EPS:
+        return sequences
+    var edge_dir: Vector2 = edge_vec / length
     for river_variant in rivers:
         var river_points: PackedVector2Array = _to_vector2_array(river_variant)
         if river_points.size() < 2:
             continue
-        var candidate: PackedVector2Array = _extract_river_path(river_points, a, b, tolerance)
-        if candidate.size() < 2:
-            continue
-        var score: float = candidate[0].distance_to(a) + candidate[candidate.size() - 1].distance_to(b)
-        if score < best_score:
-            best_score = score
-            best = candidate
-    return best
+        var flags: Array[bool] = []
+        var closest_points: Array[Vector2] = []
+        var t_values: Array[float] = []
+        flags.resize(river_points.size())
+        closest_points.resize(river_points.size())
+        t_values.resize(river_points.size())
+        for idx in range(river_points.size()):
+            var rp: Vector2 = river_points[idx]
+            var closest: Vector2 = Geometry2D.get_closest_point_to_segment(rp, a, b)
+            var dist: float = rp.distance_to(closest)
+            var along: float = edge_dir.dot(closest - a)
+            if dist <= tolerance and along >= -tolerance and along <= length + tolerance:
+                flags[idx] = true
+                closest_points[idx] = closest
+                t_values[idx] = clamp(along / length, 0.0, 1.0)
+            else:
+                flags[idx] = false
+                closest_points[idx] = Vector2.ZERO
+                t_values[idx] = 0.0
+        var start_idx: int = -1
+        for idx in range(river_points.size()):
+            if flags[idx]:
+                if start_idx == -1:
+                    start_idx = idx
+            elif start_idx != -1:
+                var end_idx: int = idx - 1
+                var seq: Dictionary = _build_sequence(
+                    river_points,
+                    start_idx,
+                    end_idx,
+                    closest_points,
+                    t_values
+                )
+                if not seq.is_empty():
+                    sequences.append(seq)
+                start_idx = -1
+        if start_idx != -1:
+            var seq_end: int = river_points.size() - 1
+            var seq_final: Dictionary = _build_sequence(
+                river_points,
+                start_idx,
+                seq_end,
+                closest_points,
+                t_values
+            )
+            if not seq_final.is_empty():
+                sequences.append(seq_final)
+    return sequences
+
+static func _build_sequence(
+    river_points: PackedVector2Array,
+    start_idx: int,
+    end_idx: int,
+    closest_points: Array[Vector2],
+    t_values: Array[float]
+) -> Dictionary:
+    if end_idx - start_idx < 1:
+        return {}
+    var path := PackedVector2Array()
+    for idx in range(start_idx, end_idx + 1):
+        path.append(river_points[idx])
+    var start_t: float = t_values[start_idx]
+    var end_t: float = t_values[end_idx]
+    var start_closest: Vector2 = closest_points[start_idx]
+    var end_closest: Vector2 = closest_points[end_idx]
+    if start_t > end_t:
+        path = _reverse_points(path)
+        var temp_t: float = start_t
+        start_t = end_t
+        end_t = temp_t
+        var temp_pt: Vector2 = start_closest
+        start_closest = end_closest
+        end_closest = temp_pt
+    return {
+        "path": path,
+        "start_t": start_t,
+        "end_t": end_t,
+        "start_closest": start_closest,
+        "end_closest": end_closest,
+    }
+
+static func _append_point(points: PackedVector2Array, point: Vector2) -> void:
+    if points.is_empty() or points[points.size() - 1].distance_to(point) > EPS:
+        points.append(point)
 
 static func _to_vector2_array(data: Variant) -> PackedVector2Array:
     if data is PackedVector2Array:
@@ -158,50 +241,6 @@ static func _to_vector2_array(data: Variant) -> PackedVector2Array:
             if item is Vector2:
                 result.append(item)
     return result
-
-static func _extract_river_path(
-    river_points: PackedVector2Array,
-    a: Vector2,
-    b: Vector2,
-    tolerance: float
-) -> PackedVector2Array:
-    var point_count: int = river_points.size()
-    if point_count < 2:
-        return PackedVector2Array()
-    var start_idx: int = -1
-    var end_idx: int = -1
-    var start_dist: float = INF
-    var end_dist: float = INF
-    for idx in range(point_count):
-        var point: Vector2 = river_points[idx]
-        var dist_start: float = point.distance_to(a)
-        if dist_start < start_dist:
-            start_dist = dist_start
-            start_idx = idx
-        var dist_end: float = point.distance_to(b)
-        if dist_end < end_dist:
-            end_dist = dist_end
-            end_idx = idx
-    if start_idx == -1 or end_idx == -1:
-        return PackedVector2Array()
-    if start_dist > tolerance or end_dist > tolerance:
-        return PackedVector2Array()
-    if start_idx == end_idx:
-        return PackedVector2Array()
-    var path := PackedVector2Array()
-    var step: int = 1 if end_idx >= start_idx else -1
-    var idx: int = start_idx
-    while true:
-        var rp: Vector2 = river_points[idx]
-        path.append(rp)
-        if idx == end_idx:
-            break
-        idx += step
-    for rp in path:
-        var closest: Vector2 = Geometry2D.get_closest_point_to_segment(rp, a, b)
-        if rp.distance_to(closest) > tolerance:
-            return PackedVector2Array()
-    return path
 
 static func _reverse_points(points: PackedVector2Array) -> PackedVector2Array:
     var reversed := PackedVector2Array()
