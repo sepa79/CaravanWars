@@ -7,6 +7,7 @@ Added
 - Implemented a deterministic seven-stage map generation pipeline that emits terrain, rivers, biomes, borders, settlements, roads, and forts as reusable layers.
 Changed
 - Map generation parameters now expose seed, map size, kingdom count (defaulting to three), sea level, and stage tuning knobs to keep runs reproducible per seed.
+- Refactored the deterministic map generator into dedicated terrain, river, biome, kingdom, settlement, road, and fort stage scripts with shared utilities so the stub implementation is fully retired.
 
 0.1.81 — 2025-09-14
 Added
