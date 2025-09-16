@@ -2,7 +2,8 @@ Changelog
 
 Unreleased
 Removed
-- Removed the `res://mapgen` module and related smoke tests, leaving a single stub script for compatibility with the UI.
+- Replaced the map setup screen with a minimal start/back layout and removed the obsolete map view controls and road network helper.
+- Reduced the map generator stub to an empty shell that returns only placeholder metadata.
 
 0.1.81 — 2025-09-14
 Added

@@ -21,11 +21,6 @@ script_classes=[{
 "path": "res://mapgen_stub.gd"
 }, {
 "base": "RefCounted",
-"class": "MapViewRoadNetwork",
-"language": "GDScript",
-"path": "res://mapview/RoadNetwork.gd"
-}, {
-"base": "RefCounted",
 "class": "MapViewNode",
 "language": "GDScript",
 "path": "res://mapview/MapNode.gd"
