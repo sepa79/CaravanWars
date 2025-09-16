@@ -10,7 +10,6 @@ const RoadsStageModule: Script = preload("res://mapgen/pipeline/RoadsStage.gd")
 const FortsStageModule: Script = preload("res://mapgen/pipeline/FortsStage.gd")
 const MapNodeModule: Script = preload("res://mapview/MapNode.gd")
 
-## Parameter container for map generation.
 class MapGenParams:
     var rng_seed: int
     var city_count: int
@@ -61,32 +60,19 @@ class MapGenParams:
 
 class MapGenContext:
     var params: MapGenParams
-    var rng_seed: int
-    var base_rng: RandomNumberGenerator
-    var stage_rngs: Dictionary
     var vector_layers: Dictionary
     var raster_layers: Dictionary
     var data: Dictionary
 
     func _init(_params: MapGenParams) -> void:
         params = _params
-        rng_seed = params.rng_seed
-        base_rng = RandomNumberGenerator.new()
-        base_rng.seed = rng_seed
-        stage_rngs = {}
         vector_layers = {}
         raster_layers = {}
         data = {}
 
-    func get_stage_rng(stage_id: String) -> RandomNumberGenerator:
-        if stage_rngs.has(stage_id):
-            return stage_rngs[stage_id]
+    func get_stage_rng(_stage_id: String) -> RandomNumberGenerator:
         var rng := RandomNumberGenerator.new()
-        var hashed: int = hash([rng_seed, stage_id])
-        if hashed == 0:
-            hashed = rng_seed
-        rng.seed = hashed
-        stage_rngs[stage_id] = rng
+        rng.seed = params.rng_seed
         return rng
 
     func set_vector_layer(name: String, value: Variant) -> void:
@@ -128,6 +114,7 @@ func generate() -> Dictionary:
     return _build_result(context)
 
 func _build_result(context: MapGenContext) -> Dictionary:
+    var roads: Dictionary = _default_roads(context.get_vector_layer("roads", {}))
     var map_data: Dictionary = {
         "width": context.params.width,
         "height": context.params.height,
@@ -138,20 +125,31 @@ func _build_result(context: MapGenContext) -> Dictionary:
         "cities": context.get_vector_layer("cities", []),
         "villages": context.get_vector_layer("villages", []),
         "forts": context.get_vector_layer("forts", []),
-        "roads": context.get_vector_layer("roads", {}),
+        "roads": roads,
         "regions": context.get_vector_layer("regions", {}),
         "kingdom_seeds": context.get_vector_layer("kingdom_seeds", []),
         "kingdom_names": context.get_data("kingdom_names", {}),
         "capitals": context.get_data("capitals", []),
     }
-    var roads: Dictionary = map_data.get("roads", {})
-    var nodes: Dictionary = roads.get("nodes", {})
-    for idx in map_data.get("capitals", []):
-        var nid: int = idx + 1
-        if nodes.has(nid):
-            var node: RefCounted = nodes[nid]
-            node.attrs["is_capital"] = true
     return map_data
+
+func _default_roads(raw: Dictionary) -> Dictionary:
+    if raw.is_empty():
+        return {
+            "nodes": {},
+            "edges": {},
+            "next_node_id": 1,
+            "next_edge_id": 1,
+        }
+    if not raw.has("nodes"):
+        raw["nodes"] = {}
+    if not raw.has("edges"):
+        raw["edges"] = {}
+    if not raw.has("next_node_id"):
+        raw["next_node_id"] = 1
+    if not raw.has("next_edge_id"):
+        raw["next_edge_id"] = 1
+    return raw
 
 static func export_bundle(path: String, map_data: Dictionary, rng_seed: int, version: String, width: float, height: float, unit_scale: float = 1.0) -> void:
     var bundle: Dictionary = _bundle_from_map(map_data, rng_seed, version, width, height, unit_scale)
