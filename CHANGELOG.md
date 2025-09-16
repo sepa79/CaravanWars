@@ -10,6 +10,7 @@ Changed
 - tools/check scripts now run `godot --check` on every GDScript file before executing the broader project checks.
 Fixed
 - Typed the MapSetupScreen layer toggle and legend button captures so Godot can infer the signal parameter types.
+- Headless CI runs now auto-quit through the App autoload when `CI_AUTO_QUIT` is set, so game launches do not hang during tests.
 
 0.1.81 — 2025-09-14
 Added
