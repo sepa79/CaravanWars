@@ -5,7 +5,6 @@ var rng: RandomNumberGenerator
 
 const MapNodeModule = preload("res://mapview/MapNode.gd")
 const EdgeModule = preload("res://mapview/Edge.gd")
-const DelaunayModule = preload("res://mapgen/Delaunay.gd")
 const REGION_EPS: float = 0.001
 
 func _lower_class(cls: String) -> String:
@@ -21,7 +20,7 @@ func _init(_rng: RandomNumberGenerator) -> void:
     rng = _rng
 
 ## Builds primary trade routes between cities.
-## Pipeline: Delaunay triangulation → MST → per-city k-nearest edges.
+## Pipeline: complete graph → MST → per-city k-nearest edges.
 func build_roads(
     cities: Array[Vector2],
     min_connections: int = 1,
@@ -40,7 +39,15 @@ func build_roads(
         city_ids.append(node_id)
         node_id += 1
 
-    var candidate_edges: Array[Vector2i] = DelaunayModule.edges(cities)
+    if cities.size() < 2:
+        return {
+            "nodes": nodes,
+            "edges": edges,
+            "next_node_id": node_id,
+            "next_edge_id": edge_id,
+        }
+
+    var candidate_edges: Array[Vector2i] = _complete_graph_edges(cities)
     var mst_edges: Array[Vector2i] = _minimum_spanning_tree(cities, candidate_edges)
 
     var final_edge_set: Dictionary = {}
@@ -451,6 +458,13 @@ func cleanup(roads: Dictionary, crossroad_margin: float = 5.0) -> void:
 
 func _pair_key(a: int, b: int) -> String:
     return "%d_%d" % [min(a, b), max(a, b)]
+
+func _complete_graph_edges(points: Array[Vector2]) -> Array[Vector2i]:
+    var edges: Array[Vector2i] = []
+    for i in range(points.size()):
+        for j in range(i + 1, points.size()):
+            edges.append(Vector2i(i, j))
+    return edges
 
 func _minimum_spanning_tree(points: Array[Vector2], edges: Array[Vector2i]) -> Array[Vector2i]:
     var adjacency: Dictionary = {}

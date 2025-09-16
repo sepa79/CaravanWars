@@ -2,7 +2,7 @@ Changelog
 
 Unreleased
 Removed
-- Removed the map generation implementation, leaving a stubbed pipeline for manual setup.
+- Removed the `res://mapgen` module and related smoke tests, leaving a single stub script for compatibility with the UI.
 
 0.1.81 — 2025-09-14
 Added

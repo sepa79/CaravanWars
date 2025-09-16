@@ -1,11 +1,8 @@
 extends Control
 
-const MapGeneratorModule = preload("res://mapgen/pipeline/MapGenerationPipeline.gd")
-const RegionGeneratorModule = preload("res://mapgen/RegionGenerator.gd")
+const MapGeneratorModule = preload("res://mapgen_stub.gd")
 const RoadNetworkModule = preload("res://mapview/RoadNetwork.gd")
 const MapSnapshotModule = preload("res://mapview/MapSnapshot.gd")
-const MapValidatorModule = preload("res://mapgen/MapValidator.gd")
-const MapBundleLoaderModule = preload("res://mapgen/MapBundleLoader.gd")
 
 @onready var title_label: Label = $HBox/ControlsScroll/Controls/Title
 @onready var params: GridContainer = $HBox/ControlsScroll/Controls/Params
@@ -356,8 +353,10 @@ func _on_road_class_selected(index: int) -> void:
     map_view.set_road_class(cls)
 
 func _on_finalize_map_pressed() -> void:
-    var validator: MapGenValidator = MapValidatorModule.new()
-    var errors: Array[String] = validator.validate(current_map["roads"], current_map.get("rivers", []))
+    var errors: Array[String] = MapGeneratorModule.validate_map(
+        current_map.get("roads", {}),
+        current_map.get("rivers", [])
+    )
     if errors.is_empty():
         var helper: MapViewRoadNetwork = RoadNetworkModule.new(RandomNumberGenerator.new())
         helper.cleanup(current_map["roads"])
@@ -377,8 +376,10 @@ func _on_finalize_map_pressed() -> void:
             push_warning(err)
 
 func _on_validate_map_pressed() -> void:
-    var validator: MapGenValidator = MapValidatorModule.new()
-    var errors: Array[String] = validator.validate(current_map["roads"], current_map.get("rivers", []))
+    var errors: Array[String] = MapGeneratorModule.validate_map(
+        current_map.get("roads", {}),
+        current_map.get("rivers", [])
+    )
     if errors.is_empty():
         var road_helper: MapViewRoadNetwork = RoadNetworkModule.new(RandomNumberGenerator.new())
         road_helper.cleanup(current_map["roads"])
@@ -393,8 +394,7 @@ func _on_export_map_pressed() -> void:
     MapGeneratorModule.export_bundle("user://MapBundle.json", current_map, int(seed_spin.value), app_version, width_spin.value, height_spin.value)
 
 func _on_import_map_pressed() -> void:
-    var loader: MapBundleLoader = MapBundleLoaderModule.new()
-    var data: Dictionary = loader.load("user://MapBundle.json")
+    var data: Dictionary = MapGeneratorModule.load_bundle("user://MapBundle.json")
     if data.is_empty():
         return
     current_map = data
@@ -464,8 +464,12 @@ func _on_kingdom_name_changed(text: String, kingdom_id: int) -> void:
 
 func _on_cities_changed(cities: Array) -> void:
     current_map["cities"] = cities
-    var region_stage = RegionGeneratorModule.new()
-    var regions = region_stage.generate_regions(cities, int(kingdoms_spin.value), current_map.get("width", 100.0), current_map.get("height", 100.0))
+    var regions := MapGeneratorModule.generate_regions(
+        cities,
+        int(kingdoms_spin.value),
+        current_map.get("width", 100.0),
+        current_map.get("height", 100.0)
+    )
     current_map["regions"] = regions
     var rng := RandomNumberGenerator.new()
     rng.seed = int(seed_spin.value)
