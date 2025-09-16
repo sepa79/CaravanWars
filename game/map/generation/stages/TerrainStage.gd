@@ -1,11 +1,12 @@
 extends RefCounted
 class_name MapTerrainStage
 
-const TERRAIN_CONTOUR_INTERVAL := 0.1
+const TERRAIN_CONTOUR_INTERVAL: float = 0.1
+const EROSION_KERNEL: PackedFloat32Array = PackedFloat32Array([0.05, 0.2, 0.5, 0.2, 0.05])
 
 static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
     var size: int = state["map_size"]
-    var total := size * size
+    var total: int = size * size
 
     var noise := FastNoiseLite.new()
     noise.seed = params.rng_seed
@@ -26,20 +27,20 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
     sea_mask.resize(total)
 
     var rng: RandomNumberGenerator = state["rng"]
-    var erosion_passes := int(round(params.erosion_strength * 4.0))
+    var erosion_passes: int = int(round(params.erosion_strength * 4.0))
 
     for y in range(size):
         for x in range(size):
-            var nx := float(x) / float(size)
-            var ny := float(y) / float(size)
-            var base_height := (noise.get_noise_2d(nx * size, ny * size) + 1.0) * 0.5
-            var ridge := (ridge_noise.get_noise_2d(nx * size, ny * size) + 1.0) * 0.5
-            var mountain_factor := pow(ridge, 1.0 - clamp(params.mountain_scale, 0.0, 0.95))
-            var height_value := clamp(base_height * (0.7 + params.mountain_scale * 0.2) + mountain_factor * 0.3, 0.0, 1.0)
-            height_value = clamp(height_value, 0.0, 1.0)
-            var jitter := (rng.randf() - 0.5) * 0.01
-            height_value = clamp(height_value + jitter, 0.0, 1.0)
-            var index := y * size + x
+            var nx: float = float(x) / float(size)
+            var ny: float = float(y) / float(size)
+            var base_height: float = (noise.get_noise_2d(nx * size, ny * size) + 1.0) * 0.5
+            var ridge: float = (ridge_noise.get_noise_2d(nx * size, ny * size) + 1.0) * 0.5
+            var mountain_factor: float = pow(ridge, 1.0 - clampf(params.mountain_scale, 0.0, 0.95))
+            var height_value: float = clampf(base_height * (0.7 + params.mountain_scale * 0.2) + mountain_factor * 0.3, 0.0, 1.0)
+            height_value = clampf(height_value, 0.0, 1.0)
+            var jitter: float = (rng.randf() - 0.5) * 0.01
+            height_value = clampf(height_value + jitter, 0.0, 1.0)
+            var index: int = y * size + x
             heightmap[index] = height_value
             if height_value < params.sea_level:
                 sea_mask[index] = 1
@@ -49,8 +50,8 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
     if erosion_passes > 0:
         heightmap = _apply_erosion(heightmap, size, erosion_passes)
 
-    var slope_map := _calculate_slope(heightmap, size)
-    var contours := _build_contours(heightmap, size)
+    var slope_map: PackedFloat32Array = _calculate_slope(heightmap, size)
+    var contours: Array[Dictionary] = _build_contours(heightmap, size)
 
     return {
         "heightmap": heightmap,
@@ -60,26 +61,26 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
     }
 
 static func _apply_erosion(heightmap: PackedFloat32Array, size: int, passes: int) -> PackedFloat32Array:
-    var result := heightmap.duplicate()
-    var kernel := [0.05, 0.2, 0.5, 0.2, 0.05]
+    var result: PackedFloat32Array = heightmap.duplicate()
+    var kernel_radius: int = int(EROSION_KERNEL.size() / 2)
     for _i in range(passes):
-        var temp := result.duplicate()
+        var temp: PackedFloat32Array = result.duplicate()
         for y in range(size):
             for x in range(size):
-                var acc := 0.0
-                var weight := 0.0
-                for ky in range(kernel.size()):
-                    var offset_y := ky - kernel.size() / 2
-                    var yy := int(clamp(y + offset_y, 0, size - 1))
-                    for kx in range(kernel.size()):
-                        var offset_x := kx - kernel.size() / 2
-                        var xx := int(clamp(x + offset_x, 0, size - 1))
-                        var idx := yy * size + xx
-                        var weight_factor := kernel[ky] * kernel[kx]
+                var acc: float = 0.0
+                var weight: float = 0.0
+                for ky in range(EROSION_KERNEL.size()):
+                    var offset_y: int = ky - kernel_radius
+                    var yy: int = int(clamp(y + offset_y, 0, size - 1))
+                    for kx in range(EROSION_KERNEL.size()):
+                        var offset_x: int = kx - kernel_radius
+                        var xx: int = int(clamp(x + offset_x, 0, size - 1))
+                        var idx: int = yy * size + xx
+                        var weight_factor: float = EROSION_KERNEL[ky] * EROSION_KERNEL[kx]
                         acc += result[idx] * weight_factor
                         weight += weight_factor
-                var index := y * size + x
-                temp[index] = acc / max(weight, 0.001)
+                var index: int = y * size + x
+                temp[index] = acc / maxf(weight, 0.001)
         result = temp
     return result
 
@@ -88,34 +89,34 @@ static func _calculate_slope(heightmap: PackedFloat32Array, size: int) -> Packed
     slope.resize(size * size)
     for y in range(size):
         for x in range(size):
-            var index := y * size + x
-            var left := heightmap[index]
+            var index: int = y * size + x
+            var left: float = heightmap[index]
             if x > 0:
                 left = heightmap[index - 1]
-            var right := heightmap[index]
+            var right: float = heightmap[index]
             if x < size - 1:
                 right = heightmap[index + 1]
-            var up := heightmap[index]
+            var up: float = heightmap[index]
             if y > 0:
                 up = heightmap[index - size]
-            var down := heightmap[index]
+            var down: float = heightmap[index]
             if y < size - 1:
                 down = heightmap[index + size]
-            var dx := (right - left) * 0.5
-            var dy := (down - up) * 0.5
-            var slope_value := sqrt(dx * dx + dy * dy)
-            slope[index] = clamp(slope_value, 0.0, 1.0)
+            var dx: float = (right - left) * 0.5
+            var dy: float = (down - up) * 0.5
+            var slope_value: float = sqrt(dx * dx + dy * dy)
+            slope[index] = clampf(slope_value, 0.0, 1.0)
     return slope
 
 static func _build_contours(heightmap: PackedFloat32Array, size: int) -> Array[Dictionary]:
     var contours_by_level: Dictionary = {}
     for y in range(size):
         for x in range(size):
-            var index := y * size + x
-            var height_value := heightmap[index]
+            var index: int = y * size + x
+            var height_value: float = heightmap[index]
             var level := int(round(height_value / TERRAIN_CONTOUR_INTERVAL))
-            var level_value := level * TERRAIN_CONTOUR_INTERVAL
-            var delta := abs(height_value - level_value)
+            var level_value: float = float(level) * TERRAIN_CONTOUR_INTERVAL
+            var delta: float = float(abs(height_value - level_value))
             if delta < TERRAIN_CONTOUR_INTERVAL * 0.1:
                 if not contours_by_level.has(level):
                     contours_by_level[level] = {
