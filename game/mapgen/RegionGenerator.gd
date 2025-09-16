@@ -2,6 +2,7 @@ extends RefCounted
 class_name MapGenRegionGenerator
 
 const RegionModule = preload("res://mapview/Region.gd")
+const VoronoiModule = preload("res://mapgen/Voronoi.gd")
 
 const EPS: float = 0.001
 
@@ -11,11 +12,12 @@ func generate_regions(
     cities: Array[Vector2],
     kingdom_count: int = 3,
     width: float = 150.0,
-    height: float = 150.0
+    height: float = 150.0,
+    rivers: Array = []
 ) -> Dictionary:
     print("[RegionGenerator] generating regions for %s cities" % cities.size())
     var bounds := Rect2(Vector2.ZERO, Vector2(width, height))
-    var voronoi: Array = _voronoi_diagram(cities, bounds)
+    var voronoi: Array[PackedVector2Array] = VoronoiModule.cells(cities, bounds, rivers)
     print("[RegionGenerator] computed %s raw cells" % voronoi.size())
     var regions: Dictionary = {}
     for i in range(voronoi.size()):
@@ -124,65 +126,6 @@ func _filter_points(points: PackedVector2Array) -> PackedVector2Array:
     if cleaned.size() > 2 and cleaned[0].distance_to(cleaned[cleaned.size() - 1]) <= EPS:
         cleaned.remove_at(cleaned.size() - 1)
     return cleaned
-
-# Computes Voronoi cells for each point, clipped to the map bounds.
-func _voronoi_diagram(points: Array[Vector2], bounds: Rect2) -> Array:
-    var pts := PackedVector2Array(points)
-    var tri := Geometry2D.triangulate_delaunay(pts)
-    var neighbors: Array = []
-    neighbors.resize(points.size())
-    for i in range(points.size()):
-        neighbors[i] = {}
-    if tri.is_empty():
-        for i in range(points.size()):
-            for j in range(points.size()):
-                if i != j:
-                    neighbors[i][j] = true
-    else:
-        for t in range(0, tri.size(), 3):
-            var a: int = tri[t]
-            var b: int = tri[t + 1]
-            var c: int = tri[t + 2]
-            neighbors[a][b] = true
-            neighbors[a][c] = true
-            neighbors[b][a] = true
-            neighbors[b][c] = true
-            neighbors[c][a] = true
-            neighbors[c][b] = true
-    var base := PackedVector2Array([
-        bounds.position,
-        bounds.position + Vector2(bounds.size.x, 0),
-        bounds.position + bounds.size,
-        bounds.position + Vector2(0, bounds.size.y),
-    ])
-    var cells: Array = []
-    for i in range(points.size()):
-        var poly: PackedVector2Array = base.duplicate()
-        for j in neighbors[i].keys():
-            poly = _clip_poly(poly, points[i], points[j])
-            if poly.size() < 3:
-                break
-        cells.append(poly)
-    return cells
-
-# Clips polygon by the half-plane defined by the bisector between p and q.
-func _clip_poly(poly: PackedVector2Array, p: Vector2, q: Vector2) -> PackedVector2Array:
-    if poly.is_empty():
-        return poly
-    var result := PackedVector2Array()
-    var mid: Vector2 = (p + q) * 0.5
-    var normal: Vector2 = q - p
-    for i in range(poly.size()):
-        var a: Vector2 = poly[i]
-        var b: Vector2 = poly[(i + 1) % poly.size()]
-        var da: float = (a - mid).dot(normal)
-        var db: float = (b - mid).dot(normal)
-        if da <= EPS:
-            result.append(a)
-        if da * db < -EPS * EPS:
-            var t: float = da / (da - db)
-            result.append(a + (b - a) * t)
-    return result
 
 # Orders polygon vertices clockwise around their centroid.
 func _sort_clockwise(points: PackedVector2Array) -> PackedVector2Array:

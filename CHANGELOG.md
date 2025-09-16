@@ -1,5 +1,11 @@
 Changelog
 
+0.1.82 — 2025-09-14
+Added
+- Introduced a reusable Voronoi map generator module that can snap polygon edges to nearby river polylines.
+Changed
+- Region generation now consumes the Voronoi module so region borders inherit river-aware edge adjustments.
+
 0.1.81 — 2025-09-14
 Added
 - CLI smoke test wiring that runs the map generator when `MAPGEN_SMOKE_TEST=1` or via `tests/MapGeneratorSmokeTest.gd`, enabling automated regression checks.
