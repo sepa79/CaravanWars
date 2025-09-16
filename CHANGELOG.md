@@ -14,6 +14,7 @@ Fixed
 - Typed the MapSetupScreen layer toggle and legend button captures so Godot can infer the signal parameter types.
 - Headless CI runs now auto-quit through the App autoload when `CI_AUTO_QUIT` is set, so game launches do not hang during tests.
 - Annotated MapView preview helpers and the MapSetupScreen kingdom legend to avoid Variant inference warnings during the smoke test.
+- Typed the map bundle loader parse result to avoid Variant inference warnings in MapGenerator.
 
 0.1.81 — 2025-09-14
 Added

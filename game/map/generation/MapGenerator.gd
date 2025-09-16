@@ -148,7 +148,7 @@ static func load_bundle(path: String) -> Dictionary:
         return {}
     var content := file.get_as_text()
     file.close()
-    var parse := JSON.parse_string(content)
+    var parse: Variant = JSON.parse_string(content)
     if parse is Dictionary:
         return parse
     return {}
