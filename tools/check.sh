@@ -59,16 +59,36 @@ run_changed_script_checks() {
   "$python_bin" "$helper" --project-dir "$PROJECT_DIR" --repo-root "$REPO_ROOT" --godot "$GODOT"
 }
 
+run_logged_command() {
+  local description="$1"
+  shift
+  echo "[check] $description"
+  local log_file
+  log_file="$(mktemp)"
+  set +e
+  "$@" 2>&1 | tee "$log_file"
+  local exit_code=${PIPESTATUS[0]}
+  set -e
+  if [[ $exit_code -ne 0 ]]; then
+    echo "[check] Error: Command failed during $description (exit $exit_code)." >&2
+    rm -f "$log_file"
+    return $exit_code
+  fi
+  if grep -E '^[[:space:]]*(WARNING|ERROR|SCRIPT ERROR):' "$log_file" >/dev/null; then
+    echo "[check] Error: Godot reported warnings/errors during $description." >&2
+    rm -f "$log_file"
+    return 1
+  fi
+  rm -f "$log_file"
+}
+
 run_check_only() {
-  echo "[check] Running --check-only"
-  CI_AUTO_QUIT=1 "$GODOT" --headless --check-only --path "$PROJECT_DIR"
+  run_logged_command "Running --check-only" env CI_AUTO_QUIT=1 "$GODOT" --headless --check-only --path "$PROJECT_DIR"
 }
 
 run_game() {
-  echo "[check] Running game with CI auto quit"
-  CI_AUTO_QUIT=1 "$GODOT" --headless --path "$PROJECT_DIR"
-  echo "[check] Running map smoke test"
-  MAP_SMOKE_TEST=1 "$GODOT" --headless --path "$PROJECT_DIR"
+  run_logged_command "Running game with CI auto quit" env CI_AUTO_QUIT=1 "$GODOT" --headless --path "$PROJECT_DIR"
+  run_logged_command "Running map smoke test" env MAP_SMOKE_TEST=1 "$GODOT" --headless --path "$PROJECT_DIR"
 }
 
 run_changed_script_checks

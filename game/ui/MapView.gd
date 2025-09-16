@@ -148,7 +148,7 @@ func set_layer_visible(layer: String, visible: bool) -> void:
             pass
 
 func get_kingdom_colors() -> Dictionary:
-    var copy := {}
+    var copy: Dictionary = {}
     for kingdom_id in _kingdom_colors.keys():
         copy[kingdom_id] = _kingdom_colors[kingdom_id]
     return copy
@@ -212,45 +212,45 @@ func _rebuild_preview() -> void:
     _build_kingdom_colors(_kingdom_polygons)
 
 func _build_heightmap_texture(heightmap: PackedFloat32Array, sea_mask: PackedByteArray) -> Texture2D:
-    var preview_dimension := min(MAX_PREVIEW_DIMENSION, _map_dimension)
+    var preview_dimension: int = int(min(MAX_PREVIEW_DIMENSION, _map_dimension))
     if preview_dimension <= 0:
         return null
-    var scale := float(_map_dimension) / float(preview_dimension)
-    var image := Image.create(preview_dimension, preview_dimension, false, Image.FORMAT_RGBA8)
+    var scale: float = float(_map_dimension) / float(preview_dimension)
+    var image: Image = Image.create(preview_dimension, preview_dimension, false, Image.FORMAT_RGBA8)
     for py in range(preview_dimension):
-        var source_y := clamp(int(floor(py * scale)), 0, _map_dimension - 1)
+        var source_y: int = clampi(int(floor(py * scale)), 0, _map_dimension - 1)
         for px in range(preview_dimension):
-            var source_x := clamp(int(floor(px * scale)), 0, _map_dimension - 1)
-            var index := source_y * _map_dimension + source_x
-            var height_value := heightmap[index]
-            var is_water := not sea_mask.is_empty() and sea_mask[index] == 1
+            var source_x: int = clampi(int(floor(px * scale)), 0, _map_dimension - 1)
+            var index: int = source_y * _map_dimension + source_x
+            var height_value: float = heightmap[index]
+            var is_water: bool = not sea_mask.is_empty() and sea_mask[index] == 1
             image.set_pixel(px, py, _height_to_color(height_value, is_water))
     return ImageTexture.create_from_image(image)
 
 func _build_overlay_texture(values: PackedFloat32Array, tint: Color) -> Texture2D:
-    var preview_dimension := min(MAX_PREVIEW_DIMENSION, _map_dimension)
+    var preview_dimension: int = int(min(MAX_PREVIEW_DIMENSION, _map_dimension))
     if preview_dimension <= 0:
         return null
-    var scale := float(_map_dimension) / float(preview_dimension)
-    var image := Image.create(preview_dimension, preview_dimension, false, Image.FORMAT_RGBA8)
+    var scale: float = float(_map_dimension) / float(preview_dimension)
+    var image: Image = Image.create(preview_dimension, preview_dimension, false, Image.FORMAT_RGBA8)
     for py in range(preview_dimension):
-        var source_y := clamp(int(floor(py * scale)), 0, _map_dimension - 1)
+        var source_y: int = clampi(int(floor(py * scale)), 0, _map_dimension - 1)
         for px in range(preview_dimension):
-            var source_x := clamp(int(floor(px * scale)), 0, _map_dimension - 1)
-            var index := source_y * _map_dimension + source_x
-            var strength := clamp(values[index], 0.0, 1.0)
-            var overlay := Color(tint.r, tint.g, tint.b, tint.a * strength)
+            var source_x: int = clampi(int(floor(px * scale)), 0, _map_dimension - 1)
+            var index: int = source_y * _map_dimension + source_x
+            var strength: float = clampf(values[index], 0.0, 1.0)
+            var overlay: Color = Color(tint.r, tint.g, tint.b, tint.a * strength)
             image.set_pixel(px, py, overlay)
     return ImageTexture.create_from_image(image)
 
 func _height_to_color(value: float, is_water: bool) -> Color:
-    var clamped := clamp(value, 0.0, 1.0)
+    var clamped: float = clampf(value, 0.0, 1.0)
     if is_water:
-        var shallow := Color(0.11, 0.25, 0.55)
-        var deep := Color(0.04, 0.1, 0.32)
-        return deep.lerp(shallow, clamp(clamped * 1.5, 0.0, 1.0))
-    var low := Color(0.25, 0.35, 0.18)
-    var high := Color(0.65, 0.6, 0.5)
+        var shallow: Color = Color(0.11, 0.25, 0.55)
+        var deep: Color = Color(0.04, 0.1, 0.32)
+        return deep.lerp(shallow, clampf(clamped * 1.5, 0.0, 1.0))
+    var low: Color = Color(0.25, 0.35, 0.18)
+    var high: Color = Color(0.65, 0.6, 0.5)
     return low.lerp(high, pow(clamped, 0.8))
 
 func _extract_bridge_points(roads: Array[Dictionary]) -> Array[Vector2]:
@@ -262,7 +262,7 @@ func _extract_bridge_points(roads: Array[Dictionary]) -> Array[Vector2]:
         if path.size() < 2:
             continue
         if road.get("type", "") == "primary":
-            var middle_index := int(path.size() / 2)
+            var middle_index: int = int(path.size() / 2)
             points.append(path[middle_index])
     return points
 
@@ -275,7 +275,7 @@ func _extract_ford_points(roads: Array[Dictionary]) -> Array[Vector2]:
         if path.size() < 2:
             continue
         if road.get("type", "") != "primary":
-            var middle_index := int(path.size() / 2)
+            var middle_index: int = int(path.size() / 2)
             points.append(path[middle_index])
     return points
 
@@ -295,41 +295,41 @@ func _find_crossroads(roads: Array[Dictionary]) -> Array[Vector2]:
     return result
 
 func _accumulate_crossroad_point(counts: Dictionary, point: Vector2) -> void:
-    var key := _point_key(point)
+    var key: String = _point_key(point)
     counts[key] = counts.get(key, 0) + 1
 
 func _point_key(point: Vector2) -> String:
     return "%s:%s" % [int(round(point.x)), int(round(point.y))]
 
 func _point_from_key(key: String) -> Vector2:
-    var parts := key.split(":")
+    var parts: Array[String] = key.split(":")
     if parts.size() != 2:
         return Vector2.ZERO
     return Vector2(parts[0].to_int(), parts[1].to_int())
 
 func _build_kingdom_colors(polygons: Array[Dictionary]) -> void:
-    var seed_value := int(map_data.get("meta", {}).get("seed", 0))
+    var seed_value: int = int(map_data.get("meta", {}).get("seed", 0))
     for polygon in polygons:
-        var kingdom_id := polygon.get("kingdom_id", -1)
+        var kingdom_id: int = int(polygon.get("kingdom_id", -1))
         if kingdom_id < 0 or _kingdom_colors.has(kingdom_id):
             continue
-        var rng := RandomNumberGenerator.new()
+        var rng: RandomNumberGenerator = RandomNumberGenerator.new()
         rng.seed = seed_value + kingdom_id * 997
-        var hue := fmod(rng.randf(), 1.0)
-        var color := Color.from_hsv(hue, 0.6, 0.9)
+        var hue: float = fmod(rng.randf(), 1.0)
+        var color: Color = Color.from_hsv(hue, 0.6, 0.9)
         _kingdom_colors[kingdom_id] = color
 
 func _draw() -> void:
     if _map_dimension <= 0:
         return
-    var rect := Rect2(Vector2.ZERO, size)
+    var rect: Rect2 = Rect2(Vector2.ZERO, size)
     if _terrain_texture != null:
         draw_texture_rect(_terrain_texture, rect, false)
     if _show_fertility and _fertility_texture != null:
         draw_texture_rect(_fertility_texture, rect, false)
     if _show_roughness and _roughness_texture != null:
         draw_texture_rect(_roughness_texture, rect, false)
-    var scale := _current_scale()
+    var scale: Vector2 = _current_scale()
     if _show_regions:
         _draw_regions(scale)
     if _show_rivers:
@@ -362,20 +362,21 @@ func _draw_regions(scale: Vector2) -> void:
         var points: PackedVector2Array = polygon.get("polygon", PackedVector2Array())
         if points.size() < 3:
             continue
-        var transformed := PackedVector2Array()
+        var transformed: PackedVector2Array = PackedVector2Array()
         for point in points:
             transformed.append(_to_view(point, scale))
-        var kingdom_id := polygon.get("kingdom_id", -1)
-        var base_color: Color = _kingdom_colors.get(kingdom_id, Color(0.5, 0.5, 0.5))
-        draw_colored_polygon(transformed, base_color.with_alpha(0.2))
-        var closed := transformed.duplicate()
+        var kingdom_id: int = int(polygon.get("kingdom_id", -1))
+        var base_color: Color = (_kingdom_colors.get(kingdom_id, Color(0.5, 0.5, 0.5))) as Color
+        var fill_color: Color = Color(base_color.r, base_color.g, base_color.b, 0.2)
+        draw_colored_polygon(transformed, fill_color)
+        var closed: PackedVector2Array = transformed.duplicate()
         closed.append(transformed[0])
         draw_polyline(closed, base_color, 2.0)
     for border in _kingdom_borders:
         var border_points: PackedVector2Array = border.get("points", PackedVector2Array())
         if border_points.size() < 2:
             continue
-        var transformed_border := PackedVector2Array()
+        var transformed_border: PackedVector2Array = PackedVector2Array()
         for point in border_points:
             transformed_border.append(_to_view(point, scale))
         draw_polyline(transformed_border, Color(0.8, 0.8, 0.8), 1.5)
@@ -385,11 +386,11 @@ func _draw_rivers(scale: Vector2) -> void:
         var points: PackedVector2Array = river.get("points", PackedVector2Array())
         if points.size() < 2:
             continue
-        var transformed := PackedVector2Array()
+        var transformed: PackedVector2Array = PackedVector2Array()
         for point in points:
             transformed.append(_to_view(point, scale))
-        var width := river.get("width", 1.0)
-        var line_width := max(1.0, width * (scale.x + scale.y) * 0.25)
+        var width: float = float(river.get("width", 1.0))
+        var line_width: float = maxf(1.0, width * (scale.x + scale.y) * 0.25)
         draw_polyline(transformed, Color(0.2, 0.45, 0.9), line_width)
 
 func _draw_roads(scale: Vector2) -> void:
@@ -397,10 +398,10 @@ func _draw_roads(scale: Vector2) -> void:
         var points: PackedVector2Array = road.get("points", PackedVector2Array())
         if points.size() < 2:
             continue
-        var transformed := PackedVector2Array()
+        var transformed: PackedVector2Array = PackedVector2Array()
         for point in points:
             transformed.append(_to_view(point, scale))
-        var tint := Color(0.7, 0.6, 0.45)
+        var tint: Color = Color(0.7, 0.6, 0.45)
         if road.get("type", "") == "secondary":
             tint = Color(0.6, 0.55, 0.4)
         draw_polyline(transformed, tint, 2.0)
@@ -408,30 +409,30 @@ func _draw_roads(scale: Vector2) -> void:
 func _draw_cities(scale: Vector2) -> void:
     for city in _cities:
         var position: Vector2 = city.get("position", Vector2.ZERO)
-        var view_position := _to_view(position, scale)
-        var radius := max(4.0, min(scale.x, scale.y) * 3.0)
+        var view_position: Vector2 = _to_view(position, scale)
+        var radius: float = maxf(4.0, minf(scale.x, scale.y) * 3.0)
         draw_circle(view_position, radius, Color(0.85, 0.2, 0.2))
 
 func _draw_villages(scale: Vector2) -> void:
     for village in _villages:
         var position: Vector2 = village.get("position", Vector2.ZERO)
-        var view_position := _to_view(position, scale)
-        var radius := max(2.0, min(scale.x, scale.y) * 2.0)
+        var view_position: Vector2 = _to_view(position, scale)
+        var radius: float = maxf(2.0, minf(scale.x, scale.y) * 2.0)
         draw_circle(view_position, radius, Color(0.85, 0.65, 0.35))
 
 func _draw_forts(scale: Vector2) -> void:
     for fort in _forts:
         var position: Vector2 = fort.get("position", Vector2.ZERO)
-        var view_position := _to_view(position, scale)
-        var size_hint := max(4.0, min(scale.x, scale.y) * 3.0)
-        var rect := Rect2(view_position - Vector2(size_hint, size_hint) * 0.5, Vector2(size_hint, size_hint))
+        var view_position: Vector2 = _to_view(position, scale)
+        var size_hint: float = maxf(4.0, minf(scale.x, scale.y) * 3.0)
+        var rect: Rect2 = Rect2(view_position - Vector2(size_hint, size_hint) * 0.5, Vector2(size_hint, size_hint))
         draw_rect(rect, Color(0.95, 0.55, 0.15))
 
 func _draw_crossroads(scale: Vector2) -> void:
     for point in _crossroad_points:
-        var view_position := _to_view(point, scale)
-        var radius := max(3.0, min(scale.x, scale.y) * 2.5)
-        var diamond := PackedVector2Array([
+        var view_position: Vector2 = _to_view(point, scale)
+        var radius: float = maxf(3.0, minf(scale.x, scale.y) * 2.5)
+        var diamond: PackedVector2Array = PackedVector2Array([
             view_position + Vector2(0, -radius),
             view_position + Vector2(radius, 0),
             view_position + Vector2(0, radius),
@@ -441,13 +442,13 @@ func _draw_crossroads(scale: Vector2) -> void:
 
 func _draw_bridges(scale: Vector2) -> void:
     for point in _bridge_points:
-        var view_position := _to_view(point, scale)
-        var size_hint := max(3.0, min(scale.x, scale.y) * 2.0)
-        var rect := Rect2(view_position - Vector2(size_hint, size_hint * 0.5), Vector2(size_hint * 2.0, size_hint))
+        var view_position: Vector2 = _to_view(point, scale)
+        var size_hint: float = maxf(3.0, minf(scale.x, scale.y) * 2.0)
+        var rect: Rect2 = Rect2(view_position - Vector2(size_hint, size_hint * 0.5), Vector2(size_hint * 2.0, size_hint))
         draw_rect(rect, Color(0.65, 0.45, 0.2))
 
 func _draw_fords(scale: Vector2) -> void:
     for point in _ford_points:
-        var view_position := _to_view(point, scale)
-        var radius := max(2.0, min(scale.x, scale.y) * 1.5)
+        var view_position: Vector2 = _to_view(point, scale)
+        var radius: float = maxf(2.0, minf(scale.x, scale.y) * 1.5)
         draw_circle(view_position, radius, Color(0.4, 0.85, 0.9))

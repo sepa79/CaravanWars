@@ -10,10 +10,20 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import sys
 from typing import List, Sequence
+
+
+WARNING_PATTERN = re.compile(r"^\s*(?:WARNING|ERROR|SCRIPT ERROR):", re.MULTILINE)
+
+
+def contains_warning_or_error(text: str) -> bool:
+    """Return True if *text* includes Godot warnings or errors."""
+
+    return bool(WARNING_PATTERN.search(text))
 
 
 def collect_gd_scripts(repo_root: str, project_dir: str) -> List[str]:
@@ -91,7 +101,13 @@ def run_checks(
             absolute_script,
         ]
         try:
-            completed = subprocess.run(command, check=False, env=env)
+            completed = subprocess.run(
+                command,
+                check=False,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
         except FileNotFoundError:
             print(
                 f"[check] Error: unable to execute Godot binary at {godot}",
@@ -99,12 +115,24 @@ def run_checks(
             )
             return 1
 
+        if completed.stdout:
+            print(completed.stdout, end="")
+        if completed.stderr:
+            sys.stderr.write(completed.stderr)
         if completed.returncode != 0:
             print(
                 f"[check] Error: Godot reported issues for {relative_path} (exit {completed.returncode}).",
                 file=sys.stderr,
             )
             return completed.returncode
+
+        combined_output = (completed.stdout or "") + (completed.stderr or "")
+        if contains_warning_or_error(combined_output):
+            print(
+                f"[check] Error: Godot produced warnings/errors for {relative_path}.",
+                file=sys.stderr,
+            )
+            return 1
 
     return 0
 
@@ -167,3 +195,4 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 if __name__ == "__main__":  # pragma: no cover - entry point
     sys.exit(main())
+
