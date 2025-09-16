@@ -49,6 +49,11 @@ exit /b 2
 :quick
 echo [check] Running quick boot (1 frame)
 "%GODOT%" --headless --quit-after 1 --path "%PROJECT_DIR%"
+echo [check] Running map smoke test
+set "CI_AUTO_QUIT="
+set "MAP_SMOKE_TEST=1"
+"%GODOT%" --headless --path "%PROJECT_DIR%"
+set "MAP_SMOKE_TEST="
 
 :done
 echo [check] OK

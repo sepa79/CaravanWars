@@ -4,6 +4,7 @@ Unreleased
 Added
 - Implemented a deterministic seven-stage map generation pipeline that emits terrain, rivers, biomes, borders, settlements, roads, and forts as reusable layers.
 - Restored the map setup screen preview with generator-bound parameter controls, layer toggles, and legend support so the pipeline can be inspected stage by stage.
+- Added a headless map smoke test that drives the single-player start menu into the setup screen before exiting, enabling automated UI regression coverage.
 Changed
 - Map setup UI now binds seed, map size, kingdom count, terrain, road, and fort parameters directly to the generator and regenerates the MapView preview on each change.
 - Refactored the deterministic map generator into dedicated terrain, river, biome, kingdom, settlement, road, and fort stage scripts with shared utilities so the stub implementation is fully retired.

@@ -1,14 +1,21 @@
 extends Node
 
 const CI_AUTO_QUIT_DEFAULT_DELAY_SECONDS := 0.1
+const MapSmokeTestRunner := preload("res://tests/MapSmokeTestRunner.gd")
 
 var _ci_auto_quit_enabled: bool = OS.has_environment("CI_AUTO_QUIT")
 var _ci_auto_quit_delay_seconds: float = CI_AUTO_QUIT_DEFAULT_DELAY_SECONDS
 var _ci_quit_scheduled: bool = false
+var _map_smoke_test_enabled: bool = OS.has_environment("MAP_SMOKE_TEST")
+var _map_smoke_test_started: bool = false
 
 func _ready() -> void:
+    if _map_smoke_test_enabled:
+        _ci_auto_quit_enabled = false
     if _ci_auto_quit_enabled:
         _configure_ci_auto_quit()
+    if _map_smoke_test_enabled:
+        _start_map_smoke_test()
 
 func goto_scene(path: String) -> void:
     get_tree().change_scene_to_file(path)
@@ -44,4 +51,11 @@ func _quit_for_ci() -> void:
         return
     print("[App] CI auto quit after %.2f seconds." % _ci_auto_quit_delay_seconds)
     get_tree().quit()
+
+func _start_map_smoke_test() -> void:
+    if _map_smoke_test_started:
+        return
+    _map_smoke_test_started = true
+    var runner: Node = MapSmokeTestRunner.new()
+    add_child(runner)
 

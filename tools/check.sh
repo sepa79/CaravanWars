@@ -67,6 +67,8 @@ run_check_only() {
 run_game() {
   echo "[check] Running game with CI auto quit"
   CI_AUTO_QUIT=1 "$GODOT" --headless --path "$PROJECT_DIR"
+  echo "[check] Running map smoke test"
+  MAP_SMOKE_TEST=1 "$GODOT" --headless --path "$PROJECT_DIR"
 }
 
 run_changed_script_checks
