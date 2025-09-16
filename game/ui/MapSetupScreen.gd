@@ -1,6 +1,6 @@
 extends Control
 
-const MapGeneratorModule = preload("res://mapgen/MapGenerator.gd")
+const MapGeneratorModule = preload("res://mapgen/pipeline/MapGenerationPipeline.gd")
 const RegionGeneratorModule = preload("res://mapgen/RegionGenerator.gd")
 const RoadNetworkModule = preload("res://mapview/RoadNetwork.gd")
 const MapSnapshotModule = preload("res://mapview/MapSnapshot.gd")

@@ -1,5 +1,9 @@
 Changelog
 
+Unreleased
+Changed
+- Replaced the monolithic map generator with a staged pipeline that shares a seeded context across terrain, rivers, biomes, kingdom borders, settlements, roads, and forts.
+
 0.1.81 — 2025-09-14
 Added
 - CLI smoke test wiring that runs the map generator when `MAPGEN_SMOKE_TEST=1` or via `tests/MapGeneratorSmokeTest.gd`, enabling automated regression checks.

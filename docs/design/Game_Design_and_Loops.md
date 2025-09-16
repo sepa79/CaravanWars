@@ -59,7 +59,7 @@ flowchart LR
 
 ## Implementacja
 - Specyfikacja i zachowanie mapy: `/docs/map`.
-- Implementacja referencyjna: [MapGenerator.gd](../../game/mapgen/MapGenerator.gd).
+- Implementacja referencyjna: [MapGenerationPipeline.gd](../../game/mapgen/pipeline/MapGenerationPipeline.gd).
 - Przydział i kształt regionów: [RegionGenerator.gd](../../game/mapgen/RegionGenerator.gd).
 
 ## Rozszerzenia

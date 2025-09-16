@@ -13,7 +13,7 @@ func _init(_rng: RandomNumberGenerator) -> void:
 ## river is returned as a polyline sampled from a `Curve2D`.  Any road that
 ## intersects a river is split and a crossing node is inserted.  The
 ## crossing defaults to a bridge but can be changed later.
-func generate_rivers(roads: Dictionary, count: int = 0, width: float = 100.0, height: float = 100.0) -> Array:
+func generate_rivers(roads: Dictionary = {}, count: int = 0, width: float = 100.0, height: float = 100.0) -> Array:
     var rivers: Array = []
     count = clamp(count, 0, 6)
     for rid in range(count):
@@ -43,8 +43,9 @@ func generate_rivers(roads: Dictionary, count: int = 0, width: float = 100.0, he
         var polyline: Array[Vector2] = []
         for point: Vector2 in baked:
             polyline.append(point)
-        _process_intersections(polyline, roads, rid + 1)
         rivers.append(polyline)
+    if not roads.is_empty():
+        apply_intersections(rivers, roads)
     return rivers
 
 func _random_edge_point(width: float, height: float) -> Vector2:
@@ -59,25 +60,58 @@ func _random_edge_point(width: float, height: float) -> Vector2:
         _:
             return Vector2(width, rng.randf_range(0.0, height))
 
-func _process_intersections(poly: Array[Vector2], roads: Dictionary, river_id: int) -> void:
-    var nodes: Dictionary = roads["nodes"]
-    var edges: Dictionary = roads["edges"]
+static func apply_intersections(rivers: Array, roads: Dictionary) -> void:
+    if rivers.is_empty():
+        return
+    if roads.is_empty():
+        return
+    if not roads.has("nodes") or not roads.has("edges"):
+        return
+    var nodes: Dictionary = roads.get("nodes", {})
+    var edges: Dictionary = roads.get("edges", {})
     var next_node_id: int = roads.get("next_node_id", 1)
     var next_edge_id: int = roads.get("next_edge_id", 1)
+    for rid in range(rivers.size()):
+        var poly: Array = rivers[rid]
+        var updated: Dictionary = _process_intersections(poly, nodes, edges, next_node_id, next_edge_id, rid + 1)
+        next_node_id = updated.get("next_node_id", next_node_id)
+        next_edge_id = updated.get("next_edge_id", next_edge_id)
+    roads["next_node_id"] = next_node_id
+    roads["next_edge_id"] = next_edge_id
 
-    for edge_id in edges.keys():
+static func _process_intersections(
+    poly: Array,
+    nodes: Dictionary,
+    edges: Dictionary,
+    next_node_id: int,
+    next_edge_id: int,
+    river_id: int
+) -> Dictionary:
+    var current_node_id: int = next_node_id
+    var current_edge_id: int = next_edge_id
+    var edge_ids: Array = edges.keys()
+    for edge_id in edge_ids:
+        if not edges.has(edge_id):
+            continue
         var edge: RefCounted = edges[edge_id]
+        if edge.polyline.size() < 2:
+            continue
         var road_start: Vector2 = edge.polyline[0]
-        var road_end: Vector2 = edge.polyline[1]
+        var road_end: Vector2 = edge.polyline[edge.polyline.size() - 1]
         for i in range(poly.size() - 1):
             var river_a: Vector2 = poly[i]
             var river_b: Vector2 = poly[i + 1]
             var intersection: Variant = Geometry2D.segment_intersects_segment(river_a, river_b, road_start, road_end)
             if intersection != null:
                 var cross: Vector2 = intersection
-                var cross_id: int = next_node_id
-                next_node_id += 1
-                var cross_node: RefCounted = MapNodeModule.new(cross_id, MapNodeModule.TYPE_BRIDGE, cross, {"river_id": river_id})
+                var cross_id: int = current_node_id
+                current_node_id += 1
+                var cross_node: RefCounted = MapNodeModule.new(
+                    cross_id,
+                    MapNodeModule.TYPE_BRIDGE,
+                    cross,
+                    {"river_id": river_id}
+                )
                 nodes[cross_id] = cross_node
 
                 var start_id: int = edge.endpoints[0]
@@ -87,13 +121,28 @@ func _process_intersections(poly: Array[Vector2], roads: Dictionary, river_id: i
                 var attrs_b: Dictionary = edge.attrs.duplicate()
                 attrs_b["crossing_id"] = cross_id
                 edges.erase(edge_id)
-                edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [road_start, cross], [start_id, cross_id], edge.road_class, attrs_a)
-                next_edge_id += 1
-                edges[next_edge_id] = EdgeModule.new(next_edge_id, edge.type, [cross, road_end], [cross_id, end_id], edge.road_class, attrs_b)
-                next_edge_id += 1
+                edges[current_edge_id] = EdgeModule.new(
+                    current_edge_id,
+                    edge.type,
+                    [road_start, cross],
+                    [start_id, cross_id],
+                    edge.road_class,
+                    attrs_a
+                )
+                current_edge_id += 1
+                edges[current_edge_id] = EdgeModule.new(
+                    current_edge_id,
+                    edge.type,
+                    [cross, road_end],
+                    [cross_id, end_id],
+                    edge.road_class,
+                    attrs_b
+                )
+                current_edge_id += 1
 
                 poly.insert(i + 1, cross)
                 break
-
-    roads["next_node_id"] = next_node_id
-    roads["next_edge_id"] = next_edge_id
+    return {
+        "next_node_id": current_node_id,
+        "next_edge_id": current_edge_id,
+    }
