@@ -1,8 +1,9 @@
 Changelog
 
 Unreleased
-Changed
-- Replaced the monolithic map generator with a staged pipeline that shares a seeded context across terrain, rivers, biomes, kingdom borders, settlements, roads, and forts.
+Removed
+- Replaced the map setup screen with a minimal start/back layout and removed the obsolete map view controls and road network helper.
+- Reduced the map generator stub to an empty shell that returns only placeholder metadata.
 
 0.1.81 — 2025-09-14
 Added

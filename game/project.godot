@@ -16,19 +16,9 @@ run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.4")
 script_classes=[{
 "base": "RefCounted",
-"class": "MapGenPipeline",
+"class": "MapGenStub",
 "language": "GDScript",
-"path": "res://mapgen/pipeline/MapGenerationPipeline.gd"
-}, {
-"base": "RefCounted",
-"class": "MapGenCityPlacer",
-"language": "GDScript",
-"path": "res://mapgen/CityPlacer.gd"
-}, {
-"base": "RefCounted",
-"class": "MapViewRoadNetwork",
-"language": "GDScript",
-"path": "res://mapview/RoadNetwork.gd"
+"path": "res://mapgen_stub.gd"
 }, {
 "base": "RefCounted",
 "class": "MapViewNode",
