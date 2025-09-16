@@ -1,5 +1,50 @@
 Changelog
 
+0.1.81 — 2025-09-14
+Added
+- CLI smoke test wiring that runs the map generator when `MAPGEN_SMOKE_TEST=1` or via `tests/MapGeneratorSmokeTest.gd`, enabling automated regression checks.
+Fixed
+- Simplified village road stitching to avoid crossroad explosions and relaxed custom type annotations so the generator can execute under headless tests.
+- Replaced the Game scene's full map dump with a compact summary so launching single player no longer stalls on massive console output.
+- Treated multi-segment road polylines as individual segments so crossroad insertion no longer loops when forts and village spurs overlap and village scoring can prefer existing bends.
+- Prevented the map view's city-to-city labeling from looping forever when village crossroads introduce multi-branch junctions.
+
+0.1.80 — 2025-09-14
+Added
+- Generated villages per city with road-biased sampling, detailed placement logs, and fallback reporting when space runs out.
+Changed
+- Map setup exposes a villages-per-city default of two and village insertion defers crossroad checks until after batching.
+
+0.1.79 — 2025-09-14
+Added
+- Report how many fertility peaks are skipped by city placement because of border margins or minimum distance checks.
+
+0.1.78 — 2025-09-14
+Fixed
+- Preserved road network ID sequencing while inserting villages so crossroads and village links are created reliably.
+
+0.1.77 — 2025-09-14
+Added
+- Logged counts of cities and villages found via peaks and fallback placement.
+Fixed
+- Filled missing village slots with fallback placement when candidate peaks are scarce.
+
+0.1.76 — 2025-09-14
+Fixed
+- Cast capital indices to a typed array before filtering to satisfy typed GDScript.
+
+0.1.75 — 2025-09-14
+Fixed
+- Typed capital index filtering to avoid assignment errors.
+
+0.1.74 — 2025-09-14
+Fixed
+- Village sites are selected from extra city candidates, matching the requested village count.
+
+0.1.73 — 2025-09-14
+Changed
+- Default map parameters: 6 cities, 10 villages, and 3 kingdoms.
+
 0.1.72 — 2025-09-13
 Fixed
 - Logged node positions using String.join to avoid PackedStringArray errors.

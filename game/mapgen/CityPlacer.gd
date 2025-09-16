@@ -106,10 +106,9 @@ func select_city_sites(field: Array, cities_target: int, min_distance: float, p_
         return result
     var w: int = field[0].size()
     var candidates: Array = []
+    var border_rejects: int = 0
     for y in range(h):
         for x in range(w):
-            if x < border_margin or x > w - border_margin or y < border_margin or y > h - border_margin:
-                continue
             var v: float = field[y][x]
             var is_peak: bool = true
             for dy in range(-1, 2):
@@ -125,16 +124,27 @@ func select_city_sites(field: Array, cities_target: int, min_distance: float, p_
                 if not is_peak:
                     break
             if is_peak:
+                var inside_margin: bool = not (
+                    x < border_margin
+                    or x > w - border_margin
+                    or y < border_margin
+                    or y > h - border_margin
+                )
+                if not inside_margin:
+                    border_rejects += 1
+                    continue
                 candidates.append({"pos": Vector2(x + 0.5, y + 0.5), "score": v})
     candidates.sort_custom(func(a, b): return a["score"] > b["score"])
     var cities: Array[Vector2] = []
     var leftovers: Array[Vector2] = []
+    var min_distance_rejects: int = 0
     for c in candidates:
         var p: Vector2 = c["pos"]
         var valid: bool = true
         for existing in cities:
             if existing.distance_to(p) < min_distance:
                 valid = false
+                min_distance_rejects += 1
                 break
         if valid and cities.size() < cities_target:
             cities.append(p)
@@ -155,4 +165,8 @@ func select_city_sites(field: Array, cities_target: int, min_distance: float, p_
             indices[j] = tmp
         for i in range(cap_count):
             result["capitals"].append(indices[i])
+    print(
+        "[CityPlacer] peaks accepted: %s, leftovers: %s, border skipped: %s, min-distance skipped: %s"
+        % [cities.size(), leftovers.size(), border_rejects, min_distance_rejects]
+    )
     return result

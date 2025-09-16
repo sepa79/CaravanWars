@@ -14,6 +14,38 @@ config/name="CaravanWars"
 config/version="0.1.46"
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.4")
+script_classes=[{
+"base": "RefCounted",
+"class": "MapGenGenerator",
+"language": "GDScript",
+"path": "res://mapgen/MapGenerator.gd"
+}, {
+"base": "RefCounted",
+"class": "MapGenCityPlacer",
+"language": "GDScript",
+"path": "res://mapgen/CityPlacer.gd"
+}, {
+"base": "RefCounted",
+"class": "MapViewRoadNetwork",
+"language": "GDScript",
+"path": "res://mapview/RoadNetwork.gd"
+}, {
+"base": "RefCounted",
+"class": "MapViewNode",
+"language": "GDScript",
+"path": "res://mapview/MapNode.gd"
+}, {
+"base": "RefCounted",
+"class": "MapViewEdge",
+"language": "GDScript",
+"path": "res://mapview/Edge.gd"
+}, {
+"base": "RefCounted",
+"class": "MapViewRegion",
+"language": "GDScript",
+"path": "res://mapview/Region.gd"
+}]
+script_class_icons={}
 
 [autoload]
 App="*res://autoload/App.gd"

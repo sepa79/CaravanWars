@@ -252,36 +252,76 @@ func _draw() -> void:
         var font_size: int = get_theme_default_font_size()
         if font:
             var adjacency: Dictionary = {}
-            for edge in edges.values():
+            for edge_value in edges.values():
+                var edge: MapViewEdge = edge_value
+                if edge == null:
+                    continue
                 var ep0: int = edge.endpoints[0]
                 var ep1: int = edge.endpoints[1]
                 if not adjacency.has(ep0):
                     adjacency[ep0] = []
                 if not adjacency.has(ep1):
                     adjacency[ep1] = []
-                adjacency[ep0].append(edge)
-                adjacency[ep1].append(edge)
+                (adjacency[ep0] as Array).append(edge)
+                (adjacency[ep1] as Array).append(edge)
             var handled: Dictionary = {}
             for node_id in nodes.keys():
                 var node = nodes[node_id]
                 if node.type != "city":
                     continue
-                for edge in adjacency.get(node_id, []):
+                var incident: Array = adjacency.get(node_id, [])
+                for incident_value in incident:
+                    var edge: MapViewEdge = incident_value
+                    if edge == null:
+                        continue
                     var other_id: int = edge.endpoints[0] if edge.endpoints[1] == node_id else edge.endpoints[1]
+                    if not nodes.has(other_id):
+                        continue
                     var path: Array[Vector2] = edge.polyline.duplicate()
-                    var length: float = edge.attrs.get("length", edge.polyline[0].distance_to(edge.polyline[1]))
-                    var cur_edge = edge
-                    var cur_node = other_id
+                    var base_length: float = edge.polyline[0].distance_to(edge.polyline[1])
+                    var length: float = edge.attrs.get("length", base_length)
+                    var cur_edge: MapViewEdge = edge
+                    var cur_node: int = other_id
+                    var visited_nodes: Dictionary = {}
+                    visited_nodes[cur_node] = true
+                    var visited_edges: Dictionary = {}
+                    visited_edges[cur_edge.id] = true
                     while nodes[cur_node].type != "city":
                         var conn: Array = adjacency.get(cur_node, [])
-                        if conn.size() < 2:
+                        var next_edge: MapViewEdge = null
+                        for conn_value in conn:
+                            var candidate: MapViewEdge = conn_value
+                            if candidate == null:
+                                continue
+                            if candidate == cur_edge:
+                                continue
+                            if visited_edges.has(candidate.id):
+                                continue
+                            next_edge = candidate
                             break
-                        var next_edge = conn[0] if conn[0] != cur_edge else conn[1]
+                        if next_edge == null:
+                            break
+                        visited_edges[next_edge.id] = true
+                        var current_node_data = nodes.get(cur_node)
+                        if current_node_data == null:
+                            break
                         var next_node: int = next_edge.endpoints[0] if next_edge.endpoints[1] == cur_node else next_edge.endpoints[1]
-                        path.append(nodes[next_node].pos2d)
-                        length += next_edge.attrs.get("length", nodes[cur_node].pos2d.distance_to(nodes[next_node].pos2d))
+                        if not nodes.has(next_node):
+                            break
+                        var next_node_data = nodes[next_node]
+                        if visited_nodes.has(next_node) and next_node_data.type != "city":
+                            break
+                        path.append(next_node_data.pos2d)
+                        var fallback_length: float = current_node_data.pos2d.distance_to(next_node_data.pos2d)
+                        var segment_length: float = next_edge.attrs.get("length", fallback_length)
+                        length += segment_length
                         cur_edge = next_edge
                         cur_node = next_node
+                        visited_nodes[cur_node] = true
+                    if not nodes.has(cur_node):
+                        continue
+                    if nodes[cur_node].type != "city":
+                        continue
                     var other_city_id: int = cur_node
                     var key: String = "%d_%d" % [min(node_id, other_city_id), max(node_id, other_city_id)]
                     if handled.has(key) or node_id == other_city_id:

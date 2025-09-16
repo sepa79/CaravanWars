@@ -66,7 +66,7 @@ func _process_intersections(poly: Array[Vector2], roads: Dictionary, river_id: i
     var next_edge_id: int = roads.get("next_edge_id", 1)
 
     for edge_id in edges.keys():
-        var edge: MapViewEdge = edges[edge_id]
+        var edge: RefCounted = edges[edge_id]
         var road_start: Vector2 = edge.polyline[0]
         var road_end: Vector2 = edge.polyline[1]
         for i in range(poly.size() - 1):
@@ -77,7 +77,7 @@ func _process_intersections(poly: Array[Vector2], roads: Dictionary, river_id: i
                 var cross: Vector2 = intersection
                 var cross_id: int = next_node_id
                 next_node_id += 1
-                var cross_node: MapViewNode = MapNodeModule.new(cross_id, MapNodeModule.TYPE_BRIDGE, cross, {"river_id": river_id})
+                var cross_node: RefCounted = MapNodeModule.new(cross_id, MapNodeModule.TYPE_BRIDGE, cross, {"river_id": river_id})
                 nodes[cross_id] = cross_node
 
                 var start_id: int = edge.endpoints[0]
