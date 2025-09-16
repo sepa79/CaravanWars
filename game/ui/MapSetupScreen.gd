@@ -194,7 +194,7 @@ func _build_legend_buttons() -> void:
     for child in _legend_button_container.get_children():
         child.queue_free()
     for entry in LEGEND_CONFIG:
-        var layer := String(entry.get("layer", ""))
+        var layer: String = String(entry.get("layer", ""))
         if layer.is_empty():
             continue
         var button := LegendIconButton.new()
@@ -206,7 +206,7 @@ func _build_legend_buttons() -> void:
         button.set_pressed_no_signal(pressed)
         button.queue_redraw()
         button.text = I18N.t(entry.get("label", ""))
-        var captured_layer := layer
+        var captured_layer: String = layer
         button.toggled.connect(func(value: bool) -> void:
             _on_legend_button_toggled(captured_layer, value)
         )
