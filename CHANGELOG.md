@@ -16,6 +16,7 @@ Fixed
 - Annotated MapView preview helpers and the MapSetupScreen kingdom legend to avoid Variant inference warnings during the smoke test.
 - Typed the map bundle loader parse result to avoid Variant inference warnings in MapGenerator.
 - Tightened MapTerrainStage terrain calculations and erosion kernel weights with explicit types to silence Variant inference warnings.
+- Declared the MapTerrainStage erosion kernel as a literal float array so strict constant checks no longer flag the definition.
 
 0.1.81 — 2025-09-14
 Added

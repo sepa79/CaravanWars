@@ -2,7 +2,7 @@ extends RefCounted
 class_name MapTerrainStage
 
 const TERRAIN_CONTOUR_INTERVAL: float = 0.1
-const EROSION_KERNEL: PackedFloat32Array = PackedFloat32Array([0.05, 0.2, 0.5, 0.2, 0.05])
+const EROSION_KERNEL: Array[float] = [0.05, 0.2, 0.5, 0.2, 0.05]
 
 static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
     var size: int = state["map_size"]
