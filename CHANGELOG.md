@@ -11,6 +11,7 @@ Changed
 - tools/check scripts now run `godot --check` on every GDScript file before executing the broader project checks.
 - Both Unix and Windows check scripts now fail when Godot logs warnings or errors so CI surfaces issues immediately.
 Fixed
+- Typed MapGenerationShared kingdom data lookups to avoid Variant inference warnings when sampling borders.
 - Typed the MapSetupScreen layer toggle and legend button captures so Godot can infer the signal parameter types.
 - Headless CI runs now auto-quit through the App autoload when `CI_AUTO_QUIT` is set, so game launches do not hang during tests.
 - Annotated MapView preview helpers and the MapSetupScreen kingdom legend to avoid Variant inference warnings during the smoke test.

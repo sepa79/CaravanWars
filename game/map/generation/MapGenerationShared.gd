@@ -17,7 +17,7 @@ static func has_adjacent_sea(x: int, y: int, size: int, sea_mask: PackedByteArra
 static func distance_to_border(position: Vector2, state: Dictionary, size: int) -> float:
     var borders: Array[Dictionary] = []
     if state.has("kingdoms"):
-        var kingdoms_data = state["kingdoms"]
+        var kingdoms_data: Variant = state["kingdoms"]
         if kingdoms_data is Dictionary:
             borders = kingdoms_data.get("borders", [])
     if borders.is_empty():
