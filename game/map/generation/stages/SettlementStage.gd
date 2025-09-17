@@ -11,31 +11,31 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
     var river_distance: PackedFloat32Array = state["rivers"]["distance_map"]
     var rng: RandomNumberGenerator = state["rng"]
 
-    var sample_step := max(1, size / 96)
+    var sample_step: int = max(1, int(size / 96.0))
     var city_candidates: Array[Dictionary] = []
     for y in range(0, size, sample_step):
         for x in range(0, size, sample_step):
-            var index := y * size + x
-            var kingdom_id := assignment[index]
+            var index: int = y * size + x
+            var kingdom_id: int = assignment[index]
             if kingdom_id < 0:
                 continue
             if sea_mask[index] == 1:
                 continue
-            var slope_value := slope_map[index]
+            var slope_value: float = slope_map[index]
             if slope_value > 0.75:
                 continue
-            var rainfall_value := rainfall[index]
-            var temp_value := temperature[index]
-            var river_bonus := clamp(
+            var rainfall_value: float = rainfall[index]
+            var temp_value: float = temperature[index]
+            var river_bonus: float = clamp(
                 1.0 - min(river_distance[index] / float(MapGenerationConstants.RIVER_INFLUENCE_RADIUS * 1.8), 1.0),
                 0.0,
                 1.0
             )
-            var border_distance := MapGenerationShared.distance_to_border(Vector2(x, y), state, params.map_size)
-            var border_bonus := 0.0
+            var border_distance: float = MapGenerationShared.distance_to_border(Vector2(x, y), state, params.map_size)
+            var border_bonus: float = 0.0
             if border_distance < 6.0:
                 border_bonus = 0.15
-            var score := (1.0 - slope_value) * 0.5 + rainfall_value * 0.25 + (1.0 - abs(temp_value - 0.6)) * 0.2
+            var score: float = (1.0 - slope_value) * 0.5 + rainfall_value * 0.25 + (1.0 - abs(temp_value - 0.6)) * 0.2
             score += river_bonus * 0.3 + border_bonus
             score += rng.randf() * 0.05
             city_candidates.append({
@@ -59,25 +59,27 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
         city_counts[kingdom_id] = 0
 
     for candidate in city_candidates:
-        var kingdom_id: int = candidate["kingdom_id"]
+        var candidate_data: Dictionary = candidate
+        var kingdom_id: int = candidate_data["kingdom_id"]
         if city_counts[kingdom_id] >= city_target_per_kingdom[kingdom_id]:
             continue
-        var position: Vector2 = candidate["position"]
+        var position: Vector2 = candidate_data["position"]
         if not _is_far_enough(position, cities, params.city_min_distance):
             continue
-        var population := int(round(6000.0 + candidate["score"] * 20000.0))
-        var city_entry := {
+        var candidate_score: float = candidate_data["score"]
+        var population: int = int(round(6000.0 + candidate_score * 20000.0))
+        var city_entry: Dictionary = {
             "type": "city",
             "kingdom_id": kingdom_id,
             "position": position,
             "population": population,
-            "port": candidate["is_coast"],
-            "score": candidate["score"],
+            "port": candidate_data["is_coast"],
+            "score": candidate_score,
         }
         cities.append(city_entry)
         city_counts[kingdom_id] = city_counts[kingdom_id] + 1
     if cities.is_empty() and not city_candidates.is_empty():
-        var fallback := city_candidates[0]
+        var fallback: Dictionary = city_candidates[0]
         cities.append({
             "type": "city",
             "kingdom_id": fallback["kingdom_id"],
@@ -87,7 +89,7 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
             "score": fallback["score"],
         })
 
-    var village_candidates := city_candidates.duplicate()
+    var village_candidates: Array[Dictionary] = city_candidates.duplicate()
     village_candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
         return a["score"] > b["score"]
     )
@@ -98,24 +100,26 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
         village_target_per_kingdom[kingdom_id] = max(2, city_counts.get(kingdom_id, 0) * 3)
 
     for candidate in village_candidates:
-        var kingdom_id: int = candidate["kingdom_id"]
+        var candidate_data: Dictionary = candidate
+        var kingdom_id: int = candidate_data["kingdom_id"]
         if villages.filter(func(v: Dictionary) -> bool:
             return v["kingdom_id"] == kingdom_id
         ).size() >= village_target_per_kingdom[kingdom_id]:
             continue
-        var position: Vector2 = candidate["position"]
+        var position: Vector2 = candidate_data["position"]
         if not _is_far_enough(position, cities, params.village_min_distance):
             continue
         if not _is_far_enough(position, villages, params.village_min_distance):
             continue
-        var population := int(round(800.0 + candidate["score"] * 3500.0))
+        var candidate_score: float = candidate_data["score"]
+        var population: int = int(round(800.0 + candidate_score * 3500.0))
         villages.append({
             "type": "village",
             "kingdom_id": kingdom_id,
             "position": position,
             "population": population,
-            "port": candidate["is_coast"],
-            "score": candidate["score"],
+            "port": candidate_data["is_coast"],
+            "score": candidate_score,
         })
 
     state["city_counts"] = city_counts
