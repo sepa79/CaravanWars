@@ -18,6 +18,7 @@ Fixed
 - Annotated MapView preview helpers and the MapSetupScreen kingdom legend to avoid Variant inference warnings during the smoke test.
 - Typed the map bundle loader parse result to avoid Variant inference warnings in MapGenerator.
 - Typed MapBiomeStage climate sampling so Variant inference warnings are eliminated during biome generation checks.
+- Typed MapKingdomStage habitability scoring and assignment locals so kingdom generation avoids Variant inference warnings.
 - Tightened MapTerrainStage terrain calculations and erosion kernel weights with explicit types to silence Variant inference warnings.
 - Declared the MapTerrainStage erosion kernel as a literal float array so strict constant checks no longer flag the definition.
 - Typed MapRiverStage river tracing helpers so Variant inference warnings no longer appear during strict checks.
