@@ -15,6 +15,7 @@ Fixed
 - Headless CI runs now auto-quit through the App autoload when `CI_AUTO_QUIT` is set, so game launches do not hang during tests.
 - Annotated MapView preview helpers and the MapSetupScreen kingdom legend to avoid Variant inference warnings during the smoke test.
 - Typed the map bundle loader parse result to avoid Variant inference warnings in MapGenerator.
+- Typed MapBiomeStage climate sampling so Variant inference warnings are eliminated during biome generation checks.
 - Tightened MapTerrainStage terrain calculations and erosion kernel weights with explicit types to silence Variant inference warnings.
 - Declared the MapTerrainStage erosion kernel as a literal float array so strict constant checks no longer flag the definition.
 - Typed MapRiverStage river tracing helpers so Variant inference warnings no longer appear during strict checks.

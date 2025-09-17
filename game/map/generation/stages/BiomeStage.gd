@@ -3,7 +3,7 @@ class_name MapBiomeStage
 
 static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
     var size: int = state["map_size"]
-    var total := size * size
+    var total: int = size * size
     var heightmap: PackedFloat32Array = state["terrain"]["heightmap"]
     var slope_map: PackedFloat32Array = state["terrain"]["slope"]
     var sea_mask: PackedByteArray = state["terrain"]["sea_mask"]
@@ -29,28 +29,28 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
     special_tags.resize(total)
 
     for y in range(size):
-        var latitude := abs((float(y) / float(size)) - 0.5) * 2.0
+        var latitude: float = abs((float(y) / float(size)) - 0.5) * 2.0
         for x in range(size):
-            var index := y * size + x
-            var altitude := heightmap[index]
-            var base_temp := clamp(1.0 - latitude - altitude * 0.65, 0.0, 1.0)
-            var temp_variation := temp_noise.get_noise_2d(float(x), float(y)) * 0.1
-            var temp_value := clamp(base_temp + temp_variation, 0.0, 1.0)
+            var index: int = y * size + x
+            var altitude: float = heightmap[index]
+            var base_temp: float = clamp(1.0 - latitude - altitude * 0.65, 0.0, 1.0)
+            var temp_variation: float = temp_noise.get_noise_2d(float(x), float(y)) * 0.1
+            var temp_value: float = clamp(base_temp + temp_variation, 0.0, 1.0)
             temperature[index] = temp_value
 
-            var rain_base := 0.5 + rain_noise.get_noise_2d(float(x), float(y)) * 0.25
-            var river_boost := clamp(
+            var rain_base: float = 0.5 + rain_noise.get_noise_2d(float(x), float(y)) * 0.25
+            var river_boost: float = clamp(
                 1.0 - min(river_distance[index] / float(MapGenerationConstants.RIVER_INFLUENCE_RADIUS * 2), 1.0),
                 0.0,
                 1.0
             )
-            var slope_shadow := clamp(1.0 - slope_map[index] * 0.6, 0.0, 1.0)
-            var rainfall_value := clamp(rain_base * slope_shadow + river_boost * 0.4 + (1.0 - altitude) * 0.15, 0.0, 1.0)
+            var slope_shadow: float = clamp(1.0 - slope_map[index] * 0.6, 0.0, 1.0)
+            var rainfall_value: float = clamp(rain_base * slope_shadow + river_boost * 0.4 + (1.0 - altitude) * 0.15, 0.0, 1.0)
             rainfall[index] = rainfall_value
 
-            var biome := _classify_biome(temp_value, rainfall_value, altitude, slope_map[index], sea_mask[index] == 1, params)
+            var biome: String = _classify_biome(temp_value, rainfall_value, altitude, slope_map[index], sea_mask[index] == 1, params)
             biome_map[index] = biome
-            var tag := ""
+            var tag: String = ""
             if sea_mask[index] == 0:
                 if MapGenerationShared.has_adjacent_sea(x, y, size, sea_mask):
                     tag = "coast"
@@ -107,18 +107,18 @@ static func _classify_biome(
 
 static func _aggregate_biomes(biome_map: Array[String], size: int) -> Array[Dictionary]:
     var polygons: Array[Dictionary] = []
-    var cell_size := max(4, size / 64)
+    var cell_size: int = max(4, int(size / 64))
     for y in range(0, size, cell_size):
-        var y_end := min(y + cell_size, size)
+        var y_end: int = min(y + cell_size, size)
         for x in range(0, size, cell_size):
-            var x_end := min(x + cell_size, size)
+            var x_end: int = min(x + cell_size, size)
             var counter: Dictionary = {}
             for sy in range(y, y_end):
                 for sx in range(x, x_end):
-                    var biome := biome_map[sy * size + sx]
+                    var biome: String = biome_map[sy * size + sx]
                     counter[biome] = counter.get(biome, 0) + 1
-            var best_biome := "grassland"
-            var best_score := -1
+            var best_biome: String = "grassland"
+            var best_score: int = -1
             for biome in counter.keys():
                 var score: int = counter[biome]
                 if score > best_score:
