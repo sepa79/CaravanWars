@@ -24,6 +24,7 @@ Fixed
 - Typed MapRiverStage river tracing helpers so Variant inference warnings no longer appear during strict checks.
 - Typed MapRoadStage path sampling locals so road generation no longer falls back to Variant inference during strict checks.
 - Typed MapSettlementStage settlement sampling locals so Variant inference warnings are eliminated during settlement placement.
+- Typed MapFortStage fort candidate scoring locals so Variant inference warnings are eliminated during fort placement.
 
 0.1.81 — 2025-09-14
 Added

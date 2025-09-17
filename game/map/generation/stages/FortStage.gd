@@ -13,22 +13,22 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
 
     var candidates: Array[Dictionary] = []
     for road_index in range(road_polylines.size()):
-        var road := road_polylines[road_index]
+        var road: Dictionary = road_polylines[road_index]
         var points: PackedVector2Array = road.get("points", PackedVector2Array())
         if points.size() < 2:
             continue
         for i in range(points.size() - 1):
-            var mid := points[i].lerp(points[i + 1], 0.5)
-            var index := MapGenerationShared.index_from_position(mid, size)
-            var kingdom_id := assignment[index]
+            var mid: Vector2 = points[i].lerp(points[i + 1], 0.5)
+            var index: int = MapGenerationShared.index_from_position(mid, size)
+            var kingdom_id: int = assignment[index]
             if kingdom_id < 0:
                 continue
-            var elevation := heightmap[index]
-            var slope_value := slope_map[index]
+            var elevation: float = heightmap[index]
+            var slope_value: float = slope_map[index]
             if slope_value > 0.9:
                 continue
-            var border_distance := MapGenerationShared.distance_to_border(mid, state, size)
-            var score := (1.0 - slope_value) + clamp(1.0 - border_distance / 12.0, 0.0, 1.0)
+            var border_distance: float = MapGenerationShared.distance_to_border(mid, state, size)
+            var score: float = (1.0 - slope_value) + clamp(1.0 - border_distance / 12.0, 0.0, 1.0)
             if road.get("crosses_river", false):
                 score += 0.4
             score += rng.randf() * 0.1
@@ -47,32 +47,32 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
 
     var forts: Array[Dictionary] = []
     var per_kingdom_cap: Dictionary = {}
-    var base_cap := params.fort_global_cap
+    var base_cap: int = params.fort_global_cap
     for kingdom_id in range(params.kingdom_count):
-        var kingdom_city_count := city_counts.get(kingdom_id, 0)
-        var dynamic_cap := 0
+        var kingdom_city_count: int = city_counts.get(kingdom_id, 0)
+        var dynamic_cap: float = 0.0
         if kingdom_city_count > 0:
-            dynamic_cap = max(1, kingdom_city_count / 4)
-        var allowed := dynamic_cap
-        if kingdom_city_count > 0 and allowed < 1:
-            allowed = 1
+            dynamic_cap = max(1.0, float(kingdom_city_count) / 4.0)
+        var allowed: float = dynamic_cap
+        if kingdom_city_count > 0 and allowed < 1.0:
+            allowed = 1.0
         if base_cap > 0:
-            var base_limit := max(1, base_cap / max(1, params.kingdom_count))
-            if kingdom_city_count > 0 and allowed < 1:
-                allowed = 1
-            if allowed > 0:
+            var base_limit: float = max(1.0, float(base_cap) / max(1, params.kingdom_count))
+            if kingdom_city_count > 0 and allowed < 1.0:
+                allowed = 1.0
+            if allowed > 0.0:
                 allowed = min(allowed, base_limit)
             else:
-                allowed = min(1, base_limit)
+                allowed = min(1.0, base_limit)
         per_kingdom_cap[kingdom_id] = allowed
-    var face_off_distance_sq := MapGenerationConstants.FACE_OFF_DISTANCE * MapGenerationConstants.FACE_OFF_DISTANCE
+    var face_off_distance_sq: float = MapGenerationConstants.FACE_OFF_DISTANCE * MapGenerationConstants.FACE_OFF_DISTANCE
 
     for candidate in candidates:
         var kingdom_id: int = candidate["kingdom_id"]
-        if per_kingdom_cap.get(kingdom_id, 0) <= 0:
+        if per_kingdom_cap.get(kingdom_id, 0.0) <= 0.0:
             continue
         var position: Vector2 = candidate["position"]
-        var valid := true
+        var valid: bool = true
         for fort in forts:
             if position.distance_squared_to(fort["position"]) < float(params.fort_spacing * params.fort_spacing):
                 valid = false
@@ -88,7 +88,7 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
                     break
         if not valid:
             continue
-        var fort_type := "frontier"
+        var fort_type: String = "frontier"
         if candidate["border_distance"] < 4.0:
             fort_type = "border"
         elif candidate["score"] > 1.6:
