@@ -27,12 +27,12 @@ static func distance_to_border(position: Vector2, state: Dictionary, size: int) 
         var points: PackedVector2Array = border.get("points", PackedVector2Array())
         if points.size() < 2:
             continue
-        var step := max(1, MapGenerationConstants.BORDER_SAMPLE_STEP)
+        var step: int = max(1, MapGenerationConstants.BORDER_SAMPLE_STEP)
         for i in range(0, points.size() - 1, step):
-            var start := points[i]
-            var end := points[min(i + 1, points.size() - 1)]
-            var closest := Geometry2D.get_closest_point_to_segment(position, start, end)
-            var distance := closest.distance_to(position)
+            var start: Vector2 = points[i]
+            var end: Vector2 = points[min(i + 1, points.size() - 1)]
+            var closest: Vector2 = Geometry2D.get_closest_point_to_segment(position, start, end)
+            var distance: float = closest.distance_to(position)
             if distance < best:
                 best = distance
     return best
