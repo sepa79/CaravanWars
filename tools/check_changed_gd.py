@@ -1,125 +1,48 @@
 #!/usr/bin/env python3
-"""Run `godot --check` on new and modified GDScript files.
+"""Run `godot --check` on every GDScript file in the project.
 
-This script inspects the Git working tree for `.gd` files that are new or
-modified and runs Godot's `--check` command on each of them. It is meant to be
-invoked from the repository root (directly or via the check scripts) so the
-`--path` flag can point to the Godot project directory.
+The script walks the Godot project directory and executes Godot's `--check`
+command for each `.gd` file that it finds. It is meant to be invoked from the
+repository root (directly or via the check scripts) so the `--path` flag can
+point to the Godot project directory.
 """
 from __future__ import annotations
 
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import sys
-from typing import List, Sequence, Set
+from typing import List, Sequence
 
 
-def is_git_repository(repo_root: str) -> bool:
-    """Return True if *repo_root* is inside a Git working tree."""
-    try:
-        result = subprocess.run(
-            ["git", "-C", repo_root, "rev-parse", "--is-inside-work-tree"],
-            check=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-    except FileNotFoundError:
-        return False
-    return result.returncode == 0 and result.stdout.strip() == "true"
+WARNING_PATTERN = re.compile(r"^\s*(?:WARNING|ERROR|SCRIPT ERROR):", re.MULTILINE)
 
 
-def collect_changed_gd(repo_root: str, project_dir: str) -> List[str]:
-    """Collect new or modified `.gd` files under *project_dir*.
+def contains_warning_or_error(text: str) -> bool:
+    """Return True if *text* includes Godot warnings or errors."""
 
-    The function inspects the working tree status so it captures both staged and
-    unstaged files, including untracked ones.
-    """
-    if not is_git_repository(repo_root):
-        return []
+    return bool(WARNING_PATTERN.search(text))
 
+
+def collect_gd_scripts(repo_root: str, project_dir: str) -> List[str]:
+    """Collect every `.gd` file under *project_dir* relative to *repo_root*."""
     abs_project = os.path.abspath(os.path.join(repo_root, project_dir))
-    try:
-        relative_project = os.path.relpath(abs_project, repo_root)
-    except ValueError:
-        relative_project = project_dir
-
-    if relative_project.startswith(".."):
-        normalized_project = "."
-    else:
-        normalized_project = relative_project.replace("\\", "/")
-
-    pathspec = normalized_project if normalized_project not in {"", "."} else "."
-
-    try:
-        result = subprocess.run(
-            [
-                "git",
-                "-C",
-                repo_root,
-                "status",
-                "--porcelain=v1",
-                "-z",
-                "--",
-                pathspec,
-            ],
-            check=True,
-            stdout=subprocess.PIPE,
-        )
-    except subprocess.CalledProcessError as exc:  # pragma: no cover - defensive
-        print(
-            "[check] Warning: unable to inspect Git status; skipping per-script checks.",
-            file=sys.stderr,
-        )
-        if exc.stderr:
-            sys.stderr.write(exc.stderr)
+    if not os.path.isdir(abs_project):
         return []
 
-    entries = result.stdout.split(b"\0")
-    files: List[str] = []
-    seen: Set[str] = set()
-    index = 0
+    scripts: List[str] = []
+    for root_dir, _, filenames in os.walk(abs_project):
+        for name in filenames:
+            if not name.endswith(".gd"):
+                continue
+            absolute_path = os.path.join(root_dir, name)
+            relative_path = os.path.relpath(absolute_path, repo_root)
+            scripts.append(relative_path.replace(os.sep, "/"))
 
-    while index < len(entries):
-        entry = entries[index]
-        index += 1
-        if not entry:
-            continue
-
-        status_bytes = entry[:2]
-        status = status_bytes.decode("utf-8", errors="ignore")
-        path_fragment = entry[3:].decode("utf-8", errors="ignore")
-
-        # For renames/copies Git emits: entry -> new_path
-        if status.startswith("R") or status.startswith("C"):
-            if index < len(entries):
-                new_path = entries[index].decode("utf-8", errors="ignore")
-                index += 1
-                path_fragment = new_path
-
-        include = False
-        if status == "??":
-            include = True
-        else:
-            index_status = status[0]
-            worktree_status = status[1] if len(status) > 1 else ""
-            include = any(flag in {"A", "M", "R", "C"} for flag in (index_status, worktree_status))
-
-        if not include:
-            continue
-
-        normalized = path_fragment.replace("\\", "/")
-        if not normalized.endswith(".gd"):
-            continue
-
-        if normalized not in seen:
-            seen.add(normalized)
-            files.append(normalized)
-
-    files.sort()
-    return files
+    scripts.sort()
+    return scripts
 
 
 def resolve_godot_binary(user_provided: str | None) -> str:
@@ -153,7 +76,7 @@ def run_checks(
     """
     if not files:
         if not quiet:
-            print("[check] No new or modified GDScript files detected.")
+            print("[check] No GDScript files detected.")
         return 0
 
     abs_project_dir = os.path.abspath(project_dir)
@@ -178,7 +101,13 @@ def run_checks(
             absolute_script,
         ]
         try:
-            completed = subprocess.run(command, check=False, env=env)
+            completed = subprocess.run(
+                command,
+                check=False,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
         except FileNotFoundError:
             print(
                 f"[check] Error: unable to execute Godot binary at {godot}",
@@ -186,12 +115,24 @@ def run_checks(
             )
             return 1
 
+        if completed.stdout:
+            print(completed.stdout, end="")
+        if completed.stderr:
+            sys.stderr.write(completed.stderr)
         if completed.returncode != 0:
             print(
                 f"[check] Error: Godot reported issues for {relative_path} (exit {completed.returncode}).",
                 file=sys.stderr,
             )
             return completed.returncode
+
+        combined_output = (completed.stdout or "") + (completed.stderr or "")
+        if contains_warning_or_error(combined_output):
+            print(
+                f"[check] Error: Godot produced warnings/errors for {relative_path}.",
+                file=sys.stderr,
+            )
+            return 1
 
     return 0
 
@@ -231,16 +172,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     repo_root = os.path.abspath(args.repo_root)
     project_dir = os.path.abspath(os.path.join(repo_root, args.project_dir))
 
-    changed_scripts = collect_changed_gd(repo_root, args.project_dir)
+    scripts = collect_gd_scripts(repo_root, args.project_dir)
 
     if args.list:
-        for script in changed_scripts:
+        for script in scripts:
             print(script)
         return 0
 
-    if not changed_scripts:
+    if not scripts:
         if not args.quiet:
-            print("[check] No new or modified GDScript files detected.")
+            print("[check] No GDScript files detected.")
         return 0
 
     try:
@@ -249,8 +190,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"[check] Error: {error}", file=sys.stderr)
         return 1
 
-    return run_checks(godot_binary, project_dir, repo_root, changed_scripts, quiet=args.quiet)
+    return run_checks(godot_binary, project_dir, repo_root, scripts, quiet=args.quiet)
 
 
 if __name__ == "__main__":  # pragma: no cover - entry point
     sys.exit(main())
+

@@ -4,10 +4,27 @@ Unreleased
 Added
 - Implemented a deterministic seven-stage map generation pipeline that emits terrain, rivers, biomes, borders, settlements, roads, and forts as reusable layers.
 - Restored the map setup screen preview with generator-bound parameter controls, layer toggles, and legend support so the pipeline can be inspected stage by stage.
+- Added a headless map smoke test that drives the single-player start menu into the setup screen before exiting, enabling automated UI regression coverage.
 Changed
 - Map setup UI now binds seed, map size, kingdom count, terrain, road, and fort parameters directly to the generator and regenerates the MapView preview on each change.
 - Refactored the deterministic map generator into dedicated terrain, river, biome, kingdom, settlement, road, and fort stage scripts with shared utilities so the stub implementation is fully retired.
-- tools/check scripts now detect changed GDScript files and run `godot --check` on each script before executing the broader project checks.
+- tools/check scripts now run `godot --check` on every GDScript file before executing the broader project checks.
+- Both Unix and Windows check scripts now fail when Godot logs warnings or errors so CI surfaces issues immediately.
+Fixed
+- Typed MapGenerationShared kingdom data lookups to avoid Variant inference warnings when sampling borders.
+- Annotated MapGenerationShared border sampling locals so distance checks avoid Variant inference warnings.
+- Typed the MapSetupScreen layer toggle and legend button captures so Godot can infer the signal parameter types.
+- Headless CI runs now auto-quit through the App autoload when `CI_AUTO_QUIT` is set, so game launches do not hang during tests.
+- Annotated MapView preview helpers and the MapSetupScreen kingdom legend to avoid Variant inference warnings during the smoke test.
+- Typed the map bundle loader parse result to avoid Variant inference warnings in MapGenerator.
+- Typed MapBiomeStage climate sampling so Variant inference warnings are eliminated during biome generation checks.
+- Typed MapKingdomStage habitability scoring and assignment locals so kingdom generation avoids Variant inference warnings.
+- Tightened MapTerrainStage terrain calculations and erosion kernel weights with explicit types to silence Variant inference warnings.
+- Declared the MapTerrainStage erosion kernel as a literal float array so strict constant checks no longer flag the definition.
+- Typed MapRiverStage river tracing helpers so Variant inference warnings no longer appear during strict checks.
+- Typed MapRoadStage path sampling locals so road generation no longer falls back to Variant inference during strict checks.
+- Typed MapSettlementStage settlement sampling locals so Variant inference warnings are eliminated during settlement placement.
+- Typed MapFortStage fort candidate scoring locals so Variant inference warnings are eliminated during fort placement.
 
 0.1.81 — 2025-09-14
 Added

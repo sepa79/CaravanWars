@@ -155,19 +155,19 @@ static func _build_road_path(
     var alt_mid := Vector2(start.x, end.y)
     var alt_mid_two := Vector2(end.x, start.y)
 
-    var best_midpoints := []
+    var best_midpoints: Array[Vector2] = []
     best_midpoints.append(mid)
     best_midpoints.append(alt_mid)
     best_midpoints.append(alt_mid_two)
 
-    var best_score := INF
+    var best_score: float = INF
     var best_path := PackedVector2Array()
     for candidate_midpoint in best_midpoints:
         var candidate_path := PackedVector2Array()
         candidate_path.append(start)
         candidate_path.append(candidate_midpoint)
         candidate_path.append(end)
-        var score := _evaluate_path(candidate_path, sea_mask, slope_map, size)
+        var score: float = _evaluate_path(candidate_path, sea_mask, slope_map, size)
         if score < best_score:
             best_score = score
             best_path = candidate_path
@@ -176,17 +176,17 @@ static func _build_road_path(
     return _simplify_path(path)
 
 static func _evaluate_path(path: PackedVector2Array, sea_mask: PackedByteArray, slope_map: PackedFloat32Array, size: int) -> float:
-    var penalty := 0.0
+    var penalty: float = 0.0
     for i in range(path.size() - 1):
-        var segment_start := path[i]
-        var segment_end := path[i + 1]
-        var length := segment_start.distance_to(segment_end)
-        var samples := max(1, int(length / 4.0))
+        var segment_start: Vector2 = path[i]
+        var segment_end: Vector2 = path[i + 1]
+        var length: float = segment_start.distance_to(segment_end)
+        var samples: int = max(1, int(length / 4.0))
         for sample in range(samples + 1):
-            var t := float(sample) / float(samples)
-            var position := segment_start.lerp(segment_end, t)
-            var index := MapGenerationShared.index_from_position(position, size)
-            var slope_value := slope_map[index]
+            var t: float = float(sample) / float(samples)
+            var position: Vector2 = segment_start.lerp(segment_end, t)
+            var index: int = MapGenerationShared.index_from_position(position, size)
+            var slope_value: float = slope_map[index]
             penalty += slope_value * 2.0
             if _is_water(position, sea_mask, size):
                 penalty += 25.0
@@ -198,8 +198,8 @@ static func _simplify_path(path: PackedVector2Array) -> PackedVector2Array:
         return simplified
     simplified.append(path[0])
     for i in range(1, path.size() - 1):
-        var prev := simplified[simplified.size() - 1]
-        var current := path[i]
+        var prev: Vector2 = simplified[simplified.size() - 1]
+        var current: Vector2 = path[i]
         if current.distance_squared_to(prev) < 1.0:
             continue
         simplified.append(current)
@@ -207,20 +207,20 @@ static func _simplify_path(path: PackedVector2Array) -> PackedVector2Array:
     return simplified
 
 static func _is_water(position: Vector2, sea_mask: PackedByteArray, size: int) -> bool:
-    var index := MapGenerationShared.index_from_position(position, size)
+    var index: int = MapGenerationShared.index_from_position(position, size)
     return sea_mask[index] == 1
 
 static func _sample_kingdoms_along_path(path: PackedVector2Array, assignment: PackedInt32Array, size: int) -> PackedInt32Array:
-    var kingdoms := []
+    var kingdoms: Array[int] = []
     for i in range(path.size() - 1):
-        var segment_start := path[i]
-        var segment_end := path[i + 1]
-        var length := segment_start.distance_to(segment_end)
-        var samples := max(1, int(length / 6.0))
+        var segment_start: Vector2 = path[i]
+        var segment_end: Vector2 = path[i + 1]
+        var length: float = segment_start.distance_to(segment_end)
+        var samples: int = max(1, int(length / 6.0))
         for sample in range(samples + 1):
-            var t := float(sample) / float(samples)
-            var position := segment_start.lerp(segment_end, t)
-            var kingdom_id := assignment[MapGenerationShared.index_from_position(position, size)]
+            var t: float = float(sample) / float(samples)
+            var position: Vector2 = segment_start.lerp(segment_end, t)
+            var kingdom_id: int = assignment[MapGenerationShared.index_from_position(position, size)]
             if kingdom_id < 0:
                 continue
             if kingdom_id not in kingdoms:
@@ -229,13 +229,13 @@ static func _sample_kingdoms_along_path(path: PackedVector2Array, assignment: Pa
 
 static func _path_crosses_river(path: PackedVector2Array, size: int, river_lookup: PackedByteArray) -> bool:
     for i in range(path.size() - 1):
-        var segment_start := path[i]
-        var segment_end := path[i + 1]
-        var length := segment_start.distance_to(segment_end)
-        var samples := max(1, int(length / 4.0))
+        var segment_start: Vector2 = path[i]
+        var segment_end: Vector2 = path[i + 1]
+        var length: float = segment_start.distance_to(segment_end)
+        var samples: int = max(1, int(length / 4.0))
         for sample in range(samples + 1):
-            var t := float(sample) / float(samples)
-            var position := segment_start.lerp(segment_end, t)
+            var t: float = float(sample) / float(samples)
+            var position: Vector2 = segment_start.lerp(segment_end, t)
             if _is_river(position, size, river_lookup):
                 return true
     return false
@@ -243,15 +243,15 @@ static func _path_crosses_river(path: PackedVector2Array, size: int, river_looku
 static func _is_river(position: Vector2, size: int, river_lookup: PackedByteArray) -> bool:
     if river_lookup.is_empty():
         return false
-    var px := int(clamp(int(round(position.x)), 0, size - 1))
-    var py := int(clamp(int(round(position.y)), 0, size - 1))
-    var index := py * size + px
+    var px: int = int(clamp(int(round(position.x)), 0, size - 1))
+    var py: int = int(clamp(int(round(position.y)), 0, size - 1))
+    var index: int = py * size + px
     if index < 0 or index >= river_lookup.size():
         return false
     return river_lookup[index] == 1
 
 static func _polyline_length(path: PackedVector2Array) -> float:
-    var length := 0.0
+    var length: float = 0.0
     for i in range(path.size() - 1):
         length += path[i].distance_to(path[i + 1])
     return length
@@ -264,23 +264,23 @@ static func _build_road_connectivity(cities: Array[Dictionary], roads: Array[Dic
         var points: PackedVector2Array = road.get("points", PackedVector2Array())
         if points.is_empty():
             continue
-        var start := points[0]
-        var end := points[points.size() - 1]
-        var start_city := _find_city_index(start, cities)
-        var end_city := _find_city_index(end, cities)
+        var start: Vector2 = points[0]
+        var end: Vector2 = points[points.size() - 1]
+        var start_city: int = _find_city_index(start, cities)
+        var end_city: int = _find_city_index(end, cities)
         if start_city == -1 or end_city == -1:
             continue
         adjacency[start_city].append(end_city)
         adjacency[end_city].append(start_city)
     var visited: Dictionary = {}
-    var components := 0
+    var components: int = 0
     for i in range(cities.size()):
         if visited.has(i):
             continue
         components += 1
         var stack: Array[int] = [i]
         while not stack.is_empty():
-            var current := stack.pop_back()
+            var current: int = stack.pop_back()
             if visited.has(current):
                 continue
             visited[current] = true

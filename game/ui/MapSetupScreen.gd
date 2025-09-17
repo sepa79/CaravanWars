@@ -3,6 +3,7 @@ extends Control
 const MapGenerator := preload("res://map/generation/MapGenerator.gd")
 const MapGenerationParams := preload("res://map/generation/MapGenerationParams.gd")
 const LegendIconButton := preload("res://ui/LegendIconButton.gd")
+const MapViewScript := preload("res://ui/MapView.gd")
 
 const LEGEND_CONFIG := [
     {"layer": "roads", "icon": "road", "label": "setup.legend_roads"},
@@ -19,7 +20,7 @@ const LEGEND_CONFIG := [
 @onready var start_button: Button = $HBox/ControlsScroll/Controls/Buttons/Start
 @onready var back_button: Button = $HBox/ControlsScroll/Controls/Buttons/Back
 @onready var main_ui: Control = $HBox
-@onready var map_view: MapView = $HBox/MapRow/MapView
+@onready var map_view: MapViewScript = $HBox/MapRow/MapView as MapViewScript
 @onready var legend_panel: VBoxContainer = $HBox/MapRow/KingdomLegend
 
 @onready var title_label: Label = $HBox/ControlsScroll/Controls/Title
@@ -66,7 +67,7 @@ var _legend_button_container: VBoxContainer
 var _kingdom_header_label: Label
 var _kingdom_container: VBoxContainer
 var _last_map_data: Dictionary = {}
-var _ui_rng := RandomNumberGenerator.new()
+var _ui_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
     _ui_rng.randomize()
@@ -169,7 +170,7 @@ func _setup_layer_toggles() -> void:
     }
     for layer_key in _layer_checkboxes.keys():
         var checkbox: CheckBox = _layer_checkboxes[layer_key]
-        var captured_layer := layer_key
+        var captured_layer: String = String(layer_key)
         checkbox.toggled.connect(func(pressed: bool) -> void:
             _on_layer_checkbox_toggled(captured_layer, pressed)
         )
@@ -194,7 +195,7 @@ func _build_legend_buttons() -> void:
     for child in _legend_button_container.get_children():
         child.queue_free()
     for entry in LEGEND_CONFIG:
-        var layer := String(entry.get("layer", ""))
+        var layer: String = String(entry.get("layer", ""))
         if layer.is_empty():
             continue
         var button := LegendIconButton.new()
@@ -206,7 +207,7 @@ func _build_legend_buttons() -> void:
         button.set_pressed_no_signal(pressed)
         button.queue_redraw()
         button.text = I18N.t(entry.get("label", ""))
-        var captured_layer := layer
+        var captured_layer: String = layer
         button.toggled.connect(func(value: bool) -> void:
             _on_legend_button_toggled(captured_layer, value)
         )
@@ -332,7 +333,7 @@ func _update_kingdom_legend() -> void:
         return
     for child in _kingdom_container.get_children():
         child.queue_free()
-    var colors := map_view.get_kingdom_colors()
+    var colors: Dictionary = map_view.get_kingdom_colors()
     if colors.is_empty():
         return
     var ids: Array = colors.keys()
