@@ -1,10 +1,12 @@
 extends Node
 
-const MapGeneratorModule := preload("res://mapgen_stub.gd")
+const HexMapGenerator := preload("res://mapgen/HexMapGenerator.gd")
+const HexMapConfig := preload("res://mapgen/HexMapConfig.gd")
 
-var map_data: Dictionary = {}
+var map_data: HexMapData
 
 func _ready() -> void:
-    var params := MapGeneratorModule.MapGenParams.new(Time.get_ticks_msec())
-    map_data = MapGeneratorModule.new(params).generate()
-    print("[Game] Map stub ready with seed %d" % params.rng_seed)
+    var config := HexMapConfig.new(Time.get_ticks_msec())
+    var generator := HexMapGenerator.new(config)
+    map_data = generator.generate()
+    print("[Game] Hex map pipeline ready with seed %d" % map_data.seed)
