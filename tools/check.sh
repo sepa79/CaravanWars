@@ -32,12 +32,12 @@ echo "[check] Project: $PROJECT_DIR"
 
 run_check_only() {
   echo "[check] Running --check-only"
-  CI_AUTO_QUIT=1 "$GODOT" --headless --check-only --path "$PROJECT_DIR"
+  CI_AUTO_SINGLEPLAYER=1 CI_AUTO_QUIT=1 "$GODOT" --headless --check-only --path "$PROJECT_DIR"
 }
 
 run_game() {
-  echo "[check] Running game with CI auto quit"
-  CI_AUTO_QUIT=1 "$GODOT" --headless --path "$PROJECT_DIR"
+  echo "[check] Running game with CI singleplayer drive"
+  CI_AUTO_SINGLEPLAYER=1 CI_AUTO_QUIT=1 "$GODOT" --headless --path "$PROJECT_DIR"
 }
 
 case "$MODE" in

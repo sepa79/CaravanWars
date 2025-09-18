@@ -1,16 +1,32 @@
 Changelog
 
 Unreleased
+Changed
+- Documented in the README that the project was reset and all systems are being rebuilt from scratch.
+
+Fixed
+- Updated the Godot project metadata version to 0.1.82 so tooling and runtime checks report the same release number.
+- Corrected terrain region seeding to cast packed vectors before hex conversion, preventing singleplayer map generation crashes.
+
+0.1.82 — 2025-09-15
 Added
 - Introduced a hex map generation module with axial coordinate, grid, and metadata scaffolding for future stages.
+- Generated terrain discs now classify coastline water, seed all landform regions, and propagate them with deterministic BFS expansion.
+- Added repository and game agent guides that direct contributors to `RULES_ALWAYS_READ.md` before changing scripts.
 Changed
 - Map generation now uses a deterministic HexMapGenerator pipeline with configurable Phase 03 parameters and injectable phase hooks.
 - Hex map generation logs each pipeline phase so single player launches show visible progress.
+- Terrain stages persist per-hex elevations and validation reports for ridgeline lakes, isolated seas, and unsupported valleys.
+- CONTRIBUTING guidelines are now available in English and direct contributors to `RULES_ALWAYS_READ.md`.
+- Singleplayer map setup pre-generates a hex map when the screen opens so launches reuse the prepared data.
+- CI headless runs now drive the start menu into singleplayer so map preparation errors surface during automated checks.
+- Contributor checklists now call for running the automated singleplayer smoke test during implementation, ensuring runtime coverage before review.
 Removed
 - Replaced the map setup screen with a minimal start/back layout and removed the obsolete map view controls and road network helper.
 
 Fixed
 - Restored the Game scene's ability to load the new hex map generator so single player launches build a map again.
+- Eliminated typed map generator compile/runtime failures by preloading custom classes and normalising terrain dictionaries.
 
 0.1.81 — 2025-09-14
 Added

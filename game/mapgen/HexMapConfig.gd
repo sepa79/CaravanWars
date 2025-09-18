@@ -46,7 +46,8 @@ func _init(
     fort_spacing = max(1, p_fort_spacing)
 
 func duplicate_config() -> HexMapConfig:
-    return HexMapConfig.new(
+    var script: Script = get_script()
+    var clone: HexMapConfig = script.new(
         seed,
         map_radius,
         kingdom_count,
@@ -58,6 +59,7 @@ func duplicate_config() -> HexMapConfig:
         fort_global_cap,
         fort_spacing
     )
+    return clone
 
 func to_dictionary() -> Dictionary:
     return {

@@ -31,6 +31,7 @@ if "%GODOT%"=="" (
 echo [check] Using Godot: %GODOT%
 echo [check] Project: %PROJECT_DIR%
 echo [check] Running --check-only
+set CI_AUTO_SINGLEPLAYER=1
 set CI_AUTO_QUIT=1
 "%GODOT%" --headless --check-only --path "%PROJECT_DIR%"
 

@@ -1,5 +1,8 @@
 extends Control
 
+const CI_AUTO_SINGLEPLAYER_ENV := "CI_AUTO_SINGLEPLAYER"
+const CI_AUTO_QUIT_ENV := "CI_AUTO_QUIT"
+
 @onready var title_label: Label = $Title
 @onready var main_menu: VBoxContainer = $MainMenu
 @onready var multiplayer_menu: VBoxContainer = $MultiplayerMenu
@@ -23,9 +26,8 @@ func _ready() -> void:
     update_texts()
     main_menu.get_node("Multiplayer").grab_focus()
     _log("ready")
-    if OS.has_environment("CI_AUTO_QUIT"):
-        await get_tree().process_frame
-        _on_quit_pressed()
+    if _should_drive_ci_singleplayer():
+        await _ci_drive_to_singleplayer()
 
 func update_texts() -> void:
     title_label.text = I18N.t("menu.title")
@@ -131,3 +133,13 @@ func _on_net_state_changed(state: String) -> void:
         multiplayer_menu.visible = false
         join_address_panel.visible = false
         not_available_panel.visible = false
+
+func _should_drive_ci_singleplayer() -> bool:
+    return OS.has_environment(CI_AUTO_SINGLEPLAYER_ENV) or OS.has_environment(CI_AUTO_QUIT_ENV)
+
+func _ci_drive_to_singleplayer() -> void:
+    await get_tree().process_frame
+    if not is_inside_tree():
+        return
+    _log("CI auto flow: enter single player")
+    _on_single_player_pressed()
