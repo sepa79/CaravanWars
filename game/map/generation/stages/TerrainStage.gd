@@ -1,6 +1,7 @@
 extends RefCounted
 class_name MapTerrainStage
 
+const MapGenerationParams := preload("res://map/generation/MapGenerationParams.gd")
 const TERRAIN_CONTOUR_INTERVAL: float = 0.1
 const EROSION_KERNEL: Array[float] = [0.05, 0.2, 0.5, 0.2, 0.05]
 
@@ -126,4 +127,9 @@ static func _build_contours(heightmap: PackedFloat32Array, size: int) -> Array[D
                 var contour: Dictionary = contours_by_level[level]
                 var points: PackedVector2Array = contour["points"]
                 points.append(Vector2(x, y))
-    return contours_by_level.values()
+    var contours_array: Array = contours_by_level.values()
+    var typed_contours: Array[Dictionary] = []
+    for contour_entry in contours_array:
+        if contour_entry is Dictionary:
+            typed_contours.append(contour_entry)
+    return typed_contours

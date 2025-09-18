@@ -1,6 +1,9 @@
 extends RefCounted
 class_name MapFortStage
 
+const MapGenerationParams := preload("res://map/generation/MapGenerationParams.gd")
+const MapGenerationShared := preload("res://map/generation/MapGenerationShared.gd")
+const MapGenerationConstants := preload("res://map/generation/MapGenerationConstants.gd")
 static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
     var roads: Dictionary = state["roads"]
     var road_polylines: Array[Dictionary] = roads.get("polylines", [])

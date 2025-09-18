@@ -1,6 +1,9 @@
 extends RefCounted
 class_name MapSettlementStage
 
+const MapGenerationParams := preload("res://map/generation/MapGenerationParams.gd")
+const MapGenerationConstants := preload("res://map/generation/MapGenerationConstants.gd")
+const MapGenerationShared := preload("res://map/generation/MapGenerationShared.gd")
 static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
     var size: int = state["map_size"]
     var assignment: PackedInt32Array = state["kingdom_assignment"]

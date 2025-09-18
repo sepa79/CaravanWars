@@ -1,6 +1,6 @@
 extends Control
 
-const MapGenerator := preload("res://map/generation/MapGenerator.gd")
+const MAP_GENERATOR_SCRIPT_PATH := "res://map/generation/MapGenerator.gd"
 const MapGenerationParams := preload("res://map/generation/MapGenerationParams.gd")
 const LegendIconButton := preload("res://ui/LegendIconButton.gd")
 const MapViewScript := preload("res://ui/MapView.gd")
@@ -95,6 +95,8 @@ func _configure_controls() -> void:
     map_size_spin.max_value = 4096
     map_size_spin.step = 64
     map_size_spin.value = 2048
+    if OS.has_environment("MAP_SMOKE_TEST"):
+        map_size_spin.value = map_size_spin.min_value
 
     kingdoms_spin.min_value = 1
     kingdoms_spin.max_value = 12
@@ -268,8 +270,32 @@ func _schedule_regenerate() -> void:
 func _regenerate_map() -> void:
     _regeneration_pending = false
     var generation_params := _build_generation_params()
-    var generator := MapGenerator.new(generation_params)
-    _last_map_data = generator.generate()
+    if OS.has_environment("MAP_SMOKE_TEST"):
+        print("[MapSetup] Generating map with size %d" % generation_params.map_size)
+    var generator_script := load(MAP_GENERATOR_SCRIPT_PATH) as Script
+    if generator_script == null:
+        push_error("Failed to load MapGenerator script from %s." % MAP_GENERATOR_SCRIPT_PATH)
+        _last_map_data = {}
+        return
+    var generator_object: Object = generator_script.new()
+    if generator_object == null:
+        push_error("Failed to instantiate MapGenerator script.")
+        _last_map_data = {}
+        return
+    if not generator_object.has_method("generate"):
+        push_error("MapGenerator instance missing generate().")
+        _last_map_data = {}
+        return
+    generator_object.set("params", generation_params)
+    var generated_variant: Variant = generator_object.call("generate")
+    if generated_variant is Dictionary:
+        _last_map_data = generated_variant
+    else:
+        push_error("MapGenerator.generate() did not return a Dictionary.")
+        _last_map_data = {}
+        return
+    if OS.has_environment("MAP_SMOKE_TEST"):
+        print("[MapSetup] Map generation complete with %d keys." % _last_map_data.keys().size())
     map_view.set_map_data(_last_map_data)
     _update_kingdom_legend()
 

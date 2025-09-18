@@ -1,6 +1,8 @@
 extends RefCounted
 class_name MapKingdomStage
 
+const MapGenerationParams := preload("res://map/generation/MapGenerationParams.gd")
+const MapGenerationConstants := preload("res://map/generation/MapGenerationConstants.gd")
 static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
     var size: int = state["map_size"]
     var total: int = size * size

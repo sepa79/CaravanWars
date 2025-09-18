@@ -1,6 +1,7 @@
 extends RefCounted
 class_name MapRiverStage
 
+const MapGenerationParams := preload("res://map/generation/MapGenerationParams.gd")
 static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
     var size: int = state["map_size"]
     var heightmap: PackedFloat32Array = state["terrain"]["heightmap"]

@@ -1,6 +1,7 @@
 extends RefCounted
 class_name MapGenerator
 
+const MapGenerationParams := preload("res://map/generation/MapGenerationParams.gd")
 const TerrainStage := preload("res://map/generation/stages/TerrainStage.gd")
 const RiverStage := preload("res://map/generation/stages/RiverStage.gd")
 const BiomeStage := preload("res://map/generation/stages/BiomeStage.gd")

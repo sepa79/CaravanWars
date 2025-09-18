@@ -1,6 +1,8 @@
 extends RefCounted
 class_name MapRoadStage
 
+const MapGenerationParams := preload("res://map/generation/MapGenerationParams.gd")
+const MapGenerationShared := preload("res://map/generation/MapGenerationShared.gd")
 class _DisjointSet:
     var parent: Array[int]
     var ranks: Array[int]

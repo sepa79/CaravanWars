@@ -1,6 +1,7 @@
 extends RefCounted
 class_name MapGenerationShared
 
+const MapGenerationConstants := preload("res://map/generation/MapGenerationConstants.gd")
 static func has_adjacent_sea(x: int, y: int, size: int, sea_mask: PackedByteArray) -> bool:
     for y_offset in range(-1, 2):
         for x_offset in range(-1, 2):

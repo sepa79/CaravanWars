@@ -5,6 +5,7 @@ Added
 - Implemented a deterministic seven-stage map generation pipeline that emits terrain, rivers, biomes, borders, settlements, roads, and forts as reusable layers.
 - Restored the map setup screen preview with generator-bound parameter controls, layer toggles, and legend support so the pipeline can be inspected stage by stage.
 - Added a headless map smoke test that drives the single-player start menu into the setup screen before exiting, enabling automated UI regression coverage.
+- Extended the headless map smoke test to verify single-player map generation so CI exercises the generator pipeline.
 Changed
 - Map setup UI now binds seed, map size, kingdom count, terrain, road, and fort parameters directly to the generator and regenerates the MapView preview on each change.
 - Refactored the deterministic map generator into dedicated terrain, river, biome, kingdom, settlement, road, and fort stage scripts with shared utilities so the stub implementation is fully retired.
@@ -16,6 +17,7 @@ Fixed
 - Typed the MapSetupScreen layer toggle and legend button captures so Godot can infer the signal parameter types.
 - Headless CI runs now auto-quit through the App autoload when `CI_AUTO_QUIT` is set, so game launches do not hang during tests.
 - Annotated MapView preview helpers and the MapSetupScreen kingdom legend to avoid Variant inference warnings during the smoke test.
+- Map setup now loads the generator script dynamically and the generation stages preload their shared dependencies so headless smoke tests can instantiate the pipeline without parse errors.
 - Typed the map bundle loader parse result to avoid Variant inference warnings in MapGenerator.
 - Typed MapBiomeStage climate sampling so Variant inference warnings are eliminated during biome generation checks.
 - Typed MapKingdomStage habitability scoring and assignment locals so kingdom generation avoids Variant inference warnings.
