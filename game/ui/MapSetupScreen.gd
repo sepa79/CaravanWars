@@ -2,7 +2,7 @@ extends Control
 
 const MAP_GENERATOR_SCRIPT_PATH := "res://map/generation/MapGenerator.gd"
 const MapGenerationParamsScript := preload("res://map/generation/MapGenerationParams.gd")
-const LegendIconButton := preload("res://ui/LegendIconButton.gd")
+const LegendIconButtonScript := preload("res://ui/LegendIconButton.gd")
 const MapViewScript := preload("res://ui/MapView.gd")
 
 const REGENERATE_DEBOUNCE_SECONDS := 0.3
@@ -211,7 +211,7 @@ func _build_legend_buttons() -> void:
         var layer: String = String(entry.get("layer", ""))
         if layer.is_empty():
             continue
-        var button := LegendIconButton.new()
+        var button := LegendIconButtonScript.new()
         button.icon_type = entry.get("icon", "")
         var pressed := true
         if _layer_checkboxes.has(layer):
