@@ -58,10 +58,8 @@ script_classes=[{
 script_class_icons={}
 
 [autoload]
+
 App="*res://autoload/App.gd"
 I18N="*res://autoload/I18N.gd"
 Net="*res://autoload/Net.gd"
 World="*res://autoload/World.gd"
-
-[display]
-window/size/resizable=true
