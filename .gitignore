@@ -1,7 +1,7 @@
 # Godot-generated files
-.godot/
-*.import
-*.uid
+#.godot/
+#*.import
+#*.uid
 # Temporary files
 *~
 *.tmp
