@@ -17,6 +17,7 @@ Removed
 
 Fixed
 - Restored the Game scene's ability to load the new hex map generator so single player launches build a map again.
+- Eliminated typed map generator compile/runtime failures by preloading custom classes and normalising terrain dictionaries.
 
 0.1.81 — 2025-09-14
 Added

@@ -3,9 +3,9 @@ extends Node
 const CI_AUTO_SINGLEPLAYER_ENV := "CI_AUTO_SINGLEPLAYER"
 const CI_AUTO_QUIT_ENV := "CI_AUTO_QUIT"
 
-const HexMapGeneratorScript := preload("res://mapgen/HexMapGenerator.gd")
-const HexMapConfigScript := preload("res://mapgen/HexMapConfig.gd")
-const HexMapDataScript := preload("res://mapgen/HexMapData.gd")
+const HexMapGenerator := preload("res://mapgen/HexMapGenerator.gd")
+const HexMapConfig := preload("res://mapgen/HexMapConfig.gd")
+const HexMapData := preload("res://mapgen/HexMapData.gd")
 
 var map_data: HexMapData
 
@@ -17,10 +17,10 @@ func _ready() -> void:
     map_data = World.take_prepared_map(Net.run_mode)
     if map_data == null:
         used_prepared = false
-        var config: HexMapConfig = HexMapConfigScript.new(Time.get_ticks_msec())
-        var generator: HexMapGenerator = HexMapGeneratorScript.new(config)
+        var config: HexMapConfig = HexMapConfig.new(Time.get_ticks_msec())
+        var generator: HexMapGenerator = HexMapGenerator.new(config)
         map_data = generator.generate()
-    if not map_data is HexMapDataScript:
+    if not map_data is HexMapData:
         push_warning("[Game] Unexpected map data payload: %s" % [map_data])
         return
     if used_prepared:
