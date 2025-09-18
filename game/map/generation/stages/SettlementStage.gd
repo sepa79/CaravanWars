@@ -1,6 +1,8 @@
 extends RefCounted
 class_name MapSettlementStage
 
+const MapGenConstants := preload("res://map/generation/MapGenerationConstants.gd")
+const MapGenShared := preload("res://map/generation/MapGenerationShared.gd")
 static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
     var size: int = state["map_size"]
     var assignment: PackedInt32Array = state["kingdom_assignment"]
@@ -27,11 +29,11 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
             var rainfall_value: float = rainfall[index]
             var temp_value: float = temperature[index]
             var river_bonus: float = clamp(
-                1.0 - min(river_distance[index] / float(MapGenerationConstants.RIVER_INFLUENCE_RADIUS * 1.8), 1.0),
+                1.0 - min(river_distance[index] / float(MapGenConstants.RIVER_INFLUENCE_RADIUS * 1.8), 1.0),
                 0.0,
                 1.0
             )
-            var border_distance: float = MapGenerationShared.distance_to_border(Vector2(x, y), state, params.map_size)
+            var border_distance: float = MapGenShared.distance_to_border(Vector2(x, y), state, params.map_size)
             var border_bonus: float = 0.0
             if border_distance < 6.0:
                 border_bonus = 0.15
@@ -43,7 +45,7 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
                 "kingdom_id": kingdom_id,
                 "score": score,
                 "index": index,
-                "is_coast": MapGenerationShared.has_adjacent_sea(x, y, size, sea_mask),
+                "is_coast": MapGenShared.has_adjacent_sea(x, y, size, sea_mask),
             })
 
     city_candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:

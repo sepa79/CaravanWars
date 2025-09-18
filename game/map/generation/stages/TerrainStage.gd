@@ -62,7 +62,7 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
 
 static func _apply_erosion(heightmap: PackedFloat32Array, size: int, passes: int) -> PackedFloat32Array:
     var result: PackedFloat32Array = heightmap.duplicate()
-    var kernel_radius: int = int(EROSION_KERNEL.size() / 2)
+    var kernel_radius: int = int(float(EROSION_KERNEL.size()) / 2.0)
     for _i in range(passes):
         var temp: PackedFloat32Array = result.duplicate()
         for y in range(size):
@@ -126,4 +126,9 @@ static func _build_contours(heightmap: PackedFloat32Array, size: int) -> Array[D
                 var contour: Dictionary = contours_by_level[level]
                 var points: PackedVector2Array = contour["points"]
                 points.append(Vector2(x, y))
-    return contours_by_level.values()
+    var contours_array: Array = contours_by_level.values()
+    var typed_contours: Array[Dictionary] = []
+    for contour_entry in contours_array:
+        if contour_entry is Dictionary:
+            typed_contours.append(contour_entry)
+    return typed_contours

@@ -14,7 +14,7 @@ The pipeline is single-seed deterministic and layer-oriented: each stage writes 
 
 ### Global parameters (defaults)
 - `seed`: integer (default: 12345 or read from UI seed field)
-- `map_size`: integer (tiles, default 2048)
+- `map_size`: integer (tiles, default 256)
 - `kingdom_count`: integer (default **3**) — UI-exposed
 - `sea_level`: float (0.0–1.0, default 0.32)
 - `terrain_octaves`: int (default 6)

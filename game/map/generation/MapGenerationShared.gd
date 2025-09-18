@@ -1,6 +1,7 @@
 extends RefCounted
 class_name MapGenerationShared
 
+const MapGenConstants := preload("res://map/generation/MapGenerationConstants.gd")
 static func has_adjacent_sea(x: int, y: int, size: int, sea_mask: PackedByteArray) -> bool:
     for y_offset in range(-1, 2):
         for x_offset in range(-1, 2):
@@ -27,7 +28,7 @@ static func distance_to_border(position: Vector2, state: Dictionary, size: int) 
         var points: PackedVector2Array = border.get("points", PackedVector2Array())
         if points.size() < 2:
             continue
-        var step: int = max(1, MapGenerationConstants.BORDER_SAMPLE_STEP)
+        var step: int = max(1, MapGenConstants.BORDER_SAMPLE_STEP)
         for i in range(0, points.size() - 1, step):
             var start: Vector2 = points[i]
             var end: Vector2 = points[min(i + 1, points.size() - 1)]

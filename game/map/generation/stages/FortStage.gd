@@ -1,6 +1,8 @@
 extends RefCounted
 class_name MapFortStage
 
+const MapGenShared := preload("res://map/generation/MapGenerationShared.gd")
+const MapGenConstants := preload("res://map/generation/MapGenerationConstants.gd")
 static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
     var roads: Dictionary = state["roads"]
     var road_polylines: Array[Dictionary] = roads.get("polylines", [])
@@ -19,7 +21,7 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
             continue
         for i in range(points.size() - 1):
             var mid: Vector2 = points[i].lerp(points[i + 1], 0.5)
-            var index: int = MapGenerationShared.index_from_position(mid, size)
+            var index: int = MapGenShared.index_from_position(mid, size)
             var kingdom_id: int = assignment[index]
             if kingdom_id < 0:
                 continue
@@ -27,7 +29,7 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
             var slope_value: float = slope_map[index]
             if slope_value > 0.9:
                 continue
-            var border_distance: float = MapGenerationShared.distance_to_border(mid, state, size)
+            var border_distance: float = MapGenShared.distance_to_border(mid, state, size)
             var score: float = (1.0 - slope_value) + clamp(1.0 - border_distance / 12.0, 0.0, 1.0)
             if road.get("crosses_river", false):
                 score += 0.4
@@ -65,7 +67,7 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
             else:
                 allowed = min(1.0, base_limit)
         per_kingdom_cap[kingdom_id] = allowed
-    var face_off_distance_sq: float = MapGenerationConstants.FACE_OFF_DISTANCE * MapGenerationConstants.FACE_OFF_DISTANCE
+    var face_off_distance_sq: float = MapGenConstants.FACE_OFF_DISTANCE * MapGenConstants.FACE_OFF_DISTANCE
 
     for candidate in candidates:
         var kingdom_id: int = candidate["kingdom_id"]

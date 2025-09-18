@@ -5,17 +5,22 @@ Added
 - Implemented a deterministic seven-stage map generation pipeline that emits terrain, rivers, biomes, borders, settlements, roads, and forts as reusable layers.
 - Restored the map setup screen preview with generator-bound parameter controls, layer toggles, and legend support so the pipeline can be inspected stage by stage.
 - Added a headless map smoke test that drives the single-player start menu into the setup screen before exiting, enabling automated UI regression coverage.
+- Extended the headless map smoke test to verify single-player map generation so CI exercises the generator pipeline.
+- Added headless coverage that launches a single-player game from the setup screen, ensuring the map generator is exercised via the menu flow.
 Changed
 - Map setup UI now binds seed, map size, kingdom count, terrain, road, and fort parameters directly to the generator and regenerates the MapView preview on each change.
 - Refactored the deterministic map generator into dedicated terrain, river, biome, kingdom, settlement, road, and fort stage scripts with shared utilities so the stub implementation is fully retired.
 - tools/check scripts now run `godot --check` on every GDScript file before executing the broader project checks.
 - Both Unix and Windows check scripts now fail when Godot logs warnings or errors so CI surfaces issues immediately.
+- Lowered the single-player default map size to 256 tiles so previews and generator runs complete faster.
+- Debounced map setup parameter controls so the preview waits briefly before regenerating while values are adjusted.
 Fixed
 - Typed MapGenerationShared kingdom data lookups to avoid Variant inference warnings when sampling borders.
 - Annotated MapGenerationShared border sampling locals so distance checks avoid Variant inference warnings.
 - Typed the MapSetupScreen layer toggle and legend button captures so Godot can infer the signal parameter types.
 - Headless CI runs now auto-quit through the App autoload when `CI_AUTO_QUIT` is set, so game launches do not hang during tests.
 - Annotated MapView preview helpers and the MapSetupScreen kingdom legend to avoid Variant inference warnings during the smoke test.
+- Map setup now loads the generator script dynamically and the generation stages preload their shared dependencies so headless smoke tests can instantiate the pipeline without parse errors.
 - Typed the map bundle loader parse result to avoid Variant inference warnings in MapGenerator.
 - Typed MapBiomeStage climate sampling so Variant inference warnings are eliminated during biome generation checks.
 - Typed MapKingdomStage habitability scoring and assignment locals so kingdom generation avoids Variant inference warnings.
@@ -25,6 +30,9 @@ Fixed
 - Typed MapRoadStage path sampling locals so road generation no longer falls back to Variant inference during strict checks.
 - Typed MapSettlementStage settlement sampling locals so Variant inference warnings are eliminated during settlement placement.
 - Typed MapFortStage fort candidate scoring locals so Variant inference warnings are eliminated during fort placement.
+- Marked the smoke-test single-player handler parameter as intentionally unused and renamed MapView visibility toggles to avoid CanvasItem shadow warnings during checks.
+- Renamed map-generation preload aliases and replaced integer division with explicit float math so strict checks stop flagging shadowed globals and truncation warnings.
+- Renamed the setup screen legend button preload alias to stop shadowing the registered class during strict checks.
 
 0.1.81 — 2025-09-14
 Added
