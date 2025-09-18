@@ -46,10 +46,21 @@ func generate() -> HexMapData:
     rng.seed = config.seed
     map_data.clear_stage_results()
     _reset_phase_state()
+    print("[HexMapGenerator] Starting map generation with seed %d (radius=%d, kingdoms=%d)" % [
+        config.seed,
+        config.map_radius,
+        config.kingdom_count,
+    ])
     for phase in PHASE_SEQUENCE:
         var handler: Callable = phase_handlers.get(phase, Callable())
+        var phase_name := String(phase)
         if handler.is_valid():
+            print("[HexMapGenerator] -> %s phase" % phase_name)
             handler.call()
+            print("[HexMapGenerator] <- %s phase complete" % phase_name)
+        else:
+            print("[HexMapGenerator] Skipping %s phase (no handler registered)" % phase_name)
+    print("[HexMapGenerator] Map generation complete")
     return map_data
 
 func set_phase_handler(phase: StringName, handler: Callable) -> void:
