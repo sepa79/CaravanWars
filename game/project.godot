@@ -16,9 +16,29 @@ run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.4")
 script_classes=[{
 "base": "RefCounted",
-"class": "MapGenStub",
+"class": "HexCoord",
 "language": "GDScript",
-"path": "res://mapgen_stub.gd"
+"path": "res://mapgen/HexCoord.gd"
+}, {
+"base": "RefCounted",
+"class": "HexGrid",
+"language": "GDScript",
+"path": "res://mapgen/HexGrid.gd"
+}, {
+"base": "RefCounted",
+"class": "HexMapConfig",
+"language": "GDScript",
+"path": "res://mapgen/HexMapConfig.gd"
+}, {
+"base": "RefCounted",
+"class": "HexMapData",
+"language": "GDScript",
+"path": "res://mapgen/HexMapData.gd"
+}, {
+"base": "RefCounted",
+"class": "HexMapGenerator",
+"language": "GDScript",
+"path": "res://mapgen/HexMapGenerator.gd"
 }, {
 "base": "RefCounted",
 "class": "MapViewNode",

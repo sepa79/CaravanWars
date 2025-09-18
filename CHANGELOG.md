@@ -1,9 +1,16 @@
 Changelog
 
 Unreleased
+Added
+- Introduced a hex map generation module with axial coordinate, grid, and metadata scaffolding for future stages.
+Changed
+- Map generation now uses a deterministic HexMapGenerator pipeline with configurable Phase 03 parameters and injectable phase hooks.
+- Hex map generation logs each pipeline phase so single player launches show visible progress.
 Removed
 - Replaced the map setup screen with a minimal start/back layout and removed the obsolete map view controls and road network helper.
-- Reduced the map generator stub to an empty shell that returns only placeholder metadata.
+
+Fixed
+- Restored the Game scene's ability to load the new hex map generator so single player launches build a map again.
 
 0.1.81 — 2025-09-14
 Added
