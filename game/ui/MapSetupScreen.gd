@@ -1,5 +1,8 @@
 extends Control
 
+const CI_AUTO_SINGLEPLAYER_ENV := "CI_AUTO_SINGLEPLAYER"
+const CI_AUTO_QUIT_ENV := "CI_AUTO_QUIT"
+
 @onready var start_button: Button = $HBox/ControlsScroll/Controls/Buttons/Start
 @onready var back_button: Button = $HBox/ControlsScroll/Controls/Buttons/Back
 @onready var main_ui: Control = $HBox
@@ -16,6 +19,8 @@ func _ready() -> void:
     if Net.run_mode == "single":
         World.prepare_map_for_run_mode(Net.run_mode, null, true)
     _on_net_state_changed(Net.state)
+    if Net.run_mode == "single" and _should_drive_ci_singleplayer():
+        await _ci_start_singleplayer_game()
 
 func _strip_legacy_controls() -> void:
     var controls_container := $HBox/ControlsScroll/Controls
@@ -60,3 +65,12 @@ func _on_net_state_changed(state: String) -> void:
     else:
         main_ui.visible = false
     previous_state = state
+
+func _should_drive_ci_singleplayer() -> bool:
+    return OS.has_environment(CI_AUTO_SINGLEPLAYER_ENV) or OS.has_environment(CI_AUTO_QUIT_ENV)
+
+func _ci_start_singleplayer_game() -> void:
+    await get_tree().process_frame
+    if not is_inside_tree():
+        return
+    _on_start_pressed()
