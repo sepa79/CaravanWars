@@ -1,17 +1,20 @@
-CONTRIBUTING — proces pracy
+CONTRIBUTING — workflow
+
+Before you start
+- Always read and comply with `RULES_ALWAYS_READ.md`. It documents the mandatory conventions and requirements for every contribution.
 
 Flow:
-1. Utwórz Issue z tytułem `PHASE-XX: <opis>` i zakresem.  
-2. Gałąź: `feature/phase-xx-<krótki-opis>`.  
-3. Wykonaj checklistę z dokumentu fazy.  
-4. Otwórz PR do `develop` z wypełnioną checklistą i wpisem w `CHANGELOG.md`.  
-5. Wymagany co najmniej 1 maintainer review; squash‑merge.
+1. Create an issue titled `PHASE-XX: <description>` with the intended scope.
+2. Branch from `develop` using `feature/phase-xx-<short-description>`.
+3. Work through the checklist defined in the phase document.
+4. Open a PR to `develop` that includes the completed checklist and a `CHANGELOG.md` entry.
+5. Secure review from at least one maintainer and squash-merge after approval.
 
-Definicja PR gotowego do review:
-- Zmiany mieszczą się w jednej fazie.  
-- Brak kodu, jeśli faza przewiduje tylko dokumentację/spec.  
-- Wykonane „Artefakty” i „Definition of Done” z dokumentu fazy.
+Definition of ready for review:
+- The changes stay within a single phase.
+- Skip code when the phase only allows documentation/specification work.
+- All "Artifacts" and "Definition of Done" items from the phase document are delivered.
 
-Komunikacja:
-- Krótkie, konkretne komentarze w PR.  
-- Dyskusje o designie domykamy w `docs/` i linkujemy.
+Communication:
+- Keep PR comments short and focused.
+- Capture design discussions in `docs/` and link them from the PR description.
