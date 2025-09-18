@@ -120,30 +120,30 @@ func set_show_roughness(value: bool) -> void:
     _show_roughness = value
     queue_redraw()
 
-func set_layer_visible(layer: String, is_visible: bool) -> void:
+func set_layer_visible(layer: String, should_show: bool) -> void:
     match layer:
         "roads":
-            set_show_roads(is_visible)
+            set_show_roads(should_show)
         "rivers":
-            set_show_rivers(is_visible)
+            set_show_rivers(should_show)
         "cities":
-            set_show_cities(is_visible)
+            set_show_cities(should_show)
         "villages":
-            set_show_villages(is_visible)
+            set_show_villages(should_show)
         "forts":
-            set_show_forts(is_visible)
+            set_show_forts(should_show)
         "crossroads":
-            set_show_crossroads(is_visible)
+            set_show_crossroads(should_show)
         "bridges":
-            set_show_bridges(is_visible)
+            set_show_bridges(should_show)
         "fords":
-            set_show_fords(is_visible)
+            set_show_fords(should_show)
         "regions":
-            set_show_regions(is_visible)
+            set_show_regions(should_show)
         "fertility":
-            set_show_fertility(is_visible)
+            set_show_fertility(should_show)
         "roughness":
-            set_show_roughness(is_visible)
+            set_show_roughness(should_show)
         _:
             pass
 

@@ -66,7 +66,7 @@ func _maybe_capture_start_menu(current_scene: Node) -> void:
     print("%s Start menu ready." % LOG_PREFIX)
     _advance_phase()
 
-func _maybe_press_single_player(current_scene: Node) -> void:
+func _maybe_press_single_player(_current_scene: Node) -> void:
     if _start_menu == null:
         _fail("Start menu missing before pressing single player.")
         return
