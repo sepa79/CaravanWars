@@ -456,8 +456,8 @@ func _grow_region_assignments(
     for region_type in land_types:
         var packed: PackedVector2Array = seeds_dict.get(region_type, PackedVector2Array())
         for pos in packed:
-            var coord: HexCoord = HexCoord.from_vector2i(pos)
-            var key: Vector2i = coord.to_vector2i()
+            var key: Vector2i = Vector2i(pos)
+            var coord: HexCoord = HexCoord.from_vector2i(key)
             if assignments.has(key):
                 continue
             assignments[key] = region_type

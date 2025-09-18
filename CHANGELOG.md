@@ -1,7 +1,8 @@
 Changelog
 
 Unreleased
- - No changes yet.
+Fixed
+- Corrected terrain region seeding to cast packed vectors before hex conversion, preventing singleplayer map generation crashes.
 
 0.1.82 — 2025-09-15
 Added
