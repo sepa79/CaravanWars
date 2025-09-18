@@ -579,7 +579,7 @@ func _sort_coords_by_value(coords: Array, values: Dictionary, descending: bool) 
             "coord": hex,
             "value": score,
         })
-    var comparator := descending ? Callable(self, "_compare_dict_value_desc") : Callable(self, "_compare_dict_value_asc")
+    var comparator := Callable(self, "_compare_dict_value_desc") if descending else Callable(self, "_compare_dict_value_asc")
     scored.sort_custom(comparator)
     var result: Array = []
     for entry in scored:
