@@ -1,9 +1,13 @@
 Changelog
 
 Unreleased
+ - No changes yet.
+
+0.1.82 — 2025-09-15
 Added
 - Introduced a hex map generation module with axial coordinate, grid, and metadata scaffolding for future stages.
 - Generated terrain discs now classify coastline water, seed all landform regions, and propagate them with deterministic BFS expansion.
+- Added repository and game agent guides that direct contributors to `RULES_ALWAYS_READ.md` before changing scripts.
 Changed
 - Map generation now uses a deterministic HexMapGenerator pipeline with configurable Phase 03 parameters and injectable phase hooks.
 - Hex map generation logs each pipeline phase so single player launches show visible progress.
