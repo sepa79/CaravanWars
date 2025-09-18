@@ -18,3 +18,6 @@ Definition of ready for review:
 Communication:
 - Keep PR comments short and focused.
 - Capture design discussions in `docs/` and link them from the PR description.
+- Run-time validation:
+- Execute static checks on each modified GDScript via `godot --headless --path game --check <file>`.
+- After static validation, launch the automated singleplayer smoke test using `tools/check.sh game` (or `tools/check.bat both` on Windows) to catch runtime regressions before review.

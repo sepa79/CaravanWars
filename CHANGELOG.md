@@ -11,6 +11,7 @@ Changed
 - CONTRIBUTING guidelines are now available in English and direct contributors to `RULES_ALWAYS_READ.md`.
 - Singleplayer map setup pre-generates a hex map when the screen opens so launches reuse the prepared data.
 - CI headless runs now drive the start menu into singleplayer so map preparation errors surface during automated checks.
+- Contributor checklists now call for running the automated singleplayer smoke test during implementation, ensuring runtime coverage before review.
 Removed
 - Replaced the map setup screen with a minimal start/back layout and removed the obsolete map view controls and road network helper.
 
