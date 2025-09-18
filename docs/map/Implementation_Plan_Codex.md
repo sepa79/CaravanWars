@@ -1,38 +1,34 @@
+# Plan implementacji (Codex) — Generator i Widok Mapy (Hex)
 
-# Zadania wdrożeniowe (Codex) — Generator + Widok Mapy
+## Faza 0 — Struktura
+- [ ] Moduł `mapgen` (offline) i `mapview` (runtime) w Godot 4.
+- [ ] Format `*.cwmap` = JSON `MapBundle` + `meta`.
+- [ ] Loader `MapBundleLoader.gd` (walidacja wg `docs/MapBundle_Schema.json`).
 
-## Faza 0 — Struktura projektu
-- [ ] Dodaj moduł `mapgen` (offline) i `mapview` (runtime) w Godot 4.
-- [ ] Ustal format pliku `*.cwmap` = JSON `MapBundle` + sekcja `meta`.
-- [ ] Dodaj loader `MapBundleLoader.gd` (walidacja vs `docs/MapBundle_Schema.json`).
+## Faza 1 — Generator Hex Region-First
+- [ ] Hex grid (axial/offset).
+- [ ] Morze/ląd: wybrzeże → Sea.
+- [ ] Ziarna regionów i rozrost BFS/Voronoi (reguły sąsiedztwa).
+- [ ] Lekkie `elev` 0..1 z typu regionu.
+- [ ] Rzeki na krawędziach: źródła w górach, spływ do morza/jeziora, outlet.
+- [ ] Biomy: N–S temp, wilgoć od wody, wysokość.
+- [ ] Granice: flood-fill od stolic, preferuj rzeki/góry.
+- [ ] Miasta/wsie: Poisson, preferencje Valley/Plains przy wodzie.
+- [ ] Drogi: MST → trasy po krawędziach, mosty na rzekach.
+- [ ] Forty: mosty/przełęcze/granice; limity i spacing.
+- [ ] Eksport `MapBundle.json`.
 
-## Faza 1 — Generator LEAN
-- [ ] Implementuj noise `fertility` i `roughness` (OpenSimplex, 2–3 oktawy).
-- [ ] Wygeneruj kandydatów miast (lokalne maksima, min. odstęp).
-- [ ] Wybierz `cities_target` i wylosuj stolice (1–3).
-- [ ] Zbuduj graf kandydatów dróg (Delaunay → MST → skróty).
-- [ ] Wyznacz trasy Roman (prosta + 1–2 załamania, unikaj ostrych kątów).
-- [ ] (Opcja) Rzeki jako 0–6 splajnów; dodaj crossingi (bridge).
-- [ ] Rozstaw wsie Poisson w pierścieniu 8–40U, z biasem na drogi/mosty.
-- [ ] Połącz wsie (MST + 20% skrótów); klasy gałęzi: Roman→Road→Path.
-- [ ] Granice (Voronoi od stolic) + border-gate na przecinanych drogach.
-- [ ] Fortece na mostach/przewężeniach; kapy globalne i per-kingdom.
-- [ ] Mini‑regiony 8×8: temp/moist/biome_id/prod_mod z prostych heurystyk.
-- [ ] Zapisz `MapBundle.json` (zgodnie ze schematem).
+## Faza 2 — Widok (Godot)
+- [ ] Warstwy: hexy, rzeki, drogi, granice, punkty.
+- [ ] Ikony (SVG) w MultiMeshInstance2D.
+- [ ] Curve2D dla dróg/rzek po krawędziach.
+- [ ] LOD, hover, selekcja, filtry warstw.
 
-## Faza 2 — Widok mapy (Godot)
-- [ ] Scena `MapRoot.tscn` z warstwami wg `docs/Rendering_Spec_Godot.md`.
-- [ ] Import ikon (SVG) do `MultiMeshInstance2D` (miasta/wsie/forty/crossingi).
-- [ ] Rysowanie dróg (Roman/Road/Path) i rzek (Curve2D).
-- [ ] LOD: przełączanie widoczności warstw zależnie od zoomu.
-- [ ] Interakcja: hover (podświetlenie krawędzi), selekcja (panel info).
-- [ ] Filtry warstw (toggle biomy/granice/rzeki/Path).
+## Faza 3 — Gameplay/Produkcja
+- [ ] Produkcja osad: mod z najbliższego hexa/biomu.
+- [ ] Kontrola crossingów i fortów.
+- [ ] Import/Export map (zip).
 
-## Faza 3 — Produkcja i gameplay
-- [ ] Produkcja osad: baza × `prod_mod` z najbliższej `climate_cell`.
-- [ ] Kontrola przejść granicznych i fortów (sprawdzaj crossing markers).
-- [ ] Eksport/Import map (zip: `MapBundle.json` + `meta`).
-
-## Faza 4 — QA / debug
-- [ ] Tryb debug: ID węzłów, klasy krawędzi, crossing_id, nazwy królestw.
-- [ ] Walidator spójności: brak krawędzi-sierot, minimalne kąty na węzłach, odstępy mostów.
+## Faza 4 — QA/Debug
+- [ ] Debug overlay: ID hexów/krawędzi, crossing_id, nazwy.
+- [ ] Walidator: brak krawędzi-sierot, minimalne kąty, odstępy mostów.
