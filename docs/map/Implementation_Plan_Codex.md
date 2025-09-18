@@ -6,19 +6,19 @@
 - [ ] Ustal format pliku `*.cwmap` = JSON `MapBundle` + sekcja `meta`.
 - [ ] Dodaj loader `MapBundleLoader.gd` (walidacja vs `docs/MapBundle_Schema.json`).
 
-## Faza 1 — Generator LEAN
-- [ ] Implementuj noise `fertility` i `roughness` (OpenSimplex, 2–3 oktawy).
-- [ ] Wygeneruj kandydatów miast (lokalne maksima, min. odstęp).
-- [ ] Wybierz `cities_target` i wylosuj stolice (1–3).
-- [ ] Zbuduj graf kandydatów dróg (Delaunay → MST → skróty).
-- [ ] Wyznacz trasy Roman (prosta + 1–2 załamania, unikaj ostrych kątów).
-- [ ] (Opcja) Rzeki jako 0–6 splajnów; dodaj crossingi (bridge).
-- [ ] Rozstaw wsie Poisson w pierścieniu 8–40U, z biasem na drogi/mosty.
-- [ ] Połącz wsie (MST + 20% skrótów); klasy gałęzi: Roman→Road→Path.
-- [ ] Granice (Voronoi od stolic) + border-gate na przecinanych drogach.
-- [ ] Fortece na mostach/przewężeniach; kapy globalne i per-kingdom.
-- [ ] Mini‑regiony 8×8: temp/moist/biome_id/prod_mod z prostych heurystyk.
-- [ ] Zapisz `MapBundle.json` (zgodnie ze schematem).
+## Faza 1 — Generator LEAN (Region-First)
+- [ ] Wprowadź podział na tiles (`Grid`) i warstwę `RegionType` (Sea, Lake, Mountains, Hills, Plains, Valley).
+- [ ] Coastline: generuj `sea_mask` z prostych kształtów (blob/spline) deterministycznie z `seed`.
+- [ ] Rozsiej ziarna regionów po lądzie (wagi: mountains≈10%, lakes≈3%, reszta plains/valley/hills).
+- [ ] Rozrost regionów: BFS/Voronoi + 1–2 relax; wymuś reguły sąsiedztwa (Valley przy Mountains/Hills, Lake w lokalnych minimach).
+- [ ] Wylicz lekkie `elev` 0..1 z typu regionu (Sea 0.0 … Mountains 0.9) + drobny jitter.
+- [ ] Rzeki: źródła w górach, A* po `elev` do morza/jeziora; łącz dopływy; korytowanie zmienia typ na Valley wzdłuż kanału.
+- [ ] Biomy: temp = lat − lapse*elev; rain = noise prosty + boost przy rzekach/jeziorach − rain shadow; klasyfikacja macierzą.
+- [ ] Granice: flood-fill wieloźródłowy z kosztami, preferuj rzeki jako granice przy małej różnicy kosztów.
+- [ ] Miasta/Wsie: Poisson-disc; preferencje: Valley/Plains przy rzekach/jeziorach; porty na wybrzeżu.
+- [ ] Drogi: MST miast → A* (kosz: typ terenu + crossing penalty); mosty/fordy na wąskich przejściach; nie rozcinaj na granicach.
+- [ ] Forty: chokepointy (mosty, przełęcze, granice blisko dróg), limity per-królestwo i `fort_spacing`.
+
 
 ## Faza 2 — Widok mapy (Godot)
 - [ ] Scena `MapRoot.tscn` z warstwami wg `docs/Rendering_Spec_Godot.md`.
