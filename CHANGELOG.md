@@ -31,6 +31,7 @@ Fixed
 - Typed MapSettlementStage settlement sampling locals so Variant inference warnings are eliminated during settlement placement.
 - Typed MapFortStage fort candidate scoring locals so Variant inference warnings are eliminated during fort placement.
 - Marked the smoke-test single-player handler parameter as intentionally unused and renamed MapView visibility toggles to avoid CanvasItem shadow warnings during checks.
+- Renamed map-generation preload aliases and replaced integer division with explicit float math so strict checks stop flagging shadowed globals and truncation warnings.
 
 0.1.81 — 2025-09-14
 Added

@@ -1,7 +1,7 @@
 extends RefCounted
 
-const MapGenerationParams := preload("res://map/generation/MapGenerationParams.gd")
-const MapGenerator := preload("res://map/generation/MapGenerator.gd")
+const MapGenerationParamsScript := preload("res://map/generation/MapGenerationParams.gd")
+const MapGeneratorScript := preload("res://map/generation/MapGenerator.gd")
 
 class MapGenParams:
     var rng_seed: int
@@ -28,7 +28,7 @@ func _init(p_params: MapGenParams = MapGenParams.new()) -> void:
         _params.map_size = min(_params.map_size, 256)
 
 func generate() -> Dictionary:
-    var generation_params := MapGenerationParams.new(
+    var generation_params := MapGenerationParamsScript.new(
         _params.rng_seed,
         _params.map_size,
         _params.kingdom_count,
@@ -36,4 +36,4 @@ func generate() -> Dictionary:
     )
     if OS.has_environment("MAP_SMOKE_TEST"):
         generation_params.kingdom_count = max(1, min(generation_params.kingdom_count, 3))
-    return MapGenerator.new(generation_params).generate()
+    return MapGeneratorScript.new(generation_params).generate()

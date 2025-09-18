@@ -1,7 +1,7 @@
 extends Control
 
 const MAP_GENERATOR_SCRIPT_PATH := "res://map/generation/MapGenerator.gd"
-const MapGenerationParams := preload("res://map/generation/MapGenerationParams.gd")
+const MapGenerationParamsScript := preload("res://map/generation/MapGenerationParams.gd")
 const LegendIconButton := preload("res://ui/LegendIconButton.gd")
 const MapViewScript := preload("res://ui/MapView.gd")
 
@@ -315,7 +315,7 @@ func _regenerate_map() -> void:
     _update_kingdom_legend()
 
 func _build_generation_params() -> MapGenerationParams:
-    return MapGenerationParams.new(
+    return MapGenerationParamsScript.new(
         int(seed_spin.value),
         int(map_size_spin.value),
         int(kingdoms_spin.value),

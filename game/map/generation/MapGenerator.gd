@@ -1,7 +1,7 @@
 extends RefCounted
 class_name MapGenerator
 
-const MapGenerationParams := preload("res://map/generation/MapGenerationParams.gd")
+const MapGenParams := preload("res://map/generation/MapGenerationParams.gd")
 const TerrainStage := preload("res://map/generation/stages/TerrainStage.gd")
 const RiverStage := preload("res://map/generation/stages/RiverStage.gd")
 const BiomeStage := preload("res://map/generation/stages/BiomeStage.gd")
@@ -12,7 +12,7 @@ const FortStage := preload("res://map/generation/stages/FortStage.gd")
 
 var params: MapGenerationParams
 
-func _init(p_params: MapGenerationParams = MapGenerationParams.new()) -> void:
+func _init(p_params: MapGenerationParams = MapGenParams.new()) -> void:
     params = p_params
 
 func generate() -> Dictionary:

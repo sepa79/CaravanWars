@@ -1,7 +1,6 @@
 extends RefCounted
 class_name MapRiverStage
 
-const MapGenerationParams := preload("res://map/generation/MapGenerationParams.gd")
 static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
     var size: int = state["map_size"]
     var heightmap: PackedFloat32Array = state["terrain"]["heightmap"]
@@ -9,7 +8,7 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
     var sea_mask: PackedByteArray = state["terrain"]["sea_mask"]
 
     var source_candidates: Array[int] = []
-    var sample_step: int = max(1, int(size / 128))
+    var sample_step: int = max(1, int(size / 128.0))
     for y in range(0, size, sample_step):
         for x in range(0, size, sample_step):
             var index: int = y * size + x
@@ -29,7 +28,7 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
 
     var polylines: Array[Dictionary] = []
     var visited: Dictionary = {}
-    var desired_count: int = clampi(int(params.map_size / 256) * 2, 3, 48)
+    var desired_count: int = clampi(int(params.map_size / 256.0) * 2, 3, 48)
 
     for candidate_index in source_candidates:
         if polylines.size() >= desired_count:
@@ -91,7 +90,7 @@ static func _trace_river(
     while guard < size * 4:
         guard += 1
         var cx: int = current % size
-        var cy: int = int(current / size)
+        var cy: int = int(current / float(size))
         path.append(Vector2(cx, cy))
         if sea_mask[current] == 1 or heightmap[current] <= params.sea_level:
             break
@@ -106,7 +105,7 @@ static func _trace_river(
 
 static func _find_downhill_neighbor(index: int, size: int, heightmap: PackedFloat32Array) -> int:
     var cx: int = index % size
-    var cy: int = int(index / size)
+    var cy: int = int(index / float(size))
     var best_index: int = index
     var best_height: float = heightmap[index]
     for y_offset in range(-1, 2):
@@ -149,7 +148,7 @@ static func _calculate_river_distance(polylines: Array[Dictionary], size: int) -
         var current: int = queue[head]
         head += 1
         var cx: int = current % size
-        var cy: int = int(current / size)
+        var cy: int = int(current / float(size))
         for offset in neighbor_offsets:
             var nx: int = cx + offset.x
             var ny: int = cy + offset.y

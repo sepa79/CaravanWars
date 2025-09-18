@@ -1,8 +1,7 @@
 extends RefCounted
 class_name MapRoadStage
 
-const MapGenerationParams := preload("res://map/generation/MapGenerationParams.gd")
-const MapGenerationShared := preload("res://map/generation/MapGenerationShared.gd")
+const MapGenShared := preload("res://map/generation/MapGenerationShared.gd")
 class _DisjointSet:
     var parent: Array[int]
     var ranks: Array[int]
@@ -187,7 +186,7 @@ static func _evaluate_path(path: PackedVector2Array, sea_mask: PackedByteArray, 
         for sample in range(samples + 1):
             var t: float = float(sample) / float(samples)
             var position: Vector2 = segment_start.lerp(segment_end, t)
-            var index: int = MapGenerationShared.index_from_position(position, size)
+            var index: int = MapGenShared.index_from_position(position, size)
             var slope_value: float = slope_map[index]
             penalty += slope_value * 2.0
             if _is_water(position, sea_mask, size):
@@ -209,7 +208,7 @@ static func _simplify_path(path: PackedVector2Array) -> PackedVector2Array:
     return simplified
 
 static func _is_water(position: Vector2, sea_mask: PackedByteArray, size: int) -> bool:
-    var index: int = MapGenerationShared.index_from_position(position, size)
+    var index: int = MapGenShared.index_from_position(position, size)
     return sea_mask[index] == 1
 
 static func _sample_kingdoms_along_path(path: PackedVector2Array, assignment: PackedInt32Array, size: int) -> PackedInt32Array:
@@ -222,7 +221,7 @@ static func _sample_kingdoms_along_path(path: PackedVector2Array, assignment: Pa
         for sample in range(samples + 1):
             var t: float = float(sample) / float(samples)
             var position: Vector2 = segment_start.lerp(segment_end, t)
-            var kingdom_id: int = assignment[MapGenerationShared.index_from_position(position, size)]
+            var kingdom_id: int = assignment[MapGenShared.index_from_position(position, size)]
             if kingdom_id < 0:
                 continue
             if kingdom_id not in kingdoms:

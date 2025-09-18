@@ -1,9 +1,8 @@
 extends RefCounted
 class_name MapBiomeStage
 
-const MapGenerationParams := preload("res://map/generation/MapGenerationParams.gd")
-const MapGenerationConstants := preload("res://map/generation/MapGenerationConstants.gd")
-const MapGenerationShared := preload("res://map/generation/MapGenerationShared.gd")
+const MapGenConstants := preload("res://map/generation/MapGenerationConstants.gd")
+const MapGenShared := preload("res://map/generation/MapGenerationShared.gd")
 static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
     var size: int = state["map_size"]
     var total: int = size * size
@@ -43,7 +42,7 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
 
             var rain_base: float = 0.5 + rain_noise.get_noise_2d(float(x), float(y)) * 0.25
             var river_boost: float = clamp(
-                1.0 - min(river_distance[index] / float(MapGenerationConstants.RIVER_INFLUENCE_RADIUS * 2), 1.0),
+                1.0 - min(river_distance[index] / float(MapGenConstants.RIVER_INFLUENCE_RADIUS * 2), 1.0),
                 0.0,
                 1.0
             )
@@ -55,7 +54,7 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
             biome_map[index] = biome
             var tag: String = ""
             if sea_mask[index] == 0:
-                if MapGenerationShared.has_adjacent_sea(x, y, size, sea_mask):
+                if MapGenShared.has_adjacent_sea(x, y, size, sea_mask):
                     tag = "coast"
                 elif river_boost > 0.75:
                     tag = "delta"
@@ -110,7 +109,7 @@ static func _classify_biome(
 
 static func _aggregate_biomes(biome_map: Array[String], size: int) -> Array[Dictionary]:
     var polygons: Array[Dictionary] = []
-    var cell_size: int = max(4, int(size / 64))
+    var cell_size: int = max(4, int(size / 64.0))
     for y in range(0, size, cell_size):
         var y_end: int = min(y + cell_size, size)
         for x in range(0, size, cell_size):

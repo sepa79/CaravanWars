@@ -1,7 +1,6 @@
 extends RefCounted
 class_name MapTerrainStage
 
-const MapGenerationParams := preload("res://map/generation/MapGenerationParams.gd")
 const TERRAIN_CONTOUR_INTERVAL: float = 0.1
 const EROSION_KERNEL: Array[float] = [0.05, 0.2, 0.5, 0.2, 0.05]
 
@@ -63,7 +62,7 @@ static func run(state: Dictionary, params: MapGenerationParams) -> Dictionary:
 
 static func _apply_erosion(heightmap: PackedFloat32Array, size: int, passes: int) -> PackedFloat32Array:
     var result: PackedFloat32Array = heightmap.duplicate()
-    var kernel_radius: int = int(EROSION_KERNEL.size() / 2)
+    var kernel_radius: int = int(float(EROSION_KERNEL.size()) / 2.0)
     for _i in range(passes):
         var temp: PackedFloat32Array = result.duplicate()
         for y in range(size):
