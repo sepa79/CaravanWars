@@ -1,7 +1,11 @@
 Changelog
 
 Unreleased
+Changed
+- Documented in the README that the project was reset and all systems are being rebuilt from scratch.
+
 Fixed
+- Updated the Godot project metadata version to 0.1.82 so tooling and runtime checks report the same release number.
 - Corrected terrain region seeding to cast packed vectors before hex conversion, preventing singleplayer map generation crashes.
 
 0.1.82 — 2025-09-15
