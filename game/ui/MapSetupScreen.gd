@@ -3,6 +3,7 @@ extends Control
 const CI_AUTO_SINGLEPLAYER_ENV := "CI_AUTO_SINGLEPLAYER"
 const CI_AUTO_QUIT_ENV := "CI_AUTO_QUIT"
 
+@onready var controls_scroll: ScrollContainer = $HBox/ControlsScroll
 @onready var start_button: Button = $HBox/ControlsScroll/Controls/Buttons/Start
 @onready var back_button: Button = $HBox/ControlsScroll/Controls/Buttons/Back
 @onready var main_ui: Control = $HBox
@@ -10,6 +11,7 @@ const CI_AUTO_QUIT_ENV := "CI_AUTO_QUIT"
 var previous_state: String = Net.state
 
 func _ready() -> void:
+    controls_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
     I18N.language_changed.connect(_update_texts)
     Net.state_changed.connect(_on_net_state_changed)
     start_button.pressed.connect(_on_start_pressed)

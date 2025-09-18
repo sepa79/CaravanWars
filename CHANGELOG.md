@@ -1,8 +1,14 @@
 Changelog
 
 Unreleased
+Added
+- Added a dedicated MapView scene that renders region terrain meshes inside a SubViewport
+  so the UI is ready for future layers.
+- MapView loads terrain and coastline GLTF tiles from the shared assets bundle at runtime so the setup preview can build MultiMesh layers without duplicating resources.
 Changed
 - Documented in the README that the project was reset and all systems are being rebuilt from scratch.
+- The map setup screen now instantiates the MapView scene and enforces disabled horizontal scrolling on the controls column.
+- The MapView script now relies on the scene hierarchy, reuses MultiMesh terrain layers with elevation data, and accepts HexMapData payloads.
 
 Fixed
 - Updated the Godot project metadata version to 0.1.82 so tooling and runtime checks report the same release number.
