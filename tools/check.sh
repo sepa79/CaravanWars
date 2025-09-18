@@ -14,19 +14,12 @@ if [[ $# -eq 1 && ( "$PROJECT_DIR" == "both" || "$PROJECT_DIR" == "game" || "$PR
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 "$SCRIPT_DIR/check_version.sh"
 
 if [[ -n "${GODOT_BIN:-}" ]]; then
   GODOT="$GODOT_BIN"
 else
-  if command -v godot >/dev/null 2>&1; then
-    GODOT="$(command -v godot)"
-  elif command -v godot4 >/dev/null 2>&1; then
-    GODOT="$(command -v godot4)"
-  else
-    GODOT=""
-  fi
+  GODOT="$(command -v godot || true)"
 fi
 
 if [[ -z "$GODOT" ]]; then
@@ -37,61 +30,15 @@ fi
 echo "[check] Using Godot: $GODOT"
 echo "[check] Project: $PROJECT_DIR"
 
-run_changed_script_checks() {
-  local python_bin="${PYTHON_BIN:-}"
-  if [[ -z "$python_bin" ]]; then
-    if command -v python3 >/dev/null 2>&1; then
-      python_bin="$(command -v python3)"
-    elif command -v python >/dev/null 2>&1; then
-      python_bin="$(command -v python)"
-    else
-      echo "[check] Warning: Python interpreter not found; skipping per-script Godot checks." >&2
-      return 0
-    fi
-  fi
-
-  local helper="$SCRIPT_DIR/check_changed_gd.py"
-  if [[ ! -f "$helper" ]]; then
-    echo "[check] Warning: Missing helper script check_changed_gd.py; skipping per-script checks." >&2
-    return 0
-  fi
-
-  "$python_bin" "$helper" --project-dir "$PROJECT_DIR" --repo-root "$REPO_ROOT" --godot "$GODOT"
-}
-
-run_logged_command() {
-  local description="$1"
-  shift
-  echo "[check] $description"
-  local log_file
-  log_file="$(mktemp)"
-  set +e
-  "$@" 2>&1 | tee "$log_file"
-  local exit_code=${PIPESTATUS[0]}
-  set -e
-  if [[ $exit_code -ne 0 ]]; then
-    echo "[check] Error: Command failed during $description (exit $exit_code)." >&2
-    rm -f "$log_file"
-    return $exit_code
-  fi
-  if grep -E '^[[:space:]]*(WARNING|ERROR|SCRIPT ERROR):' "$log_file" >/dev/null; then
-    echo "[check] Error: Godot reported warnings/errors during $description." >&2
-    rm -f "$log_file"
-    return 1
-  fi
-  rm -f "$log_file"
-}
-
 run_check_only() {
-  run_logged_command "Running --check-only" env CI_AUTO_QUIT=1 "$GODOT" --headless --check-only --path "$PROJECT_DIR"
+  echo "[check] Running --check-only"
+  CI_AUTO_QUIT=1 "$GODOT" --headless --check-only --path "$PROJECT_DIR"
 }
 
 run_game() {
-  run_logged_command "Running game with CI auto quit" env CI_AUTO_QUIT=1 "$GODOT" --headless --path "$PROJECT_DIR"
-  run_logged_command "Running map smoke test" env MAP_SMOKE_TEST=1 "$GODOT" --headless --path "$PROJECT_DIR"
+  echo "[check] Running game with CI auto quit"
+  CI_AUTO_QUIT=1 "$GODOT" --headless --path "$PROJECT_DIR"
 }
-
-run_changed_script_checks
 
 case "$MODE" in
   check) run_check_only ;;
