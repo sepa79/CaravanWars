@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://ui/MapView.gd" id="1_wdke4"]
+
+[sub_resource type="World3D" id="World3D_u3er7"]
+
+[node name="MapView" type="SubViewportContainer"]
+script = ExtResource("1_wdke4")
+
+[node name="MapSubViewport" type="SubViewport" parent="."]
+unique_name_in_owner = true
+world_3d = SubResource("World3D_u3er7")
+
+[node name="TerrainRoot" type="Node3D" parent="MapSubViewport"]
+unique_name_in_owner = true

@@ -33,7 +33,9 @@ func _strip_legacy_controls() -> void:
             child.queue_free()
     var map_row := $HBox.get_node_or_null("MapRow")
     if map_row != null:
-        map_row.queue_free()
+        for child in map_row.get_children():
+            if child.name != "MapView":
+                child.queue_free()
     var layers := get_node_or_null("Layers")
     if layers != null:
         layers.queue_free()

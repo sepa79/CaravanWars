@@ -1,6 +1,8 @@
 Changelog
 
 Unreleased
+Added
+- Created a SubViewport-backed MapView scene that batches terrain meshes per region for the UI map preview.
 Changed
 - Documented in the README that the project was reset and all systems are being rebuilt from scratch.
 
