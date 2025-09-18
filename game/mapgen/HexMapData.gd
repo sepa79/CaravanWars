@@ -40,7 +40,7 @@ func clear_stage_results() -> void:
     stage_results.clear()
 
 func to_dictionary() -> Dictionary:
-    return {
+    var result := {
         "meta": {
             "seed": seed,
             "map_radius": map_radius,
@@ -59,4 +59,28 @@ func to_dictionary() -> Dictionary:
         "edges": [],
         "points": [],
         "labels": {},
+        "terrain": {},
     }
+    var terrain := stage_results.get(StringName("terrain"))
+    if typeof(terrain) == TYPE_DICTIONARY:
+        var hex_entries: Dictionary = terrain.get("hexes", {})
+        var hex_array: Array = []
+        for key in hex_entries.keys():
+            var info: Dictionary = hex_entries[key]
+            var entry := {
+                "coord": info.get("coord", key),
+                "region": info.get("region", ""),
+                "is_water": info.get("is_water", false),
+                "is_sea": info.get("is_sea", false),
+                "elev": info.get("elev", 0.0),
+            }
+            hex_array.append(entry)
+        result["hexes"] = hex_array
+        var terrain_meta: Dictionary = {}
+        if terrain.has("regions"):
+            terrain_meta["regions"] = terrain["regions"]
+        if terrain.has("validation"):
+            terrain_meta["validation"] = terrain["validation"]
+        if terrain_meta.size() > 0:
+            result["terrain"] = terrain_meta
+    return result

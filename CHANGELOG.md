@@ -3,9 +3,11 @@ Changelog
 Unreleased
 Added
 - Introduced a hex map generation module with axial coordinate, grid, and metadata scaffolding for future stages.
+- Generated terrain discs now classify coastline water, seed all landform regions, and propagate them with deterministic BFS expansion.
 Changed
 - Map generation now uses a deterministic HexMapGenerator pipeline with configurable Phase 03 parameters and injectable phase hooks.
 - Hex map generation logs each pipeline phase so single player launches show visible progress.
+- Terrain stages persist per-hex elevations and validation reports for ridgeline lakes, isolated seas, and unsupported valleys.
 Removed
 - Replaced the map setup screen with a minimal start/back layout and removed the obsolete map view controls and road network helper.
 

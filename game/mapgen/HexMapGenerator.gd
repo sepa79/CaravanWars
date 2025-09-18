@@ -102,10 +102,7 @@ func _reset_phase_state() -> void:
     forts_state = {}
 
 func _default_terrain_phase() -> void:
-    terrain_state = {
-        "hexes": PackedVector2Array(),
-        "regions": {},
-    }
+    terrain_state = _generate_terrain()
     map_data.set_stage_result(PHASE_TERRAIN, terrain_state)
 
 func _default_rivers_phase() -> void:
@@ -144,3 +141,651 @@ func _default_forts_phase() -> void:
         "sites": [],
     }
     map_data.set_stage_result(PHASE_FORTS, forts_state)
+
+func _generate_terrain() -> Dictionary:
+    var result: Dictionary = {
+        "hexes": {},
+        "regions": {},
+        "coastline": {},
+        "validation": {},
+    }
+    var coords: Array[HexCoord] = []
+    var radius := grid.radius
+    for q in range(-radius, radius + 1):
+        var r1 := max(-radius, -q - radius)
+        var r2 := min(radius, -q + radius)
+        for r in range(r1, r2 + 1):
+            coords.append(HexCoord.new(q, r))
+    if coords.is_empty():
+        return result
+
+    var total_hexes := coords.size()
+    var coastline_scores: Dictionary = {}
+    var scored_coords: Array = []
+    for coord in coords:
+        var key := coord.to_vector2i()
+        var score := _coastline_score(coord)
+        coastline_scores[key] = score
+        scored_coords.append({
+            "coord": coord,
+            "value": score,
+        })
+    scored_coords.sort_custom(Callable(self, "_compare_dict_value_desc"))
+
+    var target_sea := int(round(config.sea_pct * total_hexes))
+    target_sea = clamp(target_sea, 0, total_hexes)
+    var sea_lookup: Dictionary = {}
+    var sea_coords := PackedVector2Array()
+    var land_coords: Array[HexCoord] = []
+    for index in range(scored_coords.size()):
+        var entry: Dictionary = scored_coords[index]
+        var coord: HexCoord = entry["coord"]
+        var key := coord.to_vector2i()
+        if index < target_sea:
+            sea_lookup[key] = true
+            sea_coords.append(key)
+        else:
+            land_coords.append(coord)
+
+    var land_lookup: Dictionary = {}
+    for coord in land_coords:
+        land_lookup[coord.to_vector2i()] = true
+
+    var land_count := land_coords.size()
+    var hex_entries: Dictionary = {}
+    var region_targets := _compute_region_targets(land_count)
+    var seed_data := _plan_region_seeds(land_coords, land_lookup, region_targets)
+    var assignments := _grow_region_assignments(land_coords, land_lookup, sea_lookup, region_targets, seed_data)
+    var region_counts := _count_region_assignments(assignments)
+
+    for coord in coords:
+        var key := coord.to_vector2i()
+        var region_type: String = assignments.get(key, "plains")
+        var elevation := _elevation_for(region_type, coord)
+        hex_entries[key] = {
+            "coord": key,
+            "region": region_type,
+            "is_sea": region_type == "sea",
+            "is_water": region_type == "sea" or region_type == "lake",
+            "elev": elevation,
+        }
+
+    var validation := _build_validation(assignments, land_lookup, seed_data.get("height_map", {}))
+
+    result["hexes"] = hex_entries
+    result["regions"] = {
+        "targets": region_targets,
+        "counts": region_counts,
+        "seeds": seed_data.get("seeds", {}),
+        "land_count": land_count,
+        "sea_count": sea_lookup.size(),
+    }
+    result["coastline"] = {
+        "scores": coastline_scores,
+        "sea_threshold_index": target_sea,
+        "sea_coords": sea_coords,
+    }
+    result["validation"] = validation
+    return result
+
+func _compute_region_targets(land_count: int) -> Dictionary:
+    var targets := {
+        "mountains": 0,
+        "hills": 0,
+        "plains": 0,
+        "valley": 0,
+        "lake": 0,
+    }
+    if land_count <= 0:
+        return targets
+
+    var mountains_target := int(round(config.mountains_pct * land_count))
+    if config.mountains_pct > 0.0 and mountains_target == 0:
+        mountains_target = 1
+    mountains_target = clamp(mountains_target, 0, land_count)
+    targets["mountains"] = mountains_target
+
+    var remaining := land_count - mountains_target
+    if remaining <= 0:
+        return targets
+
+    var hills_target := int(round(0.25 * remaining))
+    hills_target = clamp(hills_target, 0, remaining)
+    targets["hills"] = hills_target
+    remaining -= hills_target
+    if remaining <= 0:
+        return targets
+
+    var valley_target := int(round(0.2 * remaining))
+    valley_target = clamp(valley_target, 0, remaining)
+    targets["valley"] = valley_target
+    remaining -= valley_target
+
+    if remaining > 0:
+        targets["plains"] = remaining
+
+    var lakes_target := int(round(config.lakes_pct * land_count))
+    if config.lakes_pct > 0.0 and lakes_target == 0 and targets["valley"] > 0:
+        lakes_target = 1
+    lakes_target = clamp(lakes_target, 0, targets["valley"])
+    targets["lake"] = lakes_target
+    targets["valley"] -= lakes_target
+
+    if targets["mountains"] == 0 and targets["hills"] == 0:
+        targets["valley"] = 0
+        targets["lake"] = 0
+        targets["plains"] = land_count
+    else:
+        var assigned_total := targets["mountains"] + targets["hills"] + targets["valley"] + targets["lake"] + targets["plains"]
+        if assigned_total < land_count:
+            targets["plains"] += land_count - assigned_total
+        elif assigned_total > land_count:
+            var overflow := assigned_total - land_count
+            overflow = min(overflow, targets["plains"])
+            targets["plains"] -= overflow
+    return targets
+
+func _plan_region_seeds(land_coords: Array, land_lookup: Dictionary, targets: Dictionary) -> Dictionary:
+    var seed_data := {
+        "seeds": {
+            "mountains": PackedVector2Array(),
+            "hills": PackedVector2Array(),
+            "plains": PackedVector2Array(),
+            "valley": PackedVector2Array(),
+            "lake": PackedVector2Array(),
+        },
+        "height_map": {},
+    }
+    if land_coords.is_empty():
+        return seed_data
+
+    var height_values := _build_height_map(land_coords)
+    seed_data["height_map"] = height_values
+
+    var sorted_high := _sort_coords_by_value(land_coords, height_values, true)
+    var sorted_low := _sort_coords_by_value(land_coords, height_values, false)
+    var sorted_mid := _sort_coords_by_midpoint(land_coords, height_values)
+
+    var used: Dictionary = {}
+
+    var mountain_seed_count := _estimate_seed_count(targets.get("mountains", 0), 10)
+    var mountain_seeds: Array = []
+    for coord in sorted_high:
+        if mountain_seeds.size() >= mountain_seed_count:
+            break
+        var key := coord.to_vector2i()
+        if used.has(key):
+            continue
+        mountain_seeds.append(coord)
+        used[key] = true
+    seed_data["seeds"]["mountains"] = _coords_to_packed(mountain_seeds)
+
+    var hill_seed_count := _estimate_seed_count(targets.get("hills", 0), 16)
+    var hill_seeds: Array = []
+    for mountain in mountain_seeds:
+        if hill_seeds.size() >= hill_seed_count:
+            break
+        var neighbors := grid.get_neighbor_coords(mountain)
+        neighbors = _filter_land_coords(neighbors, land_lookup, used)
+        neighbors = _sort_coords_by_value(neighbors, height_values, true)
+        if neighbors.is_empty():
+            continue
+        var neighbor: HexCoord = neighbors[0]
+        hill_seeds.append(neighbor)
+        used[neighbor.to_vector2i()] = true
+    if hill_seeds.size() < hill_seed_count:
+        for coord in sorted_high:
+            if hill_seeds.size() >= hill_seed_count:
+                break
+            var key := coord.to_vector2i()
+            if used.has(key):
+                continue
+            hill_seeds.append(coord)
+            used[key] = true
+    seed_data["seeds"]["hills"] = _coords_to_packed(hill_seeds)
+
+    var plains_seed_count := _estimate_seed_count(targets.get("plains", 0), 28)
+    var plains_seeds: Array = []
+    for coord in sorted_mid:
+        if plains_seeds.size() >= plains_seed_count:
+            break
+        var key := coord.to_vector2i()
+        if used.has(key):
+            continue
+        plains_seeds.append(coord)
+        used[key] = true
+    if plains_seeds.is_empty() and targets.get("plains", 0) > 0 and not sorted_mid.is_empty():
+        var fallback: HexCoord = sorted_mid[0]
+        plains_seeds.append(fallback)
+        used[fallback.to_vector2i()] = true
+    seed_data["seeds"]["plains"] = _coords_to_packed(plains_seeds)
+
+    var high_seed_lookup: Dictionary = {}
+    for coord in mountain_seeds:
+        high_seed_lookup[coord.to_vector2i()] = true
+    for coord in hill_seeds:
+        high_seed_lookup[coord.to_vector2i()] = true
+
+    var valley_seed_count := _estimate_seed_count(targets.get("valley", 0), 18)
+    var valley_seeds: Array = []
+    for coord in sorted_low:
+        if valley_seeds.size() >= valley_seed_count:
+            break
+        var key := coord.to_vector2i()
+        if used.has(key):
+            continue
+        if not _has_adjacent_seed(coord, high_seed_lookup):
+            continue
+        valley_seeds.append(coord)
+        used[key] = true
+    if valley_seeds.size() < valley_seed_count:
+        for coord in sorted_low:
+            if valley_seeds.size() >= valley_seed_count:
+                break
+            var key := coord.to_vector2i()
+            if used.has(key):
+                continue
+            valley_seeds.append(coord)
+            used[key] = true
+    seed_data["seeds"]["valley"] = _coords_to_packed(valley_seeds)
+
+    var valley_lookup: Dictionary = {}
+    for coord in valley_seeds:
+        valley_lookup[coord.to_vector2i()] = true
+
+    var lake_seed_count := _estimate_seed_count(targets.get("lake", 0), 8)
+    var lake_seeds: Array = []
+    if lake_seed_count > 0:
+        for coord in sorted_low:
+            if lake_seeds.size() >= lake_seed_count:
+                break
+            var key := coord.to_vector2i()
+            if used.has(key):
+                continue
+            if not _has_adjacent_seed(coord, valley_lookup):
+                continue
+            if not _is_depression(coord, height_values, land_lookup):
+                continue
+            lake_seeds.append(coord)
+            used[key] = true
+        if lake_seeds.size() < lake_seed_count:
+            for coord in sorted_low:
+                if lake_seeds.size() >= lake_seed_count:
+                    break
+                var key := coord.to_vector2i()
+                if used.has(key):
+                    continue
+                lake_seeds.append(coord)
+                used[key] = true
+    seed_data["seeds"]["lake"] = _coords_to_packed(lake_seeds)
+
+    return seed_data
+
+func _grow_region_assignments(
+    land_coords: Array,
+    land_lookup: Dictionary,
+    sea_lookup: Dictionary,
+    targets: Dictionary,
+    seed_data: Dictionary
+) -> Dictionary:
+    var assignments: Dictionary = {}
+    for key in sea_lookup.keys():
+        assignments[key] = "sea"
+
+    var seeds_dict: Dictionary = seed_data.get("seeds", {})
+    var height_values: Dictionary = seed_data.get("height_map", {})
+    var land_types := ["mountains", "hills", "plains", "valley", "lake"]
+    var region_counts: Dictionary = {}
+    region_counts["sea"] = sea_lookup.size()
+    for region_type in land_types:
+        region_counts[region_type] = 0
+
+    var valley_high_touch: Dictionary = {}
+    var lake_touch: Dictionary = {}
+    var queue: Array = []
+
+    for region_type in land_types:
+        var packed: PackedVector2Array = seeds_dict.get(region_type, PackedVector2Array())
+        for pos in packed:
+            var coord := HexCoord.from_vector2i(pos)
+            var key := coord.to_vector2i()
+            if assignments.has(key):
+                continue
+            assignments[key] = region_type
+            if region_type == "valley":
+                valley_high_touch[key] = _valley_connected_to_high(coord, assignments, valley_high_touch)
+            elif region_type == "lake":
+                lake_touch[key] = _lake_has_valley_contact(coord, assignments, lake_touch, land_lookup)
+            region_counts[region_type] = region_counts.get(region_type, 0) + 1
+            queue.append({
+                "coord": coord,
+                "type": region_type,
+            })
+
+    var land_lookup_keys := land_lookup.keys()
+    var land_total := land_lookup_keys.size()
+    var assigned_land := 0
+    for region_type in land_types:
+        assigned_land += region_counts.get(region_type, 0)
+
+    if assigned_land < land_total and targets.get("plains", 0) <= 0:
+        targets["plains"] = land_total - assigned_land
+
+    var queue_index := 0
+    while queue_index < queue.size():
+        var current: Dictionary = queue[queue_index]
+        queue_index += 1
+        var region_type: String = current["type"]
+        if _target_reached(region_type, region_counts, targets):
+            continue
+        var coord: HexCoord = current["coord"]
+        var neighbors := grid.get_neighbor_coords(coord)
+        for neighbor in neighbors:
+            var key := neighbor.to_vector2i()
+            if not land_lookup.has(key):
+                continue
+            if assignments.has(key):
+                continue
+            if _target_reached(region_type, region_counts, targets):
+                break
+            if not _region_can_claim(region_type, neighbor, assignments, valley_high_touch, lake_touch, height_values, land_lookup):
+                continue
+            assignments[key] = region_type
+            if region_type == "valley":
+                valley_high_touch[key] = _valley_connected_to_high(neighbor, assignments, valley_high_touch)
+            elif region_type == "lake":
+                lake_touch[key] = _lake_has_valley_contact(neighbor, assignments, lake_touch, land_lookup)
+            region_counts[region_type] = region_counts.get(region_type, 0) + 1
+            queue.append({
+                "coord": neighbor,
+                "type": region_type,
+            })
+
+    for coord in land_coords:
+        var key := coord.to_vector2i()
+        if assignments.has(key):
+            continue
+        assignments[key] = "plains"
+
+    return assignments
+
+func _count_region_assignments(assignments: Dictionary) -> Dictionary:
+    var counts: Dictionary = {}
+    for key in assignments.keys():
+        var region_type: String = assignments[key]
+        counts[region_type] = counts.get(region_type, 0) + 1
+    return counts
+
+func _build_validation(assignments: Dictionary, land_lookup: Dictionary, height_map: Dictionary) -> Dictionary:
+    var stray_lakes := PackedVector2Array()
+    var isolated_sea_tiles := PackedVector2Array()
+    var valleys_without_high := PackedVector2Array()
+    for key in assignments.keys():
+        var region_type: String = assignments[key]
+        var coord := HexCoord.from_vector2i(key)
+        if region_type == "lake":
+            if _lake_is_on_ridge(coord, assignments, height_map, land_lookup):
+                stray_lakes.append(key)
+        elif region_type == "sea":
+            if _is_isolated_sea(coord, assignments):
+                isolated_sea_tiles.append(key)
+        elif region_type == "valley":
+            if not _valley_has_direct_high(coord, assignments):
+                valleys_without_high.append(key)
+    return {
+        "lakes_on_ridges": stray_lakes,
+        "isolated_seas": isolated_sea_tiles,
+        "valleys_without_high": valleys_without_high,
+    }
+
+func _compare_dict_value_desc(a: Dictionary, b: Dictionary) -> bool:
+    return a.get("value", 0.0) > b.get("value", 0.0)
+
+func _compare_dict_value_asc(a: Dictionary, b: Dictionary) -> bool:
+    return a.get("value", 0.0) < b.get("value", 0.0)
+
+func _coord_noise(coord: HexCoord, salt: int = 0) -> float:
+    var value := hash([coord.q, coord.r, salt, config.seed])
+    value = abs(value)
+    return float(value % 1000003) / 1000003.0
+
+func _coastline_score(coord: HexCoord) -> float:
+    var distance := float(grid.axial_distance(coord, HexCoord.new(0, 0))) / float(max(1, grid.radius))
+    var primary := (_coord_noise(coord, 17) - 0.5) * 0.7
+    var secondary := (_coord_noise(coord, 53) - 0.5) * 0.3 * (1.0 - distance)
+    return distance + primary + secondary
+
+func _height_value(coord: HexCoord) -> float:
+    var distance := float(grid.axial_distance(coord, HexCoord.new(0, 0))) / float(max(1, grid.radius))
+    var ridge_noise := (_coord_noise(coord, 97) - 0.5) * 0.5
+    var basin_noise := (_coord_noise(coord, 211) - 0.5) * 0.2 * (1.0 - distance)
+    return clampf(1.0 - distance + ridge_noise + basin_noise, 0.0, 1.0)
+
+func _build_height_map(coords: Array) -> Dictionary:
+    var values: Dictionary = {}
+    for coord in coords:
+        var hex: HexCoord = coord
+        var key := hex.to_vector2i()
+        values[key] = _height_value(hex)
+    return values
+
+func _sort_coords_by_value(coords: Array, values: Dictionary, descending: bool) -> Array:
+    var scored: Array = []
+    for coord in coords:
+        var hex: HexCoord = coord
+        var key := hex.to_vector2i()
+        var score := float(values.get(key, 0.0))
+        scored.append({
+            "coord": hex,
+            "value": score,
+        })
+    var comparator := descending ? Callable(self, "_compare_dict_value_desc") : Callable(self, "_compare_dict_value_asc")
+    scored.sort_custom(comparator)
+    var result: Array = []
+    for entry in scored:
+        result.append(entry["coord"])
+    return result
+
+func _sort_coords_by_midpoint(coords: Array, values: Dictionary) -> Array:
+    var scored: Array = []
+    for coord in coords:
+        var hex: HexCoord = coord
+        var key := hex.to_vector2i()
+        var score := float(values.get(key, 0.0))
+        scored.append({
+            "coord": hex,
+            "value": abs(score - 0.5),
+        })
+    scored.sort_custom(Callable(self, "_compare_dict_value_asc"))
+    var result: Array = []
+    for entry in scored:
+        result.append(entry["coord"])
+    return result
+
+func _coords_to_packed(coords: Array) -> PackedVector2Array:
+    var packed := PackedVector2Array()
+    for coord in coords:
+        var hex: HexCoord = coord
+        packed.append(hex.to_vector2i())
+    return packed
+
+func _estimate_seed_count(target: int, ideal_size: int) -> int:
+    if target <= 0:
+        return 0
+    var size := max(1, ideal_size)
+    var estimated := int(ceil(float(target) / float(size)))
+    estimated = max(1, estimated)
+    estimated = min(estimated, target)
+    return estimated
+
+func _filter_land_coords(neighbors: Array, land_lookup: Dictionary, used: Dictionary) -> Array:
+    var filtered: Array = []
+    for neighbor in neighbors:
+        var hex: HexCoord = neighbor
+        var key := hex.to_vector2i()
+        if not land_lookup.has(key):
+            continue
+        if used.has(key):
+            continue
+        filtered.append(hex)
+    return filtered
+
+func _has_adjacent_seed(coord: HexCoord, lookup: Dictionary) -> bool:
+    for neighbor in grid.get_neighbor_coords(coord):
+        if lookup.has(neighbor.to_vector2i()):
+            return true
+    return false
+
+func _is_depression(coord: HexCoord, height_values: Dictionary, land_lookup: Dictionary) -> bool:
+    var key := coord.to_vector2i()
+    var base_height := float(height_values.get(key, 0.0))
+    var higher_neighbors := 0
+    for neighbor in grid.get_neighbor_coords(coord):
+        var n_key := neighbor.to_vector2i()
+        if not land_lookup.has(n_key):
+            continue
+        var neighbor_height := float(height_values.get(n_key, base_height + 0.1))
+        if neighbor_height > base_height + 0.02:
+            higher_neighbors += 1
+    return higher_neighbors >= 2
+
+func _target_reached(region_type: String, region_counts: Dictionary, targets: Dictionary) -> bool:
+    if region_type == "plains":
+        return false
+    if not targets.has(region_type):
+        return false
+    var target := int(targets[region_type])
+    if target <= 0:
+        return true
+    return region_counts.get(region_type, 0) >= target
+
+func _region_can_claim(
+    region_type: String,
+    coord: HexCoord,
+    assignments: Dictionary,
+    valley_high_touch: Dictionary,
+    lake_touch: Dictionary,
+    height_values: Dictionary,
+    land_lookup: Dictionary
+) -> bool:
+    if region_type == "valley":
+        return _valley_connected_to_high(coord, assignments, valley_high_touch)
+    if region_type == "lake":
+        return _lake_can_claim(coord, assignments, lake_touch, height_values, land_lookup)
+    return true
+
+func _valley_connected_to_high(coord: HexCoord, assignments: Dictionary, valley_high_touch: Dictionary) -> bool:
+    for neighbor in grid.get_neighbor_coords(coord):
+        var key := neighbor.to_vector2i()
+        if not assignments.has(key):
+            continue
+        var neighbor_type: String = assignments[key]
+        if neighbor_type == "mountains" or neighbor_type == "hills":
+            return true
+        if neighbor_type == "valley" and valley_high_touch.get(key, false):
+            return true
+    return false
+
+func _lake_can_claim(
+    coord: HexCoord,
+    assignments: Dictionary,
+    lake_touch: Dictionary,
+    height_values: Dictionary,
+    land_lookup: Dictionary
+) -> bool:
+    var key := coord.to_vector2i()
+    var base_height := float(height_values.get(key, 0.0))
+    var higher_neighbors := 0
+    var has_contact := false
+    for neighbor in grid.get_neighbor_coords(coord):
+        var n_key := neighbor.to_vector2i()
+        if not land_lookup.has(n_key):
+            continue
+        var neighbor_type: String = assignments.get(n_key, "")
+        if neighbor_type == "valley":
+            has_contact = true
+        elif neighbor_type == "lake" and lake_touch.get(n_key, false):
+            has_contact = true
+        if height_values.has(n_key):
+            if float(height_values[n_key]) > base_height + 0.01:
+                higher_neighbors += 1
+        elif neighbor_type == "mountains" or neighbor_type == "hills":
+            higher_neighbors += 1
+    return has_contact and higher_neighbors >= 2
+
+func _lake_has_valley_contact(coord: HexCoord, assignments: Dictionary, lake_touch: Dictionary, land_lookup: Dictionary) -> bool:
+    for neighbor in grid.get_neighbor_coords(coord):
+        var key := neighbor.to_vector2i()
+        if not land_lookup.has(key):
+            continue
+        var neighbor_type: String = assignments.get(key, "")
+        if neighbor_type == "valley":
+            return true
+        if neighbor_type == "lake" and lake_touch.get(key, false):
+            return true
+    return false
+
+func _lake_is_on_ridge(
+    coord: HexCoord,
+    assignments: Dictionary,
+    height_map: Dictionary,
+    land_lookup: Dictionary
+) -> bool:
+    var key := coord.to_vector2i()
+    var base_height := float(height_map.get(key, 0.0))
+    var higher_neighbors := 0
+    var valley_neighbors := 0
+    for neighbor in grid.get_neighbor_coords(coord):
+        var n_key := neighbor.to_vector2i()
+        if not land_lookup.has(n_key):
+            continue
+        var neighbor_type: String = assignments.get(n_key, "")
+        if neighbor_type == "valley":
+            valley_neighbors += 1
+        if height_map.has(n_key):
+            if float(height_map[n_key]) > base_height + 0.01:
+                higher_neighbors += 1
+        elif neighbor_type == "mountains" or neighbor_type == "hills":
+            higher_neighbors += 1
+    return higher_neighbors < 2 or valley_neighbors == 0
+
+func _is_isolated_sea(coord: HexCoord, assignments: Dictionary) -> bool:
+    for neighbor in grid.get_neighbor_coords(coord):
+        var key := neighbor.to_vector2i()
+        if assignments.get(key, "") == "sea":
+            return false
+    return true
+
+func _valley_has_direct_high(coord: HexCoord, assignments: Dictionary) -> bool:
+    for neighbor in grid.get_neighbor_coords(coord):
+        var key := neighbor.to_vector2i()
+        var neighbor_type: String = assignments.get(key, "")
+        if neighbor_type == "mountains" or neighbor_type == "hills":
+            return true
+    return false
+
+func _elevation_for(region_type: String, coord: HexCoord) -> float:
+    var base_levels := {
+        "sea": 0.0,
+        "lake": 0.1,
+        "valley": 0.3,
+        "plains": 0.5,
+        "hills": 0.7,
+        "mountains": 0.9,
+    }
+    var jitter := {
+        "sea": 0.02,
+        "lake": 0.03,
+        "valley": 0.04,
+        "plains": 0.05,
+        "hills": 0.04,
+        "mountains": 0.03,
+    }
+    var base := float(base_levels.get(region_type, 0.5))
+    var amplitude := float(jitter.get(region_type, 0.03))
+    var salt := abs(hash([region_type, coord.q, coord.r])) % 8191
+    var noise := (_coord_noise(coord, salt) - 0.5) * 2.0 * amplitude
+    var elevation := clampf(base + noise, 0.0, 1.0)
+    if region_type == "sea" and elevation > 0.05:
+        elevation = min(elevation, 0.05)
+    return elevation
