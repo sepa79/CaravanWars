@@ -9,6 +9,9 @@ Changed
 Removed
 - Replaced the map setup screen with a minimal start/back layout and removed the obsolete map view controls and road network helper.
 
+Fixed
+- Restored the Game scene's ability to load the new hex map generator so single player launches build a map again.
+
 0.1.81 — 2025-09-14
 Added
 - CLI smoke test wiring that runs the map generator when `MAPGEN_SMOKE_TEST=1` or via `tests/MapGeneratorSmokeTest.gd`, enabling automated regression checks.
