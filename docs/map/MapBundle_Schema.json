@@ -1,0 +1,276 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CaravanWars MapBundle (Hex; tile rivers/roads)",
+  "type": "object",
+  "required": [
+    "meta",
+    "hexes",
+    "edges",
+    "points"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": [
+        "version",
+        "seed",
+        "map_radius",
+        "kingdom_count"
+      ],
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "map_radius": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kingdom_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "params": {
+          "type": "object",
+          "properties": {
+            "sea_pct": {
+              "type": "number"
+            },
+            "mountains_pct": {
+              "type": "number"
+            },
+            "lakes_pct": {
+              "type": "number"
+            },
+            "rivers_cap": {
+              "type": "integer"
+            },
+            "road_aggressiveness": {
+              "type": "number"
+            },
+            "fort_global_cap": {
+              "type": "integer"
+            },
+            "fort_spacing": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "hexes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "q",
+          "r",
+          "regionType"
+        ],
+        "properties": {
+          "q": {
+            "type": "integer"
+          },
+          "r": {
+            "type": "integer"
+          },
+          "regionType": {
+            "type": "string",
+            "enum": [
+              "Sea",
+              "Lake",
+              "Plains",
+              "Valley",
+              "Hills",
+              "Mountains"
+            ]
+          },
+          "elev": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "moisture": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "biome": {
+            "type": "string"
+          },
+          "kingdomId": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "river_mask": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 63
+          },
+          "river_class": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "is_mouth": {
+            "type": "boolean"
+          },
+          "road_mask": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 63
+          },
+          "road_class": {
+            "type": "string",
+            "enum": [
+              "track",
+              "road",
+              "highway"
+            ]
+          },
+          "bridge": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "edges": {
+      "description": "Granice kr\u00f3lestw na kraw\u0119dziach; rzeki/drogi NIE s\u0105 tutaj.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "a",
+          "b"
+        ],
+        "properties": {
+          "a": {
+            "type": "object",
+            "required": [
+              "q",
+              "r"
+            ],
+            "properties": {
+              "q": {
+                "type": "integer"
+              },
+              "r": {
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          },
+          "b": {
+            "type": "object",
+            "required": [
+              "q",
+              "r"
+            ],
+            "properties": {
+              "q": {
+                "type": "integer"
+              },
+              "r": {
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          },
+          "border": {
+            "type": "object",
+            "properties": {
+              "present": {
+                "type": "boolean"
+              },
+              "between": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                },
+                "minItems": 2,
+                "maxItems": 2
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "q",
+          "r",
+          "type"
+        ],
+        "properties": {
+          "q": {
+            "type": "integer"
+          },
+          "r": {
+            "type": "integer"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "city",
+              "village",
+              "fort",
+              "port"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "kingdomId": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "population": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "priority_score": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "labels": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "q": {
+            "type": "integer"
+          },
+          "r": {
+            "type": "integer"
+          },
+          "layer": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "q",
+          "r"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
