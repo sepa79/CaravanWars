@@ -13,6 +13,8 @@ func _ready() -> void:
     back_button.pressed.connect(_on_back_pressed)
     _strip_legacy_controls()
     _update_texts()
+    if Net.run_mode == "single":
+        World.prepare_map_for_run_mode(Net.run_mode, null, true)
     _on_net_state_changed(Net.state)
 
 func _strip_legacy_controls() -> void:

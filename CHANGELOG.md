@@ -8,6 +8,7 @@ Changed
 - Map generation now uses a deterministic HexMapGenerator pipeline with configurable Phase 03 parameters and injectable phase hooks.
 - Hex map generation logs each pipeline phase so single player launches show visible progress.
 - Terrain stages persist per-hex elevations and validation reports for ridgeline lakes, isolated seas, and unsupported valleys.
+- Singleplayer map setup pre-generates a hex map when the screen opens so launches reuse the prepared data.
 Removed
 - Replaced the map setup screen with a minimal start/back layout and removed the obsolete map view controls and road network helper.
 
