@@ -13,6 +13,7 @@ Changed
 - tools/check scripts now run `godot --check` on every GDScript file before executing the broader project checks.
 - Both Unix and Windows check scripts now fail when Godot logs warnings or errors so CI surfaces issues immediately.
 - Lowered the single-player default map size to 256 tiles so previews and generator runs complete faster.
+- Debounced map setup parameter controls so the preview waits briefly before regenerating while values are adjusted.
 Fixed
 - Typed MapGenerationShared kingdom data lookups to avoid Variant inference warnings when sampling borders.
 - Annotated MapGenerationShared border sampling locals so distance checks avoid Variant inference warnings.

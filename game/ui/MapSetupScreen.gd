@@ -5,6 +5,8 @@ const MapGenerationParams := preload("res://map/generation/MapGenerationParams.g
 const LegendIconButton := preload("res://ui/LegendIconButton.gd")
 const MapViewScript := preload("res://ui/MapView.gd")
 
+const REGENERATE_DEBOUNCE_SECONDS := 0.3
+
 const LEGEND_CONFIG := [
     {"layer": "roads", "icon": "road", "label": "setup.legend_roads"},
     {"layer": "rivers", "icon": "river", "label": "setup.legend_rivers"},
@@ -59,6 +61,7 @@ const LEGEND_CONFIG := [
 
 var previous_state: String = Net.state
 var _regeneration_pending: bool = false
+var _regeneration_timer: Timer
 var _syncing_layers: bool = false
 var _legend_buttons: Dictionary = {}
 var _layer_checkboxes: Dictionary = {}
@@ -71,6 +74,7 @@ var _ui_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
     _ui_rng.randomize()
+    _initialize_regeneration_timer()
     I18N.language_changed.connect(_update_texts)
     Net.state_changed.connect(_on_net_state_changed)
     start_button.pressed.connect(_on_start_pressed)
@@ -159,6 +163,13 @@ func _connect_parameter_inputs() -> void:
     ]
     for spin in spin_controls:
         spin.value_changed.connect(_on_parameter_changed)
+
+func _initialize_regeneration_timer() -> void:
+    _regeneration_timer = Timer.new()
+    _regeneration_timer.one_shot = true
+    _regeneration_timer.wait_time = REGENERATE_DEBOUNCE_SECONDS
+    add_child(_regeneration_timer)
+    _regeneration_timer.timeout.connect(_on_regeneration_timer_timeout)
 
 func _setup_layer_toggles() -> void:
     _layer_checkboxes = {
@@ -262,10 +273,14 @@ func _on_legend_button_toggled(layer: String, pressed: bool) -> void:
     _syncing_layers = false
 
 func _schedule_regenerate() -> void:
-    if _regeneration_pending:
+    if _regeneration_timer == null:
+        _regenerate_map()
         return
     _regeneration_pending = true
-    call_deferred("_regenerate_map")
+    _regeneration_timer.start()
+
+func _on_regeneration_timer_timeout() -> void:
+    _regenerate_map()
 
 func _regenerate_map() -> void:
     _regeneration_pending = false
