@@ -12,6 +12,7 @@ Changed
 - Refactored the deterministic map generator into dedicated terrain, river, biome, kingdom, settlement, road, and fort stage scripts with shared utilities so the stub implementation is fully retired.
 - tools/check scripts now run `godot --check` on every GDScript file before executing the broader project checks.
 - Both Unix and Windows check scripts now fail when Godot logs warnings or errors so CI surfaces issues immediately.
+- Lowered the single-player default map size to 256 tiles so previews and generator runs complete faster.
 Fixed
 - Typed MapGenerationShared kingdom data lookups to avoid Variant inference warnings when sampling borders.
 - Annotated MapGenerationShared border sampling locals so distance checks avoid Variant inference warnings.

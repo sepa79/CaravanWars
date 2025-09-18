@@ -22,7 +22,7 @@ var village_min_distance: float
 
 func _init(
     p_rng_seed: int = 12345,
-    p_map_size: int = 2048,
+    p_map_size: int = 256,
     p_kingdom_count: int = 3,
     p_sea_level: float = 0.32,
     p_terrain_octaves: int = 6,

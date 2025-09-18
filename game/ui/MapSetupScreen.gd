@@ -94,7 +94,7 @@ func _configure_controls() -> void:
     map_size_spin.min_value = 256
     map_size_spin.max_value = 4096
     map_size_spin.step = 64
-    map_size_spin.value = 2048
+    map_size_spin.value = 256
     if OS.has_environment("MAP_SMOKE_TEST"):
         map_size_spin.value = map_size_spin.min_value
 

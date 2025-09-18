@@ -120,30 +120,30 @@ func set_show_roughness(value: bool) -> void:
     _show_roughness = value
     queue_redraw()
 
-func set_layer_visible(layer: String, visible: bool) -> void:
+func set_layer_visible(layer: String, is_visible: bool) -> void:
     match layer:
         "roads":
-            set_show_roads(visible)
+            set_show_roads(is_visible)
         "rivers":
-            set_show_rivers(visible)
+            set_show_rivers(is_visible)
         "cities":
-            set_show_cities(visible)
+            set_show_cities(is_visible)
         "villages":
-            set_show_villages(visible)
+            set_show_villages(is_visible)
         "forts":
-            set_show_forts(visible)
+            set_show_forts(is_visible)
         "crossroads":
-            set_show_crossroads(visible)
+            set_show_crossroads(is_visible)
         "bridges":
-            set_show_bridges(visible)
+            set_show_bridges(is_visible)
         "fords":
-            set_show_fords(visible)
+            set_show_fords(is_visible)
         "regions":
-            set_show_regions(visible)
+            set_show_regions(is_visible)
         "fertility":
-            set_show_fertility(visible)
+            set_show_fertility(is_visible)
         "roughness":
-            set_show_roughness(visible)
+            set_show_roughness(is_visible)
         _:
             pass
 
@@ -215,12 +215,12 @@ func _build_heightmap_texture(heightmap: PackedFloat32Array, sea_mask: PackedByt
     var preview_dimension: int = int(min(MAX_PREVIEW_DIMENSION, _map_dimension))
     if preview_dimension <= 0:
         return null
-    var scale: float = float(_map_dimension) / float(preview_dimension)
+    var preview_scale: float = float(_map_dimension) / float(preview_dimension)
     var image: Image = Image.create(preview_dimension, preview_dimension, false, Image.FORMAT_RGBA8)
     for py in range(preview_dimension):
-        var source_y: int = clampi(int(floor(py * scale)), 0, _map_dimension - 1)
+        var source_y: int = clampi(int(floor(py * preview_scale)), 0, _map_dimension - 1)
         for px in range(preview_dimension):
-            var source_x: int = clampi(int(floor(px * scale)), 0, _map_dimension - 1)
+            var source_x: int = clampi(int(floor(px * preview_scale)), 0, _map_dimension - 1)
             var index: int = source_y * _map_dimension + source_x
             var height_value: float = heightmap[index]
             var is_water: bool = not sea_mask.is_empty() and sea_mask[index] == 1
@@ -231,12 +231,12 @@ func _build_overlay_texture(values: PackedFloat32Array, tint: Color) -> Texture2
     var preview_dimension: int = int(min(MAX_PREVIEW_DIMENSION, _map_dimension))
     if preview_dimension <= 0:
         return null
-    var scale: float = float(_map_dimension) / float(preview_dimension)
+    var preview_scale: float = float(_map_dimension) / float(preview_dimension)
     var image: Image = Image.create(preview_dimension, preview_dimension, false, Image.FORMAT_RGBA8)
     for py in range(preview_dimension):
-        var source_y: int = clampi(int(floor(py * scale)), 0, _map_dimension - 1)
+        var source_y: int = clampi(int(floor(py * preview_scale)), 0, _map_dimension - 1)
         for px in range(preview_dimension):
-            var source_x: int = clampi(int(floor(px * scale)), 0, _map_dimension - 1)
+            var source_x: int = clampi(int(floor(px * preview_scale)), 0, _map_dimension - 1)
             var index: int = source_y * _map_dimension + source_x
             var strength: float = clampf(values[index], 0.0, 1.0)
             var overlay: Color = Color(tint.r, tint.g, tint.b, tint.a * strength)
@@ -262,7 +262,7 @@ func _extract_bridge_points(roads: Array[Dictionary]) -> Array[Vector2]:
         if path.size() < 2:
             continue
         if road.get("type", "") == "primary":
-            var middle_index: int = int(path.size() / 2)
+            var middle_index: int = int(path.size() / 2.0)
             points.append(path[middle_index])
     return points
 
@@ -275,7 +275,7 @@ func _extract_ford_points(roads: Array[Dictionary]) -> Array[Vector2]:
         if path.size() < 2:
             continue
         if road.get("type", "") != "primary":
-            var middle_index: int = int(path.size() / 2)
+            var middle_index: int = int(path.size() / 2.0)
             points.append(path[middle_index])
     return points
 
@@ -329,42 +329,42 @@ func _draw() -> void:
         draw_texture_rect(_fertility_texture, rect, false)
     if _show_roughness and _roughness_texture != null:
         draw_texture_rect(_roughness_texture, rect, false)
-    var scale: Vector2 = _current_scale()
+    var view_scale: Vector2 = _current_scale()
     if _show_regions:
-        _draw_regions(scale)
+        _draw_regions(view_scale)
     if _show_rivers:
-        _draw_rivers(scale)
+        _draw_rivers(view_scale)
     if _show_roads:
-        _draw_roads(scale)
+        _draw_roads(view_scale)
     if _show_cities:
-        _draw_cities(scale)
+        _draw_cities(view_scale)
     if _show_villages:
-        _draw_villages(scale)
+        _draw_villages(view_scale)
     if _show_forts:
-        _draw_forts(scale)
+        _draw_forts(view_scale)
     if _show_crossroads:
-        _draw_crossroads(scale)
+        _draw_crossroads(view_scale)
     if _show_bridges:
-        _draw_bridges(scale)
+        _draw_bridges(view_scale)
     if _show_fords:
-        _draw_fords(scale)
+        _draw_fords(view_scale)
 
 func _current_scale() -> Vector2:
     if _map_dimension <= 0:
         return Vector2.ONE
     return Vector2(size.x / float(_map_dimension), size.y / float(_map_dimension))
 
-func _to_view(point: Vector2, scale: Vector2) -> Vector2:
-    return Vector2(point.x * scale.x, point.y * scale.y)
+func _to_view(point: Vector2, view_scale: Vector2) -> Vector2:
+    return Vector2(point.x * view_scale.x, point.y * view_scale.y)
 
-func _draw_regions(scale: Vector2) -> void:
+func _draw_regions(view_scale: Vector2) -> void:
     for polygon in _kingdom_polygons:
         var points: PackedVector2Array = polygon.get("polygon", PackedVector2Array())
         if points.size() < 3:
             continue
         var transformed: PackedVector2Array = PackedVector2Array()
         for point in points:
-            transformed.append(_to_view(point, scale))
+            transformed.append(_to_view(point, view_scale))
         var kingdom_id: int = int(polygon.get("kingdom_id", -1))
         var base_color: Color = (_kingdom_colors.get(kingdom_id, Color(0.5, 0.5, 0.5))) as Color
         var fill_color: Color = Color(base_color.r, base_color.g, base_color.b, 0.2)
@@ -378,60 +378,60 @@ func _draw_regions(scale: Vector2) -> void:
             continue
         var transformed_border: PackedVector2Array = PackedVector2Array()
         for point in border_points:
-            transformed_border.append(_to_view(point, scale))
+            transformed_border.append(_to_view(point, view_scale))
         draw_polyline(transformed_border, Color(0.8, 0.8, 0.8), 1.5)
 
-func _draw_rivers(scale: Vector2) -> void:
+func _draw_rivers(view_scale: Vector2) -> void:
     for river in _river_polylines:
         var points: PackedVector2Array = river.get("points", PackedVector2Array())
         if points.size() < 2:
             continue
         var transformed: PackedVector2Array = PackedVector2Array()
         for point in points:
-            transformed.append(_to_view(point, scale))
+            transformed.append(_to_view(point, view_scale))
         var width: float = float(river.get("width", 1.0))
-        var line_width: float = maxf(1.0, width * (scale.x + scale.y) * 0.25)
+        var line_width: float = maxf(1.0, width * (view_scale.x + view_scale.y) * 0.25)
         draw_polyline(transformed, Color(0.2, 0.45, 0.9), line_width)
 
-func _draw_roads(scale: Vector2) -> void:
+func _draw_roads(view_scale: Vector2) -> void:
     for road in _road_polylines:
         var points: PackedVector2Array = road.get("points", PackedVector2Array())
         if points.size() < 2:
             continue
         var transformed: PackedVector2Array = PackedVector2Array()
         for point in points:
-            transformed.append(_to_view(point, scale))
+            transformed.append(_to_view(point, view_scale))
         var tint: Color = Color(0.7, 0.6, 0.45)
         if road.get("type", "") == "secondary":
             tint = Color(0.6, 0.55, 0.4)
         draw_polyline(transformed, tint, 2.0)
 
-func _draw_cities(scale: Vector2) -> void:
+func _draw_cities(view_scale: Vector2) -> void:
     for city in _cities:
-        var position: Vector2 = city.get("position", Vector2.ZERO)
-        var view_position: Vector2 = _to_view(position, scale)
-        var radius: float = maxf(4.0, minf(scale.x, scale.y) * 3.0)
+        var city_position: Vector2 = city.get("position", Vector2.ZERO)
+        var view_position: Vector2 = _to_view(city_position, view_scale)
+        var radius: float = maxf(4.0, minf(view_scale.x, view_scale.y) * 3.0)
         draw_circle(view_position, radius, Color(0.85, 0.2, 0.2))
 
-func _draw_villages(scale: Vector2) -> void:
+func _draw_villages(view_scale: Vector2) -> void:
     for village in _villages:
-        var position: Vector2 = village.get("position", Vector2.ZERO)
-        var view_position: Vector2 = _to_view(position, scale)
-        var radius: float = maxf(2.0, minf(scale.x, scale.y) * 2.0)
+        var village_position: Vector2 = village.get("position", Vector2.ZERO)
+        var view_position: Vector2 = _to_view(village_position, view_scale)
+        var radius: float = maxf(2.0, minf(view_scale.x, view_scale.y) * 2.0)
         draw_circle(view_position, radius, Color(0.85, 0.65, 0.35))
 
-func _draw_forts(scale: Vector2) -> void:
+func _draw_forts(view_scale: Vector2) -> void:
     for fort in _forts:
-        var position: Vector2 = fort.get("position", Vector2.ZERO)
-        var view_position: Vector2 = _to_view(position, scale)
-        var size_hint: float = maxf(4.0, minf(scale.x, scale.y) * 3.0)
+        var fort_position: Vector2 = fort.get("position", Vector2.ZERO)
+        var view_position: Vector2 = _to_view(fort_position, view_scale)
+        var size_hint: float = maxf(4.0, minf(view_scale.x, view_scale.y) * 3.0)
         var rect: Rect2 = Rect2(view_position - Vector2(size_hint, size_hint) * 0.5, Vector2(size_hint, size_hint))
         draw_rect(rect, Color(0.95, 0.55, 0.15))
 
-func _draw_crossroads(scale: Vector2) -> void:
+func _draw_crossroads(view_scale: Vector2) -> void:
     for point in _crossroad_points:
-        var view_position: Vector2 = _to_view(point, scale)
-        var radius: float = maxf(3.0, minf(scale.x, scale.y) * 2.5)
+        var view_position: Vector2 = _to_view(point, view_scale)
+        var radius: float = maxf(3.0, minf(view_scale.x, view_scale.y) * 2.5)
         var diamond: PackedVector2Array = PackedVector2Array([
             view_position + Vector2(0, -radius),
             view_position + Vector2(radius, 0),
@@ -440,15 +440,15 @@ func _draw_crossroads(scale: Vector2) -> void:
         ])
         draw_colored_polygon(diamond, Color(0.95, 0.85, 0.2, 0.9))
 
-func _draw_bridges(scale: Vector2) -> void:
+func _draw_bridges(view_scale: Vector2) -> void:
     for point in _bridge_points:
-        var view_position: Vector2 = _to_view(point, scale)
-        var size_hint: float = maxf(3.0, minf(scale.x, scale.y) * 2.0)
+        var view_position: Vector2 = _to_view(point, view_scale)
+        var size_hint: float = maxf(3.0, minf(view_scale.x, view_scale.y) * 2.0)
         var rect: Rect2 = Rect2(view_position - Vector2(size_hint, size_hint * 0.5), Vector2(size_hint * 2.0, size_hint))
         draw_rect(rect, Color(0.65, 0.45, 0.2))
 
-func _draw_fords(scale: Vector2) -> void:
+func _draw_fords(view_scale: Vector2) -> void:
     for point in _ford_points:
-        var view_position: Vector2 = _to_view(point, scale)
-        var radius: float = maxf(2.0, minf(scale.x, scale.y) * 1.5)
+        var view_position: Vector2 = _to_view(point, view_scale)
+        var radius: float = maxf(2.0, minf(view_scale.x, view_scale.y) * 1.5)
         draw_circle(view_position, radius, Color(0.4, 0.85, 0.9))
