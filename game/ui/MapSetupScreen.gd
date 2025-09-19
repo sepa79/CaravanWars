@@ -202,7 +202,7 @@ func _configure_param_ranges() -> void:
     rivers_spinbox.min_value = 0.0
     rivers_spinbox.max_value = 12.0
     radius_spinbox.step = 1.0
-    radius_spinbox.min_value = 6.0
+    radius_spinbox.min_value = max(1.0, min(6.0, float(HEX_MAP_CONFIG_SCRIPT.DEFAULT_MAP_RADIUS)))
     radius_spinbox.max_value = 48.0
 
 func _ensure_edge_controls() -> void:
@@ -409,7 +409,8 @@ func _apply_edge_settings_to_controls() -> void:
         var type_button: OptionButton = entry.get("type") as OptionButton
         var width_spin: SpinBox = entry.get("width") as SpinBox
         var setting: Dictionary = settings.get(edge_id, {})
-        var terrain_type := String(setting.get("type", "plains"))
+        var default_terrain := String(HEX_MAP_CONFIG_SCRIPT.DEFAULT_EDGE_TERRAINS.get(edge_id, HEX_MAP_CONFIG_SCRIPT.DEFAULT_EDGE_TYPE))
+        var terrain_type := String(setting.get("type", default_terrain))
         var width_value := int(setting.get("width", 0))
         if type_button != null:
             _select_option_by_metadata(type_button, terrain_type)
@@ -468,7 +469,7 @@ func _get_radius_limit() -> int:
         return max(1, _current_config.map_radius)
     if radius_spinbox != null:
         return max(1, int(round(radius_spinbox.value)))
-    return 24
+    return HEX_MAP_CONFIG_SCRIPT.DEFAULT_MAP_RADIUS
 
 func _update_edge_width_limits() -> void:
     var max_radius := _get_radius_limit()

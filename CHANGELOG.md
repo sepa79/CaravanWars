@@ -2,11 +2,13 @@ Changelog
 
 Unreleased
 Added
-- Nothing yet.
+- Rivers now generate from mountain peaks, record per-hex masks, classes, mouths, and emit validation results for missing sinks.
 Changed
-- Nothing yet.
+- Plains carved by rivers automatically downgrade to valleys and lakes prefer to open downstream outlets when terrain allows.
+- Map generation defaults now start with mountain-mountain-hills-sea-sea-hills edge bands, edge depths 2/2/2/54/5/2, edge jitter 3, and medium random features.
+- Default map seed now initializes to 666997 and the base radius default is 4 so generated maps start from the new baseline sizing.
 Fixed
-- Nothing yet.
+- Corrected river peak ordering to compare coordinates without using the nonexistent `String` constructor in Godot 4.
 
 0.2.1 — 2025-09-19
 Added
