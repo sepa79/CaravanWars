@@ -283,11 +283,14 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
     _shuffle_array_with_rng(available_sides)
 
     var configured_sea_sides: Array[int] = []
+    var forbidden_sides: Dictionary = {}
     if config.side_modes.size() == direction_count:
         for side_index in available_sides:
             var side_mode: String = config.side_modes[side_index]
             if side_mode == HexMapConfig.SIDE_TYPE_SEA:
                 configured_sea_sides.append(side_index)
+            elif side_mode == HexMapConfig.SIDE_TYPE_MOUNTAINS:
+                forbidden_sides[side_index] = true
 
     var side_min: int = max(1, config.coastline_sides_min)
     var side_max: int = max(side_min, config.coastline_sides_max)
@@ -298,12 +301,23 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
     if not configured_sea_sides.is_empty():
         chosen = configured_sea_sides.duplicate()
     else:
+        var fallback_pool: Array[int] = []
+        for side_index in available_sides:
+            if forbidden_sides.has(side_index):
+                continue
+            fallback_pool.append(side_index)
+        var fallback_source: Array[int] = fallback_pool.duplicate()
+        if fallback_source.is_empty():
+            fallback_source = available_sides.duplicate()
+        _shuffle_array_with_rng(fallback_source)
         var side_count: int = side_min
         if side_max > side_min:
             side_count = rng.randi_range(side_min, side_max)
         side_count = clampi(side_count, 1, available_sides.size())
         for i in range(side_count):
-            chosen.append(available_sides[i])
+            if i >= fallback_source.size():
+                break
+            chosen.append(fallback_source[i])
 
     var seeding_order: Array[int] = chosen.duplicate()
     var selected: Array[int] = chosen.duplicate()
@@ -342,10 +356,9 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
     if config.side_widths.size() == direction_count:
         for side_index in selected:
             var configured_width: int = max(0, int(config.side_widths[side_index]))
-            if configured_width > 0:
-                side_depth_limits[side_index] = configured_width
-                if configured_width > max_side_limit:
-                    max_side_limit = configured_width
+            side_depth_limits[side_index] = configured_width
+            if configured_width > max_side_limit:
+                max_side_limit = configured_width
     depth_limit = max_side_limit
 
     var queue: Array = []
@@ -823,7 +836,7 @@ func _plan_region_seeds(
             mountain_seeds.append(coord)
             used[key] = true
 
-    var extra_seed_cap: int = min(3, max(0, mountain_seed_count / 2))
+    var extra_seed_cap: int = min(3, max(0, mountain_seed_count >> 1))
     var extra_added: int = 0
     if extra_seed_cap > 0:
         for coord in sorted_high:
