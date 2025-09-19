@@ -202,7 +202,7 @@ func _configure_param_ranges() -> void:
     rivers_spinbox.min_value = 0.0
     rivers_spinbox.max_value = 12.0
     radius_spinbox.step = 1.0
-    radius_spinbox.min_value = 6.0
+    radius_spinbox.min_value = max(1.0, min(6.0, float(HEX_MAP_CONFIG_SCRIPT.DEFAULT_MAP_RADIUS)))
     radius_spinbox.max_value = 48.0
 
 func _ensure_edge_controls() -> void:
@@ -469,7 +469,7 @@ func _get_radius_limit() -> int:
         return max(1, _current_config.map_radius)
     if radius_spinbox != null:
         return max(1, int(round(radius_spinbox.value)))
-    return 24
+    return HEX_MAP_CONFIG_SCRIPT.DEFAULT_MAP_RADIUS
 
 func _update_edge_width_limits() -> void:
     var max_radius := _get_radius_limit()

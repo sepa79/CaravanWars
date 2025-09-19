@@ -1,7 +1,8 @@
 extends RefCounted
 class_name HexMapConfig
 
-const DEFAULT_MAP_RADIUS := 24
+const DEFAULT_MAP_SEED := 666997
+const DEFAULT_MAP_RADIUS := 4
 const DEFAULT_KINGDOM_COUNT := 3
 const DEFAULT_RIVERS_CAP := 6
 const DEFAULT_ROAD_AGGRESSIVENESS := 0.5
@@ -60,7 +61,7 @@ var edge_jitter: int
 var random_feature_density: float
 
 func _init(
-    p_seed: int = 0,
+    p_seed: int = DEFAULT_MAP_SEED,
     p_map_radius: int = DEFAULT_MAP_RADIUS,
     p_kingdom_count: int = DEFAULT_KINGDOM_COUNT,
     p_rivers_cap: int = DEFAULT_RIVERS_CAP,
