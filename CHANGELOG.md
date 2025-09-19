@@ -6,6 +6,7 @@ Added
 Changed
 - Coastline planning always seeds the chosen boundary ring before growing inward, honours the configured depth limit, and records the applied limit for validation metadata.
 Fixed
+- Coastline planning now uses the generator RNG for side selection and queue shuffling so identical seeds remain reproducible.
 - Coastline validation asserts side-front connectivity and verifies recorded sea counts against the planned fronts.
 
 0.2.0 — 2025-09-19

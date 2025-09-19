@@ -262,7 +262,7 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
         available_sides.append(i)
     if available_sides.is_empty():
         return plan
-    available_sides.shuffle()
+    _shuffle_array_with_rng(available_sides)
 
     var side_min: int = max(1, config.coastline_sides_min)
     var side_max: int = max(side_min, config.coastline_sides_max)
@@ -285,12 +285,12 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
         packed_sides.append(side_index)
 
     if selected.is_empty():
-        var shuffled: Array = coords.duplicate()
-        shuffled.shuffle()
+        var fallback_candidates := coords.duplicate()
+        _shuffle_array_with_rng(fallback_candidates)
         var fallback_lookup: Dictionary = {}
         var fallback_coords := PackedVector2Array()
-        for idx in range(min(target_sea, shuffled.size())):
-            var fallback_coord: HexCoord = shuffled[idx]
+        for idx in range(min(target_sea, fallback_candidates.size())):
+            var fallback_coord: HexCoord = fallback_candidates[idx]
             var fallback_key: Vector2i = fallback_coord.to_vector2i()
             fallback_lookup[fallback_key] = true
             fallback_coords.append(fallback_key)
@@ -323,7 +323,7 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
         var front: Array = boundary_arrays[side_index].duplicate()
         if front.is_empty():
             continue
-        front.shuffle()
+        _shuffle_array_with_rng(front)
         for coord in front:
             if sea_lookup.size() >= target_sea:
                 break
@@ -430,6 +430,18 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
     plan["membership"] = membership
     plan["depth_limit"] = depth_limit
     return plan
+
+func _shuffle_array_with_rng(items: Array) -> void:
+    var count: int = items.size()
+    if count <= 1:
+        return
+    for index in range(count - 1, 0, -1):
+        var swap_index: int = rng.randi_range(0, index)
+        if swap_index == index:
+            continue
+        var temp = items[index]
+        items[index] = items[swap_index]
+        items[swap_index] = temp
 
 func _compute_region_targets(land_count: int) -> Dictionary:
     var targets: Dictionary = {
