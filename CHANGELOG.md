@@ -14,6 +14,7 @@ Fixed
 - Coastline validation asserts side-front connectivity and verifies recorded sea counts against the planned fronts.
 - Ridge buffering now seeds localized hill guards without runaway growth and exports pass-depth lookup data for validation.
 - Edge controls on the map setup screen now dictate which sides become sea frontage or ridges, respecting configured border widths.
+- Map setup now syncs side controls with generated coastline and ridge metadata so freshly prepared maps display the active edge types and widths.
 
 0.2.0 — 2025-09-19
 Added

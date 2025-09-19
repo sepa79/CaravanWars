@@ -273,6 +273,7 @@ func _refresh_map_view() -> void:
         map_dictionary = prepared_map
     map_view.set_map_data(map_dictionary)
     _update_region_legend(map_dictionary)
+    _sync_side_config_from_map(map_dictionary)
 
 func _regenerate_map() -> void:
     if _current_config == null:
@@ -513,6 +514,130 @@ func _update_side_control_texts() -> void:
                     option.set_item_text(item_index, I18N.t(_side_type_label_key(mode)))
     if _jitter_label != null:
         _jitter_label.text = I18N.t("setup.side.jitter")
+
+func _sync_side_config_from_map(map_dictionary: Dictionary) -> void:
+    if _current_config == null:
+        return
+    if _updating_controls:
+        return
+    if typeof(map_dictionary) != TYPE_DICTIONARY:
+        return
+    var terrain: Variant = map_dictionary.get("terrain")
+    if typeof(terrain) != TYPE_DICTIONARY:
+        return
+    var direction_count: int = SIDE_DIRECTIONS.size()
+    if direction_count <= 0:
+        return
+
+    var updated_modes: Array[String] = []
+    updated_modes.resize(direction_count)
+    var updated_widths: Array[int] = []
+    updated_widths.resize(direction_count)
+
+    for side_index in range(direction_count):
+        var fallback_mode: String = SIDE_TYPE_PLAINS
+        if side_index < _current_config.side_modes.size():
+            var stored_mode: String = String(_current_config.side_modes[side_index])
+            if not stored_mode.is_empty():
+                fallback_mode = stored_mode
+        updated_modes[side_index] = fallback_mode
+
+        var fallback_width: int = 0
+        if side_index < _current_config.side_widths.size():
+            fallback_width = max(0, int(_current_config.side_widths[side_index]))
+        updated_widths[side_index] = fallback_width
+
+    var sea_sides: Dictionary = {}
+    var coastline: Variant = terrain.get("coastline")
+    if typeof(coastline) == TYPE_DICTIONARY:
+        var selected_sides: Variant = coastline.get("selected_sides")
+        var depth_lookup: Dictionary = {}
+        if coastline.has("side_depths") and typeof(coastline["side_depths"]) == TYPE_DICTIONARY:
+            depth_lookup = coastline["side_depths"]
+        var depth_limit: int = int(coastline.get("depth_limit", 0))
+        if selected_sides is PackedInt32Array or typeof(selected_sides) == TYPE_ARRAY:
+            var iterable: Array = []
+            if selected_sides is PackedInt32Array:
+                iterable = Array(selected_sides)
+            else:
+                iterable = selected_sides
+            for side_value in iterable:
+                var sea_side_index: int = int(side_value)
+                if sea_side_index < 0 or sea_side_index >= direction_count:
+                    continue
+                sea_sides[sea_side_index] = true
+                updated_modes[sea_side_index] = SIDE_TYPE_SEA
+                var width_value: int = updated_widths[sea_side_index]
+                if not depth_lookup.is_empty():
+                    width_value = _dictionary_int_lookup(depth_lookup, sea_side_index, width_value)
+                elif coastline.has("depth_limit"):
+                    width_value = max(width_value, depth_limit)
+                updated_widths[sea_side_index] = max(0, width_value)
+
+    var ridge: Variant = terrain.get("ridge")
+    if typeof(ridge) == TYPE_DICTIONARY:
+        var ridge_sides: Variant = ridge.get("selected_sides")
+        var ridge_widths: Dictionary = {}
+        if ridge.has("side_widths") and typeof(ridge["side_widths"]) == TYPE_DICTIONARY:
+            ridge_widths = ridge["side_widths"]
+        if ridge_sides is PackedInt32Array or typeof(ridge_sides) == TYPE_ARRAY:
+            var ridge_iterable: Array = []
+            if ridge_sides is PackedInt32Array:
+                ridge_iterable = Array(ridge_sides)
+            else:
+                ridge_iterable = ridge_sides
+            for side_value in ridge_iterable:
+                var ridge_side_index: int = int(side_value)
+                if ridge_side_index < 0 or ridge_side_index >= direction_count:
+                    continue
+                if sea_sides.has(ridge_side_index):
+                    continue
+                updated_modes[ridge_side_index] = SIDE_TYPE_MOUNTAINS
+                var ridge_width: int = updated_widths[ridge_side_index]
+                if not ridge_widths.is_empty():
+                    ridge_width = _dictionary_int_lookup(ridge_widths, ridge_side_index, ridge_width)
+                updated_widths[ridge_side_index] = max(0, ridge_width)
+
+    var modes_changed: bool = updated_modes.size() != _current_config.side_modes.size()
+    if not modes_changed:
+        for side_index in range(updated_modes.size()):
+            if side_index >= _current_config.side_modes.size():
+                modes_changed = true
+                break
+            if String(_current_config.side_modes[side_index]) != updated_modes[side_index]:
+                modes_changed = true
+                break
+
+    var widths_changed: bool = updated_widths.size() != _current_config.side_widths.size()
+    if not widths_changed:
+        for side_index in range(updated_widths.size()):
+            if side_index >= _current_config.side_widths.size():
+                widths_changed = true
+                break
+            if int(_current_config.side_widths[side_index]) != updated_widths[side_index]:
+                widths_changed = true
+                break
+
+    if not modes_changed and not widths_changed:
+        return
+
+    if modes_changed:
+        _current_config.side_modes = updated_modes
+    if widths_changed:
+        _current_config.side_widths = updated_widths
+
+    var previous_flag: bool = _updating_controls
+    _updating_controls = true
+    _apply_side_config_to_controls()
+    _updating_controls = previous_flag
+
+func _dictionary_int_lookup(source: Dictionary, key: int, default_value: int) -> int:
+    if source.has(key):
+        return int(source.get(key, default_value))
+    var string_key := str(key)
+    if source.has(string_key):
+        return int(source.get(string_key, default_value))
+    return default_value
 
 func _apply_side_config_to_controls() -> void:
     if _current_config == null:
