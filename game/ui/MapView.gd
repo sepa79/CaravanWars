@@ -33,6 +33,14 @@ const DEFAULT_CAMERA_TARGET: Vector3 = Vector3.ZERO
 const LIGHT_DIRECTION: Vector3 = Vector3(-0.45, -1.0, -0.35)
 const LIGHT_ENERGY: float = 1.35
 const LIGHT_INDIRECT_ENERGY: float = 0.85
+const CAMERA_ZOOM_IN_FACTOR: float = 0.85
+const CAMERA_ZOOM_OUT_FACTOR: float = 1.15
+const CAMERA_MIN_ZOOM: float = 0.35
+const CAMERA_MAX_ZOOM: float = 3.0
+const CAMERA_PAN_BASE: float = 0.005
+const CAMERA_ROTATE_SPEED: float = 0.01
+const CAMERA_PAN_MARGIN_RATIO: float = 0.25
+const CAMERA_PAN_MARGIN_MIN: float = 4.0
 
 var map_data: Dictionary = {}
 
@@ -40,6 +48,14 @@ var _mesh_library: Dictionary = {}
 var _region_layers: Dictionary = {}
 var _needs_refresh: bool = false
 var _map_bounds: Dictionary = {}
+var _camera_zoom: float = 1.0
+var _camera_orbit_yaw: float = 0.0
+var _camera_pan_offset: Vector2 = Vector2.ZERO
+var _camera_pan_bounds_min: Vector2 = Vector2.ZERO
+var _camera_pan_bounds_max: Vector2 = Vector2.ZERO
+var _map_extent_radius: float = 1.0
+var _is_panning: bool = false
+var _is_rotating: bool = false
 
 var _viewport: SubViewport
 var _terrain_root: Node3D
@@ -64,6 +80,8 @@ func _exit_tree() -> void:
 
 func set_map_data(data: Dictionary) -> void:
     map_data = data
+    if data.is_empty():
+        _reset_camera_state()
     _needs_refresh = true
     _refresh_layers_if_needed()
     cities_changed.emit([])
@@ -139,6 +157,7 @@ func _ensure_viewport_structure() -> void:
         _terrain_root.name = "TerrainRoot"
         _terrain_root.unique_name_in_owner = true
         _viewport.add_child(_terrain_root)
+    _configure_input_capture()
 
 func _locate_container() -> Control:
     if is_class("SubViewportContainer"):
@@ -273,8 +292,15 @@ func _update_region_layers() -> void:
             "min": min_pos,
             "max": max_pos,
         }
+        var span_x: float = abs(max_pos.x - min_pos.x)
+        var span_z: float = abs(max_pos.z - min_pos.z)
+        _map_extent_radius = max(max(span_x, span_z) * 0.5, 1.0)
+        _update_pan_bounds(min_pos, max_pos)
     else:
         _map_bounds = {}
+        _map_extent_radius = 1.0
+        _camera_pan_bounds_min = Vector2.ZERO
+        _camera_pan_bounds_max = Vector2.ZERO
     _update_camera_framing()
 
 func _group_hexes_by_region() -> Dictionary:
@@ -367,13 +393,22 @@ func _update_camera_framing() -> void:
         return
     var min_pos: Vector3 = _map_bounds.get("min", Vector3.ZERO)
     var max_pos: Vector3 = _map_bounds.get("max", Vector3.ZERO)
-    var center: Vector3 = (min_pos + max_pos) * 0.5
+    var base_center: Vector3 = (min_pos + max_pos) * 0.5
     var span_x: float = abs(max_pos.x - min_pos.x)
     var span_z: float = abs(max_pos.z - min_pos.z)
-    var extent: float = max(span_x, span_z) * 0.5
-    var distance: float = max(CAMERA_MIN_DISTANCE, extent * CAMERA_DISTANCE_FACTOR)
-    var height: float = max(CAMERA_BASE_HEIGHT, (extent * CAMERA_HEIGHT_PER_UNIT) + CAMERA_BASE_HEIGHT)
-    var offset_dir: Vector3 = CAMERA_ORBIT_DIRECTION
+    var extent: float = max(max(span_x, span_z) * 0.5, 1.0)
+    var zoom_factor: float = clampf(_camera_zoom, CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM)
+    var distance: float = max(CAMERA_MIN_DISTANCE, extent * CAMERA_DISTANCE_FACTOR) * zoom_factor
+    var height: float = max(CAMERA_BASE_HEIGHT, (extent * CAMERA_HEIGHT_PER_UNIT) + CAMERA_BASE_HEIGHT) * zoom_factor
+    height = max(height, 4.0)
+    var center_2d: Vector2 = Vector2(base_center.x, base_center.z) + _camera_pan_offset
+    if _camera_pan_bounds_max.x > _camera_pan_bounds_min.x:
+        center_2d.x = clampf(center_2d.x, _camera_pan_bounds_min.x, _camera_pan_bounds_max.x)
+    if _camera_pan_bounds_max.y > _camera_pan_bounds_min.y:
+        center_2d.y = clampf(center_2d.y, _camera_pan_bounds_min.y, _camera_pan_bounds_max.y)
+    _camera_pan_offset = center_2d - Vector2(base_center.x, base_center.z)
+    var center: Vector3 = Vector3(center_2d.x, base_center.y, center_2d.y)
+    var offset_dir: Vector3 = CAMERA_ORBIT_DIRECTION.normalized().rotated(Vector3.UP, _camera_orbit_yaw)
     var horizontal_offset: Vector3 = offset_dir * distance
     var origin: Vector3 = Vector3(center.x + horizontal_offset.x, height, center.z + horizontal_offset.z)
     var target: Vector3 = Vector3(center.x, center.y, center.z)
@@ -408,3 +443,103 @@ func _configure_preview_light() -> void:
     direction = direction.normalized()
     var basis := Basis().looking_at(direction, Vector3.UP)
     _sun_light.transform = Transform3D(basis, _sun_light.transform.origin)
+
+func _configure_input_capture() -> void:
+    if self is Control:
+        var control := self as Control
+        control.mouse_filter = Control.MOUSE_FILTER_STOP
+        control.focus_mode = Control.FOCUS_ALL
+    if _viewport_container != null:
+        _viewport_container.mouse_filter = Control.MOUSE_FILTER_STOP
+        _viewport_container.focus_mode = Control.FOCUS_ALL
+
+func _gui_input(event: InputEvent) -> void:
+    if event is InputEventMouseButton:
+        var mouse_button := event as InputEventMouseButton
+        if mouse_button.button_index == MOUSE_BUTTON_WHEEL_UP and mouse_button.pressed:
+            _change_camera_zoom(CAMERA_ZOOM_IN_FACTOR)
+            accept_event()
+            return
+        if mouse_button.button_index == MOUSE_BUTTON_WHEEL_DOWN and mouse_button.pressed:
+            _change_camera_zoom(CAMERA_ZOOM_OUT_FACTOR)
+            accept_event()
+            return
+        if mouse_button.button_index == MOUSE_BUTTON_LEFT or mouse_button.button_index == MOUSE_BUTTON_MIDDLE:
+            _is_panning = mouse_button.pressed
+            if not mouse_button.pressed:
+                _is_panning = false
+            else:
+                accept_event()
+            return
+        if mouse_button.button_index == MOUSE_BUTTON_RIGHT:
+            _is_rotating = mouse_button.pressed
+            if not mouse_button.pressed:
+                _is_rotating = false
+            else:
+                accept_event()
+            return
+    elif event is InputEventMouseMotion:
+        var motion := event as InputEventMouseMotion
+        var handled: bool = false
+        if _is_rotating and (motion.button_mask & MOUSE_BUTTON_MASK_RIGHT) != 0:
+            _apply_camera_rotation(motion.relative.x)
+            handled = true
+        elif (_is_panning and (motion.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0) or ((motion.button_mask & MOUSE_BUTTON_MASK_MIDDLE) != 0):
+            _apply_camera_pan(motion.relative)
+            _is_panning = true
+            handled = true
+        if handled:
+            accept_event()
+
+func _change_camera_zoom(factor: float) -> void:
+    var new_zoom: float = clampf(_camera_zoom * factor, CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM)
+    if absf(new_zoom - _camera_zoom) < 0.0001:
+        return
+    _camera_zoom = new_zoom
+    _update_camera_framing()
+
+func _apply_camera_rotation(delta_x: float) -> void:
+    _camera_orbit_yaw = wrapf(_camera_orbit_yaw - (delta_x * CAMERA_ROTATE_SPEED), -TAU, TAU)
+    _update_camera_framing()
+
+func _apply_camera_pan(relative: Vector2) -> void:
+    if _camera == null:
+        return
+    if relative.is_zero_approx():
+        return
+    var right: Vector3 = _camera.transform.basis.x
+    var forward: Vector3 = -_camera.transform.basis.z
+    right.y = 0.0
+    forward.y = 0.0
+    if right.length_squared() < 0.001 or forward.length_squared() < 0.001:
+        return
+    right = right.normalized()
+    forward = forward.normalized()
+    var scale: float = _compute_pan_scale()
+    var movement: Vector3 = (-right * relative.x + forward * relative.y) * scale
+    _camera_pan_offset += Vector2(movement.x, movement.z)
+    _update_camera_framing()
+
+func _compute_pan_scale() -> float:
+    var extent: float = max(_map_extent_radius, 1.0)
+    var viewport_size: Vector2 = Vector2(1.0, 1.0)
+    if _viewport != null:
+        viewport_size = _viewport.size
+        viewport_size.x = max(viewport_size.x, 1.0)
+        viewport_size.y = max(viewport_size.y, 1.0)
+    var reference: float = 600.0
+    var scale: float = extent * CAMERA_PAN_BASE * _camera_zoom
+    scale *= reference / viewport_size.y
+    return scale
+
+func _update_pan_bounds(min_pos: Vector3, max_pos: Vector3) -> void:
+    var margin: float = max(_map_extent_radius * CAMERA_PAN_MARGIN_RATIO, CAMERA_PAN_MARGIN_MIN)
+    _camera_pan_bounds_min = Vector2(min_pos.x - margin, min_pos.z - margin)
+    _camera_pan_bounds_max = Vector2(max_pos.x + margin, max_pos.z + margin)
+
+func _reset_camera_state() -> void:
+    _camera_zoom = 1.0
+    _camera_orbit_yaw = 0.0
+    _camera_pan_offset = Vector2.ZERO
+    _is_panning = false
+    _is_rotating = false

@@ -1,6 +1,8 @@
 Changelog
 
 Unreleased
+Added
+- Singleplayer map setup preview supports mouse zoom, pan, and orbit controls and shows a localized terrain legend beside the viewport.
 Changed
 - Documented in the README that the project was reset and all systems are being rebuilt from scratch.
 - Map setup now displays the prepared singleplayer map with live seed, radius, kingdom, and river controls for regeneration.
