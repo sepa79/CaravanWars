@@ -4,13 +4,13 @@ class_name HexMapData
 var map_seed: int
 var map_radius: int
 var kingdom_count: int
-var sea_pct: float
-var mountains_pct: float
-var lakes_pct: float
 var rivers_cap: int
 var road_aggressiveness: float
 var fort_global_cap: int
 var fort_spacing: int
+var edge_settings: Dictionary = {}
+var edge_jitter: int
+var random_feature_density: float
 var hex_grid: HexGrid
 var stage_results: Dictionary = {}
 
@@ -18,13 +18,13 @@ func _init(p_config: HexMapConfig) -> void:
     map_seed = p_config.map_seed
     map_radius = p_config.map_radius
     kingdom_count = p_config.kingdom_count
-    sea_pct = p_config.sea_pct
-    mountains_pct = p_config.mountains_pct
-    lakes_pct = p_config.lakes_pct
     rivers_cap = p_config.rivers_cap
     road_aggressiveness = p_config.road_aggressiveness
     fort_global_cap = p_config.fort_global_cap
     fort_spacing = p_config.fort_spacing
+    edge_settings = p_config.get_all_edge_settings()
+    edge_jitter = p_config.edge_jitter
+    random_feature_density = p_config.random_feature_density
     stage_results = {}
 
 func attach_grid(p_grid: HexGrid) -> void:
@@ -45,14 +45,14 @@ func to_dictionary() -> Dictionary:
             "seed": map_seed,
             "map_radius": map_radius,
             "kingdom_count": kingdom_count,
-            "params": {
-                "sea_pct": sea_pct,
-                "mountains_pct": mountains_pct,
-                "lakes_pct": lakes_pct,
+                "params": {
                 "rivers_cap": rivers_cap,
                 "road_aggressiveness": road_aggressiveness,
                 "fort_global_cap": fort_global_cap,
                 "fort_spacing": fort_spacing,
+                "edge_settings": edge_settings,
+                "edge_jitter": edge_jitter,
+                "random_feature_density": random_feature_density,
             },
         },
         "hexes": [],
