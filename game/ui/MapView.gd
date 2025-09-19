@@ -481,13 +481,23 @@ func _gui_input(event: InputEvent) -> void:
     elif event is InputEventMouseMotion:
         var motion := event as InputEventMouseMotion
         var handled: bool = false
-        if _is_rotating and (motion.button_mask & MOUSE_BUTTON_MASK_RIGHT) != 0:
-            _apply_camera_rotation(motion.relative.x)
-            handled = true
-        elif (_is_panning and (motion.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0) or ((motion.button_mask & MOUSE_BUTTON_MASK_MIDDLE) != 0):
-            _apply_camera_pan(motion.relative)
-            _is_panning = true
-            handled = true
+        var is_right_down := Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
+        var is_left_down := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+        var is_middle_down := Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE)
+        if _is_rotating or is_right_down:
+            if is_right_down:
+                _is_rotating = true
+                _apply_camera_rotation(motion.relative.x)
+                handled = true
+            else:
+                _is_rotating = false
+        elif _is_panning or is_left_down or is_middle_down:
+            if is_left_down or is_middle_down:
+                _is_panning = true
+                _apply_camera_pan(motion.relative)
+                handled = true
+            else:
+                _is_panning = false
         if handled:
             accept_event()
 

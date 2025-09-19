@@ -12,6 +12,7 @@ Fixed
 - Corrected terrain region seeding to cast packed vectors before hex conversion, preventing singleplayer map generation crashes.
 - Map view now spawns its SubViewport container and world when absent so legacy screens display terrain again.
 - Map view preview now instantiates a camera rig and directional lighting so generated terrain is visible during setup.
+- Map preview drag rotation and panning now respect mouse buttons even when SubViewport events omit button masks.
 
 0.1.82 — 2025-09-15
 Added
