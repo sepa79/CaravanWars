@@ -23,22 +23,38 @@ const SHORELINE_SCENES: Dictionary = {
 }
 
 const HEX_WORLD_SCALE: float = 1.0
+const CAMERA_BASE_HEIGHT: float = 26.0
+const CAMERA_HEIGHT_PER_UNIT: float = 0.45
+const CAMERA_DISTANCE_FACTOR: float = 1.65
+const CAMERA_MIN_DISTANCE: float = 32.0
+const CAMERA_ORBIT_DIRECTION: Vector3 = Vector3(0.573462, 0.0, 0.819232)
+const DEFAULT_CAMERA_ORIGIN: Vector3 = Vector3(0.0, 28.0, 36.0)
+const DEFAULT_CAMERA_TARGET: Vector3 = Vector3.ZERO
+const LIGHT_DIRECTION: Vector3 = Vector3(-0.45, -1.0, -0.35)
+const LIGHT_ENERGY: float = 1.35
+const LIGHT_INDIRECT_ENERGY: float = 0.85
 
 var map_data: Dictionary = {}
 
 var _mesh_library: Dictionary = {}
 var _region_layers: Dictionary = {}
 var _needs_refresh: bool = false
+var _map_bounds: Dictionary = {}
 
 var _viewport: SubViewport
 var _terrain_root: Node3D
 var _viewport_container: Control
+var _camera_rig: Node3D
+var _camera: Camera3D
+var _sun_light: DirectionalLight3D
 
 func _ready() -> void:
     _ensure_viewport_structure()
     _configure_viewport()
     _build_mesh_library()
     _ensure_region_layers()
+    call_deferred("_complete_preview_setup")
+    _update_camera_framing()
     _needs_refresh = true
     _refresh_layers_if_needed()
 
@@ -226,6 +242,9 @@ func _refresh_layers_if_needed() -> void:
 
 func _update_region_layers() -> void:
     var grouped_hexes := _group_hexes_by_region()
+    var min_pos := Vector3(INF, INF, INF)
+    var max_pos := Vector3(-INF, -INF, -INF)
+    var has_positions := false
     for region in _region_layers.keys():
         var instance: MultiMeshInstance3D = _region_layers[region]
         if instance == null or instance.multimesh == null:
@@ -241,7 +260,22 @@ func _update_region_layers() -> void:
             var position := _axial_to_world(axial)
             multimesh.set_instance_transform(index, Transform3D(Basis.IDENTITY, position))
             index += 1
+            min_pos.x = min(min_pos.x, position.x)
+            min_pos.y = min(min_pos.y, position.y)
+            min_pos.z = min(min_pos.z, position.z)
+            max_pos.x = max(max_pos.x, position.x)
+            max_pos.y = max(max_pos.y, position.y)
+            max_pos.z = max(max_pos.z, position.z)
+            has_positions = true
         multimesh.instance_count = index
+    if has_positions:
+        _map_bounds = {
+            "min": min_pos,
+            "max": max_pos,
+        }
+    else:
+        _map_bounds = {}
+    _update_camera_framing()
 
 func _group_hexes_by_region() -> Dictionary:
     if not map_data.has("hexes"):
@@ -282,3 +316,95 @@ func _axial_to_world(coord: Vector2i) -> Vector3:
 
 func _draw() -> void:
     _refresh_layers_if_needed()
+
+func _complete_preview_setup() -> void:
+    _ensure_camera_rig()
+    _ensure_preview_light()
+    _update_camera_framing()
+
+func _ensure_camera_rig() -> void:
+    if _viewport == null:
+        return
+    _camera_rig = _viewport.get_node_or_null("%CameraRig") as Node3D
+    if _camera_rig == null:
+        _camera_rig = Node3D.new()
+        _camera_rig.name = "CameraRig"
+        _camera_rig.unique_name_in_owner = true
+        _viewport.add_child(_camera_rig)
+    _camera = _camera_rig.get_node_or_null("PreviewCamera") as Camera3D
+    if _camera == null:
+        _camera = Camera3D.new()
+        _camera.name = "PreviewCamera"
+        _camera_rig.add_child(_camera)
+    _configure_camera()
+
+func _configure_camera() -> void:
+    if _camera == null:
+        return
+    _camera.set_deferred("current", true)
+    _camera.near = 0.1
+    _camera.far = 1024.0
+    _camera.fov = 40.0
+    if _map_bounds.is_empty():
+        _apply_default_camera_frame()
+
+func _apply_default_camera_frame() -> void:
+    if _camera == null:
+        return
+    var origin := DEFAULT_CAMERA_ORIGIN
+    var target := DEFAULT_CAMERA_TARGET
+    var direction := target - origin
+    if direction.length_squared() < 0.001:
+        direction = Vector3.FORWARD
+    var basis := Basis().looking_at(direction.normalized(), Vector3.UP)
+    _camera.transform = Transform3D(basis, origin)
+
+func _update_camera_framing() -> void:
+    if _camera == null:
+        return
+    if _map_bounds.is_empty():
+        _apply_default_camera_frame()
+        return
+    var min_pos: Vector3 = _map_bounds.get("min", Vector3.ZERO)
+    var max_pos: Vector3 = _map_bounds.get("max", Vector3.ZERO)
+    var center: Vector3 = (min_pos + max_pos) * 0.5
+    var span_x: float = abs(max_pos.x - min_pos.x)
+    var span_z: float = abs(max_pos.z - min_pos.z)
+    var extent: float = max(span_x, span_z) * 0.5
+    var distance: float = max(CAMERA_MIN_DISTANCE, extent * CAMERA_DISTANCE_FACTOR)
+    var height: float = max(CAMERA_BASE_HEIGHT, (extent * CAMERA_HEIGHT_PER_UNIT) + CAMERA_BASE_HEIGHT)
+    var offset_dir: Vector3 = CAMERA_ORBIT_DIRECTION
+    var horizontal_offset: Vector3 = offset_dir * distance
+    var origin: Vector3 = Vector3(center.x + horizontal_offset.x, height, center.z + horizontal_offset.z)
+    var target: Vector3 = Vector3(center.x, center.y, center.z)
+    var direction: Vector3 = target - origin
+    if direction.length_squared() < 0.001:
+        direction = Vector3.FORWARD
+    var basis := Basis().looking_at(direction.normalized(), Vector3.UP)
+    _camera.transform = Transform3D(basis, origin)
+    if _sun_light != null:
+        _sun_light.transform.origin = center
+
+func _ensure_preview_light() -> void:
+    if _viewport == null:
+        return
+    _sun_light = _viewport.get_node_or_null("%SunLight") as DirectionalLight3D
+    if _sun_light == null:
+        _sun_light = DirectionalLight3D.new()
+        _sun_light.name = "SunLight"
+        _sun_light.unique_name_in_owner = true
+        _viewport.add_child(_sun_light)
+    _configure_preview_light()
+
+func _configure_preview_light() -> void:
+    if _sun_light == null:
+        return
+    _sun_light.light_energy = LIGHT_ENERGY
+    _sun_light.light_indirect_energy = LIGHT_INDIRECT_ENERGY
+    _sun_light.shadow_enabled = false
+    var direction := LIGHT_DIRECTION
+    if direction.length_squared() < 0.001:
+        direction = Vector3(-0.5, -1.0, -0.5)
+    direction = direction.normalized()
+    var basis := Basis().looking_at(direction, Vector3.UP)
+    _sun_light.transform = Transform3D(basis, _sun_light.transform.origin)
