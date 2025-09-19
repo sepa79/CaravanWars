@@ -30,6 +30,15 @@ const EDGE_TERRAIN_TYPES: Array[String] = [
 const DEFAULT_EDGE_TYPE := "plains"
 const DEFAULT_EDGE_WIDTH := 0
 
+const DEFAULT_EDGE_DEPTHS := {
+    "east": 2,
+    "north_east": 2,
+    "north_west": 2,
+    "west": 54,
+    "south_west": 5,
+    "south_east": 2,
+}
+
 const DEFAULT_EDGE_TERRAINS := {
     "east": "mountains",
     "north_east": "mountains",
@@ -107,9 +116,10 @@ func to_dictionary() -> Dictionary:
 
 func get_edge_setting(edge_name: String) -> Dictionary:
     var sanitized := _sanitize_edge_settings(edge_settings)
+    var default_width := int(DEFAULT_EDGE_DEPTHS.get(edge_name, DEFAULT_EDGE_WIDTH))
     return sanitized.get(edge_name, {
         "type": DEFAULT_EDGE_TERRAINS.get(edge_name, DEFAULT_EDGE_TYPE),
-        "width": DEFAULT_EDGE_WIDTH,
+        "width": default_width,
     })
 
 func get_all_edge_settings() -> Dictionary:
@@ -135,7 +145,8 @@ func _sanitize_edge_settings(source: Dictionary) -> Dictionary:
         var terrain_type := String(entry.get("type", DEFAULT_EDGE_TERRAINS.get(edge_name, DEFAULT_EDGE_TYPE)))
         if not EDGE_TERRAIN_TYPES.has(terrain_type):
             terrain_type = DEFAULT_EDGE_TERRAINS.get(edge_name, DEFAULT_EDGE_TYPE)
-        var width_value := int(entry.get("width", DEFAULT_EDGE_WIDTH))
+        var default_width := int(DEFAULT_EDGE_DEPTHS.get(edge_name, DEFAULT_EDGE_WIDTH))
+        var width_value := int(entry.get("width", default_width))
         sanitized[edge_name] = {
             "type": terrain_type,
             "width": max(0, width_value),
