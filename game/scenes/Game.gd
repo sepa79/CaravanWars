@@ -3,10 +3,6 @@ extends Node
 const CI_AUTO_SINGLEPLAYER_ENV := "CI_AUTO_SINGLEPLAYER"
 const CI_AUTO_QUIT_ENV := "CI_AUTO_QUIT"
 
-const HexMapGenerator := preload("res://mapgen/HexMapGenerator.gd")
-const HexMapConfig := preload("res://mapgen/HexMapConfig.gd")
-const HexMapData := preload("res://mapgen/HexMapData.gd")
-
 var map_data: HexMapData
 
 func _ready() -> void:
@@ -24,9 +20,9 @@ func _ready() -> void:
         push_warning("[Game] Unexpected map data payload: %s" % [map_data])
         return
     if used_prepared:
-        print("[Game] Using prepared %s map with seed %d" % [Net.run_mode, map_data.seed])
+        print("[Game] Using prepared %s map with seed %d" % [Net.run_mode, map_data.map_seed])
     else:
-        print("[Game] Hex map pipeline generated on demand with seed %d" % map_data.seed)
+        print("[Game] Hex map pipeline generated on demand with seed %d" % map_data.map_seed)
 
 func _should_auto_quit_after_load() -> bool:
     return OS.has_environment(CI_AUTO_SINGLEPLAYER_ENV) or OS.has_environment(CI_AUTO_QUIT_ENV)

@@ -104,8 +104,8 @@ func _strip_legacy_controls() -> void:
         "HeightLabel",
         "Height",
     ]
-    for name in legacy_names:
-        var node := params.get_node_or_null(name)
+    for legacy_name in legacy_names:
+        var node := params.get_node_or_null(legacy_name)
         if node != null:
             node.visible = false
     if layers_row != null:
@@ -140,7 +140,7 @@ func _apply_config_to_controls() -> void:
     if _current_config == null:
         return
     _updating_controls = true
-    seed_spinbox.value = float(_current_config.seed)
+    seed_spinbox.value = float(_current_config.map_seed)
     kingdom_spinbox.value = float(_current_config.kingdom_count)
     rivers_spinbox.value = float(_current_config.rivers_cap)
     radius_spinbox.value = float(_current_config.map_radius)
@@ -183,14 +183,14 @@ func _on_seed_value_changed(value: float) -> void:
         return
     if _current_config == null:
         _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
-    _current_config.seed = int(value)
+    _current_config.map_seed = int(value)
     _regenerate_map()
 
 func _on_random_seed_pressed() -> void:
     if _current_config == null:
         _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
     var new_seed := int(_rng.randi_range(1, 999_999_999))
-    _current_config.seed = new_seed
+    _current_config.map_seed = new_seed
     _apply_config_to_controls()
     _regenerate_map()
 

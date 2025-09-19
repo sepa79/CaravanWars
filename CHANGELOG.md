@@ -8,6 +8,8 @@ Changed
 - Map setup now displays the prepared singleplayer map with live seed, radius, kingdom, and river controls for regeneration.
 
 Fixed
+- Map preview now routes SubViewport, container, and overlay input through a shared handler so orbit and pan drags work alongside zoom instead of getting swallowed by the 3D viewport.
+- Renamed hex map seed fields and preload constants to avoid Godot warnings about colliding with built-in names and registered classes.
 - Updated the Godot project metadata version to 0.1.82 so tooling and runtime checks report the same release number.
 - Corrected terrain region seeding to cast packed vectors before hex conversion, preventing singleplayer map generation crashes.
 - Map view now spawns its SubViewport container and world when absent so legacy screens display terrain again.

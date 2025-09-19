@@ -1,10 +1,7 @@
 extends RefCounted
 class_name HexMapData
 
-const HexMapConfig := preload("res://mapgen/HexMapConfig.gd")
-const HexGrid := preload("res://mapgen/HexGrid.gd")
-
-var seed: int
+var map_seed: int
 var map_radius: int
 var kingdom_count: int
 var sea_pct: float
@@ -18,7 +15,7 @@ var hex_grid: HexGrid
 var stage_results: Dictionary = {}
 
 func _init(p_config: HexMapConfig) -> void:
-    seed = p_config.seed
+    map_seed = p_config.map_seed
     map_radius = p_config.map_radius
     kingdom_count = p_config.kingdom_count
     sea_pct = p_config.sea_pct
@@ -45,7 +42,7 @@ func clear_stage_results() -> void:
 func to_dictionary() -> Dictionary:
     var result: Dictionary = {
         "meta": {
-            "seed": seed,
+            "seed": map_seed,
             "map_radius": map_radius,
             "kingdom_count": kingdom_count,
             "params": {

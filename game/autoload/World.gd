@@ -52,7 +52,7 @@ func prepare_map_for_run_mode(run_mode: String, config: Variant = null, force: b
     _prepared_configs[run_mode] = chosen_config
     _prepared_maps[run_mode] = map_data
     if data_script != null and map_data is Object and map_data.get_script() == data_script:
-        print("[World] Prepared %s map with seed %d" % [run_mode, map_data.seed])
+        print("[World] Prepared %s map with seed %d" % [run_mode, map_data.map_seed])
     else:
         print("[World] Prepared %s map" % run_mode)
 

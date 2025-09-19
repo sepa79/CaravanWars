@@ -60,6 +60,7 @@ var _is_rotating: bool = false
 var _viewport: SubViewport
 var _terrain_root: Node3D
 var _viewport_container: Control
+var _input_capture: Control
 var _camera_rig: Node3D
 var _camera: Camera3D
 var _sun_light: DirectionalLight3D
@@ -158,6 +159,7 @@ func _ensure_viewport_structure() -> void:
         _terrain_root.name = "TerrainRoot"
         _terrain_root.unique_name_in_owner = true
         _viewport.add_child(_terrain_root)
+    _ensure_input_capture()
     _configure_input_capture()
 
 func _locate_container() -> Control:
@@ -196,6 +198,25 @@ func _locate_viewport(container: Node = null) -> SubViewport:
         if child is SubViewport:
             return child as SubViewport
     return null
+
+func _ensure_input_capture() -> void:
+    if not (self is Control):
+        return
+    if _input_capture == null:
+        _input_capture = Control.new()
+        _input_capture.name = "InputCapture"
+        _input_capture.unique_name_in_owner = true
+        _input_capture.mouse_filter = Control.MOUSE_FILTER_STOP
+        _input_capture.focus_mode = Control.FOCUS_ALL
+        _input_capture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+        add_child(_input_capture)
+        if self.owner != null:
+            _input_capture.owner = self.owner
+    else:
+        _input_capture.mouse_filter = Control.MOUSE_FILTER_STOP
+        _input_capture.focus_mode = Control.FOCUS_ALL
+        _input_capture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    _input_capture.z_index = 1
 
 func _build_mesh_library() -> void:
     _mesh_library = {
@@ -453,50 +474,73 @@ func _configure_input_capture() -> void:
     if _viewport_container != null:
         _viewport_container.mouse_filter = Control.MOUSE_FILTER_STOP
         _viewport_container.focus_mode = Control.FOCUS_ALL
+        if not _viewport_container.gui_input.is_connected(_on_viewport_container_gui_input):
+            _viewport_container.gui_input.connect(_on_viewport_container_gui_input)
+    if _input_capture != null:
+        _input_capture.mouse_filter = Control.MOUSE_FILTER_STOP
+        _input_capture.focus_mode = Control.FOCUS_ALL
+        _input_capture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+        if not _input_capture.gui_input.is_connected(_on_input_capture_gui_input):
+            _input_capture.gui_input.connect(_on_input_capture_gui_input)
+    if _viewport != null:
+        _viewport.gui_disable_input = true
+        _viewport.handle_input_locally = false
+        if _viewport.has_signal("gui_input") and not _viewport.gui_input.is_connected(_on_subviewport_gui_input):
+            _viewport.gui_input.connect(_on_subviewport_gui_input)
 
 func _gui_input(event: InputEvent) -> void:
+    if _handle_pointer_event(event):
+        accept_event()
+
+func _on_input_capture_gui_input(event: InputEvent) -> void:
+    if _handle_pointer_event(event) and _input_capture != null:
+        _input_capture.accept_event()
+
+func _on_viewport_container_gui_input(event: InputEvent) -> void:
+    if _handle_pointer_event(event) and _viewport_container != null:
+        _viewport_container.accept_event()
+
+func _on_subviewport_gui_input(event: InputEvent) -> void:
+    if _handle_pointer_event(event):
+        var root_viewport := get_viewport()
+        if root_viewport != null:
+            root_viewport.set_input_as_handled()
+
+func _handle_pointer_event(event: InputEvent) -> bool:
     if event is InputEventMouseButton:
         var mouse_button := event as InputEventMouseButton
         if mouse_button.button_index == MOUSE_BUTTON_WHEEL_UP and mouse_button.pressed:
             _change_camera_zoom(CAMERA_ZOOM_IN_FACTOR)
-            accept_event()
-            return
+            return true
         if mouse_button.button_index == MOUSE_BUTTON_WHEEL_DOWN and mouse_button.pressed:
             _change_camera_zoom(CAMERA_ZOOM_OUT_FACTOR)
-            accept_event()
-            return
+            return true
         if mouse_button.button_index == MOUSE_BUTTON_LEFT or mouse_button.button_index == MOUSE_BUTTON_MIDDLE:
             _is_panning = mouse_button.pressed
-            if mouse_button.pressed:
-                accept_event()
-            return
+            return true
         if mouse_button.button_index == MOUSE_BUTTON_RIGHT:
             _is_rotating = mouse_button.pressed
-            if mouse_button.pressed:
-                accept_event()
-            return
-    elif event is InputEventMouseMotion:
+            return true
+        return false
+    if event is InputEventMouseMotion:
         var motion := event as InputEventMouseMotion
         var handled: bool = false
-        if _is_rotating:
-            _apply_camera_rotation(motion.relative.x)
-            handled = true
-        elif Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
-            _is_rotating = true
-            _apply_camera_rotation(motion.relative.x)
+        if _is_rotating or Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+            if not _is_rotating and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+                _is_rotating = true
+            if absf(motion.relative.x) > 0.0:
+                _apply_camera_rotation(motion.relative.x)
             handled = true
         if not handled:
-            if _is_panning:
-                _apply_camera_pan(motion.relative)
-                handled = true
-            else:
-                var is_pan_drag: bool = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE)
-                if is_pan_drag:
+            var wants_pan: bool = _is_panning or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE)
+            if wants_pan and not motion.relative.is_zero_approx():
+                if not _is_panning:
                     _is_panning = true
-                    _apply_camera_pan(motion.relative)
-                    handled = true
-        if handled:
-            accept_event()
+                _apply_camera_pan(motion.relative)
+            if wants_pan:
+                handled = true
+        return handled
+    return false
 
 func _change_camera_zoom(factor: float) -> void:
     var new_zoom: float = clampf(_camera_zoom * factor, CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM)

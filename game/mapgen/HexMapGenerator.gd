@@ -1,11 +1,6 @@
 extends RefCounted
 class_name HexMapGenerator
 
-const HexMapConfig := preload("res://mapgen/HexMapConfig.gd")
-const HexGrid := preload("res://mapgen/HexGrid.gd")
-const HexMapData := preload("res://mapgen/HexMapData.gd")
-const HexCoord := preload("res://mapgen/HexCoord.gd")
-
 const PHASE_TERRAIN := StringName("terrain")
 const PHASE_RIVERS := StringName("rivers")
 const PHASE_BIOMES := StringName("biomes")
@@ -40,7 +35,7 @@ var forts_state: Dictionary = {}
 
 func _init(p_config: HexMapConfig = HexMapConfig.new()) -> void:
     config = p_config.duplicate_config()
-    rng.seed = config.seed
+    rng.seed = config.map_seed
     grid = HexGrid.new(config.map_radius)
     map_data = HexMapData.new(config)
     map_data.attach_grid(grid)
@@ -48,11 +43,11 @@ func _init(p_config: HexMapConfig = HexMapConfig.new()) -> void:
     _reset_phase_state()
 
 func generate() -> HexMapData:
-    rng.seed = config.seed
+    rng.seed = config.map_seed
     map_data.clear_stage_results()
     _reset_phase_state()
     print("[HexMapGenerator] Starting map generation with seed %d (radius=%d, kingdoms=%d)" % [
-        config.seed,
+        config.map_seed,
         config.map_radius,
         config.kingdom_count,
     ])
@@ -555,7 +550,7 @@ func _compare_dict_value_asc(a: Dictionary, b: Dictionary) -> bool:
     return a.get("value", 0.0) < b.get("value", 0.0)
 
 func _coord_noise(coord: HexCoord, salt: int = 0) -> float:
-    var value: int = hash([coord.q, coord.r, salt, config.seed])
+    var value: int = hash([coord.q, coord.r, salt, config.map_seed])
     value = abs(value)
     return float(value % 1000003) / 1000003.0
 

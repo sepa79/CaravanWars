@@ -11,7 +11,7 @@ const DEFAULT_ROAD_AGGRESSIVENESS := 0.5
 const DEFAULT_FORT_GLOBAL_CAP := 6
 const DEFAULT_FORT_SPACING := 4
 
-var seed: int
+var map_seed: int
 var map_radius: int
 var kingdom_count: int
 var sea_pct: float
@@ -34,7 +34,7 @@ func _init(
     p_fort_global_cap: int = DEFAULT_FORT_GLOBAL_CAP,
     p_fort_spacing: int = DEFAULT_FORT_SPACING
 ) -> void:
-    seed = p_seed if p_seed != 0 else Time.get_ticks_msec()
+    map_seed = p_seed if p_seed != 0 else Time.get_ticks_msec()
     map_radius = max(1, p_map_radius)
     kingdom_count = max(1, p_kingdom_count)
     sea_pct = clampf(p_sea_pct, 0.0, 1.0)
@@ -48,7 +48,7 @@ func _init(
 func duplicate_config() -> HexMapConfig:
     var script: Script = get_script()
     var clone: HexMapConfig = script.new(
-        seed,
+        map_seed,
         map_radius,
         kingdom_count,
         sea_pct,
@@ -63,7 +63,7 @@ func duplicate_config() -> HexMapConfig:
 
 func to_dictionary() -> Dictionary:
     return {
-        "seed": seed,
+        "seed": map_seed,
         "map_radius": map_radius,
         "kingdom_count": kingdom_count,
         "params": {
