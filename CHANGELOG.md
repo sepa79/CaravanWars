@@ -3,6 +3,7 @@ Changelog
 Unreleased
 Changed
 - Documented in the README that the project was reset and all systems are being rebuilt from scratch.
+- Map setup now displays the prepared singleplayer map with live seed, radius, kingdom, and river controls for regeneration.
 
 Fixed
 - Updated the Godot project metadata version to 0.1.82 so tooling and runtime checks report the same release number.
