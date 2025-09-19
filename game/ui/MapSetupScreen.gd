@@ -2,8 +2,7 @@ extends Control
 
 const CI_AUTO_SINGLEPLAYER_ENV := "CI_AUTO_SINGLEPLAYER"
 const CI_AUTO_QUIT_ENV := "CI_AUTO_QUIT"
-const HexMapConfig := preload("res://mapgen/HexMapConfig.gd")
-const HexMapData := preload("res://mapgen/HexMapData.gd")
+const HEX_MAP_CONFIG_SCRIPT := preload("res://mapgen/HexMapConfig.gd")
 const REGION_LEGEND_ENTRIES: Array = [
     {
         "id": "plains",
@@ -153,7 +152,7 @@ func _load_config_from_world() -> void:
         var typed_config := prepared_config as HexMapConfig
         _current_config = typed_config.duplicate_config()
     else:
-        _current_config = HexMapConfig.new()
+        _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
 
 func _refresh_map_view() -> void:
     if map_view == null:
@@ -183,13 +182,13 @@ func _on_seed_value_changed(value: float) -> void:
     if _updating_controls:
         return
     if _current_config == null:
-        _current_config = HexMapConfig.new()
+        _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
     _current_config.seed = int(value)
     _regenerate_map()
 
 func _on_random_seed_pressed() -> void:
     if _current_config == null:
-        _current_config = HexMapConfig.new()
+        _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
     var new_seed := int(_rng.randi_range(1, 999_999_999))
     _current_config.seed = new_seed
     _apply_config_to_controls()
@@ -199,7 +198,7 @@ func _on_kingdoms_changed(value: float) -> void:
     if _updating_controls:
         return
     if _current_config == null:
-        _current_config = HexMapConfig.new()
+        _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
     _current_config.kingdom_count = max(1, int(value))
     _regenerate_map()
 
@@ -207,7 +206,7 @@ func _on_rivers_changed(value: float) -> void:
     if _updating_controls:
         return
     if _current_config == null:
-        _current_config = HexMapConfig.new()
+        _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
     _current_config.rivers_cap = max(0, int(value))
     _regenerate_map()
 
@@ -215,7 +214,7 @@ func _on_radius_changed(value: float) -> void:
     if _updating_controls:
         return
     if _current_config == null:
-        _current_config = HexMapConfig.new()
+        _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
     _current_config.map_radius = max(1, int(value))
     _regenerate_map()
 

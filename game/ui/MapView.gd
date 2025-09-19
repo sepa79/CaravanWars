@@ -134,7 +134,6 @@ func get_kingdom_colors() -> Dictionary:
 func _configure_viewport() -> void:
     if _viewport == null:
         return
-    _viewport.own_world_3d = true
     if _viewport.world_3d == null:
         _viewport.world_3d = World3D.new()
     _viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
@@ -150,6 +149,8 @@ func _ensure_viewport_structure() -> void:
         _viewport = SubViewport.new()
         _viewport.name = "TerrainViewport"
         _viewport.unique_name_in_owner = true
+        _viewport.own_world_3d = true
+        _viewport.world_3d = World3D.new()
         _viewport_container.add_child(_viewport)
     _terrain_root = _viewport.get_node_or_null("TerrainRoot") as Node3D
     if _terrain_root == null:
@@ -276,15 +277,15 @@ func _update_region_layers() -> void:
             if typeof(entry) != TYPE_DICTIONARY:
                 continue
             var axial := _coord_to_axial(entry.get("coord"))
-            var position := _axial_to_world(axial)
-            multimesh.set_instance_transform(index, Transform3D(Basis.IDENTITY, position))
+            var world_position := _axial_to_world(axial)
+            multimesh.set_instance_transform(index, Transform3D(Basis.IDENTITY, world_position))
             index += 1
-            min_pos.x = min(min_pos.x, position.x)
-            min_pos.y = min(min_pos.y, position.y)
-            min_pos.z = min(min_pos.z, position.z)
-            max_pos.x = max(max_pos.x, position.x)
-            max_pos.y = max(max_pos.y, position.y)
-            max_pos.z = max(max_pos.z, position.z)
+            min_pos.x = min(min_pos.x, world_position.x)
+            min_pos.y = min(min_pos.y, world_position.y)
+            min_pos.z = min(min_pos.z, world_position.z)
+            max_pos.x = max(max_pos.x, world_position.x)
+            max_pos.y = max(max_pos.y, world_position.y)
+            max_pos.z = max(max_pos.z, world_position.z)
             has_positions = true
         multimesh.instance_count = index
     if has_positions:
@@ -382,7 +383,7 @@ func _apply_default_camera_frame() -> void:
     var direction := target - origin
     if direction.length_squared() < 0.001:
         direction = Vector3.FORWARD
-    var basis := Basis().looking_at(direction.normalized(), Vector3.UP)
+    var basis := Basis.looking_at(direction.normalized(), Vector3.UP)
     _camera.transform = Transform3D(basis, origin)
 
 func _update_camera_framing() -> void:
@@ -415,7 +416,7 @@ func _update_camera_framing() -> void:
     var direction: Vector3 = target - origin
     if direction.length_squared() < 0.001:
         direction = Vector3.FORWARD
-    var basis := Basis().looking_at(direction.normalized(), Vector3.UP)
+    var basis := Basis.looking_at(direction.normalized(), Vector3.UP)
     _camera.transform = Transform3D(basis, origin)
     if _sun_light != null:
         _sun_light.transform.origin = center
@@ -441,7 +442,7 @@ func _configure_preview_light() -> void:
     if direction.length_squared() < 0.001:
         direction = Vector3(-0.5, -1.0, -0.5)
     direction = direction.normalized()
-    var basis := Basis().looking_at(direction, Vector3.UP)
+    var basis := Basis.looking_at(direction, Vector3.UP)
     _sun_light.transform = Transform3D(basis, _sun_light.transform.origin)
 
 func _configure_input_capture() -> void:
@@ -466,38 +467,34 @@ func _gui_input(event: InputEvent) -> void:
             return
         if mouse_button.button_index == MOUSE_BUTTON_LEFT or mouse_button.button_index == MOUSE_BUTTON_MIDDLE:
             _is_panning = mouse_button.pressed
-            if not mouse_button.pressed:
-                _is_panning = false
-            else:
+            if mouse_button.pressed:
                 accept_event()
             return
         if mouse_button.button_index == MOUSE_BUTTON_RIGHT:
             _is_rotating = mouse_button.pressed
-            if not mouse_button.pressed:
-                _is_rotating = false
-            else:
+            if mouse_button.pressed:
                 accept_event()
             return
     elif event is InputEventMouseMotion:
         var motion := event as InputEventMouseMotion
         var handled: bool = false
-        var is_right_down := Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
-        var is_left_down := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
-        var is_middle_down := Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE)
-        if _is_rotating or is_right_down:
-            if is_right_down:
-                _is_rotating = true
-                _apply_camera_rotation(motion.relative.x)
-                handled = true
-            else:
-                _is_rotating = false
-        elif _is_panning or is_left_down or is_middle_down:
-            if is_left_down or is_middle_down:
-                _is_panning = true
+        if _is_rotating:
+            _apply_camera_rotation(motion.relative.x)
+            handled = true
+        elif Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+            _is_rotating = true
+            _apply_camera_rotation(motion.relative.x)
+            handled = true
+        if not handled:
+            if _is_panning:
                 _apply_camera_pan(motion.relative)
                 handled = true
             else:
-                _is_panning = false
+                var is_pan_drag: bool = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE)
+                if is_pan_drag:
+                    _is_panning = true
+                    _apply_camera_pan(motion.relative)
+                    handled = true
         if handled:
             accept_event()
 
@@ -525,8 +522,8 @@ func _apply_camera_pan(relative: Vector2) -> void:
         return
     right = right.normalized()
     forward = forward.normalized()
-    var scale: float = _compute_pan_scale()
-    var movement: Vector3 = (-right * relative.x + forward * relative.y) * scale
+    var pan_scale: float = _compute_pan_scale()
+    var movement: Vector3 = (-right * relative.x + forward * relative.y) * pan_scale
     _camera_pan_offset += Vector2(movement.x, movement.z)
     _update_camera_framing()
 
@@ -538,9 +535,9 @@ func _compute_pan_scale() -> float:
         viewport_size.x = max(viewport_size.x, 1.0)
         viewport_size.y = max(viewport_size.y, 1.0)
     var reference: float = 600.0
-    var scale: float = extent * CAMERA_PAN_BASE * _camera_zoom
-    scale *= reference / viewport_size.y
-    return scale
+    var pan_scale: float = extent * CAMERA_PAN_BASE * _camera_zoom
+    pan_scale *= reference / viewport_size.y
+    return pan_scale
 
 func _update_pan_bounds(min_pos: Vector3, max_pos: Vector3) -> void:
     var margin: float = max(_map_extent_radius * CAMERA_PAN_MARGIN_RATIO, CAMERA_PAN_MARGIN_MIN)
