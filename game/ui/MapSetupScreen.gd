@@ -409,7 +409,8 @@ func _apply_edge_settings_to_controls() -> void:
         var type_button: OptionButton = entry.get("type") as OptionButton
         var width_spin: SpinBox = entry.get("width") as SpinBox
         var setting: Dictionary = settings.get(edge_id, {})
-        var terrain_type := String(setting.get("type", "plains"))
+        var default_terrain := String(HEX_MAP_CONFIG_SCRIPT.DEFAULT_EDGE_TERRAINS.get(edge_id, HEX_MAP_CONFIG_SCRIPT.DEFAULT_EDGE_TYPE))
+        var terrain_type := String(setting.get("type", default_terrain))
         var width_value := int(setting.get("width", 0))
         if type_button != null:
             _select_option_by_metadata(type_button, terrain_type)

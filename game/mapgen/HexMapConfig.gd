@@ -7,8 +7,8 @@ const DEFAULT_RIVERS_CAP := 6
 const DEFAULT_ROAD_AGGRESSIVENESS := 0.5
 const DEFAULT_FORT_GLOBAL_CAP := 6
 const DEFAULT_FORT_SPACING := 4
-const DEFAULT_EDGE_JITTER := 0
-const DEFAULT_RANDOM_FEATURE_DENSITY := 0.0
+const DEFAULT_EDGE_JITTER := 3
+const DEFAULT_RANDOM_FEATURE_DENSITY := 0.12
 
 const EDGE_NAMES: Array[String] = [
     "east",
@@ -29,6 +29,15 @@ const EDGE_TERRAIN_TYPES: Array[String] = [
 
 const DEFAULT_EDGE_TYPE := "plains"
 const DEFAULT_EDGE_WIDTH := 0
+
+const DEFAULT_EDGE_TERRAINS := {
+    "east": "mountains",
+    "north_east": "mountains",
+    "north_west": "hills",
+    "west": "sea",
+    "south_west": "sea",
+    "south_east": "hills",
+}
 
 var map_seed: int
 var map_radius: int
@@ -99,7 +108,7 @@ func to_dictionary() -> Dictionary:
 func get_edge_setting(edge_name: String) -> Dictionary:
     var sanitized := _sanitize_edge_settings(edge_settings)
     return sanitized.get(edge_name, {
-        "type": DEFAULT_EDGE_TYPE,
+        "type": DEFAULT_EDGE_TERRAINS.get(edge_name, DEFAULT_EDGE_TYPE),
         "width": DEFAULT_EDGE_WIDTH,
     })
 
@@ -123,9 +132,9 @@ func _sanitize_edge_settings(source: Dictionary) -> Dictionary:
         var entry: Dictionary = {}
         if typeof(source.get(edge_name)) == TYPE_DICTIONARY:
             entry = source[edge_name]
-        var terrain_type := String(entry.get("type", DEFAULT_EDGE_TYPE))
+        var terrain_type := String(entry.get("type", DEFAULT_EDGE_TERRAINS.get(edge_name, DEFAULT_EDGE_TYPE)))
         if not EDGE_TERRAIN_TYPES.has(terrain_type):
-            terrain_type = DEFAULT_EDGE_TYPE
+            terrain_type = DEFAULT_EDGE_TERRAINS.get(edge_name, DEFAULT_EDGE_TYPE)
         var width_value := int(entry.get("width", DEFAULT_EDGE_WIDTH))
         sanitized[edge_name] = {
             "type": terrain_type,
