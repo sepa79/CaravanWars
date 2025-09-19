@@ -1,5 +1,5 @@
 # CaravanWars — README (Concept Document)
-> **Project reset — September 2025:** The Godot game project has been reset to a clean slate under version 0.2.0; every system is being rebuilt from scratch.
+> **Project reset — September 2025:** The Godot game project has been reset to a clean slate under version 0.2.1; every system is being rebuilt from scratch.
 ## Historia projektu
 
 ### Wersja w stylu autora

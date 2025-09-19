@@ -8,6 +8,15 @@ Changed
 Fixed
 - Nothing yet.
 
+0.2.1 — 2025-09-19
+Added
+- Map setup exposes per-edge terrain type and width selectors with adjustable jitter and random feature density controls.
+Changed
+- Terrain generation now produces plains maps, applying edge bands and optional random terrain features from the new setup options.
+- The automated singleplayer smoke test now opens map setup and returns to the start menu, covering the generator UI navigation.
+Fixed
+- Nothing yet.
+
 0.2.0 — 2025-09-19
 Added
 - Singleplayer map setup preview supports mouse zoom, pan, and orbit controls and shows a localized terrain legend beside the viewport.

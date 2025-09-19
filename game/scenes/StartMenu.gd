@@ -3,6 +3,9 @@ extends Control
 const CI_AUTO_SINGLEPLAYER_ENV := "CI_AUTO_SINGLEPLAYER"
 const CI_AUTO_QUIT_ENV := "CI_AUTO_QUIT"
 
+static var _ci_has_driven_singleplayer: bool = false
+static var _ci_quit_scheduled: bool = false
+
 @onready var title_label: Label = $Title
 @onready var main_menu: VBoxContainer = $MainMenu
 @onready var multiplayer_menu: VBoxContainer = $MultiplayerMenu
@@ -26,8 +29,11 @@ func _ready() -> void:
     update_texts()
     main_menu.get_node("Multiplayer").grab_focus()
     _log("ready")
-    if _should_drive_ci_singleplayer():
+    if _should_drive_ci_singleplayer() and not _ci_has_driven_singleplayer:
+        _ci_has_driven_singleplayer = true
         await _ci_drive_to_singleplayer()
+    elif _should_quit_after_ci_flow():
+        _schedule_ci_quit()
 
 func update_texts() -> void:
     title_label.text = I18N.t("menu.title")
@@ -143,3 +149,21 @@ func _ci_drive_to_singleplayer() -> void:
         return
     _log("CI auto flow: enter single player")
     _on_single_player_pressed()
+
+func _should_quit_after_ci_flow() -> bool:
+    if not _should_drive_ci_singleplayer():
+        return false
+    return _ci_has_driven_singleplayer
+
+func _schedule_ci_quit() -> void:
+    if _ci_quit_scheduled:
+        return
+    _ci_quit_scheduled = true
+    call_deferred("_ci_quit_after_ci_flow")
+
+func _ci_quit_after_ci_flow() -> void:
+    await get_tree().process_frame
+    if not is_inside_tree():
+        return
+    _log("CI auto flow: quit after map setup preview")
+    get_tree().quit()
