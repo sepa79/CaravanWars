@@ -108,6 +108,8 @@ func _configure_viewport() -> void:
 func _ensure_viewport_structure() -> void:
     _viewport_container = _locate_container()
     if _viewport_container == null:
+        _viewport_container = _create_container()
+    if _viewport_container == null:
         return
     _viewport = _locate_viewport(_viewport_container)
     if _viewport == null:
@@ -132,6 +134,20 @@ func _locate_container() -> Control:
         if child is SubViewportContainer:
             return child
     return null
+
+func _create_container() -> SubViewportContainer:
+    if not (self is Control):
+        return null
+    var container := SubViewportContainer.new()
+    container.name = "ViewportFrame"
+    container.unique_name_in_owner = true
+    container.stretch = true
+    container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    add_child(container)
+    container.owner = self.owner
+    return container
 
 func _locate_viewport(container: Node = null) -> SubViewport:
     if container == null:
