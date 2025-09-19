@@ -222,6 +222,7 @@ func _generate_terrain() -> Dictionary:
     result["coastline"] = {
         "selected_sides": coastline_plan.get("sides", PackedInt32Array()),
         "side_counts": coastline_plan.get("side_counts", {}),
+        "side_depths": coastline_plan.get("side_depths", {}),
         "fill_order": coastline_plan.get("fill_order", PackedVector2Array()),
         "sea_coords": sea_coords,
         "target_sea": target_sea,
@@ -249,7 +250,7 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
         "membership": {},
         "depth_limit": 0,
     }
-    if coords.is_empty() or target_sea <= 0:
+    if coords.is_empty():
         return plan
 
     var direction_count: int = HexGrid.AXIAL_DIRECTIONS.size()
@@ -323,6 +324,10 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
     var selected: Array[int] = chosen.duplicate()
     selected.sort()
 
+    var sea_target_limit: int = target_sea
+    if not configured_sea_sides.is_empty():
+        sea_target_limit = coords.size()
+
     var packed_sides := PackedInt32Array()
     for side_index in selected:
         packed_sides.append(side_index)
@@ -379,7 +384,7 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
             continue
         _shuffle_array_with_rng(front)
         for coord in front:
-            if sea_lookup.size() >= target_sea:
+            if sea_lookup.size() >= sea_target_limit:
                 break
             var key: Vector2i = coord.to_vector2i()
             if sea_lookup.has(key):
@@ -415,10 +420,10 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
                     "value": priority,
                 })
                 enqueued[nkey] = true
-        if sea_lookup.size() >= target_sea:
+        if sea_lookup.size() >= sea_target_limit:
             break
 
-    while not queue.is_empty() and sea_lookup.size() < target_sea:
+    while not queue.is_empty() and sea_lookup.size() < sea_target_limit:
         queue.sort_custom(Callable(self, "_compare_dict_value_asc"))
         var current: Dictionary = queue.pop_front()
         var coord: HexCoord = current["coord"]
@@ -515,8 +520,8 @@ func _plan_ridge_regions(
     var selected: Array[int] = []
     if not desired_sides.is_empty():
         desired_sides.sort()
-        for i in range(min(2, desired_sides.size())):
-            selected.append(desired_sides[i])
+        for side_index in desired_sides:
+            selected.append(side_index)
     else:
         var fallback: Array[int] = []
         if config.side_modes.size() == direction_count:
@@ -531,8 +536,10 @@ func _plan_ridge_regions(
             for side_index in range(direction_count):
                 fallback.append(side_index)
         _shuffle_array_with_rng(fallback)
-        for i in range(min(2, fallback.size())):
-            selected.append(fallback[i])
+        if not fallback.is_empty():
+            selected.append(fallback[0])
+            if fallback.size() > 1:
+                selected.append(fallback[1])
     selected.sort()
 
     var packed_sides := PackedInt32Array()
