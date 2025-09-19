@@ -162,25 +162,26 @@ func _generate_terrain() -> Dictionary:
     var total_hexes: int = coords.size()
     var target_sea: int = int(round(config.sea_pct * float(total_hexes)))
     target_sea = clampi(target_sea, 0, total_hexes)
-    var coastline_plan: Dictionary = _plan_coast_regions(coords, target_sea)
+    var side_params: Dictionary = _build_side_generation_params()
+    var side_plans: Dictionary = _plan_side_features(coords, target_sea, side_params)
+    var coastline_plan: Dictionary = side_plans.get("coastline", {})
     var sea_lookup: Dictionary = coastline_plan.get("sea_lookup", {})
     var sea_coords: PackedVector2Array = coastline_plan.get("sea_coords", PackedVector2Array())
-    var land_coords: Array[HexCoord] = []
-    for coord in coords:
-        var key: Vector2i = coord.to_vector2i()
-        if sea_lookup.has(key):
-            continue
-        land_coords.append(coord)
-
-    var land_lookup: Dictionary = {}
-    for coord in land_coords:
-        land_lookup[coord.to_vector2i()] = true
+    var land_coords: Array[HexCoord] = side_plans.get("land_coords", [])
+    var land_lookup: Dictionary = side_plans.get("land_lookup", {})
+    if land_coords.is_empty():
+        for coord in coords:
+            var key: Vector2i = coord.to_vector2i()
+            if sea_lookup.has(key):
+                continue
+            land_coords.append(coord)
+            land_lookup[key] = true
 
     var land_count: int = land_coords.size()
     var hex_entries: Dictionary = {}
     var region_targets: Dictionary = _compute_region_targets(land_count)
-    var ridge_plan: Dictionary = _plan_ridge_regions(land_coords, land_lookup, coastline_plan)
-    var seed_data: Dictionary = _plan_region_seeds(land_coords, land_lookup, region_targets, ridge_plan)
+    var ridge_plan: Dictionary = side_plans.get("ridge", {})
+    var seed_data: Dictionary = _plan_region_seeds(land_coords, land_lookup, region_targets, ridge_plan, side_params)
     var assignments: Dictionary = _grow_region_assignments(
         land_coords,
         land_lookup,
@@ -227,6 +228,7 @@ func _generate_terrain() -> Dictionary:
         "sea_coords": sea_coords,
         "target_sea": target_sea,
         "depth_limit": coastline_plan.get("depth_limit", 0),
+        "jitter": coastline_plan.get("jitter", 0.0),
     }
     result["ridge"] = {
         "selected_sides": ridge_plan.get("sides", PackedInt32Array()),
@@ -236,11 +238,78 @@ func _generate_terrain() -> Dictionary:
         "pass_path": ridge_plan.get("pass_path", PackedVector2Array()),
         "pass_lookup": ridge_plan.get("pass_lookup", {}),
         "pass_width": ridge_plan.get("pass_width", 0),
+        "jitter": ridge_plan.get("jitter", 0.0),
+        "extra_spacing": ridge_plan.get("extra_spacing", 0),
     }
     result["validation"] = validation
     return result
 
-func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary:
+func _build_side_generation_params() -> Dictionary:
+    var params: Dictionary = {
+        "side_specs": [],
+        "jitter": clampf(config.side_jitter, 0.0, 1.0),
+        "coastline_sides_min": max(0, config.coastline_sides_min),
+        "coastline_sides_max": max(config.coastline_sides_min, config.coastline_sides_max),
+        "coastline_depth_min": max(0, config.coastline_depth_min),
+        "coastline_depth_max": max(config.coastline_depth_min, config.coastline_depth_max),
+        "ridge_pass_width": max(1, config.ridge_pass_width),
+        "extra_mountain_spacing": max(1, config.extra_mountain_spacing),
+    }
+    var direction_count: int = HexGrid.AXIAL_DIRECTIONS.size()
+    var specs: Array = []
+    specs.resize(direction_count)
+    for side_index in range(direction_count):
+        var mode: String = HexMapConfig.SIDE_TYPE_PLAINS
+        if side_index < config.side_modes.size():
+            var configured_mode: String = String(config.side_modes[side_index])
+            if not configured_mode.is_empty():
+                mode = configured_mode
+        var width: int = HexMapConfig.DEFAULT_SIDE_BORDER_WIDTH
+        if side_index < config.side_widths.size():
+            width = max(0, int(config.side_widths[side_index]))
+        specs[side_index] = {
+            "index": side_index,
+            "mode": mode,
+            "width": width,
+        }
+    params["side_specs"] = specs
+    return params
+
+func _plan_side_features(
+    coords: Array[HexCoord],
+    target_sea: int,
+    params: Dictionary
+) -> Dictionary:
+    var result: Dictionary = {
+        "coastline": {},
+        "ridge": {},
+        "land_coords": [],
+        "land_lookup": {},
+    }
+    if coords.is_empty():
+        return result
+    var coastline_plan: Dictionary = _plan_coast_regions(coords, target_sea, params)
+    var sea_lookup: Dictionary = coastline_plan.get("sea_lookup", {})
+    var land_coords: Array[HexCoord] = []
+    var land_lookup: Dictionary = {}
+    for coord in coords:
+        var key: Vector2i = coord.to_vector2i()
+        if sea_lookup.has(key):
+            continue
+        land_coords.append(coord)
+        land_lookup[key] = true
+    var ridge_plan: Dictionary = _plan_ridge_regions(land_coords, land_lookup, coastline_plan, params)
+    result["coastline"] = coastline_plan
+    result["ridge"] = ridge_plan
+    result["land_coords"] = land_coords
+    result["land_lookup"] = land_lookup
+    return result
+
+func _plan_coast_regions(
+    coords: Array[HexCoord],
+    target_sea: int,
+    params: Dictionary
+) -> Dictionary:
     var plan: Dictionary = {
         "sea_lookup": {},
         "sea_coords": PackedVector2Array(),
@@ -254,6 +323,7 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
         return plan
 
     var direction_count: int = HexGrid.AXIAL_DIRECTIONS.size()
+    var side_specs: Array = params.get("side_specs", [])
     var boundary_sets: Array = []
     for _i in range(direction_count):
         boundary_sets.append({})
@@ -285,16 +355,21 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
 
     var configured_sea_sides: Array[int] = []
     var forbidden_sides: Dictionary = {}
-    if config.side_modes.size() == direction_count:
-        for side_index in available_sides:
-            var side_mode: String = config.side_modes[side_index]
-            if side_mode == HexMapConfig.SIDE_TYPE_SEA:
+    if not side_specs.is_empty():
+        for spec_entry in side_specs:
+            if typeof(spec_entry) != TYPE_DICTIONARY:
+                continue
+            var side_index: int = int(spec_entry.get("index", -1))
+            if side_index < 0 or side_index >= direction_count:
+                continue
+            var mode: String = String(spec_entry.get("mode", HexMapConfig.SIDE_TYPE_PLAINS))
+            if mode == HexMapConfig.SIDE_TYPE_SEA:
                 configured_sea_sides.append(side_index)
-            elif side_mode == HexMapConfig.SIDE_TYPE_MOUNTAINS:
+            elif mode == HexMapConfig.SIDE_TYPE_MOUNTAINS:
                 forbidden_sides[side_index] = true
 
-    var side_min: int = max(1, config.coastline_sides_min)
-    var side_max: int = max(side_min, config.coastline_sides_max)
+    var side_min: int = max(1, int(params.get("coastline_sides_min", 1)))
+    var side_max: int = max(side_min, int(params.get("coastline_sides_max", side_min)))
     side_min = clampi(side_min, 1, available_sides.size())
     side_max = clampi(side_max, side_min, available_sides.size())
 
@@ -351,16 +426,23 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
         plan["depth_limit"] = 0
         return plan
 
-    var depth_min: int = max(0, config.coastline_depth_min)
-    var depth_max: int = max(depth_min, config.coastline_depth_max)
+    var depth_min: int = max(0, int(params.get("coastline_depth_min", 0)))
+    var depth_max: int = max(depth_min, int(params.get("coastline_depth_max", depth_min)))
     var depth_limit: int = depth_min
     if depth_max > depth_min:
         depth_limit = rng.randi_range(depth_min, depth_max)
     var side_depth_limits: Dictionary = {}
     var max_side_limit: int = depth_limit
-    if config.side_widths.size() == direction_count:
-        for side_index in selected:
-            var configured_width: int = max(0, int(config.side_widths[side_index]))
+    if not side_specs.is_empty():
+        for spec_entry in side_specs:
+            if typeof(spec_entry) != TYPE_DICTIONARY:
+                continue
+            var side_index: int = int(spec_entry.get("index", -1))
+            if side_index < 0 or side_index >= direction_count:
+                continue
+            if not selected.has(side_index):
+                continue
+            var configured_width: int = max(0, int(spec_entry.get("width", depth_limit)))
             side_depth_limits[side_index] = configured_width
             if configured_width > max_side_limit:
                 max_side_limit = configured_width
@@ -376,7 +458,7 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
     for side_index in selected:
         side_counts[side_index] = 0
 
-    var jitter_strength: float = clampf(config.side_jitter, 0.0, 1.0)
+    var jitter_strength: float = clampf(float(params.get("jitter", 0.0)), 0.0, 1.0)
 
     for side_index in seeding_order:
         var front: Array = boundary_arrays[side_index].duplicate()
@@ -490,12 +572,14 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
     plan["membership"] = membership
     plan["depth_limit"] = depth_limit
     plan["side_depths"] = side_depth_limits
+    plan["jitter"] = jitter_strength
     return plan
 
 func _plan_ridge_regions(
     land_coords: Array[HexCoord],
     land_lookup: Dictionary,
-    _coast_plan: Dictionary
+    _coast_plan: Dictionary,
+    params: Dictionary
 ) -> Dictionary:
     var plan: Dictionary = {
         "sides": PackedInt32Array(),
@@ -505,18 +589,29 @@ func _plan_ridge_regions(
         "ridge_cells": PackedVector2Array(),
         "pass_lookup": {},
         "pass_path": PackedVector2Array(),
-        "pass_width": max(1, config.ridge_pass_width),
+        "pass_width": max(1, int(params.get("ridge_pass_width", config.ridge_pass_width))),
+        "jitter": clampf(float(params.get("jitter", 0.0)), 0.0, 1.0),
+        "extra_spacing": max(1, int(params.get("extra_mountain_spacing", config.extra_mountain_spacing))),
     }
     if land_coords.is_empty():
         return plan
 
     var direction_count: int = HexGrid.AXIAL_DIRECTIONS.size()
     var desired_sides: Array[int] = []
-    if config.side_modes.size() == direction_count:
-        for side_index in range(direction_count):
-            var side_mode: String = config.side_modes[side_index]
-            if side_mode == HexMapConfig.SIDE_TYPE_MOUNTAINS:
+    var side_specs: Array = params.get("side_specs", [])
+    var sea_sides: Dictionary = {}
+    if not side_specs.is_empty():
+        for spec_entry in side_specs:
+            if typeof(spec_entry) != TYPE_DICTIONARY:
+                continue
+            var side_index: int = int(spec_entry.get("index", -1))
+            if side_index < 0 or side_index >= direction_count:
+                continue
+            var mode: String = String(spec_entry.get("mode", HexMapConfig.SIDE_TYPE_PLAINS))
+            if mode == HexMapConfig.SIDE_TYPE_MOUNTAINS:
                 desired_sides.append(side_index)
+            elif mode == HexMapConfig.SIDE_TYPE_SEA:
+                sea_sides[side_index] = true
     var selected: Array[int] = []
     if not desired_sides.is_empty():
         desired_sides.sort()
@@ -524,13 +619,20 @@ func _plan_ridge_regions(
             selected.append(side_index)
     else:
         var fallback: Array[int] = []
-        if config.side_modes.size() == direction_count:
-            for side_index in range(direction_count):
-                if config.side_modes[side_index] == HexMapConfig.SIDE_TYPE_SEA:
+        if not side_specs.is_empty():
+            for spec_entry in side_specs:
+                if typeof(spec_entry) != TYPE_DICTIONARY:
+                    continue
+                var side_index: int = int(spec_entry.get("index", -1))
+                if side_index < 0 or side_index >= direction_count:
+                    continue
+                if sea_sides.has(side_index):
                     continue
                 fallback.append(side_index)
-        else:
+        if fallback.is_empty():
             for side_index in range(direction_count):
+                if sea_sides.has(side_index):
+                    continue
                 fallback.append(side_index)
         if fallback.is_empty():
             for side_index in range(direction_count):
@@ -549,9 +651,18 @@ func _plan_ridge_regions(
 
     var side_widths: Dictionary = {}
     var default_width: int = HexMapConfig.DEFAULT_SIDE_BORDER_WIDTH
-    if config.side_widths.size() == direction_count:
-        for side_index in selected:
-            var configured_width: int = max(1, int(config.side_widths[side_index]))
+    if not side_specs.is_empty():
+        for spec_entry in side_specs:
+            if typeof(spec_entry) != TYPE_DICTIONARY:
+                continue
+            var side_index: int = int(spec_entry.get("index", -1))
+            if side_index < 0 or side_index >= direction_count:
+                continue
+            if not selected.has(side_index):
+                continue
+            var configured_width: int = max(0, int(spec_entry.get("width", default_width)))
+            if configured_width <= 0:
+                configured_width = default_width
             side_widths[side_index] = configured_width
     if side_widths.is_empty():
         for side_index in selected:
@@ -560,7 +671,7 @@ func _plan_ridge_regions(
 
     var ridge_lookup: Dictionary = {}
     var ridge_strength: Dictionary = {}
-    var jitter_strength: float = clampf(config.side_jitter, 0.0, 1.0)
+    var jitter_strength: float = float(plan.get("jitter", 0.0))
     for coord in land_coords:
         var key: Vector2i = coord.to_vector2i()
         var best_strength: float = 0.0
@@ -756,7 +867,8 @@ func _plan_region_seeds(
     land_coords: Array[HexCoord],
     land_lookup: Dictionary,
     targets: Dictionary,
-    ridge_plan: Dictionary
+    ridge_plan: Dictionary,
+    params: Dictionary
 ) -> Dictionary:
     var seed_data: Dictionary = {
         "seeds": {
@@ -781,8 +893,8 @@ func _plan_region_seeds(
         ridge_coords.append(HexCoord.from_vector2i(Vector2i(pos)))
 
     var pass_lookup: Dictionary = ridge_plan.get("pass_lookup", {})
-    var pass_width: int = max(1, int(ridge_plan.get("pass_width", config.ridge_pass_width)))
-    var extra_spacing: int = max(1, config.extra_mountain_spacing)
+    var pass_width: int = max(1, int(ridge_plan.get("pass_width", params.get("ridge_pass_width", config.ridge_pass_width))))
+    var extra_spacing: int = max(1, int(ridge_plan.get("extra_spacing", params.get("extra_mountain_spacing", config.extra_mountain_spacing))))
 
     var sorted_high: Array[HexCoord] = _sort_coords_by_value(land_coords, height_values, true)
     var sorted_low: Array[HexCoord] = _sort_coords_by_value(land_coords, height_values, false)
@@ -1323,7 +1435,7 @@ func _height_value(coord: HexCoord, ridge_plan: Dictionary) -> float:
     var distance_to_center: float = float(grid.axial_distance(coord, HexCoord.new(0, 0))) / float(radius)
     var ridge_strength_lookup: Dictionary = ridge_plan.get("ridge_strength", {})
     var ridge_strength: float = float(ridge_strength_lookup.get(key, 0.0))
-    var jitter_strength: float = clampf(config.side_jitter, 0.0, 1.0)
+    var jitter_strength: float = clampf(float(ridge_plan.get("jitter", config.side_jitter)), 0.0, 1.0)
     var base_height: float = 0.25 + (0.65 * ridge_strength) - (distance_to_center * 0.2)
     var pass_lookup: Dictionary = ridge_plan.get("pass_lookup", {})
     if pass_lookup.has(key):

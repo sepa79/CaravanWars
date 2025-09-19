@@ -598,6 +598,14 @@ func _sync_side_config_from_map(map_dictionary: Dictionary) -> void:
                     ridge_width = _dictionary_int_lookup(ridge_widths, ridge_side_index, ridge_width)
                 updated_widths[ridge_side_index] = max(0, ridge_width)
 
+    var jitter_changed: bool = false
+    if typeof(coastline) == TYPE_DICTIONARY and coastline.has("jitter"):
+        var jitter_value: float = float(coastline.get("jitter", _current_config.side_jitter))
+        jitter_value = clampf(jitter_value, 0.0, 1.0)
+        if not is_equal_approx(jitter_value, _current_config.side_jitter):
+            _current_config.side_jitter = jitter_value
+            jitter_changed = true
+
     var modes_changed: bool = updated_modes.size() != _current_config.side_modes.size()
     if not modes_changed:
         for side_index in range(updated_modes.size()):
@@ -618,7 +626,7 @@ func _sync_side_config_from_map(map_dictionary: Dictionary) -> void:
                 widths_changed = true
                 break
 
-    if not modes_changed and not widths_changed:
+    if not modes_changed and not widths_changed and not jitter_changed:
         return
 
     if modes_changed:

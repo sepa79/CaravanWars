@@ -8,6 +8,7 @@ Added
 Changed
 - Coastline planning always seeds the chosen boundary ring before growing inward, honours the configured depth limit, and records the applied limit for validation metadata.
 - Mountain height noise now follows the configured ridge bands, reserves a plains pass, and injects off-ridge clusters with spacing-aware seeds.
+- Coastline and ridge generators now share a single side-parameter planner that applies configured edge types, widths, and jitter while exporting the used jitter for UI sync.
 Fixed
 - Hex map exports now include coastline metadata so UI can inspect generated shorelines.
 - Coastline planning now uses the generator RNG for side selection and queue shuffling so identical seeds remain reproducible.
