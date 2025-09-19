@@ -110,6 +110,8 @@ func to_dictionary() -> Dictionary:
             terrain_meta["validation"] = terrain["validation"]
         if terrain.has("ridge"):
             terrain_meta["ridge"] = terrain["ridge"]
+        if terrain.has("coastline"):
+            terrain_meta["coastline"] = terrain["coastline"]
         if terrain_meta.size() > 0:
             result["terrain"] = terrain_meta
     return result
