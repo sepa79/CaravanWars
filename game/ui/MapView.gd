@@ -22,6 +22,21 @@ const SHORELINE_SCENES: Dictionary = {
     "E": preload("res://assets/gltf/tiles/coast/hex_coast_E.gltf"),
 }
 
+const RIVER_SCENES: Dictionary = {
+    "straight": preload("res://assets/gltf/tiles/rivers/hex_river_A.gltf"),
+    "bend": preload("res://assets/gltf/tiles/rivers/hex_river_C.gltf"),
+    "t": preload("res://assets/gltf/tiles/rivers/hex_river_D.gltf"),
+    "cross": preload("res://assets/gltf/tiles/rivers/hex_river_crossing_A.gltf"),
+    "source": preload("res://assets/gltf/tiles/rivers/hex_river_B.gltf"),
+    "mouth": preload("res://assets/gltf/tiles/rivers/hex_river_L.gltf"),
+}
+
+const RIVER_ROTATION_STEP: float = PI / 3.0
+const RIVER_Y_OFFSET: float = 0.05
+const RIVER_CLASS_SCALE_STEP: float = 0.03
+const RIVER_MARKER_HEIGHT: float = 0.4
+const RIVER_MARKER_RADIUS: float = 0.18
+
 const HEX_WORLD_SCALE: float = 1.0
 const CAMERA_BASE_HEIGHT: float = 26.0
 const CAMERA_HEIGHT_PER_UNIT: float = 0.45
@@ -46,6 +61,9 @@ var map_data: Dictionary = {}
 
 var _mesh_library: Dictionary = {}
 var _region_layers: Dictionary = {}
+var _river_layers: Dictionary = {}
+var _river_marker_layer: MultiMeshInstance3D
+var _river_tile_cache: Dictionary = {}
 var _needs_refresh: bool = false
 var _map_bounds: Dictionary = {}
 var _camera_zoom: float = 1.0
@@ -56,6 +74,7 @@ var _camera_pan_bounds_max: Vector2 = Vector2.ZERO
 var _map_extent_radius: float = 1.0
 var _is_panning: bool = false
 var _is_rotating: bool = false
+var _show_rivers: bool = true
 
 var _viewport: SubViewport
 var _terrain_root: Node3D
@@ -81,6 +100,7 @@ func _exit_tree() -> void:
 
 func set_map_data(data: Dictionary) -> void:
     map_data = data
+    _cache_river_entries()
     if data.is_empty():
         _reset_camera_state()
     _needs_refresh = true
@@ -99,8 +119,9 @@ func set_road_class(_cls: String) -> void:
 func set_show_roads(_value: bool) -> void:
     pass
 
-func set_show_rivers(_value: bool) -> void:
-    pass
+func set_show_rivers(value: bool) -> void:
+    _show_rivers = value
+    _update_river_visibility()
 
 func set_show_cities(_value: bool) -> void:
     pass
@@ -222,6 +243,8 @@ func _build_mesh_library() -> void:
     _mesh_library = {
         "regions": {},
         "shorelines": {},
+        "rivers": {},
+        "river_marker": null,
     }
     for region in REGION_SCENES.keys():
         var scene: PackedScene = REGION_SCENES[region]
@@ -233,6 +256,14 @@ func _build_mesh_library() -> void:
         var coast_mesh: Mesh = _extract_mesh(coast_scene)
         if coast_mesh != null:
             _mesh_library["shorelines"][case_key] = coast_mesh
+    var river_meshes: Dictionary = {}
+    for variant in RIVER_SCENES.keys():
+        var river_scene: PackedScene = RIVER_SCENES[variant]
+        var river_mesh: Mesh = _extract_mesh(river_scene)
+        if river_mesh != null:
+            river_meshes[variant] = river_mesh
+    _mesh_library["rivers"] = river_meshes
+    _mesh_library["river_marker"] = _build_river_marker_mesh()
 
 func _extract_mesh(scene: PackedScene) -> Mesh:
     if scene == null:
@@ -253,6 +284,19 @@ func _find_first_mesh(node: Node) -> Mesh:
             if mesh != null:
                 return mesh
     return null
+
+func _build_river_marker_mesh() -> Mesh:
+    var marker := CylinderMesh.new()
+    marker.top_radius = RIVER_MARKER_RADIUS
+    marker.bottom_radius = RIVER_MARKER_RADIUS
+    marker.height = RIVER_MARKER_HEIGHT
+    marker.radial_segments = 12
+    var material := StandardMaterial3D.new()
+    material.albedo_color = Color(0.2, 0.6, 1.0, 0.85)
+    material.metallic = 0.0
+    material.roughness = 0.35
+    marker.material = material
+    return marker
 
 func _ensure_region_layers() -> void:
     if _terrain_root == null:
@@ -280,6 +324,7 @@ func _refresh_layers_if_needed() -> void:
         return
     _needs_refresh = false
     _update_region_layers()
+    _update_river_layers()
 
 func _update_region_layers() -> void:
     var grouped_hexes := _group_hexes_by_region()
@@ -342,6 +387,303 @@ func _group_hexes_by_region() -> Dictionary:
             grouped[region] = []
         grouped[region].append(entry)
     return grouped
+
+func _cache_river_entries() -> void:
+    _river_tile_cache.clear()
+    if not map_data.has("hexes"):
+        return
+    var entries: Variant = map_data["hexes"]
+    if typeof(entries) != TYPE_ARRAY:
+        return
+    for entry_variant in entries:
+        if typeof(entry_variant) != TYPE_DICTIONARY:
+            continue
+        var entry: Dictionary = entry_variant
+        var mask := int(entry.get("river_mask", 0))
+        if mask == 0:
+            continue
+        var axial := _coord_to_axial(entry.get("coord"))
+        var is_mouth := bool(entry.get("is_mouth", false))
+        var variant := _classify_river_variant(mask, is_mouth)
+        if variant.is_empty():
+            continue
+        var rotation := _compute_river_rotation(mask, variant)
+        var class_value := int(entry.get("river_class", 1))
+        if class_value <= 0:
+            class_value = 1
+        var cached_entry := {
+            "coord": axial,
+            "mask": mask,
+            "river_class": class_value,
+            "is_mouth": is_mouth,
+            "variant": variant,
+            "rotation": rotation,
+        }
+        _river_tile_cache[axial] = cached_entry
+
+func _classify_river_variant(mask: int, is_mouth: bool) -> String:
+    if mask == 0:
+        return ""
+    if is_mouth:
+        return "mouth"
+    var pop := _count_bits(mask)
+    if pop <= 0:
+        return ""
+    if pop == 1:
+        return "source"
+    if pop == 2:
+        var bits := _bits_from_mask(mask)
+        if _is_opposite_pair(bits):
+            return "straight"
+        return "bend"
+    if pop == 3:
+        return "t"
+    return "cross"
+
+func _count_bits(value: int) -> int:
+    var count := 0
+    var working := value
+    while working != 0:
+        working &= working - 1
+        count += 1
+    return count
+
+func _bits_from_mask(mask: int) -> Array[int]:
+    var bits: Array[int] = []
+    for i in range(6):
+        if (mask & (1 << i)) != 0:
+            bits.append(i)
+    bits.sort()
+    return bits
+
+func _is_opposite_pair(bits: Array[int]) -> bool:
+    if bits.size() != 2:
+        return false
+    var a := bits[0]
+    var b := bits[1]
+    return ((b - a) + 6) % 6 == 3
+
+func _compute_river_rotation(mask: int, variant: String) -> int:
+    if mask == 0:
+        return 0
+    match variant:
+        "source":
+            var bits := _bits_from_mask(mask)
+            if bits.is_empty():
+                return 0
+            var target := bits[0]
+            return (target - 3 + 6) % 6
+        "mouth":
+            return 0
+        "straight":
+            return _find_rotation_for_pattern(mask, [_mask_from_bits([0, 3])])
+        "bend":
+            return _find_rotation_for_pattern(mask, [_mask_from_bits([2, 3])])
+        "t":
+            return _find_rotation_for_pattern(mask, [
+                _mask_from_bits([1, 3, 5]),
+                _mask_from_bits([0, 1, 2]),
+                _mask_from_bits([0, 2, 3]),
+            ])
+        "cross":
+            return _find_rotation_for_pattern(mask, [
+                _mask_from_bits([0, 2, 3, 5]),
+                _mask_from_bits([0, 1, 3, 4]),
+                _mask_from_bits([0, 1, 2, 3]),
+                _mask_from_bits([0, 1, 2, 3, 4]),
+                _mask_from_bits([0, 1, 2, 3, 4, 5]),
+            ])
+    return 0
+
+func _mask_from_bits(bits: Array[int]) -> int:
+    var result := 0
+    for bit in bits:
+        var wrapped := wrapi(bit, 0, 6)
+        result |= 1 << wrapped
+    return result
+
+func _rotate_mask(mask: int, steps: int) -> int:
+    var rotated := 0
+    for i in range(6):
+        if (mask & (1 << i)) == 0:
+            continue
+        var new_index := (i + steps) % 6
+        rotated |= 1 << new_index
+    return rotated
+
+func _find_rotation_for_pattern(mask: int, canonical_masks: Array[int]) -> int:
+    var best_rotation := 0
+    var best_overlap := -1
+    for canonical in canonical_masks:
+        for rotation in range(6):
+            var rotated := _rotate_mask(canonical, rotation)
+            if rotated == mask:
+                return rotation
+            var overlap := _count_bits(mask & rotated)
+            if overlap > best_overlap:
+                best_overlap = overlap
+                best_rotation = rotation
+    return best_rotation % 6
+
+func _scale_vector_for_class(class_value: int) -> Vector3:
+    var factor := 1.0 + float(max(class_value - 1, 0)) * RIVER_CLASS_SCALE_STEP
+    return Vector3(factor, 1.0, factor)
+
+func _get_or_create_river_layer(class_value: int, variant: String) -> MultiMeshInstance3D:
+    if _terrain_root == null:
+        return null
+    if not _river_layers.has(class_value):
+        _river_layers[class_value] = {}
+    var variant_layers: Dictionary = _river_layers[class_value]
+    if variant_layers.has(variant):
+        var existing: Variant = variant_layers[variant]
+        if existing is MultiMeshInstance3D:
+            return existing
+    var river_meshes: Dictionary = _mesh_library.get("rivers", {})
+    var mesh: Mesh = river_meshes.get(variant)
+    if mesh == null:
+        return null
+    var multimesh := MultiMesh.new()
+    multimesh.transform_format = MultiMesh.TRANSFORM_3D
+    multimesh.mesh = mesh
+    var instance := MultiMeshInstance3D.new()
+    instance.name = "River%sClass%d" % [variant.capitalize(), class_value]
+    instance.multimesh = multimesh
+    instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    instance.visible = _show_rivers
+    _terrain_root.add_child(instance)
+    variant_layers[variant] = instance
+    _river_layers[class_value] = variant_layers
+    return instance
+
+func _ensure_river_marker_layer() -> MultiMeshInstance3D:
+    if _terrain_root == null:
+        return null
+    if _river_marker_layer != null and _river_marker_layer.multimesh != null:
+        return _river_marker_layer
+    var marker_mesh: Mesh = _mesh_library.get("river_marker")
+    if marker_mesh == null:
+        return null
+    var multimesh := MultiMesh.new()
+    multimesh.transform_format = MultiMesh.TRANSFORM_3D
+    multimesh.mesh = marker_mesh
+    var instance := MultiMeshInstance3D.new()
+    instance.name = "RiverMouthMarkers"
+    instance.multimesh = multimesh
+    instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    instance.visible = _show_rivers
+    _terrain_root.add_child(instance)
+    _river_marker_layer = instance
+    return instance
+
+func _update_river_layers() -> void:
+    if _terrain_root == null:
+        return
+    var grouped: Dictionary = {}
+    var mouth_entries: Array = []
+    for info_variant in _river_tile_cache.values():
+        if typeof(info_variant) != TYPE_DICTIONARY:
+            continue
+        var info: Dictionary = info_variant
+        var variant := String(info.get("variant", ""))
+        if variant.is_empty():
+            continue
+        var class_value := int(info.get("river_class", 1))
+        if class_value <= 0:
+            class_value = 1
+        if not grouped.has(class_value):
+            grouped[class_value] = {}
+        var variant_map: Dictionary = grouped[class_value]
+        if not variant_map.has(variant):
+            variant_map[variant] = []
+        var list: Array = variant_map[variant]
+        list.append(info)
+        variant_map[variant] = list
+        grouped[class_value] = variant_map
+        if bool(info.get("is_mouth", false)):
+            mouth_entries.append(info)
+    var used_keys: Dictionary = {}
+    for class_value in grouped.keys():
+        var variant_map: Dictionary = grouped[class_value]
+        for variant in variant_map.keys():
+            var entries: Array = variant_map[variant]
+            var instance := _get_or_create_river_layer(class_value, variant)
+            if instance == null:
+                continue
+            var multimesh := instance.multimesh
+            if multimesh == null:
+                continue
+            instance.visible = _show_rivers
+            var count := entries.size()
+            multimesh.instance_count = count
+            for index in range(count):
+                var entry: Dictionary = entries[index]
+                var axial: Vector2i = entry.get("coord", Vector2i.ZERO)
+                var world_position := _axial_to_world(axial)
+                world_position.y += RIVER_Y_OFFSET
+                var rotation_steps := int(entry.get("rotation", 0)) % 6
+                var rotation_basis := Basis(Vector3.UP, float(rotation_steps) * RIVER_ROTATION_STEP)
+                var basis := rotation_basis.scaled(_scale_vector_for_class(class_value))
+                var transform := Transform3D(basis, world_position)
+                multimesh.set_instance_transform(index, transform)
+            used_keys["%d:%s" % [class_value, variant]] = true
+    _cleanup_unused_river_layers(used_keys)
+    _update_river_markers(mouth_entries)
+
+func _cleanup_unused_river_layers(used_keys: Dictionary) -> void:
+    var classes_to_remove: Array[int] = []
+    for class_value in _river_layers.keys():
+        var variant_map: Dictionary = _river_layers[class_value]
+        var variants_to_remove: Array[String] = []
+        for variant in variant_map.keys():
+            var key := "%d:%s" % [class_value, variant]
+            if used_keys.has(key):
+                continue
+            var instance: Variant = variant_map[variant]
+            if instance is MultiMeshInstance3D:
+                var node := instance as MultiMeshInstance3D
+                if not node.is_queued_for_deletion():
+                    node.queue_free()
+            variants_to_remove.append(variant)
+        for variant in variants_to_remove:
+            variant_map.erase(variant)
+        if variant_map.is_empty():
+            classes_to_remove.append(class_value)
+        else:
+            _river_layers[class_value] = variant_map
+    for class_value in classes_to_remove:
+        _river_layers.erase(class_value)
+
+func _update_river_markers(entries: Array) -> void:
+    if entries.is_empty():
+        if _river_marker_layer != null and _river_marker_layer.multimesh != null:
+            _river_marker_layer.multimesh.instance_count = 0
+        return
+    var instance := _ensure_river_marker_layer()
+    if instance == null:
+        return
+    var multimesh := instance.multimesh
+    if multimesh == null:
+        return
+    instance.visible = _show_rivers
+    multimesh.instance_count = entries.size()
+    for index in range(entries.size()):
+        var entry: Dictionary = entries[index]
+        var axial: Vector2i = entry.get("coord", Vector2i.ZERO)
+        var world_position := _axial_to_world(axial)
+        world_position.y += RIVER_Y_OFFSET + (RIVER_MARKER_HEIGHT * 0.5)
+        var transform := Transform3D(Basis.IDENTITY, world_position)
+        multimesh.set_instance_transform(index, transform)
+
+func _update_river_visibility() -> void:
+    for class_value in _river_layers.keys():
+        var variant_map: Dictionary = _river_layers[class_value]
+        for variant in variant_map.keys():
+            var instance: Variant = variant_map[variant]
+            if instance is MultiMeshInstance3D:
+                (instance as MultiMeshInstance3D).visible = _show_rivers
+    if _river_marker_layer != null:
+        _river_marker_layer.visible = _show_rivers
 
 func _coord_to_axial(value: Variant) -> Vector2i:
     if value is Vector2i:

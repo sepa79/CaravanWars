@@ -3,6 +3,7 @@ Changelog
 Unreleased
 Added
 - Rivers now generate from mountain peaks, record per-hex masks, classes, mouths, and emit validation results for missing sinks.
+- Map setup preview batches river meshes by class, supports visibility toggles, and marks river mouths above the terrain grid.
 Changed
 - Plains carved by rivers automatically downgrade to valleys and lakes prefer to open downstream outlets when terrain allows.
 - Map generation defaults now start with mountain-mountain-hills-sea-sea-hills edge bands, edge depths 2/2/2/54/5/2, edge jitter 3, and medium random features.
