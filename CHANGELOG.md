@@ -1,13 +1,28 @@
 Changelog
 
 Unreleased
+Added
+- Nothing yet.
+Changed
+- Nothing yet.
+Fixed
+- Nothing yet.
+
+0.2.0 — 2025-09-19
+Added
+- Singleplayer map setup preview supports mouse zoom, pan, and orbit controls and shows a localized terrain legend beside the viewport.
 Changed
 - Documented in the README that the project was reset and all systems are being rebuilt from scratch.
-
+- Map setup now displays the prepared singleplayer map with live seed, radius, kingdom, and river controls for regeneration.
 Fixed
-- Updated the Godot project metadata version to 0.1.82 so tooling and runtime checks report the same release number.
+- Map preview now routes SubViewport, container, and overlay input through a shared handler so orbit and pan drags work alongside zoom instead of getting swallowed by the 3D viewport.
+- Renamed hex map seed fields and preload constants to avoid Godot warnings about colliding with built-in names and registered classes.
+- Updated the Godot project metadata version to 0.2.0 so tooling and runtime checks report the same release number.
 - Corrected terrain region seeding to cast packed vectors before hex conversion, preventing singleplayer map generation crashes.
 - Map view now spawns its SubViewport container and world when absent so legacy screens display terrain again.
+- Map view preview now instantiates a camera rig and directional lighting so generated terrain is visible during setup.
+- Map preview drag rotation and panning persist while drag buttons stay held, so SubViewport events without button masks keep camera control responsive.
+- Cleared Map setup preview warnings by renaming conflicting script constants and locals and using static Basis look-at helpers.
 
 0.1.82 — 2025-09-15
 Added

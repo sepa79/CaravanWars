@@ -1,8 +1,6 @@
 extends RefCounted
 class_name HexGrid
 
-const HexCoord := preload("res://mapgen/HexCoord.gd")
-
 const AXIAL_DIRECTIONS: Array[Vector2i] = HexCoord.DIRECTIONS
 
 var radius: int

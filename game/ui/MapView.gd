@@ -23,22 +23,55 @@ const SHORELINE_SCENES: Dictionary = {
 }
 
 const HEX_WORLD_SCALE: float = 1.0
+const CAMERA_BASE_HEIGHT: float = 26.0
+const CAMERA_HEIGHT_PER_UNIT: float = 0.45
+const CAMERA_DISTANCE_FACTOR: float = 1.65
+const CAMERA_MIN_DISTANCE: float = 32.0
+const CAMERA_ORBIT_DIRECTION: Vector3 = Vector3(0.573462, 0.0, 0.819232)
+const DEFAULT_CAMERA_ORIGIN: Vector3 = Vector3(0.0, 28.0, 36.0)
+const DEFAULT_CAMERA_TARGET: Vector3 = Vector3.ZERO
+const LIGHT_DIRECTION: Vector3 = Vector3(-0.45, -1.0, -0.35)
+const LIGHT_ENERGY: float = 1.35
+const LIGHT_INDIRECT_ENERGY: float = 0.85
+const CAMERA_ZOOM_IN_FACTOR: float = 0.85
+const CAMERA_ZOOM_OUT_FACTOR: float = 1.15
+const CAMERA_MIN_ZOOM: float = 0.35
+const CAMERA_MAX_ZOOM: float = 3.0
+const CAMERA_PAN_BASE: float = 0.005
+const CAMERA_ROTATE_SPEED: float = 0.01
+const CAMERA_PAN_MARGIN_RATIO: float = 0.25
+const CAMERA_PAN_MARGIN_MIN: float = 4.0
 
 var map_data: Dictionary = {}
 
 var _mesh_library: Dictionary = {}
 var _region_layers: Dictionary = {}
 var _needs_refresh: bool = false
+var _map_bounds: Dictionary = {}
+var _camera_zoom: float = 1.0
+var _camera_orbit_yaw: float = 0.0
+var _camera_pan_offset: Vector2 = Vector2.ZERO
+var _camera_pan_bounds_min: Vector2 = Vector2.ZERO
+var _camera_pan_bounds_max: Vector2 = Vector2.ZERO
+var _map_extent_radius: float = 1.0
+var _is_panning: bool = false
+var _is_rotating: bool = false
 
 var _viewport: SubViewport
 var _terrain_root: Node3D
 var _viewport_container: Control
+var _input_capture: Control
+var _camera_rig: Node3D
+var _camera: Camera3D
+var _sun_light: DirectionalLight3D
 
 func _ready() -> void:
     _ensure_viewport_structure()
     _configure_viewport()
     _build_mesh_library()
     _ensure_region_layers()
+    call_deferred("_complete_preview_setup")
+    _update_camera_framing()
     _needs_refresh = true
     _refresh_layers_if_needed()
 
@@ -48,6 +81,8 @@ func _exit_tree() -> void:
 
 func set_map_data(data: Dictionary) -> void:
     map_data = data
+    if data.is_empty():
+        _reset_camera_state()
     _needs_refresh = true
     _refresh_layers_if_needed()
     cities_changed.emit([])
@@ -100,7 +135,6 @@ func get_kingdom_colors() -> Dictionary:
 func _configure_viewport() -> void:
     if _viewport == null:
         return
-    _viewport.own_world_3d = true
     if _viewport.world_3d == null:
         _viewport.world_3d = World3D.new()
     _viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
@@ -116,6 +150,8 @@ func _ensure_viewport_structure() -> void:
         _viewport = SubViewport.new()
         _viewport.name = "TerrainViewport"
         _viewport.unique_name_in_owner = true
+        _viewport.own_world_3d = true
+        _viewport.world_3d = World3D.new()
         _viewport_container.add_child(_viewport)
     _terrain_root = _viewport.get_node_or_null("TerrainRoot") as Node3D
     if _terrain_root == null:
@@ -123,6 +159,8 @@ func _ensure_viewport_structure() -> void:
         _terrain_root.name = "TerrainRoot"
         _terrain_root.unique_name_in_owner = true
         _viewport.add_child(_terrain_root)
+    _ensure_input_capture()
+    _configure_input_capture()
 
 func _locate_container() -> Control:
     if is_class("SubViewportContainer"):
@@ -160,6 +198,25 @@ func _locate_viewport(container: Node = null) -> SubViewport:
         if child is SubViewport:
             return child as SubViewport
     return null
+
+func _ensure_input_capture() -> void:
+    if not (self is Control):
+        return
+    if _input_capture == null:
+        _input_capture = Control.new()
+        _input_capture.name = "InputCapture"
+        _input_capture.unique_name_in_owner = true
+        _input_capture.mouse_filter = Control.MOUSE_FILTER_STOP
+        _input_capture.focus_mode = Control.FOCUS_ALL
+        _input_capture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+        add_child(_input_capture)
+        if self.owner != null:
+            _input_capture.owner = self.owner
+    else:
+        _input_capture.mouse_filter = Control.MOUSE_FILTER_STOP
+        _input_capture.focus_mode = Control.FOCUS_ALL
+        _input_capture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    _input_capture.z_index = 1
 
 func _build_mesh_library() -> void:
     _mesh_library = {
@@ -226,6 +283,9 @@ func _refresh_layers_if_needed() -> void:
 
 func _update_region_layers() -> void:
     var grouped_hexes := _group_hexes_by_region()
+    var min_pos := Vector3(INF, INF, INF)
+    var max_pos := Vector3(-INF, -INF, -INF)
+    var has_positions := false
     for region in _region_layers.keys():
         var instance: MultiMeshInstance3D = _region_layers[region]
         if instance == null or instance.multimesh == null:
@@ -238,10 +298,32 @@ func _update_region_layers() -> void:
             if typeof(entry) != TYPE_DICTIONARY:
                 continue
             var axial := _coord_to_axial(entry.get("coord"))
-            var position := _axial_to_world(axial)
-            multimesh.set_instance_transform(index, Transform3D(Basis.IDENTITY, position))
+            var world_position := _axial_to_world(axial)
+            multimesh.set_instance_transform(index, Transform3D(Basis.IDENTITY, world_position))
             index += 1
+            min_pos.x = min(min_pos.x, world_position.x)
+            min_pos.y = min(min_pos.y, world_position.y)
+            min_pos.z = min(min_pos.z, world_position.z)
+            max_pos.x = max(max_pos.x, world_position.x)
+            max_pos.y = max(max_pos.y, world_position.y)
+            max_pos.z = max(max_pos.z, world_position.z)
+            has_positions = true
         multimesh.instance_count = index
+    if has_positions:
+        _map_bounds = {
+            "min": min_pos,
+            "max": max_pos,
+        }
+        var span_x: float = abs(max_pos.x - min_pos.x)
+        var span_z: float = abs(max_pos.z - min_pos.z)
+        _map_extent_radius = max(max(span_x, span_z) * 0.5, 1.0)
+        _update_pan_bounds(min_pos, max_pos)
+    else:
+        _map_bounds = {}
+        _map_extent_radius = 1.0
+        _camera_pan_bounds_min = Vector2.ZERO
+        _camera_pan_bounds_max = Vector2.ZERO
+    _update_camera_framing()
 
 func _group_hexes_by_region() -> Dictionary:
     if not map_data.has("hexes"):
@@ -282,3 +364,233 @@ func _axial_to_world(coord: Vector2i) -> Vector3:
 
 func _draw() -> void:
     _refresh_layers_if_needed()
+
+func _complete_preview_setup() -> void:
+    _ensure_camera_rig()
+    _ensure_preview_light()
+    _update_camera_framing()
+
+func _ensure_camera_rig() -> void:
+    if _viewport == null:
+        return
+    _camera_rig = _viewport.get_node_or_null("%CameraRig") as Node3D
+    if _camera_rig == null:
+        _camera_rig = Node3D.new()
+        _camera_rig.name = "CameraRig"
+        _camera_rig.unique_name_in_owner = true
+        _viewport.add_child(_camera_rig)
+    _camera = _camera_rig.get_node_or_null("PreviewCamera") as Camera3D
+    if _camera == null:
+        _camera = Camera3D.new()
+        _camera.name = "PreviewCamera"
+        _camera_rig.add_child(_camera)
+    _configure_camera()
+
+func _configure_camera() -> void:
+    if _camera == null:
+        return
+    _camera.set_deferred("current", true)
+    _camera.near = 0.1
+    _camera.far = 1024.0
+    _camera.fov = 40.0
+    if _map_bounds.is_empty():
+        _apply_default_camera_frame()
+
+func _apply_default_camera_frame() -> void:
+    if _camera == null:
+        return
+    var origin := DEFAULT_CAMERA_ORIGIN
+    var target := DEFAULT_CAMERA_TARGET
+    var direction := target - origin
+    if direction.length_squared() < 0.001:
+        direction = Vector3.FORWARD
+    var basis := Basis.looking_at(direction.normalized(), Vector3.UP)
+    _camera.transform = Transform3D(basis, origin)
+
+func _update_camera_framing() -> void:
+    if _camera == null:
+        return
+    if _map_bounds.is_empty():
+        _apply_default_camera_frame()
+        return
+    var min_pos: Vector3 = _map_bounds.get("min", Vector3.ZERO)
+    var max_pos: Vector3 = _map_bounds.get("max", Vector3.ZERO)
+    var base_center: Vector3 = (min_pos + max_pos) * 0.5
+    var span_x: float = abs(max_pos.x - min_pos.x)
+    var span_z: float = abs(max_pos.z - min_pos.z)
+    var extent: float = max(max(span_x, span_z) * 0.5, 1.0)
+    var zoom_factor: float = clampf(_camera_zoom, CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM)
+    var distance: float = max(CAMERA_MIN_DISTANCE, extent * CAMERA_DISTANCE_FACTOR) * zoom_factor
+    var height: float = max(CAMERA_BASE_HEIGHT, (extent * CAMERA_HEIGHT_PER_UNIT) + CAMERA_BASE_HEIGHT) * zoom_factor
+    height = max(height, 4.0)
+    var center_2d: Vector2 = Vector2(base_center.x, base_center.z) + _camera_pan_offset
+    if _camera_pan_bounds_max.x > _camera_pan_bounds_min.x:
+        center_2d.x = clampf(center_2d.x, _camera_pan_bounds_min.x, _camera_pan_bounds_max.x)
+    if _camera_pan_bounds_max.y > _camera_pan_bounds_min.y:
+        center_2d.y = clampf(center_2d.y, _camera_pan_bounds_min.y, _camera_pan_bounds_max.y)
+    _camera_pan_offset = center_2d - Vector2(base_center.x, base_center.z)
+    var center: Vector3 = Vector3(center_2d.x, base_center.y, center_2d.y)
+    var offset_dir: Vector3 = CAMERA_ORBIT_DIRECTION.normalized().rotated(Vector3.UP, _camera_orbit_yaw)
+    var horizontal_offset: Vector3 = offset_dir * distance
+    var origin: Vector3 = Vector3(center.x + horizontal_offset.x, height, center.z + horizontal_offset.z)
+    var target: Vector3 = Vector3(center.x, center.y, center.z)
+    var direction: Vector3 = target - origin
+    if direction.length_squared() < 0.001:
+        direction = Vector3.FORWARD
+    var basis := Basis.looking_at(direction.normalized(), Vector3.UP)
+    _camera.transform = Transform3D(basis, origin)
+    if _sun_light != null:
+        _sun_light.transform.origin = center
+
+func _ensure_preview_light() -> void:
+    if _viewport == null:
+        return
+    _sun_light = _viewport.get_node_or_null("%SunLight") as DirectionalLight3D
+    if _sun_light == null:
+        _sun_light = DirectionalLight3D.new()
+        _sun_light.name = "SunLight"
+        _sun_light.unique_name_in_owner = true
+        _viewport.add_child(_sun_light)
+    _configure_preview_light()
+
+func _configure_preview_light() -> void:
+    if _sun_light == null:
+        return
+    _sun_light.light_energy = LIGHT_ENERGY
+    _sun_light.light_indirect_energy = LIGHT_INDIRECT_ENERGY
+    _sun_light.shadow_enabled = false
+    var direction := LIGHT_DIRECTION
+    if direction.length_squared() < 0.001:
+        direction = Vector3(-0.5, -1.0, -0.5)
+    direction = direction.normalized()
+    var basis := Basis.looking_at(direction, Vector3.UP)
+    _sun_light.transform = Transform3D(basis, _sun_light.transform.origin)
+
+func _configure_input_capture() -> void:
+    if self is Control:
+        var control := self as Control
+        control.mouse_filter = Control.MOUSE_FILTER_STOP
+        control.focus_mode = Control.FOCUS_ALL
+    if _viewport_container != null:
+        _viewport_container.mouse_filter = Control.MOUSE_FILTER_STOP
+        _viewport_container.focus_mode = Control.FOCUS_ALL
+        if not _viewport_container.gui_input.is_connected(_on_viewport_container_gui_input):
+            _viewport_container.gui_input.connect(_on_viewport_container_gui_input)
+    if _input_capture != null:
+        _input_capture.mouse_filter = Control.MOUSE_FILTER_STOP
+        _input_capture.focus_mode = Control.FOCUS_ALL
+        _input_capture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+        if not _input_capture.gui_input.is_connected(_on_input_capture_gui_input):
+            _input_capture.gui_input.connect(_on_input_capture_gui_input)
+    if _viewport != null:
+        _viewport.gui_disable_input = true
+        _viewport.handle_input_locally = false
+        if _viewport.has_signal("gui_input") and not _viewport.gui_input.is_connected(_on_subviewport_gui_input):
+            _viewport.gui_input.connect(_on_subviewport_gui_input)
+
+func _gui_input(event: InputEvent) -> void:
+    if _handle_pointer_event(event):
+        accept_event()
+
+func _on_input_capture_gui_input(event: InputEvent) -> void:
+    if _handle_pointer_event(event) and _input_capture != null:
+        _input_capture.accept_event()
+
+func _on_viewport_container_gui_input(event: InputEvent) -> void:
+    if _handle_pointer_event(event) and _viewport_container != null:
+        _viewport_container.accept_event()
+
+func _on_subviewport_gui_input(event: InputEvent) -> void:
+    if _handle_pointer_event(event):
+        var root_viewport := get_viewport()
+        if root_viewport != null:
+            root_viewport.set_input_as_handled()
+
+func _handle_pointer_event(event: InputEvent) -> bool:
+    if event is InputEventMouseButton:
+        var mouse_button := event as InputEventMouseButton
+        if mouse_button.button_index == MOUSE_BUTTON_WHEEL_UP and mouse_button.pressed:
+            _change_camera_zoom(CAMERA_ZOOM_IN_FACTOR)
+            return true
+        if mouse_button.button_index == MOUSE_BUTTON_WHEEL_DOWN and mouse_button.pressed:
+            _change_camera_zoom(CAMERA_ZOOM_OUT_FACTOR)
+            return true
+        if mouse_button.button_index == MOUSE_BUTTON_LEFT or mouse_button.button_index == MOUSE_BUTTON_MIDDLE:
+            _is_panning = mouse_button.pressed
+            return true
+        if mouse_button.button_index == MOUSE_BUTTON_RIGHT:
+            _is_rotating = mouse_button.pressed
+            return true
+        return false
+    if event is InputEventMouseMotion:
+        var motion := event as InputEventMouseMotion
+        var handled: bool = false
+        if _is_rotating or Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+            if not _is_rotating and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+                _is_rotating = true
+            if absf(motion.relative.x) > 0.0:
+                _apply_camera_rotation(motion.relative.x)
+            handled = true
+        if not handled:
+            var wants_pan: bool = _is_panning or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE)
+            if wants_pan and not motion.relative.is_zero_approx():
+                if not _is_panning:
+                    _is_panning = true
+                _apply_camera_pan(motion.relative)
+            if wants_pan:
+                handled = true
+        return handled
+    return false
+
+func _change_camera_zoom(factor: float) -> void:
+    var new_zoom: float = clampf(_camera_zoom * factor, CAMERA_MIN_ZOOM, CAMERA_MAX_ZOOM)
+    if absf(new_zoom - _camera_zoom) < 0.0001:
+        return
+    _camera_zoom = new_zoom
+    _update_camera_framing()
+
+func _apply_camera_rotation(delta_x: float) -> void:
+    _camera_orbit_yaw = wrapf(_camera_orbit_yaw - (delta_x * CAMERA_ROTATE_SPEED), -TAU, TAU)
+    _update_camera_framing()
+
+func _apply_camera_pan(relative: Vector2) -> void:
+    if _camera == null:
+        return
+    if relative.is_zero_approx():
+        return
+    var right: Vector3 = _camera.transform.basis.x
+    var forward: Vector3 = -_camera.transform.basis.z
+    right.y = 0.0
+    forward.y = 0.0
+    if right.length_squared() < 0.001 or forward.length_squared() < 0.001:
+        return
+    right = right.normalized()
+    forward = forward.normalized()
+    var pan_scale: float = _compute_pan_scale()
+    var movement: Vector3 = (-right * relative.x + forward * relative.y) * pan_scale
+    _camera_pan_offset += Vector2(movement.x, movement.z)
+    _update_camera_framing()
+
+func _compute_pan_scale() -> float:
+    var extent: float = max(_map_extent_radius, 1.0)
+    var viewport_size: Vector2 = Vector2(1.0, 1.0)
+    if _viewport != null:
+        viewport_size = _viewport.size
+        viewport_size.x = max(viewport_size.x, 1.0)
+        viewport_size.y = max(viewport_size.y, 1.0)
+    var reference: float = 600.0
+    var pan_scale: float = extent * CAMERA_PAN_BASE * _camera_zoom
+    pan_scale *= reference / viewport_size.y
+    return pan_scale
+
+func _update_pan_bounds(min_pos: Vector3, max_pos: Vector3) -> void:
+    var margin: float = max(_map_extent_radius * CAMERA_PAN_MARGIN_RATIO, CAMERA_PAN_MARGIN_MIN)
+    _camera_pan_bounds_min = Vector2(min_pos.x - margin, min_pos.z - margin)
+    _camera_pan_bounds_max = Vector2(max_pos.x + margin, max_pos.z + margin)
+
+func _reset_camera_state() -> void:
+    _camera_zoom = 1.0
+    _camera_orbit_yaw = 0.0
+    _camera_pan_offset = Vector2.ZERO
+    _is_panning = false
+    _is_rotating = false
