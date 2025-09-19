@@ -6,7 +6,7 @@ Added
 Changed
 - Plains carved by rivers automatically downgrade to valleys and lakes prefer to open downstream outlets when terrain allows.
 Fixed
-- Nothing yet.
+- Corrected river peak ordering to compare coordinates without using the nonexistent `String` constructor in Godot 4.
 
 0.2.1 — 2025-09-19
 Added

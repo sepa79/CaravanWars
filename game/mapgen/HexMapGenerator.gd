@@ -270,7 +270,11 @@ func _compare_peak_entry(a: Dictionary, b: Dictionary) -> bool:
     var elev_a := float(a.get("elev", 0.0))
     var elev_b := float(b.get("elev", 0.0))
     if abs(elev_a - elev_b) < 0.0001:
-        return String(a.get("coord", "")) < String(b.get("coord", ""))
+        var coord_a: Vector2i = a.get("coord", Vector2i.ZERO)
+        var coord_b: Vector2i = b.get("coord", Vector2i.ZERO)
+        if coord_a.x == coord_b.x:
+            return coord_a.y < coord_b.y
+        return coord_a.x < coord_b.x
     return elev_a > elev_b
 
 func _trace_river_from(source_key: Vector2i, hex_entries: Dictionary, river_hex_data: Dictionary) -> Dictionary:
