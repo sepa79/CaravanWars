@@ -24,13 +24,35 @@ const SHORELINE_SCENES: Dictionary = {
 
 const RIVER_SCENES: Dictionary = {
     "straight": preload("res://assets/gltf/tiles/rivers/hex_river_A.gltf"),
-    "bend": preload("res://assets/gltf/tiles/rivers/hex_river_C.gltf"),
-    "t": preload("res://assets/gltf/tiles/rivers/hex_river_G.gltf"),
-    "cross": preload("res://assets/gltf/tiles/rivers/hex_river_I.gltf"),
     "source": preload("res://assets/gltf/tiles/rivers/hex_river_B.gltf"),
+    "bend": preload("res://assets/gltf/tiles/rivers/hex_river_C.gltf"),
+    "alternating": preload("res://assets/gltf/tiles/rivers/hex_river_D.gltf"),
+    "fork_left": preload("res://assets/gltf/tiles/rivers/hex_river_E.gltf"),
+    "fork_right": preload("res://assets/gltf/tiles/rivers/hex_river_F.gltf"),
+    "tee": preload("res://assets/gltf/tiles/rivers/hex_river_G.gltf"),
+    "quad_fan": preload("res://assets/gltf/tiles/rivers/hex_river_H.gltf"),
+    "quad_split": preload("res://assets/gltf/tiles/rivers/hex_river_I.gltf"),
+    "cross": preload("res://assets/gltf/tiles/rivers/hex_river_J.gltf"),
+    "flood": preload("res://assets/gltf/tiles/rivers/hex_river_K.gltf"),
     "mouth": preload("res://assets/gltf/tiles/rivers/hex_river_L.gltf"),
 }
 
+const RIVER_VARIANT_DEFINITIONS: Array = [
+    {"key": "straight", "mask": 9},
+    {"key": "source", "mask": 10},
+    {"key": "bend", "mask": 12},
+    {"key": "alternating", "mask": 42},
+    {"key": "fork_left", "mask": 11},
+    {"key": "fork_right", "mask": 41},
+    {"key": "tee", "mask": 28},
+    {"key": "quad_fan", "mask": 29},
+    {"key": "quad_split", "mask": 54},
+    {"key": "cross", "mask": 57},
+    {"key": "flood", "mask": 62},
+    {"key": "mouth", "mask": 63, "is_mouth": true},
+]
+
+const RIVER_MASK_BIT_COUNT := 6
 const RIVER_ROTATION_STEP: float = PI / 3.0
 const RIVER_Y_OFFSET: float = 0.05
 const RIVER_CLASS_SCALE_STEP: float = 0.03
@@ -64,6 +86,7 @@ var _region_layers: Dictionary = {}
 var _river_layers: Dictionary = {}
 var _river_marker_layer: MultiMeshInstance3D
 var _river_tile_cache: Dictionary = {}
+var _river_mask_lookup: Dictionary = _create_river_mask_lookup()
 var _needs_refresh: bool = false
 var _map_bounds: Dictionary = {}
 var _camera_zoom: float = 1.0
@@ -399,46 +422,28 @@ func _cache_river_entries() -> void:
         if typeof(entry_variant) != TYPE_DICTIONARY:
             continue
         var entry: Dictionary = entry_variant
-        var mask := int(entry.get("river_mask", 0))
-        if mask == 0:
+        var raw_mask := int(entry.get("river_mask", 0))
+        var is_mouth := bool(entry.get("is_mouth", false))
+        if raw_mask == 0 and not is_mouth:
             continue
         var axial := _coord_to_axial(entry.get("coord"))
-        var is_mouth := bool(entry.get("is_mouth", false))
-        var variant := _classify_river_variant(mask, is_mouth)
+        var variant_info := _resolve_river_variant(raw_mask, is_mouth)
+        var variant := String(variant_info.get("variant", ""))
         if variant.is_empty():
             continue
-        var rotation := _compute_river_rotation(mask, variant)
+        var rotation := int(variant_info.get("rotation", 0))
         var class_value := int(entry.get("river_class", 1))
         if class_value <= 0:
             class_value = 1
         var cached_entry := {
             "coord": axial,
-            "mask": mask,
+            "mask": raw_mask & ((1 << RIVER_MASK_BIT_COUNT) - 1),
             "river_class": class_value,
             "is_mouth": is_mouth,
             "variant": variant,
             "rotation": rotation,
         }
         _river_tile_cache[axial] = cached_entry
-
-func _classify_river_variant(mask: int, is_mouth: bool) -> String:
-    if mask == 0:
-        return ""
-    if is_mouth:
-        return "mouth"
-    var pop := _count_bits(mask)
-    if pop <= 0:
-        return ""
-    if pop == 1:
-        return "source"
-    if pop == 2:
-        var bits := _bits_from_mask(mask)
-        if _is_opposite_pair(bits):
-            return "straight"
-        return "bend"
-    if pop == 3:
-        return "t"
-    return "cross"
 
 func _count_bits(value: int) -> int:
     var count := 0
@@ -448,82 +453,85 @@ func _count_bits(value: int) -> int:
         count += 1
     return count
 
-func _bits_from_mask(mask: int) -> Array[int]:
-    var bits: Array[int] = []
-    for i in range(6):
-        if (mask & (1 << i)) != 0:
-            bits.append(i)
-    bits.sort()
-    return bits
-
-func _is_opposite_pair(bits: Array[int]) -> bool:
-    if bits.size() != 2:
-        return false
-    var a := bits[0]
-    var b := bits[1]
-    return ((b - a) + 6) % 6 == 3
-
-func _compute_river_rotation(mask: int, variant: String) -> int:
-    if mask == 0:
-        return 0
-    match variant:
-        "source":
-            var bits := _bits_from_mask(mask)
-            if bits.is_empty():
-                return 0
-            var target := bits[0]
-            return (target - 3 + 6) % 6
-        "mouth":
-            return 0
-        "straight":
-            return _find_rotation_for_pattern(mask, [_mask_from_bits([0, 3])])
-        "bend":
-            return _find_rotation_for_pattern(mask, [_mask_from_bits([2, 3])])
-        "t":
-            return _find_rotation_for_pattern(mask, [
-                _mask_from_bits([1, 3, 5]),
-                _mask_from_bits([0, 1, 2]),
-                _mask_from_bits([0, 2, 3]),
-            ])
-        "cross":
-            return _find_rotation_for_pattern(mask, [
-                _mask_from_bits([0, 2, 3, 5]),
-                _mask_from_bits([0, 1, 3, 4]),
-                _mask_from_bits([0, 1, 2, 3]),
-                _mask_from_bits([0, 1, 2, 3, 4]),
-                _mask_from_bits([0, 1, 2, 3, 4, 5]),
-            ])
-    return 0
-
-func _mask_from_bits(bits: Array[int]) -> int:
-    var result := 0
-    for bit in bits:
-        var wrapped := wrapi(bit, 0, 6)
-        result |= 1 << wrapped
-    return result
+func _resolve_river_variant(mask: int, is_mouth: bool) -> Dictionary:
+    if is_mouth:
+        return {
+            "variant": "mouth",
+            "rotation": 0,
+        }
+    var sanitized_mask := mask & ((1 << RIVER_MASK_BIT_COUNT) - 1)
+    if sanitized_mask == 0:
+        return {}
+    var lookup_value: Variant = _river_mask_lookup.get(sanitized_mask)
+    if typeof(lookup_value) == TYPE_DICTIONARY:
+        return (lookup_value as Dictionary).duplicate()
+    return _find_best_river_variant(sanitized_mask)
 
 func _rotate_mask(mask: int, steps: int) -> int:
     var rotated := 0
-    for i in range(6):
+    for i in range(RIVER_MASK_BIT_COUNT):
         if (mask & (1 << i)) == 0:
             continue
-        var new_index := (i + steps) % 6
+        var new_index := (i + steps) % RIVER_MASK_BIT_COUNT
         rotated |= 1 << new_index
     return rotated
 
-func _find_rotation_for_pattern(mask: int, canonical_masks: Array[int]) -> int:
+func _create_river_mask_lookup() -> Dictionary:
+    var lookup: Dictionary = {}
+    for definition_variant in RIVER_VARIANT_DEFINITIONS:
+        if typeof(definition_variant) != TYPE_DICTIONARY:
+            continue
+        var definition: Dictionary = definition_variant
+        var key := String(definition.get("key", ""))
+        if key.is_empty():
+            continue
+        var canonical := int(definition.get("mask", 0))
+        if canonical <= 0:
+            continue
+        for rotation in range(RIVER_MASK_BIT_COUNT):
+            var rotated := _rotate_mask(canonical, rotation)
+            if rotated == 0:
+                continue
+            if lookup.has(rotated):
+                continue
+            lookup[rotated] = {
+                "variant": key,
+                "rotation": rotation,
+            }
+    return lookup
+
+func _find_best_river_variant(mask: int) -> Dictionary:
+    var best_variant := ""
     var best_rotation := 0
     var best_overlap := -1
-    for canonical in canonical_masks:
-        for rotation in range(6):
+    for definition_variant in RIVER_VARIANT_DEFINITIONS:
+        if typeof(definition_variant) != TYPE_DICTIONARY:
+            continue
+        var definition: Dictionary = definition_variant
+        var key := String(definition.get("key", ""))
+        if key.is_empty():
+            continue
+        var canonical := int(definition.get("mask", 0))
+        if canonical <= 0:
+            continue
+        for rotation in range(RIVER_MASK_BIT_COUNT):
             var rotated := _rotate_mask(canonical, rotation)
             if rotated == mask:
-                return rotation
+                return {
+                    "variant": key,
+                    "rotation": rotation,
+                }
             var overlap := _count_bits(mask & rotated)
             if overlap > best_overlap:
                 best_overlap = overlap
+                best_variant = key
                 best_rotation = rotation
-    return best_rotation % 6
+    if best_variant.is_empty():
+        return {}
+    return {
+        "variant": best_variant,
+        "rotation": best_rotation,
+    }
 
 func _scale_vector_for_class(class_value: int) -> Vector3:
     var factor := 1.0 + float(max(class_value - 1, 0)) * RIVER_CLASS_SCALE_STEP

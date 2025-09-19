@@ -1,8 +1,8 @@
 extends RefCounted
 class_name HexMapConfig
 
-const DEFAULT_MAP_SEED := 666997
-const DEFAULT_MAP_RADIUS := 4
+const DEFAULT_MAP_SEED := 12345
+const DEFAULT_MAP_RADIUS := 16
 const DEFAULT_KINGDOM_COUNT := 3
 const DEFAULT_RIVERS_CAP := 6
 const DEFAULT_ROAD_AGGRESSIVENESS := 0.5

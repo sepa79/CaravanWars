@@ -7,10 +7,10 @@ Added
 Changed
 - Plains carved by rivers automatically downgrade to valleys and lakes prefer to open downstream outlets when terrain allows.
 - Map generation defaults now start with mountain-mountain-hills-sea-sea-hills edge bands, edge depths 2/2/2/54/5/2, edge jitter 3, and medium random features.
-- Default map seed now initializes to 666997 and the base radius default is 4 so generated maps start from the new baseline sizing.
+- Default map seed now initializes to 12345 and the base radius default is 16 so generated maps start from the requested large baseline.
 Fixed
 - Corrected river peak ordering to compare coordinates without using the nonexistent `String` constructor in Godot 4.
-- Map preview river batching now uses the proper bend, tee, and crossing GLTF tiles so river masks render with the intended shapes.
+- Map preview river batching now preloads all twelve river tiles, classifies masks by canonical rotations, and renders each combination with its dedicated mesh.
 
 0.2.1 — 2025-09-19
 Added
