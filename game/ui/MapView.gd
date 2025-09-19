@@ -25,8 +25,8 @@ const SHORELINE_SCENES: Dictionary = {
 const RIVER_SCENES: Dictionary = {
     "straight": preload("res://assets/gltf/tiles/rivers/hex_river_A.gltf"),
     "bend": preload("res://assets/gltf/tiles/rivers/hex_river_C.gltf"),
-    "t": preload("res://assets/gltf/tiles/rivers/hex_river_D.gltf"),
-    "cross": preload("res://assets/gltf/tiles/rivers/hex_river_crossing_A.gltf"),
+    "t": preload("res://assets/gltf/tiles/rivers/hex_river_G.gltf"),
+    "cross": preload("res://assets/gltf/tiles/rivers/hex_river_I.gltf"),
     "source": preload("res://assets/gltf/tiles/rivers/hex_river_B.gltf"),
     "mouth": preload("res://assets/gltf/tiles/rivers/hex_river_L.gltf"),
 }

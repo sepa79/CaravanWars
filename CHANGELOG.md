@@ -10,6 +10,7 @@ Changed
 - Default map seed now initializes to 666997 and the base radius default is 4 so generated maps start from the new baseline sizing.
 Fixed
 - Corrected river peak ordering to compare coordinates without using the nonexistent `String` constructor in Godot 4.
+- Map preview river batching now uses the proper bend, tee, and crossing GLTF tiles so river masks render with the intended shapes.
 
 0.2.1 — 2025-09-19
 Added
