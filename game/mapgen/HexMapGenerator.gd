@@ -216,6 +216,7 @@ func _generate_terrain() -> Dictionary:
         "fill_order": coastline_plan.get("fill_order", PackedVector2Array()),
         "sea_coords": sea_coords,
         "target_sea": target_sea,
+        "depth_limit": coastline_plan.get("depth_limit", 0),
     }
     result["validation"] = validation
     return result
@@ -228,6 +229,7 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
         "sides": PackedInt32Array(),
         "side_counts": {},
         "membership": {},
+        "depth_limit": 0,
     }
     if coords.is_empty() or target_sea <= 0:
         return plan
@@ -262,16 +264,20 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
         return plan
     available_sides.shuffle()
 
-    var side_count: int = 1
-    if available_sides.size() >= 2 and rng.randf() < 0.5:
-        side_count = 2
-    var max_sides: int = int(min(target_sea, available_sides.size()))
-    max_sides = max(1, max_sides)
-    side_count = clampi(side_count, 1, max_sides)
+    var side_min: int = max(1, config.coastline_sides_min)
+    var side_max: int = max(side_min, config.coastline_sides_max)
+    side_min = clampi(side_min, 1, available_sides.size())
+    side_max = clampi(side_max, side_min, available_sides.size())
+    var side_count: int = side_min
+    if side_max > side_min:
+        side_count = rng.randi_range(side_min, side_max)
+    side_count = clampi(side_count, 1, available_sides.size())
 
-    var selected: Array[int] = []
+    var chosen: Array[int] = []
     for i in range(side_count):
-        selected.append(available_sides[i])
+        chosen.append(available_sides[i])
+    var seeding_order: Array[int] = chosen.duplicate()
+    var selected: Array[int] = chosen.duplicate()
     selected.sort()
 
     var packed_sides := PackedInt32Array()
@@ -294,7 +300,14 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
         plan["sides"] = packed_sides
         plan["side_counts"] = {}
         plan["membership"] = {}
+        plan["depth_limit"] = 0
         return plan
+
+    var depth_min: int = max(0, config.coastline_depth_min)
+    var depth_max: int = max(depth_min, config.coastline_depth_max)
+    var depth_limit: int = depth_min
+    if depth_max > depth_min:
+        depth_limit = rng.randi_range(depth_min, depth_max)
 
     var queue: Array = []
     var enqueued: Dictionary = {}
@@ -302,29 +315,54 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
     var membership: Dictionary = {}
     var side_counts: Dictionary = {}
     var fill_order := PackedVector2Array()
-    var first_seed_added: Dictionary = {}
-    for side_index in selected:
-        first_seed_added[side_index] = false
-        side_counts[side_index] = 0
 
     for side_index in selected:
-        var front: Array = boundary_arrays[side_index]
+        side_counts[side_index] = 0
+
+    for side_index in seeding_order:
+        var front: Array = boundary_arrays[side_index].duplicate()
+        if front.is_empty():
+            continue
         front.shuffle()
         for coord in front:
+            if sea_lookup.size() >= target_sea:
+                break
             var key: Vector2i = coord.to_vector2i()
-            if enqueued.has(key):
+            if sea_lookup.has(key):
                 continue
-            enqueued[key] = true
-            var is_first: bool = not bool(first_seed_added.get(side_index, false))
-            first_seed_added[side_index] = true
-            var base_priority: float = -1.0 if is_first else 0.0
-            var noise := (_coord_noise(coord, 503 + side_index) - 0.5) * 0.25
-            queue.append({
-                "coord": coord,
-                "depth": 0,
-                "side": side_index,
-                "value": base_priority + noise,
-            })
+            sea_lookup[key] = true
+            membership[key] = side_index
+            fill_order.append(key)
+            side_counts[side_index] = int(side_counts.get(side_index, 0)) + 1
+            if depth_limit <= 0:
+                continue
+            for neighbor in grid.get_neighbor_coords(coord):
+                var nkey: Vector2i = neighbor.to_vector2i()
+                if sea_lookup.has(nkey):
+                    continue
+                if enqueued.has(nkey):
+                    continue
+                var support_neighbors: int = 0
+                for support in grid.get_neighbor_coords(neighbor):
+                    var support_key: Vector2i = support.to_vector2i()
+                    if not sea_lookup.has(support_key):
+                        continue
+                    if int(membership.get(support_key, side_index)) != side_index:
+                        continue
+                    support_neighbors += 1
+                if support_neighbors <= 0:
+                    continue
+                var noise := (_coord_noise(neighbor, 643 + side_index) - 0.5) * 0.35
+                var priority := 1.0 + noise
+                queue.append({
+                    "coord": neighbor,
+                    "depth": 1,
+                    "side": side_index,
+                    "value": priority,
+                })
+                enqueued[nkey] = true
+        if sea_lookup.size() >= target_sea:
+            break
 
     while not queue.is_empty() and sea_lookup.size() < target_sea:
         queue.sort_custom(Callable(self, "_compare_dict_value_asc"))
@@ -334,25 +372,30 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
         if sea_lookup.has(key):
             continue
         var side_index: int = int(current.get("side", -1))
-        var claimed_for_side: int = int(side_counts.get(side_index, 0))
-        if side_index >= 0 and claimed_for_side > 0:
-            var matching_neighbors: int = 0
-            for neighbor in grid.get_neighbor_coords(coord):
-                var neighbor_key: Vector2i = neighbor.to_vector2i()
-                if not sea_lookup.has(neighbor_key):
-                    continue
-                if int(membership.get(neighbor_key, side_index)) != side_index:
-                    continue
-                matching_neighbors += 1
-            if matching_neighbors <= 0:
+        if side_index < 0:
+            continue
+        var current_depth: int = int(current.get("depth", 0))
+        if current_depth > depth_limit:
+            continue
+        var matching_neighbors: int = 0
+        for neighbor in grid.get_neighbor_coords(coord):
+            var neighbor_key: Vector2i = neighbor.to_vector2i()
+            if not sea_lookup.has(neighbor_key):
                 continue
+            if int(membership.get(neighbor_key, side_index)) != side_index:
+                continue
+            matching_neighbors += 1
+        if matching_neighbors <= 0:
+            continue
         sea_lookup[key] = true
         membership[key] = side_index
         fill_order.append(key)
         side_counts[side_index] = int(side_counts.get(side_index, 0)) + 1
-        if sea_lookup.size() >= target_sea:
-            break
-        var next_depth: int = int(current.get("depth", 0)) + 1
+        if current_depth >= depth_limit:
+            continue
+        var next_depth: int = current_depth + 1
+        if next_depth > depth_limit:
+            continue
         for neighbor in grid.get_neighbor_coords(coord):
             var nkey: Vector2i = neighbor.to_vector2i()
             if sea_lookup.has(nkey):
@@ -367,7 +410,7 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
                 if int(membership.get(support_key, side_index)) != side_index:
                     continue
                 support_neighbors += 1
-            if int(side_counts.get(side_index, 0)) > 0 and support_neighbors <= 0:
+            if support_neighbors <= 0:
                 continue
             var noise := (_coord_noise(neighbor, 643 + side_index) - 0.5) * 0.35
             var priority := float(next_depth) + noise
@@ -385,6 +428,7 @@ func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary
     plan["sides"] = packed_sides
     plan["side_counts"] = side_counts
     plan["membership"] = membership
+    plan["depth_limit"] = depth_limit
     return plan
 
 func _compute_region_targets(land_count: int) -> Dictionary:

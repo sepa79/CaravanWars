@@ -11,6 +11,10 @@ var rivers_cap: int
 var road_aggressiveness: float
 var fort_global_cap: int
 var fort_spacing: int
+var coastline_sides_min: int
+var coastline_sides_max: int
+var coastline_depth_min: int
+var coastline_depth_max: int
 var hex_grid: HexGrid
 var stage_results: Dictionary = {}
 
@@ -25,6 +29,10 @@ func _init(p_config: HexMapConfig) -> void:
     road_aggressiveness = p_config.road_aggressiveness
     fort_global_cap = p_config.fort_global_cap
     fort_spacing = p_config.fort_spacing
+    coastline_sides_min = p_config.coastline_sides_min
+    coastline_sides_max = p_config.coastline_sides_max
+    coastline_depth_min = p_config.coastline_depth_min
+    coastline_depth_max = p_config.coastline_depth_max
     stage_results = {}
 
 func attach_grid(p_grid: HexGrid) -> void:
@@ -53,6 +61,10 @@ func to_dictionary() -> Dictionary:
                 "road_aggressiveness": road_aggressiveness,
                 "fort_global_cap": fort_global_cap,
                 "fort_spacing": fort_spacing,
+                "coastline_sides_min": coastline_sides_min,
+                "coastline_sides_max": coastline_sides_max,
+                "coastline_depth_min": coastline_depth_min,
+                "coastline_depth_max": coastline_depth_max,
             },
         },
         "hexes": [],

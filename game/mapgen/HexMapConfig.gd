@@ -10,6 +10,10 @@ const DEFAULT_RIVERS_CAP := 6
 const DEFAULT_ROAD_AGGRESSIVENESS := 0.5
 const DEFAULT_FORT_GLOBAL_CAP := 6
 const DEFAULT_FORT_SPACING := 4
+const DEFAULT_COASTLINE_SIDES_MIN := 1
+const DEFAULT_COASTLINE_SIDES_MAX := 2
+const DEFAULT_COASTLINE_DEPTH_MIN := 1
+const DEFAULT_COASTLINE_DEPTH_MAX := 3
 
 var map_seed: int
 var map_radius: int
@@ -21,6 +25,10 @@ var rivers_cap: int
 var road_aggressiveness: float
 var fort_global_cap: int
 var fort_spacing: int
+var coastline_sides_min: int
+var coastline_sides_max: int
+var coastline_depth_min: int
+var coastline_depth_max: int
 
 func _init(
     p_seed: int = 0,
@@ -32,7 +40,11 @@ func _init(
     p_rivers_cap: int = DEFAULT_RIVERS_CAP,
     p_road_aggressiveness: float = DEFAULT_ROAD_AGGRESSIVENESS,
     p_fort_global_cap: int = DEFAULT_FORT_GLOBAL_CAP,
-    p_fort_spacing: int = DEFAULT_FORT_SPACING
+    p_fort_spacing: int = DEFAULT_FORT_SPACING,
+    p_coastline_sides_min: int = DEFAULT_COASTLINE_SIDES_MIN,
+    p_coastline_sides_max: int = DEFAULT_COASTLINE_SIDES_MAX,
+    p_coastline_depth_min: int = DEFAULT_COASTLINE_DEPTH_MIN,
+    p_coastline_depth_max: int = DEFAULT_COASTLINE_DEPTH_MAX
 ) -> void:
     map_seed = p_seed if p_seed != 0 else Time.get_ticks_msec()
     map_radius = max(1, p_map_radius)
@@ -44,6 +56,10 @@ func _init(
     road_aggressiveness = clampf(p_road_aggressiveness, 0.0, 1.0)
     fort_global_cap = max(0, p_fort_global_cap)
     fort_spacing = max(1, p_fort_spacing)
+    coastline_sides_min = clampi(p_coastline_sides_min, 0, HexGrid.AXIAL_DIRECTIONS.size())
+    coastline_sides_max = clampi(p_coastline_sides_max, coastline_sides_min, HexGrid.AXIAL_DIRECTIONS.size())
+    coastline_depth_min = max(0, p_coastline_depth_min)
+    coastline_depth_max = max(coastline_depth_min, p_coastline_depth_max)
 
 func duplicate_config() -> HexMapConfig:
     var script: Script = get_script()
@@ -57,7 +73,11 @@ func duplicate_config() -> HexMapConfig:
         rivers_cap,
         road_aggressiveness,
         fort_global_cap,
-        fort_spacing
+        fort_spacing,
+        coastline_sides_min,
+        coastline_sides_max,
+        coastline_depth_min,
+        coastline_depth_max
     )
     return clone
 
@@ -74,5 +94,9 @@ func to_dictionary() -> Dictionary:
             "road_aggressiveness": road_aggressiveness,
             "fort_global_cap": fort_global_cap,
             "fort_spacing": fort_spacing,
+            "coastline_sides_min": coastline_sides_min,
+            "coastline_sides_max": coastline_sides_max,
+            "coastline_depth_min": coastline_depth_min,
+            "coastline_depth_max": coastline_depth_max,
         },
     }

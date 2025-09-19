@@ -2,9 +2,9 @@ Changelog
 
 Unreleased
 Added
-- Nothing yet.
+- Hex map config now exposes coastline side-count and depth bounds so generation callers can control shoreline coverage.
 Changed
-- Coastline generation now selects boundary sides, grows seawater inward with depth noise, and records the fill order for downstream consumers.
+- Coastline planning always seeds the chosen boundary ring before growing inward, honours the configured depth limit, and records the applied limit for validation metadata.
 Fixed
 - Coastline validation asserts side-front connectivity and verifies recorded sea counts against the planned fronts.
 
