@@ -35,7 +35,7 @@ const DEFAULT_EDGE_DEPTHS := {
     "east": 2,
     "north_east": 2,
     "north_west": 2,
-    "west": 54,
+    "west": 2,
     "south_west": 5,
     "south_east": 2,
 }
