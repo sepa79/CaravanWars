@@ -15,6 +15,11 @@ var coastline_sides_min: int
 var coastline_sides_max: int
 var coastline_depth_min: int
 var coastline_depth_max: int
+var side_modes: Array[String]
+var side_widths: Array[int]
+var side_jitter: float
+var ridge_pass_width: int
+var extra_mountain_spacing: int
 var hex_grid: HexGrid
 var stage_results: Dictionary = {}
 
@@ -33,6 +38,11 @@ func _init(p_config: HexMapConfig) -> void:
     coastline_sides_max = p_config.coastline_sides_max
     coastline_depth_min = p_config.coastline_depth_min
     coastline_depth_max = p_config.coastline_depth_max
+    side_modes = p_config.side_modes.duplicate()
+    side_widths = p_config.side_widths.duplicate()
+    side_jitter = p_config.side_jitter
+    ridge_pass_width = p_config.ridge_pass_width
+    extra_mountain_spacing = p_config.extra_mountain_spacing
     stage_results = {}
 
 func attach_grid(p_grid: HexGrid) -> void:
@@ -65,6 +75,11 @@ func to_dictionary() -> Dictionary:
                 "coastline_sides_max": coastline_sides_max,
                 "coastline_depth_min": coastline_depth_min,
                 "coastline_depth_max": coastline_depth_max,
+                "side_modes": side_modes.duplicate(),
+                "side_widths": side_widths.duplicate(),
+                "side_jitter": side_jitter,
+                "ridge_pass_width": ridge_pass_width,
+                "extra_mountain_spacing": extra_mountain_spacing,
             },
         },
         "hexes": [],
@@ -93,6 +108,8 @@ func to_dictionary() -> Dictionary:
             terrain_meta["regions"] = terrain["regions"]
         if terrain.has("validation"):
             terrain_meta["validation"] = terrain["validation"]
+        if terrain.has("ridge"):
+            terrain_meta["ridge"] = terrain["ridge"]
         if terrain_meta.size() > 0:
             result["terrain"] = terrain_meta
     return result

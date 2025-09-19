@@ -30,6 +30,17 @@ const REGION_LEGEND_ENTRIES: Array = [
     },
 ]
 const LEGEND_SWATCH_SIZE: Vector2 = Vector2(18.0, 18.0)
+const SIDE_TYPE_PLAINS := "plains"
+const SIDE_TYPE_SEA := "sea"
+const SIDE_TYPE_MOUNTAINS := "mountains"
+const SIDE_DIRECTIONS: Array[String] = [
+    "east",
+    "northeast",
+    "northwest",
+    "west",
+    "southwest",
+    "southeast",
+]
 
 @onready var start_button: Button = $HBox/ControlsScroll/Controls/Buttons/Start
 @onready var back_button: Button = $HBox/ControlsScroll/Controls/Buttons/Back
@@ -46,6 +57,7 @@ const LEGEND_SWATCH_SIZE: Vector2 = Vector2(18.0, 18.0)
 @onready var rivers_spinbox: SpinBox = $HBox/ControlsScroll/Controls/Params/Rivers
 @onready var radius_label: Label = $HBox/ControlsScroll/Controls/Params/WidthLabel
 @onready var radius_spinbox: SpinBox = $HBox/ControlsScroll/Controls/Params/Width
+@onready var params_container: Container = $HBox/ControlsScroll/Controls/Params
 @onready var layers_row: HBoxContainer = get_node_or_null("Layers")
 
 var previous_state: String = Net.state
@@ -56,6 +68,14 @@ var _legend_title_label: Label
 var _legend_entries_container: VBoxContainer
 var _legend_rows: Dictionary = {}
 var _legend_counts: Dictionary = {}
+var _side_controls_root: VBoxContainer
+var _side_section_label: Label
+var _side_labels: Array = []
+var _side_width_labels: Array = []
+var _side_type_options: Array = []
+var _side_width_spins: Array = []
+var _jitter_label: Label
+var _jitter_spinbox: SpinBox
 
 func _ready() -> void:
     _rng.randomize()
@@ -71,6 +91,7 @@ func _ready() -> void:
     _ensure_legend_controls()
     _strip_legacy_controls()
     _configure_param_ranges()
+    _ensure_side_controls()
     _update_texts()
     if not Net.run_mode.is_empty():
         World.prepare_map_for_run_mode(Net.run_mode, null, true)
@@ -111,6 +132,89 @@ func _strip_legacy_controls() -> void:
     if layers_row != null:
         layers_row.visible = false
 
+func _ensure_side_controls() -> void:
+    if params_container == null:
+        return
+    if _side_controls_root != null and is_instance_valid(_side_controls_root):
+        return
+    _side_labels.clear()
+    _side_width_labels.clear()
+    _side_type_options.clear()
+    _side_width_spins.clear()
+    _side_controls_root = VBoxContainer.new()
+    _side_controls_root.name = "SideControls"
+    _side_controls_root.add_theme_constant_override("separation", 6)
+    params_container.add_child(_side_controls_root)
+    _side_section_label = Label.new()
+    _side_section_label.name = "SideControlsTitle"
+    _side_controls_root.add_child(_side_section_label)
+    for side_index in range(SIDE_DIRECTIONS.size()):
+        var row := HBoxContainer.new()
+        row.name = "SideRow%d" % side_index
+        row.add_theme_constant_override("separation", 12)
+        row.alignment = BoxContainer.ALIGNMENT_BEGIN
+        row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        _side_controls_root.add_child(row)
+
+        var label := Label.new()
+        label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+        label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        label.custom_minimum_size = Vector2(120.0, 0.0)
+        row.add_child(label)
+        _side_labels.append(label)
+
+        var type_option := OptionButton.new()
+        type_option.focus_mode = Control.FOCUS_NONE
+        type_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        var type_modes: Array[String] = [SIDE_TYPE_PLAINS, SIDE_TYPE_SEA, SIDE_TYPE_MOUNTAINS]
+        for option_index in range(type_modes.size()):
+            var mode: String = type_modes[option_index]
+            var item_index: int = type_option.item_count
+            type_option.add_item(I18N.t(_side_type_label_key(mode)))
+            type_option.set_item_metadata(item_index, mode)
+        type_option.item_selected.connect(Callable(self, "_on_side_type_selected").bind(side_index))
+        row.add_child(type_option)
+        _side_type_options.append(type_option)
+
+        var width_label := Label.new()
+        width_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+        width_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+        width_label.custom_minimum_size = Vector2(110.0, 0.0)
+        width_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        row.add_child(width_label)
+        _side_width_labels.append(width_label)
+
+        var width_spin := SpinBox.new()
+        width_spin.min_value = 0.0
+        width_spin.max_value = 12.0
+        width_spin.step = 1.0
+        width_spin.allow_lesser = false
+        width_spin.allow_greater = true
+        width_spin.custom_minimum_size = Vector2(72.0, 0.0)
+        width_spin.value_changed.connect(Callable(self, "_on_side_width_changed").bind(side_index))
+        row.add_child(width_spin)
+        _side_width_spins.append(width_spin)
+
+    var jitter_row := HBoxContainer.new()
+    jitter_row.name = "SideJitterRow"
+    jitter_row.add_theme_constant_override("separation", 8)
+    _side_controls_root.add_child(jitter_row)
+
+    _jitter_label = Label.new()
+    jitter_row.add_child(_jitter_label)
+
+    _jitter_spinbox = SpinBox.new()
+    _jitter_spinbox.min_value = 0.0
+    _jitter_spinbox.max_value = 1.0
+    _jitter_spinbox.step = 0.05
+    _jitter_spinbox.allow_lesser = false
+    _jitter_spinbox.allow_greater = false
+    _jitter_spinbox.value_changed.connect(Callable(self, "_on_side_jitter_changed"))
+    jitter_row.add_child(_jitter_spinbox)
+
+    _update_side_control_texts()
+
 func _configure_param_ranges() -> void:
     seed_spinbox.step = 1.0
     seed_spinbox.min_value = 0.0
@@ -135,6 +239,7 @@ func _update_texts() -> void:
     start_button.text = I18N.t("setup.start")
     back_button.text = I18N.t("menu.back")
     _update_legend_texts()
+    _update_side_control_texts()
 
 func _apply_config_to_controls() -> void:
     if _current_config == null:
@@ -144,6 +249,7 @@ func _apply_config_to_controls() -> void:
     kingdom_spinbox.value = float(_current_config.kingdom_count)
     rivers_spinbox.value = float(_current_config.rivers_cap)
     radius_spinbox.value = float(_current_config.map_radius)
+    _apply_side_config_to_controls()
     _updating_controls = false
 
 func _load_config_from_world() -> void:
@@ -216,6 +322,43 @@ func _on_radius_changed(value: float) -> void:
     if _current_config == null:
         _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
     _current_config.map_radius = max(1, int(value))
+    _regenerate_map()
+
+func _on_side_type_selected(item_index: int, side_index: int) -> void:
+    if _updating_controls:
+        return
+    if _current_config == null:
+        _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
+    if side_index >= _current_config.side_modes.size():
+        return
+    if side_index >= _side_type_options.size():
+        return
+    var option: OptionButton = _side_type_options[side_index]
+    if option == null:
+        return
+    var mode: String = String(option.get_item_metadata(item_index))
+    if mode.is_empty():
+        mode = SIDE_TYPE_PLAINS
+    _current_config.side_modes[side_index] = mode
+    _regenerate_map()
+
+func _on_side_width_changed(value: float, side_index: int) -> void:
+    if _updating_controls:
+        return
+    if _current_config == null:
+        _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
+    if side_index >= _current_config.side_widths.size():
+        return
+    var width_value: int = max(0, int(round(value)))
+    _current_config.side_widths[side_index] = width_value
+    _regenerate_map()
+
+func _on_side_jitter_changed(value: float) -> void:
+    if _updating_controls:
+        return
+    if _current_config == null:
+        _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
+    _current_config.side_jitter = clampf(value, 0.0, 1.0)
     _regenerate_map()
 
 func _on_start_pressed() -> void:
@@ -347,3 +490,65 @@ func _update_legend_texts() -> void:
             "name": localized_name,
             "count": count_value,
         })
+
+func _update_side_control_texts() -> void:
+    if _side_controls_root == null:
+        return
+    if _side_section_label != null:
+        _side_section_label.text = I18N.t("setup.side.controls")
+    for side_index in range(_side_labels.size()):
+        var direction_key: String = "setup.side_direction.%s" % SIDE_DIRECTIONS[side_index]
+        var label: Label = _side_labels[side_index]
+        if label != null:
+            label.text = I18N.t(direction_key)
+        if side_index < _side_width_labels.size():
+            var width_label: Label = _side_width_labels[side_index]
+            if width_label != null:
+                width_label.text = I18N.t("setup.side.border_width")
+        if side_index < _side_type_options.size():
+            var option: OptionButton = _side_type_options[side_index]
+            if option != null:
+                for item_index in range(option.item_count):
+                    var mode: String = String(option.get_item_metadata(item_index))
+                    option.set_item_text(item_index, I18N.t(_side_type_label_key(mode)))
+    if _jitter_label != null:
+        _jitter_label.text = I18N.t("setup.side.jitter")
+
+func _apply_side_config_to_controls() -> void:
+    if _current_config == null:
+        return
+    if _side_type_options.is_empty():
+        return
+    var mode_count: int = _current_config.side_modes.size()
+    var width_count: int = _current_config.side_widths.size()
+    for side_index in range(_side_type_options.size()):
+        var option: OptionButton = _side_type_options[side_index]
+        if option == null:
+            continue
+        var mode: String = SIDE_TYPE_PLAINS
+        if side_index < mode_count:
+            mode = String(_current_config.side_modes[side_index])
+        var selected_item: int = 0
+        for item_index in range(option.item_count):
+            if String(option.get_item_metadata(item_index)) == mode:
+                selected_item = item_index
+                break
+        option.select(selected_item)
+        if side_index < _side_width_spins.size():
+            var spin: SpinBox = _side_width_spins[side_index]
+            if spin != null:
+                var width_value: int = 0
+                if side_index < width_count:
+                    width_value = int(_current_config.side_widths[side_index])
+                spin.value = float(width_value)
+    if _jitter_spinbox != null:
+        _jitter_spinbox.value = float(_current_config.side_jitter)
+
+func _side_type_label_key(mode: String) -> String:
+    match mode:
+        SIDE_TYPE_SEA:
+            return "setup.legend.sea"
+        SIDE_TYPE_MOUNTAINS:
+            return "setup.legend.mountains"
+        _:
+            return "setup.legend.plains"

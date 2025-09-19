@@ -3,11 +3,15 @@ Changelog
 Unreleased
 Added
 - Hex map config now exposes coastline side-count and depth bounds so generation callers can control shoreline coverage.
+- Terrain generation records ridge side metadata, strength noise, and planned mountain passes so downstream systems can inspect the chosen edges.
+- Map setup offers per-side sea/mountain/plains selectors, border widths, and edge jitter sliders for shoreline and ridge tuning.
 Changed
 - Coastline planning always seeds the chosen boundary ring before growing inward, honours the configured depth limit, and records the applied limit for validation metadata.
+- Mountain height noise now follows the configured ridge bands, reserves a plains pass, and injects off-ridge clusters with spacing-aware seeds.
 Fixed
 - Coastline planning now uses the generator RNG for side selection and queue shuffling so identical seeds remain reproducible.
 - Coastline validation asserts side-front connectivity and verifies recorded sea counts against the planned fronts.
+- Ridge buffering now seeds localized hill guards without runaway growth and exports pass-depth lookup data for validation.
 
 0.2.0 — 2025-09-19
 Added
