@@ -5,6 +5,7 @@ Added
 - Map setup exposes per-edge terrain type and width selectors with adjustable jitter and random feature density controls.
 Changed
 - Terrain generation now produces plains maps, applying edge bands and optional random terrain features from the new setup options.
+- The automated singleplayer smoke test now opens map setup and returns to the start menu, covering the generator UI navigation.
 Fixed
 - Nothing yet.
 

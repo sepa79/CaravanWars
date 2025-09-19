@@ -684,7 +684,10 @@ func _ci_start_singleplayer_game() -> void:
     await get_tree().process_frame
     if not is_inside_tree():
         return
-    _on_start_pressed()
+    await get_tree().process_frame
+    if not is_inside_tree():
+        return
+    _on_back_pressed()
 
 func _ensure_legend_controls() -> void:
     if legend_container == null:
