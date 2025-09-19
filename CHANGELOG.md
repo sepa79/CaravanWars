@@ -2,6 +2,14 @@ Changelog
 
 Unreleased
 Added
+- Nothing yet.
+Changed
+- Nothing yet.
+Fixed
+- Nothing yet.
+
+0.2.1 — 2025-09-19
+Added
 - Map setup exposes per-edge terrain type and width selectors with adjustable jitter and random feature density controls.
 Changed
 - Terrain generation now produces plains maps, applying edge bands and optional random terrain features from the new setup options.
