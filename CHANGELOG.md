@@ -4,9 +4,9 @@ Unreleased
 Added
 - Nothing yet.
 Changed
-- Nothing yet.
+- Coastline generation now selects boundary sides, grows seawater inward with depth noise, and records the fill order for downstream consumers.
 Fixed
-- Nothing yet.
+- Coastline validation asserts side-front connectivity and verifies recorded sea counts against the planned fronts.
 
 0.2.0 — 2025-09-19
 Added

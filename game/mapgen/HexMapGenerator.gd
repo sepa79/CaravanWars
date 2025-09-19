@@ -160,32 +160,17 @@ func _generate_terrain() -> Dictionary:
         return result
 
     var total_hexes: int = coords.size()
-    var coastline_scores: Dictionary = {}
-    var scored_coords: Array[Dictionary] = []
-    for coord in coords:
-        var key: Vector2i = coord.to_vector2i()
-        var score: float = _coastline_score(coord)
-        coastline_scores[key] = score
-        scored_coords.append({
-            "coord": coord,
-            "value": score,
-        })
-    scored_coords.sort_custom(Callable(self, "_compare_dict_value_desc"))
-
     var target_sea: int = int(round(config.sea_pct * float(total_hexes)))
     target_sea = clampi(target_sea, 0, total_hexes)
-    var sea_lookup: Dictionary = {}
-    var sea_coords := PackedVector2Array()
+    var coastline_plan: Dictionary = _plan_coast_regions(coords, target_sea)
+    var sea_lookup: Dictionary = coastline_plan.get("sea_lookup", {})
+    var sea_coords: PackedVector2Array = coastline_plan.get("sea_coords", PackedVector2Array())
     var land_coords: Array[HexCoord] = []
-    for index in range(scored_coords.size()):
-        var entry: Dictionary = scored_coords[index]
-        var coord: HexCoord = entry["coord"]
+    for coord in coords:
         var key: Vector2i = coord.to_vector2i()
-        if index < target_sea:
-            sea_lookup[key] = true
-            sea_coords.append(key)
-        else:
-            land_coords.append(coord)
+        if sea_lookup.has(key):
+            continue
+        land_coords.append(coord)
 
     var land_lookup: Dictionary = {}
     for coord in land_coords:
@@ -210,7 +195,12 @@ func _generate_terrain() -> Dictionary:
             "elev": elevation,
         }
 
-    var validation: Dictionary = _build_validation(assignments, land_lookup, seed_data.get("height_map", {}))
+    var validation: Dictionary = _build_validation(
+        assignments,
+        land_lookup,
+        seed_data.get("height_map", {}),
+        coastline_plan
+    )
 
     result["hexes"] = hex_entries
     result["regions"] = {
@@ -221,12 +211,181 @@ func _generate_terrain() -> Dictionary:
         "sea_count": sea_lookup.size(),
     }
     result["coastline"] = {
-        "scores": coastline_scores,
-        "sea_threshold_index": target_sea,
+        "selected_sides": coastline_plan.get("sides", PackedInt32Array()),
+        "side_counts": coastline_plan.get("side_counts", {}),
+        "fill_order": coastline_plan.get("fill_order", PackedVector2Array()),
         "sea_coords": sea_coords,
+        "target_sea": target_sea,
     }
     result["validation"] = validation
     return result
+
+func _plan_coast_regions(coords: Array[HexCoord], target_sea: int) -> Dictionary:
+    var plan: Dictionary = {
+        "sea_lookup": {},
+        "sea_coords": PackedVector2Array(),
+        "fill_order": PackedVector2Array(),
+        "sides": PackedInt32Array(),
+        "side_counts": {},
+        "membership": {},
+    }
+    if coords.is_empty() or target_sea <= 0:
+        return plan
+
+    var direction_count: int = HexGrid.AXIAL_DIRECTIONS.size()
+    var boundary_sets: Array = []
+    for _i in range(direction_count):
+        boundary_sets.append({})
+    for coord in coords:
+        var key: Vector2i = coord.to_vector2i()
+        for dir_index in range(direction_count):
+            var dir: Vector2i = HexGrid.AXIAL_DIRECTIONS[dir_index]
+            var neighbor := HexCoord.new(coord.q + dir.x, coord.r + dir.y)
+            if not grid.is_within_bounds(neighbor):
+                boundary_sets[dir_index][key] = coord
+
+    var boundary_arrays: Array = []
+    for dir_index in range(direction_count):
+        var arr: Array[HexCoord] = []
+        var boundary_dict: Dictionary = boundary_sets[dir_index]
+        for boundary_key in boundary_dict.keys():
+            var boundary_coord: HexCoord = boundary_dict[boundary_key]
+            arr.append(boundary_coord)
+        boundary_arrays.append(arr)
+
+    var available_sides: Array[int] = []
+    for i in range(direction_count):
+        if boundary_arrays[i].is_empty():
+            continue
+        available_sides.append(i)
+    if available_sides.is_empty():
+        return plan
+    available_sides.shuffle()
+
+    var side_count: int = 1
+    if available_sides.size() >= 2 and rng.randf() < 0.5:
+        side_count = 2
+    var max_sides: int = int(min(target_sea, available_sides.size()))
+    max_sides = max(1, max_sides)
+    side_count = clampi(side_count, 1, max_sides)
+
+    var selected: Array[int] = []
+    for i in range(side_count):
+        selected.append(available_sides[i])
+    selected.sort()
+
+    var packed_sides := PackedInt32Array()
+    for side_index in selected:
+        packed_sides.append(side_index)
+
+    if selected.is_empty():
+        var shuffled: Array = coords.duplicate()
+        shuffled.shuffle()
+        var fallback_lookup: Dictionary = {}
+        var fallback_coords := PackedVector2Array()
+        for idx in range(min(target_sea, shuffled.size())):
+            var fallback_coord: HexCoord = shuffled[idx]
+            var fallback_key: Vector2i = fallback_coord.to_vector2i()
+            fallback_lookup[fallback_key] = true
+            fallback_coords.append(fallback_key)
+        plan["sea_lookup"] = fallback_lookup
+        plan["sea_coords"] = fallback_coords
+        plan["fill_order"] = fallback_coords
+        plan["sides"] = packed_sides
+        plan["side_counts"] = {}
+        plan["membership"] = {}
+        return plan
+
+    var queue: Array = []
+    var enqueued: Dictionary = {}
+    var sea_lookup: Dictionary = {}
+    var membership: Dictionary = {}
+    var side_counts: Dictionary = {}
+    var fill_order := PackedVector2Array()
+    var first_seed_added: Dictionary = {}
+    for side_index in selected:
+        first_seed_added[side_index] = false
+        side_counts[side_index] = 0
+
+    for side_index in selected:
+        var front: Array = boundary_arrays[side_index]
+        front.shuffle()
+        for coord in front:
+            var key: Vector2i = coord.to_vector2i()
+            if enqueued.has(key):
+                continue
+            enqueued[key] = true
+            var is_first: bool = not bool(first_seed_added.get(side_index, false))
+            first_seed_added[side_index] = true
+            var base_priority: float = -1.0 if is_first else 0.0
+            var noise := (_coord_noise(coord, 503 + side_index) - 0.5) * 0.25
+            queue.append({
+                "coord": coord,
+                "depth": 0,
+                "side": side_index,
+                "value": base_priority + noise,
+            })
+
+    while not queue.is_empty() and sea_lookup.size() < target_sea:
+        queue.sort_custom(Callable(self, "_compare_dict_value_asc"))
+        var current: Dictionary = queue.pop_front()
+        var coord: HexCoord = current["coord"]
+        var key: Vector2i = coord.to_vector2i()
+        if sea_lookup.has(key):
+            continue
+        var side_index: int = int(current.get("side", -1))
+        var claimed_for_side: int = int(side_counts.get(side_index, 0))
+        if side_index >= 0 and claimed_for_side > 0:
+            var matching_neighbors: int = 0
+            for neighbor in grid.get_neighbor_coords(coord):
+                var neighbor_key: Vector2i = neighbor.to_vector2i()
+                if not sea_lookup.has(neighbor_key):
+                    continue
+                if int(membership.get(neighbor_key, side_index)) != side_index:
+                    continue
+                matching_neighbors += 1
+            if matching_neighbors <= 0:
+                continue
+        sea_lookup[key] = true
+        membership[key] = side_index
+        fill_order.append(key)
+        side_counts[side_index] = int(side_counts.get(side_index, 0)) + 1
+        if sea_lookup.size() >= target_sea:
+            break
+        var next_depth: int = int(current.get("depth", 0)) + 1
+        for neighbor in grid.get_neighbor_coords(coord):
+            var nkey: Vector2i = neighbor.to_vector2i()
+            if sea_lookup.has(nkey):
+                continue
+            if enqueued.has(nkey):
+                continue
+            var support_neighbors: int = 0
+            for support in grid.get_neighbor_coords(neighbor):
+                var support_key: Vector2i = support.to_vector2i()
+                if not sea_lookup.has(support_key):
+                    continue
+                if int(membership.get(support_key, side_index)) != side_index:
+                    continue
+                support_neighbors += 1
+            if int(side_counts.get(side_index, 0)) > 0 and support_neighbors <= 0:
+                continue
+            var noise := (_coord_noise(neighbor, 643 + side_index) - 0.5) * 0.35
+            var priority := float(next_depth) + noise
+            queue.append({
+                "coord": neighbor,
+                "depth": next_depth,
+                "side": side_index,
+                "value": priority,
+            })
+            enqueued[nkey] = true
+
+    plan["sea_lookup"] = sea_lookup
+    plan["sea_coords"] = fill_order
+    plan["fill_order"] = fill_order
+    plan["sides"] = packed_sides
+    plan["side_counts"] = side_counts
+    plan["membership"] = membership
+    return plan
 
 func _compute_region_targets(land_count: int) -> Dictionary:
     var targets: Dictionary = {
@@ -520,7 +679,12 @@ func _count_region_assignments(assignments: Dictionary) -> Dictionary:
         counts[region_type] = int(counts.get(region_type, 0)) + 1
     return counts
 
-func _build_validation(assignments: Dictionary, land_lookup: Dictionary, height_map: Dictionary) -> Dictionary:
+func _build_validation(
+    assignments: Dictionary,
+    land_lookup: Dictionary,
+    height_map: Dictionary,
+    coast_plan: Dictionary
+) -> Dictionary:
     var stray_lakes := PackedVector2Array()
     var isolated_sea_tiles := PackedVector2Array()
     var valleys_without_high := PackedVector2Array()
@@ -537,11 +701,89 @@ func _build_validation(assignments: Dictionary, land_lookup: Dictionary, height_
         elif region_type == "valley":
             if not _valley_has_direct_high(coord, assignments):
                 valleys_without_high.append(cell)
+    var sea_components: Array = _collect_sea_components(assignments)
+    var component_sizes := PackedInt32Array()
+    for component in sea_components:
+        component_sizes.append(component.size())
+
+    var selected_sides: PackedInt32Array = coast_plan.get("sides", PackedInt32Array())
+    var membership: Dictionary = coast_plan.get("membership", {})
+    var side_counts: Dictionary = coast_plan.get("side_counts", {})
+    var valid_sides_lookup: Dictionary = {}
+    for side_index in selected_sides:
+        valid_sides_lookup[side_index] = true
+    for key in membership.keys():
+        var recorded_side: int = int(membership[key])
+        assert(valid_sides_lookup.has(recorded_side))
+    for side_index in selected_sides:
+        assert(side_counts.has(side_index))
+        var expected_size: int = int(side_counts.get(side_index, 0))
+        var members: Array[Vector2i] = []
+        for key in membership.keys():
+            var recorded_side: int = int(membership[key])
+            if recorded_side == side_index:
+                members.append(key)
+        assert(members.size() == expected_size)
+        if expected_size > 0:
+            assert(_side_members_connected(members))
     return {
         "lakes_on_ridges": stray_lakes,
         "isolated_seas": isolated_sea_tiles,
         "valleys_without_high": valleys_without_high,
+        "sea_component_sizes": component_sizes,
     }
+
+func _collect_sea_components(assignments: Dictionary) -> Array:
+    var components: Array = []
+    var visited: Dictionary = {}
+    for key in assignments.keys():
+        var region_type: String = String(assignments[key])
+        if region_type != "sea":
+            continue
+        if visited.has(key):
+            continue
+        var component: Array[Vector2i] = []
+        var stack: Array[Vector2i] = []
+        stack.append(key)
+        visited[key] = true
+        while not stack.is_empty():
+            var cell: Vector2i = stack.pop_back()
+            component.append(cell)
+            var coord: HexCoord = HexCoord.from_vector2i(cell)
+            for neighbor in grid.get_neighbor_coords(coord):
+                var nkey: Vector2i = neighbor.to_vector2i()
+                if visited.has(nkey):
+                    continue
+                if String(assignments.get(nkey, "")) != "sea":
+                    continue
+                visited[nkey] = true
+                stack.append(nkey)
+        components.append(component)
+    return components
+
+func _side_members_connected(members: Array[Vector2i]) -> bool:
+    if members.is_empty():
+        return true
+    var allowed: Dictionary = {}
+    for cell in members:
+        allowed[cell] = true
+    var stack: Array[Vector2i] = []
+    var start: Vector2i = members[0]
+    stack.append(start)
+    var visited: Dictionary = {}
+    visited[start] = true
+    while not stack.is_empty():
+        var cell: Vector2i = stack.pop_back()
+        var coord: HexCoord = HexCoord.from_vector2i(cell)
+        for neighbor in grid.get_neighbor_coords(coord):
+            var nkey: Vector2i = neighbor.to_vector2i()
+            if not allowed.has(nkey):
+                continue
+            if visited.has(nkey):
+                continue
+            visited[nkey] = true
+            stack.append(nkey)
+    return visited.size() == allowed.size()
 
 func _compare_dict_value_desc(a: Dictionary, b: Dictionary) -> bool:
     return a.get("value", 0.0) > b.get("value", 0.0)
@@ -553,12 +795,6 @@ func _coord_noise(coord: HexCoord, salt: int = 0) -> float:
     var value: int = hash([coord.q, coord.r, salt, config.map_seed])
     value = abs(value)
     return float(value % 1000003) / 1000003.0
-
-func _coastline_score(coord: HexCoord) -> float:
-    var distance := float(grid.axial_distance(coord, HexCoord.new(0, 0))) / float(max(1, grid.radius))
-    var primary := (_coord_noise(coord, 17) - 0.5) * 0.7
-    var secondary := (_coord_noise(coord, 53) - 0.5) * 0.3 * (1.0 - distance)
-    return distance + primary + secondary
 
 func _height_value(coord: HexCoord) -> float:
     var distance := float(grid.axial_distance(coord, HexCoord.new(0, 0))) / float(max(1, grid.radius))
