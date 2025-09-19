@@ -73,6 +73,9 @@ func to_dictionary() -> Dictionary:
                 "is_water": info.get("is_water", false),
                 "is_sea": info.get("is_sea", false),
                 "elev": info.get("elev", 0.0),
+                "river_mask": info.get("river_mask", 0),
+                "river_class": info.get("river_class", 0),
+                "is_mouth": info.get("is_mouth", false),
             }
             hex_array.append(entry)
         result["hexes"] = hex_array

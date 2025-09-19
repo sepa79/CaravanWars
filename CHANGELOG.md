@@ -2,9 +2,9 @@ Changelog
 
 Unreleased
 Added
-- Nothing yet.
+- Rivers now generate from mountain peaks, record per-hex masks, classes, mouths, and emit validation results for missing sinks.
 Changed
-- Nothing yet.
+- Plains carved by rivers automatically downgrade to valleys and lakes prefer to open downstream outlets when terrain allows.
 Fixed
 - Nothing yet.
 
