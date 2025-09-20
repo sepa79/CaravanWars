@@ -480,7 +480,7 @@ func _get_radius_limit() -> int:
 
 func _update_edge_width_limits() -> void:
     var max_radius := _get_radius_limit()
-    var previous_state := _updating_controls
+    var previous_update_state := _updating_controls
     _updating_controls = true
     for edge_id in _edge_controls.keys():
         var entry: Dictionary = _edge_controls[edge_id]
@@ -494,7 +494,7 @@ func _update_edge_width_limits() -> void:
         _edge_jitter_spinbox.max_value = float(max_radius)
         if _edge_jitter_spinbox.value > _edge_jitter_spinbox.max_value:
             _edge_jitter_spinbox.value = _edge_jitter_spinbox.max_value
-    _updating_controls = previous_state
+    _updating_controls = previous_update_state
 
 func _clamp_edge_widths_to_radius() -> void:
     if _current_config == null:

@@ -436,11 +436,11 @@ func _build_river_marker_mesh() -> Mesh:
     marker.bottom_radius = RIVER_MARKER_RADIUS
     marker.height = RIVER_MARKER_HEIGHT
     marker.radial_segments = 12
-    var material := StandardMaterial3D.new()
-    material.albedo_color = Color(0.2, 0.6, 1.0, 0.85)
-    material.metallic = 0.0
-    material.roughness = 0.35
-    marker.material = material
+    var marker_material := StandardMaterial3D.new()
+    marker_material.albedo_color = Color(0.2, 0.6, 1.0, 0.85)
+    marker_material.metallic = 0.0
+    marker_material.roughness = 0.35
+    marker.material = marker_material
     return marker
 
 func _ensure_region_layers() -> void:
@@ -1132,7 +1132,7 @@ func _determine_valley_top(world_height: float, grass_top: float) -> float:
     var min_top := grass_top + LAND_LAYER_MIN_THICKNESS
     return max(world_height, min_top)
 
-func _should_skip_layer_entry(region: String, layer_id: String, entry: Dictionary) -> bool:
+func _should_skip_layer_entry(_region: String, layer_id: String, entry: Dictionary) -> bool:
     var mask := int(entry.get("river_mask", 0))
     var has_river := mask != 0 or bool(entry.get("is_mouth", false))
     if layer_id == "valley" and has_river:
@@ -1223,11 +1223,11 @@ func _select_land_surface_variant(mesh_region: String, axial: Vector2i) -> Strin
     return String(variant_list[index])
 
 func _hash_axial_coord(coord: Vector2i) -> int:
-    var hash := int(coord.x) * 92837111
-    hash ^= int(coord.y) * 689287499
-    hash ^= hash >> 13
-    hash &= 0x7fffffff
-    return hash
+    var hash_value := int(coord.x) * 92837111
+    hash_value ^= int(coord.y) * 689287499
+    hash_value ^= hash_value >> 13
+    hash_value &= 0x7fffffff
+    return hash_value
 
 func _ordered_land_regions(land_surfaces: Dictionary) -> Array:
     var ordered: Array = []
@@ -1260,7 +1260,7 @@ func _cache_river_entries() -> void:
         var variant := String(variant_info.get("variant", ""))
         if variant.is_empty():
             continue
-        var rotation := int(variant_info.get("rotation", 0))
+        var variant_rotation := int(variant_info.get("rotation", 0))
         var class_value := int(entry.get("river_class", 1))
         if class_value <= 0:
             class_value = 1
@@ -1270,7 +1270,7 @@ func _cache_river_entries() -> void:
             "river_class": class_value,
             "is_mouth": is_mouth,
             "variant": variant,
-            "rotation": rotation,
+            "rotation": variant_rotation,
         }
         _river_tile_cache[axial] = cached_entry
 
