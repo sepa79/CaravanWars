@@ -4,55 +4,72 @@ class_name HexMapConfig
 const TerrainSettingsResource := preload("res://map/TerrainSettings.gd")
 
 const DEFAULT_MAP_SEED := 12345
-const DEFAULT_MAP_RADIUS := 16
+const DEFAULT_MAP_WIDTH := 100
+const DEFAULT_MAP_HEIGHT := 100
 const DEFAULT_KINGDOM_COUNT := 3
 const DEFAULT_RIVERS_CAP := 6
 const DEFAULT_ROAD_AGGRESSIVENESS := 0.5
 const DEFAULT_FORT_GLOBAL_CAP := 6
 const DEFAULT_FORT_SPACING := 4
 const DEFAULT_EDGE_JITTER := 3
-const DEFAULT_RANDOM_FEATURE_DENSITY := 0.12
 
 const EDGE_NAMES: Array[String] = [
+    "north",
     "east",
-    "north_east",
-    "north_west",
+    "south",
     "west",
-    "south_west",
-    "south_east",
 ]
 
 const EDGE_TERRAIN_TYPES: Array[String] = [
+    "sea",
     "plains",
     "hills",
     "mountains",
-    "sea",
-    "lake",
 ]
 
 const DEFAULT_EDGE_TYPE := "plains"
 const DEFAULT_EDGE_WIDTH := 0
 
 const DEFAULT_EDGE_DEPTHS := {
+    "north": 2,
     "east": 2,
-    "north_east": 2,
-    "north_west": 2,
+    "south": 2,
     "west": 2,
-    "south_west": 5,
-    "south_east": 2,
 }
 
 const DEFAULT_EDGE_TERRAINS := {
+    "north": "sea",
     "east": "mountains",
-    "north_east": "mountains",
-    "north_west": "hills",
+    "south": "plains",
     "west": "sea",
-    "south_west": "sea",
-    "south_east": "hills",
 }
 
+const FEATURE_INTENSITIES: Array[String] = [
+    "none",
+    "low",
+    "medium",
+    "high",
+]
+
+const FEATURE_MODES: Array[String] = [
+    "auto",
+    "peaks_only",
+    "hills_only",
+]
+
+const FEATURE_FALLOFFS: Array[String] = [
+    "smooth",
+    "linear",
+]
+
+const DEFAULT_FEATURE_INTENSITY := "none"
+const DEFAULT_FEATURE_MODE := "auto"
+const DEFAULT_FEATURE_FALLOFF := "smooth"
+const DEFAULT_FEATURE_COUNT_OVERRIDE := null
+
 var map_seed: int
-var map_radius: int
+var map_width: int
+var map_height: int
 var kingdom_count: int
 var rivers_cap: int
 var road_aggressiveness: float
@@ -60,12 +77,13 @@ var fort_global_cap: int
 var fort_spacing: int
 var edge_settings: Dictionary = {}
 var edge_jitter: int
-var random_feature_density: float
+var random_feature_settings: Dictionary = {}
 var terrain_settings
 
 func _init(
     p_seed: int = DEFAULT_MAP_SEED,
-    p_map_radius: int = DEFAULT_MAP_RADIUS,
+    p_map_width: int = DEFAULT_MAP_WIDTH,
+    p_map_height: int = DEFAULT_MAP_HEIGHT,
     p_kingdom_count: int = DEFAULT_KINGDOM_COUNT,
     p_rivers_cap: int = DEFAULT_RIVERS_CAP,
     p_road_aggressiveness: float = DEFAULT_ROAD_AGGRESSIVENESS,
@@ -73,11 +91,12 @@ func _init(
     p_fort_spacing: int = DEFAULT_FORT_SPACING,
     p_edge_settings: Dictionary = {},
     p_edge_jitter: int = DEFAULT_EDGE_JITTER,
-    p_random_feature_density: float = DEFAULT_RANDOM_FEATURE_DENSITY,
+    p_random_feature_settings: Dictionary = {},
     p_terrain_settings = null
 ) -> void:
     map_seed = p_seed if p_seed != 0 else Time.get_ticks_msec()
-    map_radius = max(1, p_map_radius)
+    map_width = max(1, p_map_width)
+    map_height = max(1, p_map_height)
     kingdom_count = max(1, p_kingdom_count)
     rivers_cap = max(0, p_rivers_cap)
     road_aggressiveness = clampf(p_road_aggressiveness, 0.0, 1.0)
@@ -85,7 +104,7 @@ func _init(
     fort_spacing = max(1, p_fort_spacing)
     edge_settings = _sanitize_edge_settings(p_edge_settings)
     edge_jitter = max(0, p_edge_jitter)
-    random_feature_density = clampf(p_random_feature_density, 0.0, 1.0)
+    random_feature_settings = _sanitize_random_feature_settings(p_random_feature_settings)
     if p_terrain_settings == null:
         terrain_settings = TerrainSettingsResource.new()
     else:
@@ -95,7 +114,8 @@ func duplicate_config() -> HexMapConfig:
     var script: Script = get_script()
     var clone: HexMapConfig = script.new(
         map_seed,
-        map_radius,
+        map_width,
+        map_height,
         kingdom_count,
         rivers_cap,
         road_aggressiveness,
@@ -103,7 +123,7 @@ func duplicate_config() -> HexMapConfig:
         fort_spacing,
         edge_settings,
         edge_jitter,
-        random_feature_density,
+        random_feature_settings,
         terrain_settings
     )
     return clone
@@ -111,7 +131,8 @@ func duplicate_config() -> HexMapConfig:
 func to_dictionary() -> Dictionary:
     return {
         "seed": map_seed,
-        "map_radius": map_radius,
+        "width": map_width,
+        "height": map_height,
         "kingdom_count": kingdom_count,
         "params": {
             "rivers_cap": rivers_cap,
@@ -120,7 +141,7 @@ func to_dictionary() -> Dictionary:
             "fort_spacing": fort_spacing,
             "edge_settings": _sanitize_edge_settings(edge_settings),
             "edge_jitter": edge_jitter,
-            "random_feature_density": random_feature_density,
+            "random_features": _sanitize_random_feature_settings(random_feature_settings),
         },
         "terrain_settings": terrain_settings.to_dictionary(),
     }
@@ -147,6 +168,17 @@ func set_edge_setting(edge_name: String, terrain_type: String, width: int) -> vo
         "width": sanitized_width,
     }
 
+func get_random_feature_settings() -> Dictionary:
+    return _sanitize_random_feature_settings(random_feature_settings)
+
+func set_random_feature_settings(settings: Dictionary) -> void:
+    random_feature_settings = _sanitize_random_feature_settings(settings)
+
+func update_random_feature_setting(setting_name: String, value: Variant) -> void:
+    var current_settings := get_random_feature_settings()
+    current_settings[setting_name] = value
+    random_feature_settings = _sanitize_random_feature_settings(current_settings)
+
 func _sanitize_edge_settings(source: Dictionary) -> Dictionary:
     var sanitized: Dictionary = {}
     for edge_name in EDGE_NAMES:
@@ -162,4 +194,33 @@ func _sanitize_edge_settings(source: Dictionary) -> Dictionary:
             "type": terrain_type,
             "width": max(0, width_value),
         }
+    return sanitized
+
+func _sanitize_random_feature_settings(source: Dictionary) -> Dictionary:
+    var sanitized: Dictionary = {}
+    var intensity_value := String(source.get("intensity", DEFAULT_FEATURE_INTENSITY)).to_lower()
+    if not FEATURE_INTENSITIES.has(intensity_value):
+        intensity_value = DEFAULT_FEATURE_INTENSITY
+    sanitized["intensity"] = intensity_value
+    var mode_value := String(source.get("mode", DEFAULT_FEATURE_MODE)).to_lower()
+    if not FEATURE_MODES.has(mode_value):
+        mode_value = DEFAULT_FEATURE_MODE
+    sanitized["mode"] = mode_value
+    var falloff_value := String(source.get("falloff", DEFAULT_FEATURE_FALLOFF)).to_lower()
+    if not FEATURE_FALLOFFS.has(falloff_value):
+        falloff_value = DEFAULT_FEATURE_FALLOFF
+    sanitized["falloff"] = falloff_value
+    var count_value: Variant = source.get("count_override", DEFAULT_FEATURE_COUNT_OVERRIDE)
+    var sanitized_count: Variant = DEFAULT_FEATURE_COUNT_OVERRIDE
+    match typeof(count_value):
+        TYPE_INT:
+            if count_value >= 0:
+                sanitized_count = count_value
+        TYPE_FLOAT:
+            var normalized := int(round(float(count_value)))
+            if normalized >= 0:
+                sanitized_count = normalized
+        _:
+            sanitized_count = DEFAULT_FEATURE_COUNT_OVERRIDE
+    sanitized["count_override"] = sanitized_count
     return sanitized

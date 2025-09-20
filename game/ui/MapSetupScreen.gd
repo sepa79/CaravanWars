@@ -41,32 +41,28 @@ const LEGEND_SWATCH_SIZE: Vector2 = Vector2(18.0, 18.0)
 
 const EDGE_OPTIONS: Array = [
     {
+        "id": "north",
+        "label_key": "setup.edge.north",
+    },
+    {
         "id": "east",
         "label_key": "setup.edge.east",
     },
     {
-        "id": "north_east",
-        "label_key": "setup.edge.north_east",
-    },
-    {
-        "id": "north_west",
-        "label_key": "setup.edge.north_west",
+        "id": "south",
+        "label_key": "setup.edge.south",
     },
     {
         "id": "west",
         "label_key": "setup.edge.west",
     },
-    {
-        "id": "south_west",
-        "label_key": "setup.edge.south_west",
-    },
-    {
-        "id": "south_east",
-        "label_key": "setup.edge.south_east",
-    },
 ]
 
 const EDGE_TERRAIN_OPTIONS: Array = [
+    {
+        "id": "sea",
+        "label_key": "setup.edge_terrain.sea",
+    },
     {
         "id": "plains",
         "label_key": "setup.edge_terrain.plains",
@@ -79,38 +75,54 @@ const EDGE_TERRAIN_OPTIONS: Array = [
         "id": "mountains",
         "label_key": "setup.edge_terrain.mountains",
     },
-    {
-        "id": "sea",
-        "label_key": "setup.edge_terrain.sea",
-    },
-    {
-        "id": "lake",
-        "label_key": "setup.edge_terrain.lake",
-    },
 ]
 
-const FEATURE_DENSITY_OPTIONS: Array = [
+const FEATURE_INTENSITY_OPTIONS: Array = [
     {
         "id": "none",
-        "value": 0.0,
-        "label_key": "setup.feature_density.none",
+        "label_key": "setup.feature_intensity.none",
     },
     {
         "id": "low",
-        "value": 0.05,
-        "label_key": "setup.feature_density.low",
+        "label_key": "setup.feature_intensity.low",
     },
     {
         "id": "medium",
-        "value": 0.12,
-        "label_key": "setup.feature_density.medium",
+        "label_key": "setup.feature_intensity.medium",
     },
     {
         "id": "high",
-        "value": 0.2,
-        "label_key": "setup.feature_density.high",
+        "label_key": "setup.feature_intensity.high",
     },
 ]
+
+const FEATURE_MODE_OPTIONS: Array = [
+    {
+        "id": "auto",
+        "label_key": "setup.feature_mode.auto",
+    },
+    {
+        "id": "peaks_only",
+        "label_key": "setup.feature_mode.peaks_only",
+    },
+    {
+        "id": "hills_only",
+        "label_key": "setup.feature_mode.hills_only",
+    },
+]
+
+const FEATURE_FALLOFF_OPTIONS: Array = [
+    {
+        "id": "smooth",
+        "label_key": "setup.feature_falloff.smooth",
+    },
+    {
+        "id": "linear",
+        "label_key": "setup.feature_falloff.linear",
+    },
+]
+
+const FEATURE_COUNT_DISABLED_VALUE := -1
 
 @onready var start_button: Button = $HBox/ControlsScroll/Controls/Buttons/Start
 @onready var back_button: Button = $HBox/ControlsScroll/Controls/Buttons/Back
@@ -125,8 +137,10 @@ const FEATURE_DENSITY_OPTIONS: Array = [
 @onready var kingdom_spinbox: SpinBox = $HBox/ControlsScroll/Controls/Params/Kingdoms
 @onready var rivers_label: Label = $HBox/ControlsScroll/Controls/Params/RiversLabel
 @onready var rivers_spinbox: SpinBox = $HBox/ControlsScroll/Controls/Params/Rivers
-@onready var radius_label: Label = $HBox/ControlsScroll/Controls/Params/WidthLabel
-@onready var radius_spinbox: SpinBox = $HBox/ControlsScroll/Controls/Params/Width
+@onready var width_label: Label = $HBox/ControlsScroll/Controls/Params/WidthLabel
+@onready var width_spinbox: SpinBox = $HBox/ControlsScroll/Controls/Params/Width
+@onready var height_label: Label = $HBox/ControlsScroll/Controls/Params/HeightLabel
+@onready var height_spinbox: SpinBox = $HBox/ControlsScroll/Controls/Params/Height
 @onready var layers_row: HBoxContainer = get_node_or_null("Layers")
 @onready var params_grid: GridContainer = $HBox/ControlsScroll/Controls/Params
 
@@ -141,8 +155,14 @@ var _legend_counts: Dictionary = {}
 var _edge_controls: Dictionary = {}
 var _edge_jitter_label: Label
 var _edge_jitter_spinbox: SpinBox
-var _feature_density_label: Label
-var _feature_density_option: OptionButton
+var _feature_intensity_label: Label
+var _feature_intensity_option: OptionButton
+var _feature_mode_label: Label
+var _feature_mode_option: OptionButton
+var _feature_falloff_label: Label
+var _feature_falloff_option: OptionButton
+var _feature_count_label: Label
+var _feature_count_spinbox: SpinBox
 
 func _ready() -> void:
     _rng.randomize()
@@ -163,7 +183,8 @@ func _ready() -> void:
     seed_spinbox.value_changed.connect(_on_seed_value_changed)
     kingdom_spinbox.value_changed.connect(_on_kingdoms_changed)
     rivers_spinbox.value_changed.connect(_on_rivers_changed)
-    radius_spinbox.value_changed.connect(_on_radius_changed)
+    width_spinbox.value_changed.connect(_on_width_changed)
+    height_spinbox.value_changed.connect(_on_height_changed)
     _refresh_map_view()
     _on_net_state_changed(Net.state)
     if Net.run_mode == "single" and _should_drive_ci_singleplayer():
@@ -189,8 +210,6 @@ func _strip_legacy_controls() -> void:
         "MaxConnections",
         "CrossingMarginLabel",
         "CrossingMargin",
-        "HeightLabel",
-        "Height",
     ]
     for legacy_name in legacy_names:
         var node := params.get_node_or_null(legacy_name)
@@ -209,9 +228,12 @@ func _configure_param_ranges() -> void:
     rivers_spinbox.step = 1.0
     rivers_spinbox.min_value = 0.0
     rivers_spinbox.max_value = 12.0
-    radius_spinbox.step = 1.0
-    radius_spinbox.min_value = max(1.0, min(6.0, float(HEX_MAP_CONFIG_SCRIPT.DEFAULT_MAP_RADIUS)))
-    radius_spinbox.max_value = 48.0
+    width_spinbox.step = 1.0
+    width_spinbox.min_value = 1.0
+    width_spinbox.max_value = 256.0
+    height_spinbox.step = 1.0
+    height_spinbox.min_value = 1.0
+    height_spinbox.max_value = 256.0
 
 func _ensure_edge_controls() -> void:
     if params_grid == null:
@@ -240,7 +262,7 @@ func _ensure_edge_controls() -> void:
             var width_spin := SpinBox.new()
             width_spin.name = "%sEdgeWidth" % edge_id.capitalize()
             width_spin.min_value = 0.0
-            width_spin.max_value = radius_spinbox.max_value
+            width_spin.max_value = float(_get_edge_limit(edge_id))
             width_spin.step = 1.0
             width_spin.size_flags_horizontal = Control.SIZE_FILL
             width_spin.value_changed.connect(Callable(self, "_on_edge_width_changed").bind(edge_id))
@@ -284,34 +306,93 @@ func _ensure_edge_controls() -> void:
         _edge_jitter_spinbox = SpinBox.new()
         _edge_jitter_spinbox.name = "EdgeJitter"
         _edge_jitter_spinbox.min_value = 0.0
-        _edge_jitter_spinbox.max_value = radius_spinbox.max_value
+        _edge_jitter_spinbox.max_value = max(width_spinbox.max_value, height_spinbox.max_value)
         _edge_jitter_spinbox.step = 1.0
         _edge_jitter_spinbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         _edge_jitter_spinbox.value_changed.connect(Callable(self, "_on_edge_jitter_changed"))
     if _edge_jitter_spinbox.get_parent() == null:
         params_grid.add_child(_edge_jitter_spinbox)
 
-    if _feature_density_label == null:
-        _feature_density_label = Label.new()
-        _feature_density_label.name = "FeatureDensityLabel"
-        _feature_density_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-        _feature_density_label.size_flags_horizontal = Control.SIZE_FILL
-    if _feature_density_label.get_parent() == null:
-        params_grid.add_child(_feature_density_label)
-
-    if _feature_density_option == null:
-        _feature_density_option = OptionButton.new()
-        _feature_density_option.name = "FeatureDensityOption"
-        _feature_density_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        _populate_feature_density_options(_feature_density_option)
-        _feature_density_option.item_selected.connect(Callable(self, "_on_feature_density_selected"))
-    elif _feature_density_option.item_count == 0:
-        _populate_feature_density_options(_feature_density_option)
-    if _feature_density_option.get_parent() == null:
-        params_grid.add_child(_feature_density_option)
+    _ensure_feature_controls()
 
     _update_edge_controls_texts()
+    _update_feature_controls_texts()
     _update_edge_width_limits()
+
+func _ensure_feature_controls() -> void:
+    if params_grid == null:
+        return
+    if _feature_intensity_label == null:
+        _feature_intensity_label = Label.new()
+        _feature_intensity_label.name = "FeatureIntensityLabel"
+        _feature_intensity_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+        _feature_intensity_label.size_flags_horizontal = Control.SIZE_FILL
+    if _feature_intensity_label.get_parent() == null:
+        params_grid.add_child(_feature_intensity_label)
+    if _feature_intensity_option == null:
+        _feature_intensity_option = OptionButton.new()
+        _feature_intensity_option.name = "FeatureIntensityOption"
+        _feature_intensity_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        _populate_feature_option_button(_feature_intensity_option, FEATURE_INTENSITY_OPTIONS)
+        _feature_intensity_option.item_selected.connect(Callable(self, "_on_feature_intensity_selected"))
+    elif _feature_intensity_option.item_count == 0:
+        _populate_feature_option_button(_feature_intensity_option, FEATURE_INTENSITY_OPTIONS)
+    if _feature_intensity_option.get_parent() == null:
+        params_grid.add_child(_feature_intensity_option)
+
+    if _feature_mode_label == null:
+        _feature_mode_label = Label.new()
+        _feature_mode_label.name = "FeatureModeLabel"
+        _feature_mode_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+        _feature_mode_label.size_flags_horizontal = Control.SIZE_FILL
+    if _feature_mode_label.get_parent() == null:
+        params_grid.add_child(_feature_mode_label)
+    if _feature_mode_option == null:
+        _feature_mode_option = OptionButton.new()
+        _feature_mode_option.name = "FeatureModeOption"
+        _feature_mode_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        _populate_feature_option_button(_feature_mode_option, FEATURE_MODE_OPTIONS)
+        _feature_mode_option.item_selected.connect(Callable(self, "_on_feature_mode_selected"))
+    elif _feature_mode_option.item_count == 0:
+        _populate_feature_option_button(_feature_mode_option, FEATURE_MODE_OPTIONS)
+    if _feature_mode_option.get_parent() == null:
+        params_grid.add_child(_feature_mode_option)
+
+    if _feature_falloff_label == null:
+        _feature_falloff_label = Label.new()
+        _feature_falloff_label.name = "FeatureFalloffLabel"
+        _feature_falloff_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+        _feature_falloff_label.size_flags_horizontal = Control.SIZE_FILL
+    if _feature_falloff_label.get_parent() == null:
+        params_grid.add_child(_feature_falloff_label)
+    if _feature_falloff_option == null:
+        _feature_falloff_option = OptionButton.new()
+        _feature_falloff_option.name = "FeatureFalloffOption"
+        _feature_falloff_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        _populate_feature_option_button(_feature_falloff_option, FEATURE_FALLOFF_OPTIONS)
+        _feature_falloff_option.item_selected.connect(Callable(self, "_on_feature_falloff_selected"))
+    elif _feature_falloff_option.item_count == 0:
+        _populate_feature_option_button(_feature_falloff_option, FEATURE_FALLOFF_OPTIONS)
+    if _feature_falloff_option.get_parent() == null:
+        params_grid.add_child(_feature_falloff_option)
+
+    if _feature_count_label == null:
+        _feature_count_label = Label.new()
+        _feature_count_label.name = "FeatureCountLabel"
+        _feature_count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+        _feature_count_label.size_flags_horizontal = Control.SIZE_FILL
+    if _feature_count_label.get_parent() == null:
+        params_grid.add_child(_feature_count_label)
+    if _feature_count_spinbox == null:
+        _feature_count_spinbox = SpinBox.new()
+        _feature_count_spinbox.name = "FeatureCountOverride"
+        _feature_count_spinbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        _feature_count_spinbox.step = 1.0
+        _feature_count_spinbox.min_value = float(FEATURE_COUNT_DISABLED_VALUE)
+        _feature_count_spinbox.max_value = 64.0
+        _feature_count_spinbox.value_changed.connect(Callable(self, "_on_feature_count_override_changed"))
+    if _feature_count_spinbox.get_parent() == null:
+        params_grid.add_child(_feature_count_spinbox)
 
 func _populate_edge_type_button(button: OptionButton) -> void:
     if button == null:
@@ -330,12 +411,12 @@ func _populate_edge_type_button(button: OptionButton) -> void:
         button.set_item_metadata(index, option_id)
         index += 1
 
-func _populate_feature_density_options(option_button: OptionButton) -> void:
-    if option_button == null:
+func _populate_feature_option_button(button: OptionButton, options: Array) -> void:
+    if button == null:
         return
-    option_button.clear()
+    button.clear()
     var index := 0
-    for option in FEATURE_DENSITY_OPTIONS:
+    for option in options:
         var option_id := String(option.get("id", ""))
         if option_id.is_empty():
             continue
@@ -343,11 +424,8 @@ func _populate_feature_density_options(option_button: OptionButton) -> void:
         var text := option_id.capitalize()
         if not label_key.is_empty():
             text = I18N.t(label_key)
-        option_button.add_item(text, index)
-        option_button.set_item_metadata(index, {
-            "id": option_id,
-            "value": float(option.get("value", 0.0)),
-        })
+        button.add_item(text, index)
+        button.set_item_metadata(index, option_id)
         index += 1
 
 func _find_edge_option(option_id: String) -> Dictionary:
@@ -356,8 +434,8 @@ func _find_edge_option(option_id: String) -> Dictionary:
             return option
     return {}
 
-func _find_feature_density_option(option_id: String) -> Dictionary:
-    for option in FEATURE_DENSITY_OPTIONS:
+func _find_feature_option(options: Array, option_id: String) -> Dictionary:
+    for option in options:
         if String(option.get("id", "")) == option_id:
             return option
     return {}
@@ -388,22 +466,37 @@ func _update_edge_controls_texts() -> void:
                 button.set_item_text(index, text)
     if _edge_jitter_label != null:
         _edge_jitter_label.text = I18N.t("setup.edge_jitter")
-    if _feature_density_label != null:
-        _feature_density_label.text = I18N.t("setup.feature_density")
-    if _feature_density_option != null:
-        for index in range(_feature_density_option.item_count):
-            var metadata: Variant = _feature_density_option.get_item_metadata(index)
-            var option_id := ""
-            if typeof(metadata) == TYPE_DICTIONARY:
-                option_id = String(metadata.get("id", ""))
-            else:
-                option_id = String(metadata)
-            var option_data: Dictionary = _find_feature_density_option(option_id)
-            var label_key := String(option_data.get("label_key", ""))
-            var text := option_id.capitalize()
-            if not label_key.is_empty():
-                text = I18N.t(label_key)
-            _feature_density_option.set_item_text(index, text)
+
+func _update_feature_controls_texts() -> void:
+    if _feature_intensity_label != null:
+        _feature_intensity_label.text = I18N.t("setup.feature.intensity")
+    if _feature_intensity_option != null:
+        _update_feature_option_button_texts(_feature_intensity_option, FEATURE_INTENSITY_OPTIONS)
+    if _feature_mode_label != null:
+        _feature_mode_label.text = I18N.t("setup.feature.mode")
+    if _feature_mode_option != null:
+        _update_feature_option_button_texts(_feature_mode_option, FEATURE_MODE_OPTIONS)
+    if _feature_falloff_label != null:
+        _feature_falloff_label.text = I18N.t("setup.feature.falloff")
+    if _feature_falloff_option != null:
+        _update_feature_option_button_texts(_feature_falloff_option, FEATURE_FALLOFF_OPTIONS)
+    if _feature_count_label != null:
+        _feature_count_label.text = I18N.t("setup.feature.count_override")
+    if _feature_count_spinbox != null:
+        _feature_count_spinbox.tooltip_text = I18N.t("setup.feature.count_override_tooltip")
+
+func _update_feature_option_button_texts(button: OptionButton, options: Array) -> void:
+    if button == null:
+        return
+    for index in range(button.item_count):
+        var metadata: Variant = button.get_item_metadata(index)
+        var option_id := String(metadata)
+        var option_data: Dictionary = _find_feature_option(options, option_id)
+        var label_key := String(option_data.get("label_key", ""))
+        var text := option_id.capitalize()
+        if not label_key.is_empty():
+            text = I18N.t(label_key)
+        button.set_item_text(index, text)
 
 func _apply_edge_settings_to_controls() -> void:
     var settings: Dictionary = {}
@@ -433,13 +526,31 @@ func _apply_edge_jitter_to_controls() -> void:
         jitter_value = _current_config.edge_jitter
     _edge_jitter_spinbox.value = float(jitter_value)
 
-func _apply_feature_density_to_controls() -> void:
-    if _feature_density_option == null:
-        return
-    var density_value := 0.0
+func _apply_random_feature_settings_to_controls() -> void:
+    var settings: Dictionary = {}
     if _current_config != null:
-        density_value = _current_config.random_feature_density
-    _select_feature_density_option(density_value)
+        settings = _current_config.get_random_feature_settings()
+    var intensity_value := String(settings.get(
+        "intensity",
+        HEX_MAP_CONFIG_SCRIPT.DEFAULT_FEATURE_INTENSITY
+    ))
+    _select_option_by_metadata(_feature_intensity_option, intensity_value)
+    var mode_value := String(settings.get(
+        "mode",
+        HEX_MAP_CONFIG_SCRIPT.DEFAULT_FEATURE_MODE
+    ))
+    _select_option_by_metadata(_feature_mode_option, mode_value)
+    var falloff_value := String(settings.get(
+        "falloff",
+        HEX_MAP_CONFIG_SCRIPT.DEFAULT_FEATURE_FALLOFF
+    ))
+    _select_option_by_metadata(_feature_falloff_option, falloff_value)
+    var count_override: Variant = settings.get("count_override", null)
+    var count_value: float = float(FEATURE_COUNT_DISABLED_VALUE)
+    if typeof(count_override) == TYPE_INT and int(count_override) >= 0:
+        count_value = float(count_override)
+    if _feature_count_spinbox != null:
+        _feature_count_spinbox.value = count_value
 
 func _select_option_by_metadata(button: OptionButton, target_id: String) -> void:
     if button == null:
@@ -453,34 +564,78 @@ func _select_option_by_metadata(button: OptionButton, target_id: String) -> void
     if button.item_count > 0:
         button.select(0)
 
-func _select_feature_density_option(value: float) -> void:
-    if _feature_density_option == null:
+func _on_feature_intensity_selected(index: int) -> void:
+    if _updating_controls:
         return
-    var best_index := -1
-    for index in range(_feature_density_option.item_count):
-        var metadata: Variant = _feature_density_option.get_item_metadata(index)
-        var option_value := 0.0
-        if typeof(metadata) == TYPE_DICTIONARY:
-            option_value = float(metadata.get("value", 0.0))
-        elif typeof(metadata) == TYPE_FLOAT or typeof(metadata) == TYPE_INT:
-            option_value = float(metadata)
-        if is_equal_approx(option_value, value):
-            best_index = index
-            break
-    if best_index == -1 and _feature_density_option.item_count > 0:
-        best_index = 0
-    if best_index >= 0:
-        _feature_density_option.select(best_index)
+    if _feature_intensity_option == null:
+        return
+    var option_id := String(_feature_intensity_option.get_item_metadata(index))
+    if _current_config == null:
+        _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
+    _current_config.update_random_feature_setting("intensity", option_id)
+    _regenerate_map()
 
-func _get_radius_limit() -> int:
+func _on_feature_mode_selected(index: int) -> void:
+    if _updating_controls:
+        return
+    if _feature_mode_option == null:
+        return
+    var option_id := String(_feature_mode_option.get_item_metadata(index))
+    if _current_config == null:
+        _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
+    _current_config.update_random_feature_setting("mode", option_id)
+    _regenerate_map()
+
+func _on_feature_falloff_selected(index: int) -> void:
+    if _updating_controls:
+        return
+    if _feature_falloff_option == null:
+        return
+    var option_id := String(_feature_falloff_option.get_item_metadata(index))
+    if _current_config == null:
+        _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
+    _current_config.update_random_feature_setting("falloff", option_id)
+    _regenerate_map()
+
+func _on_feature_count_override_changed(value: float) -> void:
+    if _updating_controls:
+        return
+    if _current_config == null:
+        _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
+    var rounded := int(round(value))
+    if rounded < 0:
+        _current_config.update_random_feature_setting("count_override", null)
+    else:
+        _current_config.update_random_feature_setting("count_override", rounded)
+    _regenerate_map()
+
+func _get_map_width_value() -> int:
     if _current_config != null:
-        return max(1, _current_config.map_radius)
-    if radius_spinbox != null:
-        return max(1, int(round(radius_spinbox.value)))
-    return HEX_MAP_CONFIG_SCRIPT.DEFAULT_MAP_RADIUS
+        return max(1, _current_config.map_width)
+    if width_spinbox != null:
+        return max(1, int(round(width_spinbox.value)))
+    return HEX_MAP_CONFIG_SCRIPT.DEFAULT_MAP_WIDTH
+
+func _get_map_height_value() -> int:
+    if _current_config != null:
+        return max(1, _current_config.map_height)
+    if height_spinbox != null:
+        return max(1, int(round(height_spinbox.value)))
+    return HEX_MAP_CONFIG_SCRIPT.DEFAULT_MAP_HEIGHT
+
+func _get_edge_limit(edge_name: String) -> int:
+    match edge_name:
+        "north", "south":
+            return _get_map_height_value()
+        "east", "west":
+            return _get_map_width_value()
+        _:
+            return max(_get_map_width_value(), _get_map_height_value())
+
+func _get_edge_jitter_limit() -> int:
+    return max(_get_map_width_value(), _get_map_height_value())
 
 func _update_edge_width_limits() -> void:
-    var max_radius := _get_radius_limit()
     var previous_update_state := _updating_controls
     _updating_controls = true
     for edge_id in _edge_controls.keys():
@@ -488,26 +643,26 @@ func _update_edge_width_limits() -> void:
         var width_spin: SpinBox = entry.get("width") as SpinBox
         if width_spin == null:
             continue
-        width_spin.max_value = float(max_radius)
+        var max_distance := float(_get_edge_limit(edge_id))
+        width_spin.max_value = max_distance
         if width_spin.value > width_spin.max_value:
             width_spin.value = width_spin.max_value
     if _edge_jitter_spinbox != null:
-        _edge_jitter_spinbox.max_value = float(max_radius)
+        _edge_jitter_spinbox.max_value = float(_get_edge_jitter_limit())
         if _edge_jitter_spinbox.value > _edge_jitter_spinbox.max_value:
             _edge_jitter_spinbox.value = _edge_jitter_spinbox.max_value
     _updating_controls = previous_update_state
 
-func _clamp_edge_widths_to_radius() -> void:
+func _clamp_edge_widths_to_dimensions() -> void:
     if _current_config == null:
         return
-    var max_radius: int = max(1, _current_config.map_radius)
     for option in EDGE_OPTIONS:
         var edge_id := String(option.get("id", ""))
         if edge_id.is_empty():
             continue
         var setting: Dictionary = _current_config.get_edge_setting(edge_id)
         var width_value := int(setting.get("width", 0))
-        var clamped_width := clampi(width_value, 0, max_radius)
+        var clamped_width := clampi(width_value, 0, _get_edge_limit(edge_id))
         if clamped_width != width_value:
             var terrain_type := String(setting.get("type", "plains"))
             _current_config.set_edge_setting(edge_id, terrain_type, clamped_width)
@@ -535,7 +690,7 @@ func _on_edge_width_changed(value: float, edge_name: String) -> void:
         _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
     var setting: Dictionary = _current_config.get_edge_setting(edge_name)
     var terrain_type := String(setting.get("type", "plains"))
-    var width_value := clampi(int(round(value)), 0, _get_radius_limit())
+    var width_value := clampi(int(round(value)), 0, _get_edge_limit(edge_name))
     _current_config.set_edge_setting(edge_name, terrain_type, width_value)
     _regenerate_map()
 
@@ -547,31 +702,18 @@ func _on_edge_jitter_changed(value: float) -> void:
     _current_config.edge_jitter = max(0, int(round(value)))
     _regenerate_map()
 
-func _on_feature_density_selected(index: int) -> void:
-    if _updating_controls:
-        return
-    if _feature_density_option == null:
-        return
-    var metadata: Variant = _feature_density_option.get_item_metadata(index)
-    var selected_value := 0.0
-    if typeof(metadata) == TYPE_DICTIONARY:
-        selected_value = float(metadata.get("value", 0.0))
-    elif typeof(metadata) == TYPE_FLOAT or typeof(metadata) == TYPE_INT:
-        selected_value = float(metadata)
-    if _current_config == null:
-        _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
-    _current_config.random_feature_density = clampf(selected_value, 0.0, 1.0)
-    _regenerate_map()
 func _update_texts() -> void:
     title_label.text = I18N.t("setup.title")
     seed_label.text = I18N.t("setup.seed")
     random_seed_button.text = I18N.t("setup.random_seed")
     kingdom_label.text = I18N.t("setup.kingdoms")
     rivers_label.text = I18N.t("setup.rivers")
-    radius_label.text = I18N.t("setup.map_radius")
+    width_label.text = I18N.t("setup.map_width")
+    height_label.text = I18N.t("setup.map_height")
     start_button.text = I18N.t("setup.start")
     back_button.text = I18N.t("menu.back")
     _update_edge_controls_texts()
+    _update_feature_controls_texts()
     _update_legend_texts()
 
 func _apply_config_to_controls() -> void:
@@ -581,10 +723,13 @@ func _apply_config_to_controls() -> void:
     seed_spinbox.value = float(_current_config.map_seed)
     kingdom_spinbox.value = float(_current_config.kingdom_count)
     rivers_spinbox.value = float(_current_config.rivers_cap)
-    radius_spinbox.value = float(_current_config.map_radius)
+    width_spinbox.max_value = max(width_spinbox.max_value, float(_current_config.map_width))
+    height_spinbox.max_value = max(height_spinbox.max_value, float(_current_config.map_height))
+    width_spinbox.value = float(_current_config.map_width)
+    height_spinbox.value = float(_current_config.map_height)
     _apply_edge_settings_to_controls()
     _apply_edge_jitter_to_controls()
-    _apply_feature_density_to_controls()
+    _apply_random_feature_settings_to_controls()
     _update_edge_width_limits()
     _updating_controls = false
 
@@ -657,13 +802,23 @@ func _on_rivers_changed(value: float) -> void:
     _current_config.rivers_cap = max(0, int(value))
     _regenerate_map()
 
-func _on_radius_changed(value: float) -> void:
+func _on_width_changed(value: float) -> void:
     if _updating_controls:
         return
     if _current_config == null:
         _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
-    _current_config.map_radius = max(1, int(value))
-    _clamp_edge_widths_to_radius()
+    _current_config.map_width = max(1, int(round(value)))
+    _clamp_edge_widths_to_dimensions()
+    _update_edge_width_limits()
+    _regenerate_map()
+
+func _on_height_changed(value: float) -> void:
+    if _updating_controls:
+        return
+    if _current_config == null:
+        _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
+    _current_config.map_height = max(1, int(round(value)))
+    _clamp_edge_widths_to_dimensions()
     _update_edge_width_limits()
     _regenerate_map()
 

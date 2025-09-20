@@ -34,9 +34,10 @@ func _init(p_config: HexMapConfig = HexMapConfig.new()) -> void:
 
 func generate() -> MapData:
     var dataset: MapData = data_builder.prepare_for_generation()
-    print("[HexMapGenerator] Stub generating map using seed %d (radius=%d, kingdoms=%d)" % [
+    print("[HexMapGenerator] Stub generating map using seed %d (size=%dx%d, kingdoms=%d)" % [
         dataset.map_seed,
-        config.map_radius,
+        config.map_width,
+        config.map_height,
         config.kingdom_count,
     ])
     for phase in PHASE_SEQUENCE:
