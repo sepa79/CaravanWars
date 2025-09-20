@@ -4,35 +4,35 @@ class_name HexTileStack
 const SURFACE_PIVOT_EPSILON: float = 0.0001
 
 class TileLayer:
-    var id: String
-    var mesh_region: String
-    var variant: String
-    var top: float
-    var bottom: float
+    var layer_id: String
+    var mesh_region_id: String
+    var variant_key: String
+    var top_height: float
+    var bottom_height: float
 
-    func _init(id: String = "", mesh_region: String = "", variant: String = "", top: float = 0.0, bottom: float = 0.0) -> void:
-        self.id = id
-        self.mesh_region = mesh_region
-        self.variant = variant
-        self.top = top
-        self.bottom = bottom
+    func _init(layer_id_value: String = "", mesh_region_id_value: String = "", variant_key_value: String = "", top_height_value: float = 0.0, bottom_height_value: float = 0.0) -> void:
+        layer_id = layer_id_value
+        mesh_region_id = mesh_region_id_value
+        variant_key = variant_key_value
+        top_height = top_height_value
+        bottom_height = bottom_height_value
 
 class MeshBundle:
-    var base_mesh: Mesh
-    var grass_top: float
-    var grass_height: float
-    var surfaces: Dictionary
+    var base_mesh_resource: Mesh
+    var grass_top_height: float
+    var grass_layer_height: float
+    var surface_meshes: Dictionary
 
-    func _init(base_mesh: Mesh = null, grass_top: float = 0.0, grass_height: float = 0.0, surfaces: Dictionary = {}) -> void:
-        self.base_mesh = base_mesh
-        self.grass_top = grass_top
-        self.grass_height = grass_height
-        self.surfaces = surfaces
+    func _init(base_mesh_value: Mesh = null, grass_top_value: float = 0.0, grass_height_value: float = 0.0, surface_meshes_value: Dictionary = {}) -> void:
+        base_mesh_resource = base_mesh_value
+        grass_top_height = grass_top_value
+        grass_layer_height = grass_height_value
+        surface_meshes = surface_meshes_value
 
-    func get_surface_mesh(mesh_region: String, variant_key: String) -> Mesh:
-        if surfaces.is_empty() or not surfaces.has(mesh_region):
+    func get_surface_mesh(mesh_region_id: String, variant_key: String) -> Mesh:
+        if surface_meshes.is_empty() or not surface_meshes.has(mesh_region_id):
             return null
-        var region_meshes: Dictionary = surfaces[mesh_region]
+        var region_meshes: Dictionary = surface_meshes[mesh_region_id]
         if not variant_key.is_empty() and region_meshes.has(variant_key):
             return region_meshes[variant_key]
         for mesh in region_meshes.values():
@@ -45,35 +45,35 @@ var _base_transparency: float = 0.0
 var _layer_transparency: Dictionary[String, float] = {}
 var _cached_stack: Array[TileLayer] = []
 
-func configure(elev: float, stack: Array[TileLayer], meshes: MeshBundle) -> void:
+func configure_stack(elev: float, stack: Array[TileLayer], mesh_bundle: MeshBundle) -> void:
     var base_instance := _ensure_base_instance()
-    base_instance.mesh = meshes.base_mesh
-    base_instance.visible = meshes.base_mesh != null
+    base_instance.mesh = mesh_bundle.base_mesh_resource
+    base_instance.visible = mesh_bundle.base_mesh_resource != null
     var base_aabb := AABB()
-    if meshes.base_mesh != null:
-        base_aabb = meshes.base_mesh.get_aabb()
-    var base_transform := _make_base_transform(meshes.base_mesh, base_aabb, meshes.grass_top, meshes.grass_height)
+    if mesh_bundle.base_mesh_resource != null:
+        base_aabb = mesh_bundle.base_mesh_resource.get_aabb()
+    var base_transform := _make_base_transform(mesh_bundle.base_mesh_resource, base_aabb, mesh_bundle.grass_top_height, mesh_bundle.grass_layer_height)
     base_instance.transform = base_transform
     base_instance.transparency = clampf(_base_transparency, 0.0, 1.0)
     var retained_layers: Dictionary[String, bool] = {}
     _cached_stack.clear()
-    for layer in stack:
-        if layer == null:
+    for layer_entry in stack:
+        if layer_entry == null:
             continue
-        _cached_stack.append(layer)
-        var layer_instance := _ensure_layer_instance(layer.id)
-        var surface_mesh := meshes.get_surface_mesh(layer.mesh_region, layer.variant)
+        _cached_stack.append(layer_entry)
+        var layer_instance := _ensure_layer_instance(layer_entry.layer_id)
+        var surface_mesh := mesh_bundle.get_surface_mesh(layer_entry.mesh_region_id, layer_entry.variant_key)
         layer_instance.mesh = surface_mesh
         if surface_mesh != null:
-            layer_instance.transform = _make_surface_transform(surface_mesh, layer.top, layer.bottom)
+            layer_instance.transform = _make_surface_transform(surface_mesh, layer_entry.top_height, layer_entry.bottom_height)
             layer_instance.visible = true
         else:
             layer_instance.transform = Transform3D.IDENTITY
             layer_instance.visible = false
-        var stored_transparency: float = _layer_transparency.get(layer.id, 0.0)
+        var stored_transparency: float = _layer_transparency.get(layer_entry.layer_id, 0.0)
         var transparency := clampf(stored_transparency, 0.0, 1.0)
         layer_instance.transparency = transparency
-        retained_layers[layer.id] = true
+        retained_layers[layer_entry.layer_id] = true
     _hide_unused_layers(retained_layers)
 
 func set_base_transparency(value: float) -> void:
@@ -118,45 +118,45 @@ func _ensure_base_instance() -> MeshInstance3D:
         add_child(_base_instance)
     return _base_instance
 
-func _ensure_layer_instance(layer_id: String) -> MeshInstance3D:
-    if _layer_nodes.has(layer_id):
-        return _layer_nodes[layer_id]
+func _ensure_layer_instance(layer_id_value: String) -> MeshInstance3D:
+    if _layer_nodes.has(layer_id_value):
+        return _layer_nodes[layer_id_value]
     var instance := MeshInstance3D.new()
-    instance.name = "%sLayer" % layer_id.capitalize()
+    instance.name = "%sLayer" % layer_id_value.capitalize()
     add_child(instance)
-    _layer_nodes[layer_id] = instance
+    _layer_nodes[layer_id_value] = instance
     return instance
 
 func _hide_unused_layers(retained: Dictionary[String, bool]) -> void:
     for key in _layer_nodes.keys():
         if retained.has(key):
             continue
-        var mesh_instance := _layer_nodes[key]
-        if mesh_instance == null:
+        var mesh_node := _layer_nodes[key]
+        if mesh_node == null:
             continue
-        mesh_instance.visible = false
-        mesh_instance.mesh = null
+        mesh_node.visible = false
+        mesh_node.mesh = null
 
-func _make_base_transform(base_mesh: Mesh, base_aabb: AABB, grass_top: float, grass_height: float) -> Transform3D:
-    var origin := Vector3(0.0, grass_top, 0.0)
+func _make_base_transform(base_mesh_value: Mesh, base_aabb_value: AABB, grass_top_height: float, grass_layer_height: float) -> Transform3D:
+    var origin := Vector3(0.0, grass_top_height, 0.0)
     var basis := Basis.IDENTITY
-    if base_mesh == null:
-        basis = basis.scaled(Vector3(1.0, grass_height, 1.0))
+    if base_mesh_value == null:
+        basis = basis.scaled(Vector3(1.0, grass_layer_height, 1.0))
         return Transform3D(basis, origin)
-    var min_y: float = base_aabb.position.y
-    var height: float = base_aabb.size.y
+    var min_y: float = base_aabb_value.position.y
+    var height: float = base_aabb_value.size.y
     var max_y: float = min_y + height
     var safe_height: float = max(height, SURFACE_PIVOT_EPSILON)
     var y_scale: float = 0.0
     if safe_height > 0.0:
-        y_scale = grass_height / safe_height
+        y_scale = grass_layer_height / safe_height
     basis = basis.scaled(Vector3(1.0, y_scale, 1.0))
-    origin.y = grass_top - max_y * y_scale
+    origin.y = grass_top_height - max_y * y_scale
     return Transform3D(basis, origin)
 
-func _make_surface_transform(surface_mesh: Mesh, layer_top: float, layer_bottom: float) -> Transform3D:
-    var top_height := layer_top
-    var bottom_height := layer_bottom
+func _make_surface_transform(surface_mesh_value: Mesh, layer_top_height: float, layer_bottom_height: float) -> Transform3D:
+    var top_height := layer_top_height
+    var bottom_height := layer_bottom_height
     if top_height < bottom_height:
         var swap := top_height
         top_height = bottom_height
@@ -166,12 +166,12 @@ func _make_surface_transform(surface_mesh: Mesh, layer_top: float, layer_bottom:
         desired_height = 0.0
     var origin := Vector3(0.0, bottom_height, 0.0)
     var basis := Basis.IDENTITY
-    if surface_mesh == null:
+    if surface_mesh_value == null:
         if desired_height <= SURFACE_PIVOT_EPSILON:
             return Transform3D(basis, origin)
         basis = basis.scaled(Vector3(1.0, desired_height, 1.0))
         return Transform3D(basis, origin)
-    var surface_aabb := surface_mesh.get_aabb()
+    var surface_aabb := surface_mesh_value.get_aabb()
     var min_y: float = surface_aabb.position.y
     var height: float = surface_aabb.size.y
     var max_y: float = min_y + height
@@ -201,9 +201,9 @@ func _make_surface_transform(surface_mesh: Mesh, layer_top: float, layer_bottom:
     origin.y = aligned_origin_y
     return Transform3D(basis, origin)
 
-func _transform_aabb(aabb: AABB, transform: Transform3D) -> AABB:
-    var start: Vector3 = aabb.position
-    var end: Vector3 = aabb.position + aabb.size
+func _transform_aabb(input_aabb: AABB, input_transform: Transform3D) -> AABB:
+    var start: Vector3 = input_aabb.position
+    var end: Vector3 = input_aabb.position + input_aabb.size
     var min_corner := Vector3(INF, INF, INF)
     var max_corner := Vector3(-INF, -INF, -INF)
     for xi in range(2):
@@ -212,7 +212,7 @@ func _transform_aabb(aabb: AABB, transform: Transform3D) -> AABB:
             var y := start.y if yi == 0 else end.y
             for zi in range(2):
                 var z := start.z if zi == 0 else end.z
-                var corner := transform * Vector3(x, y, z)
+                var corner := input_transform * Vector3(x, y, z)
                 min_corner.x = min(min_corner.x, corner.x)
                 min_corner.y = min(min_corner.y, corner.y)
                 min_corner.z = min(min_corner.z, corner.z)
