@@ -709,14 +709,24 @@ func _ensure_legend_controls() -> void:
             var entry_id := String(entry.get("id", ""))
             if entry_id.is_empty():
                 continue
+            var base_color: Color = entry.get("color", Color.WHITE)
+            var button := Button.new()
+            button.name = "%sToggle" % entry_id.capitalize()
+            button.toggle_mode = true
+            button.button_pressed = true
+            button.flat = true
+            button.focus_mode = Control.FOCUS_NONE
+            button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+            button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
             var row := HBoxContainer.new()
             row.name = "%sRow" % entry_id.capitalize()
             row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
             row.alignment = BoxContainer.ALIGNMENT_BEGIN
+            button.add_child(row)
             var swatch := ColorRect.new()
             swatch.custom_minimum_size = LEGEND_SWATCH_SIZE
             swatch.size_flags_vertical = Control.SIZE_FILL
-            swatch.color = entry.get("color", Color.WHITE)
+            swatch.color = base_color
             swatch.mouse_filter = Control.MOUSE_FILTER_IGNORE
             var label := Label.new()
             label.name = "%sLabel" % entry_id.capitalize()
@@ -725,11 +735,15 @@ func _ensure_legend_controls() -> void:
             label.mouse_filter = Control.MOUSE_FILTER_IGNORE
             row.add_child(swatch)
             row.add_child(label)
-            _legend_entries_container.add_child(row)
+            _legend_entries_container.add_child(button)
+            button.toggled.connect(_on_legend_entry_toggled.bind(entry_id))
             _legend_rows[entry_id] = {
                 "label": label,
                 "swatch": swatch,
+                "button": button,
+                "color": base_color,
             }
+            _on_legend_entry_toggled(entry_id, true)
     for entry in REGION_LEGEND_ENTRIES:
         var entry_id := String(entry.get("id", ""))
         if entry_id.is_empty():
@@ -764,6 +778,34 @@ func _legend_has_any_counts() -> bool:
             return true
     return false
 
+func _on_legend_entry_toggled(entry_id: String, enabled: bool) -> void:
+    if map_view != null:
+        map_view.set_region_visibility(entry_id, enabled)
+    _update_legend_entry_visual(entry_id)
+
+func _update_legend_entry_visual(entry_id: String) -> void:
+    var row_entry: Dictionary = _legend_rows.get(entry_id, {})
+    var button: Button = null
+    if row_entry.has("button") and row_entry["button"] is Button:
+        button = row_entry["button"] as Button
+    var swatch: ColorRect = null
+    if row_entry.has("swatch") and row_entry["swatch"] is ColorRect:
+        swatch = row_entry["swatch"] as ColorRect
+    var label: Label = null
+    if row_entry.has("label") and row_entry["label"] is Label:
+        label = row_entry["label"] as Label
+    var base_color: Color = row_entry.get("color", Color.WHITE)
+    var is_enabled := true
+    if button != null:
+        is_enabled = button.button_pressed
+    var alpha := 1.0 if is_enabled else 0.5
+    if swatch != null:
+        var color := base_color
+        color.a = alpha
+        swatch.color = color
+    if label != null:
+        label.modulate = Color(1.0, 1.0, 1.0, 1.0) if is_enabled else Color(1.0, 1.0, 1.0, 0.65)
+
 func _update_legend_texts() -> void:
     if legend_container == null:
         return
@@ -786,3 +828,4 @@ func _update_legend_texts() -> void:
             "name": localized_name,
             "count": count_value,
         })
+        _update_legend_entry_visual(entry_id)
