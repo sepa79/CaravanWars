@@ -7,6 +7,7 @@ Added
 - Centralized terrain defaults, layer stacks, and mesh paths in a TerrainSettings resource shared between the generator and map view.
 Changed
 - Game startup now instantiates the hex map generator stub with default configuration values so the console reflects the expected seed.
+- World now defers hex map generation until the singleplayer session consumes the stored config, preventing duplicate stub runs from the setup screen.
 - Plains carved by rivers automatically downgrade to valleys and lakes prefer to open downstream outlets when terrain allows.
 - Map generation defaults now start with mountain-mountain-hills-sea-sea-hills edge bands, edge depths 2/2/2/2/5/2, edge jitter 3, and medium random features.
 - Default map seed now initializes to 12345 and the base radius default is 16 so generated maps start from the requested large baseline.
