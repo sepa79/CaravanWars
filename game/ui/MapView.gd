@@ -124,6 +124,7 @@ const CAMERA_PAN_MARGIN_MIN: float = 4.0
 const LAND_DEFAULT_ELEVATION: float = 0.35
 const LAND_ELEVATION_SCALE: float = 1.0
 const LAND_BASE_MIN_HEIGHT: float = 0.05
+const LAND_SURFACE_PIVOT_EPSILON: float = 0.0001
 
 var map_data: Dictionary = {}
 
@@ -662,10 +663,15 @@ func _update_region_layers() -> void:
             var variant_index := int(variant_counts.get(variant_key, 0))
             if variant_index >= surface_multimesh.instance_count:
                 continue
-            var surface_transform := _make_land_surface_transform(world_center, world_height)
+            var surface_mesh: Mesh = surface_multimesh.mesh
+            if surface_mesh == null and mesh_map.has(variant_key):
+                var mapped_mesh: Variant = mesh_map[variant_key]
+                if mapped_mesh is Mesh:
+                    surface_mesh = mapped_mesh
+            var surface_transform := _make_land_surface_transform(surface_mesh, world_center, world_height, base_scale)
             surface_multimesh.set_instance_transform(variant_index, surface_transform)
-            if surface_multimesh.mesh != null:
-                var surface_aabb := surface_multimesh.mesh.get_aabb()
+            if surface_mesh != null:
+                var surface_aabb := surface_mesh.get_aabb()
                 var transformed_surface := _transform_aabb(surface_aabb, surface_transform)
                 var merged_surface := _merge_bounds_with_aabb(min_pos, max_pos, has_positions, transformed_surface)
                 min_pos = merged_surface.get("min", min_pos)
@@ -794,9 +800,23 @@ func _make_land_base_transform(world_center: Vector3, world_height: float, base_
     var basis := Basis.IDENTITY.scaled(Vector3(1.0, base_scale, 1.0))
     return Transform3D(basis, origin)
 
-func _make_land_surface_transform(world_center: Vector3, world_height: float) -> Transform3D:
+func _make_land_surface_transform(surface_mesh: Mesh, world_center: Vector3, world_height: float, base_scale: float) -> Transform3D:
     var origin := Vector3(world_center.x, world_height, world_center.z)
-    return Transform3D(Basis.IDENTITY, origin)
+    var basis := Basis.IDENTITY
+    if surface_mesh == null:
+        return Transform3D(basis, origin)
+    var surface_aabb := surface_mesh.get_aabb()
+    var min_y: float = surface_aabb.position.y
+    var height: float = surface_aabb.size.y
+    var max_y: float = min_y + height
+    if max_y <= LAND_SURFACE_PIVOT_EPSILON:
+        var safe_height: float = max(height, LAND_SURFACE_PIVOT_EPSILON)
+        var y_scale: float = base_scale / safe_height
+        basis = basis.scaled(Vector3(1.0, y_scale, 1.0))
+        origin.y = world_height - max_y * y_scale
+    else:
+        origin.y = world_height - min_y
+    return Transform3D(basis, origin)
 
 func _select_land_surface_variant(region: String, axial: Vector2i) -> String:
     var variant_list: Array = []

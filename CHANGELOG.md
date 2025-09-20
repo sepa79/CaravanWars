@@ -12,6 +12,7 @@ Changed
 Fixed
 - Corrected river peak ordering to compare coordinates without using the nonexistent `String` constructor in Godot 4.
 - Map preview river batching now preloads all twelve river tiles, classifies masks by canonical rotations, and renders each combination with its dedicated mesh.
+- Map preview land surfaces now rescale shared meshes to match per-hex elevation and rest flush on the prism bases.
 
 0.2.1 — 2025-09-19
 Added
