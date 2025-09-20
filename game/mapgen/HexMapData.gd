@@ -13,7 +13,7 @@ var map_seed: int:
     set(value):
         _map_seed = value
         if map_data != null:
-            map_data.seed = value
+            map_data.map_seed = value
     get:
         return _map_seed
 var map_radius: int
@@ -90,7 +90,7 @@ func to_dictionary() -> Dictionary:
 func _apply_meta_to_map_data() -> void:
     if map_data == null:
         return
-    map_data.seed = _map_seed
+    map_data.map_seed = _map_seed
     map_data.set_catalog(asset_catalog)
     map_data.apply_meta(_build_meta_dictionary())
     if terrain_settings != null and terrain_settings.has_method("to_dictionary"):

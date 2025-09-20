@@ -18,6 +18,7 @@ RULES_ALWAYS_READ — twarde zasady
   - `duplicate`, `free`, `queue_free`
   - `update`, `draw`, `play`, `stop`
   - `scale`, `seed`, `params`
+- Gdy odkryjesz nową kolizję nazwy z API Godota, natychmiast dopisz ją do powyższej listy i stosuj nowe nazewnictwo.
 - Autoloady (nazwy singletonów): `App`, `I18N`, `Net`, `World`, później `Debug`, `Ai`.
 
 3) I18N (obowiązkowe)

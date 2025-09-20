@@ -1,7 +1,7 @@
 extends RefCounted
 class_name MapData
 
-var seed: int
+var map_seed: int
 var width: int
 var height: int
 var tiles: Dictionary = {}
@@ -17,7 +17,7 @@ func _init(
     p_height: int = 0,
     p_catalog = null
 ) -> void:
-    seed = p_seed
+    map_seed = p_seed
     width = max(0, p_width)
     height = max(0, p_height)
     tiles = {}
@@ -61,7 +61,7 @@ func clear_phase_payloads() -> void:
 func apply_meta(meta_dict: Dictionary) -> void:
     meta = meta_dict.duplicate(true)
     if meta.has("seed"):
-        seed = int(meta.get("seed", seed))
+        map_seed = int(meta.get("seed", map_seed))
 
 func set_terrain_settings(settings: Dictionary) -> void:
     terrain_settings = settings.duplicate(true)
@@ -87,7 +87,7 @@ func to_dictionary() -> Dictionary:
         serialized_tiles.append(tile.to_serializable(asset_catalog))
     var serialized_meta := meta.duplicate(true)
     if not serialized_meta.has("seed"):
-        serialized_meta["seed"] = seed
+        serialized_meta["seed"] = map_seed
     return {
         "meta": serialized_meta,
         "hexes": serialized_tiles,

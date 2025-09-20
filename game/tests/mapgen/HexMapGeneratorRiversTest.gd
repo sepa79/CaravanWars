@@ -30,7 +30,7 @@ func _test_generator_uses_config_seed() -> void:
     _check(data is MapData, "Generator stub should return MapData.")
     if data is MapData:
         var typed := data as MapData
-        _check(typed.seed == 424242, "Returned map data should preserve the configured seed.")
+        _check(typed.map_seed == 424242, "Returned map data should preserve the configured seed.")
         var tiles := typed.get_tiles()
         _check(tiles.size() > 0, "Stub map should include at least one tile.")
         if tiles.size() > 0:
