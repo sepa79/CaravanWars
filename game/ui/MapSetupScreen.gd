@@ -151,20 +151,19 @@ func _ready() -> void:
     start_button.pressed.connect(_on_start_pressed)
     back_button.pressed.connect(_on_back_pressed)
     random_seed_button.pressed.connect(_on_random_seed_pressed)
-    seed_spinbox.value_changed.connect(_on_seed_value_changed)
-    kingdom_spinbox.value_changed.connect(_on_kingdoms_changed)
-    rivers_spinbox.value_changed.connect(_on_rivers_changed)
-    radius_spinbox.value_changed.connect(_on_radius_changed)
     _ensure_legend_controls()
     _strip_legacy_controls()
     _configure_param_ranges()
     _ensure_edge_controls()
     _update_texts()
     if not Net.run_mode.is_empty():
-        World.prepare_map_for_run_mode(Net.run_mode, null, true)
-        World.ensure_map_generated(Net.run_mode)
+        World.prepare_and_generate_map(Net.run_mode)
     _load_config_from_world()
     _apply_config_to_controls()
+    seed_spinbox.value_changed.connect(_on_seed_value_changed)
+    kingdom_spinbox.value_changed.connect(_on_kingdoms_changed)
+    rivers_spinbox.value_changed.connect(_on_rivers_changed)
+    radius_spinbox.value_changed.connect(_on_radius_changed)
     _refresh_map_view()
     _on_net_state_changed(Net.state)
     if Net.run_mode == "single" and _should_drive_ci_singleplayer():
@@ -621,8 +620,7 @@ func _regenerate_map() -> void:
         return
     if Net.run_mode.is_empty():
         return
-    World.prepare_map_for_run_mode(Net.run_mode, _current_config, true)
-    World.ensure_map_generated(Net.run_mode)
+    World.prepare_and_generate_map(Net.run_mode, _current_config, true)
     _load_config_from_world()
     _apply_config_to_controls()
     _refresh_map_view()

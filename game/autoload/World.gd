@@ -42,6 +42,12 @@ func prepare_map_for_run_mode(run_mode: String, config: Variant = null, force: b
     _prepared_configs[run_mode] = chosen_config
     _prepared_maps.erase(run_mode)
 
+func prepare_and_generate_map(run_mode: String, config: Variant = null, force: bool = false) -> void:
+    if run_mode.is_empty():
+        return
+    prepare_map_for_run_mode(run_mode, config, force)
+    ensure_map_generated(run_mode)
+
 func ensure_map_generated(run_mode: String) -> void:
     if run_mode.is_empty():
         return

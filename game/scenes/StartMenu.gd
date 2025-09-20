@@ -56,8 +56,7 @@ func update_texts() -> void:
 func _on_single_player_pressed() -> void:
     _log("single player pressed")
     Net.run_mode = "single"
-    World.prepare_map_for_run_mode(Net.run_mode, null, true)
-    World.ensure_map_generated(Net.run_mode)
+    World.prepare_and_generate_map(Net.run_mode, null, true)
     App.goto_scene("res://ui/MapSetupScreen.tscn")
 
 func _on_multiplayer_pressed() -> void:
@@ -83,8 +82,7 @@ func _on_quit_pressed() -> void:
 func _on_host_pressed() -> void:
     _log("host pressed")
     Net.run_mode = "host"
-    World.prepare_map_for_run_mode(Net.run_mode, null, true)
-    World.ensure_map_generated(Net.run_mode)
+    World.prepare_and_generate_map(Net.run_mode, null, true)
     App.goto_scene("res://ui/MapSetupScreen.tscn")
 
 func _on_join_pressed() -> void:
