@@ -10,6 +10,7 @@ const PHASE_ROADS := StringName("roads")
 const PHASE_FORTS := StringName("forts")
 
 const MAP_DATA_SCRIPT := preload("res://mapgen/data/MapData.gd")
+const TerrainPhaseScript := preload("res://mapgen/phase1/TerrainPhase.gd")
 
 const PHASE_SEQUENCE: Array[StringName] = [
     PHASE_TERRAIN,
@@ -24,33 +25,35 @@ const PHASE_SEQUENCE: Array[StringName] = [
 var config: HexMapConfig
 var data_builder: HexMapData
 var phase_handlers: Dictionary = {}
+var _builtin_handlers: Dictionary = {}
+var _terrain_phase: RefCounted
 
 func _init(p_config: HexMapConfig = HexMapConfig.new()) -> void:
     config = p_config.duplicate_config()
     data_builder = HexMapData.new(config)
     phase_handlers = {}
+    _builtin_handlers = {}
     if MAP_DATA_SCRIPT == null:
         push_warning("[HexMapGenerator] Unable to preload MapData script")
+    if TerrainPhaseScript != null:
+        _terrain_phase = TerrainPhaseScript.new(config, data_builder)
+        _builtin_handlers[PHASE_TERRAIN] = Callable(_terrain_phase, "run")
 
 func generate() -> MapData:
     var dataset: MapData = data_builder.prepare_for_generation()
-    print("[HexMapGenerator] Stub generating map using seed %d (size=%dx%d, kingdoms=%d)" % [
+    print("[HexMapGenerator] Generating map using seed %d (size=%dx%d, kingdoms=%d)" % [
         dataset.map_seed,
         config.map_width,
         config.map_height,
         config.kingdom_count,
     ])
     for phase in PHASE_SEQUENCE:
+        var builtin_handler: Callable = _builtin_handlers.get(phase, Callable())
+        if builtin_handler != Callable():
+            _invoke_handler(builtin_handler, dataset, phase)
         var handler: Callable = phase_handlers.get(phase, Callable())
-        if handler.is_valid():
-            var arg_count := _determine_handler_argument_count(handler)
-            match arg_count:
-                0:
-                    handler.call()
-                1:
-                    handler.call(dataset)
-                _:
-                    handler.call(dataset, phase)
+        if handler != Callable():
+            _invoke_handler(handler, dataset, phase)
     return dataset
 
 func set_phase_handler(phase: StringName, handler: Callable) -> void:
@@ -67,6 +70,16 @@ func clear_phase_handler(phase: StringName) -> void:
 
 func get_map_data() -> MapData:
     return data_builder.get_map_data()
+
+func _invoke_handler(handler: Callable, dataset: MapData, phase: StringName) -> void:
+    var arg_count := _determine_handler_argument_count(handler)
+    match arg_count:
+        0:
+            handler.call()
+        1:
+            handler.call(dataset)
+        _:
+            handler.call(dataset, phase)
 
 func _determine_handler_argument_count(handler: Callable) -> int:
     var target := handler.get_object()

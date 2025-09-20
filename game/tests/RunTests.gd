@@ -1,14 +1,21 @@
 extends SceneTree
 
-const GeneratorSuite := preload("res://tests/mapgen/HexMapGeneratorRiversTest.gd")
+const TestSuites := [
+    preload("res://tests/mapgen/HexMapGeneratorTerrainTest.gd"),
+    preload("res://tests/mapgen/Phase1TerrainPipelineTest.gd"),
+]
 
 func _initialize() -> void:
-    var suite := GeneratorSuite.new()
-    var failure_count := suite.run()
-    if failure_count > 0:
-        for message in suite.get_failures():
-            push_error("[tests] %s" % message)
+    var total_failures: int = 0
+    for suite_script in TestSuites:
+        var suite: RefCounted = suite_script.new()
+        var failure_count: int = suite.run()
+        if failure_count > 0:
+            total_failures += failure_count
+            for message in suite.get_failures():
+                push_error("[tests] %s" % message)
+    if total_failures > 0:
         quit(1)
         return
-    print("[tests] HexMapGenerator stub suite passed")
+    print("[tests] Map generation suites passed")
     quit()
