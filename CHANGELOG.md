@@ -15,6 +15,7 @@ Fixed
 - Map preview river batching now preloads all twelve river tiles, classifies masks by canonical rotations, and renders each combination with its dedicated mesh.
 - Map preview land surfaces now rescale shared meshes to match per-hex elevation and sit flush atop the prism bases without overlapping geometry.
 - Land surface placement now anchors scaled meshes by their top face so hills and valleys render at the expected relative heights above the base prism.
+- Map setup legend toggles now dim the intended terrain regions instead of misreading button states as region identifiers.
 
 0.2.1 — 2025-09-19
 Added

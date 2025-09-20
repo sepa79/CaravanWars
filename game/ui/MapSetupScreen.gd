@@ -743,7 +743,7 @@ func _ensure_legend_controls() -> void:
                 "button": button,
                 "color": base_color,
             }
-            _on_legend_entry_toggled(entry_id, true)
+            _on_legend_entry_toggled(true, entry_id)
     for entry in REGION_LEGEND_ENTRIES:
         var entry_id := String(entry.get("id", ""))
         if entry_id.is_empty():
@@ -778,7 +778,7 @@ func _legend_has_any_counts() -> bool:
             return true
     return false
 
-func _on_legend_entry_toggled(entry_id: String, enabled: bool) -> void:
+func _on_legend_entry_toggled(enabled: bool, entry_id: String) -> void:
     if map_view != null:
         map_view.set_region_visibility(entry_id, enabled)
     _update_legend_entry_visual(entry_id)
