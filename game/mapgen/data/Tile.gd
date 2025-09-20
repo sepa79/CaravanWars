@@ -1,6 +1,9 @@
 extends RefCounted
 class_name Tile
 
+const LayerInstance := preload("res://mapgen/data/LayerInstance.gd")
+const AssetCatalog := preload("res://mapgen/data/AssetCatalog.gd")
+
 const TERRAIN_SEA := StringName("SEA")
 const TERRAIN_PLAINS := StringName("PLAINS")
 const TERRAIN_HILLS := StringName("HILLS")
@@ -23,7 +26,7 @@ var height_value: float = 0.0
 var tile_rotation: int = 0
 var visual_variant: StringName = VARIANT_A
 var with_trees: bool = false
-var draw_stack: Array = []
+var draw_stack: Array[LayerInstance] = []
 
 func _init(p_q: int = 0, p_r: int = 0) -> void:
     q = p_q
@@ -33,7 +36,7 @@ func _init(p_q: int = 0, p_r: int = 0) -> void:
 func axial() -> Vector2i:
     return Vector2i(q, r)
 
-func add_layer(layer) -> void:
+func add_layer(layer: LayerInstance) -> void:
     if not draw_stack is Array:
         draw_stack = []
     draw_stack.append(layer)
@@ -41,7 +44,7 @@ func add_layer(layer) -> void:
 func clear_layers() -> void:
     draw_stack.clear()
 
-func to_serializable(catalog = null) -> Dictionary:
+func to_serializable(catalog: AssetCatalog = null) -> Dictionary:
     var serialized_layers: Array[Dictionary] = []
     for layer in draw_stack:
         if layer is LayerInstance:

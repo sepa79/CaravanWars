@@ -136,7 +136,15 @@ func is_rotatable_terrain(terrain_type: StringName) -> bool:
     return get_rotation_steps_for_terrain(terrain_type) > 1
 
 func get_role(asset_id: StringName) -> AssetRole:
-    return AssetRole(_asset_roles.get(asset_id, AssetRole.BASE))
+    var stored: int = int(_asset_roles.get(asset_id, AssetRole.BASE))
+    match stored:
+        AssetRole.BASE:
+            return AssetRole.BASE
+        AssetRole.TERRAIN:
+            return AssetRole.TERRAIN
+        AssetRole.DECOR:
+            return AssetRole.DECOR
+    return AssetRole.BASE
 
 func get_asset_path(asset_id: StringName) -> String:
     return String(_asset_resource_paths.get(asset_id, ""))
@@ -163,8 +171,8 @@ func _register_default_assets() -> void:
     _clear_registrations()
     _register_asset(base_asset_id, AssetRole.BASE, 1, BASE_ASSET_SCENE_PATH)
     for terrain in ALL_TERRAINS:
-        var terrain_key := String(terrain).to_lower()
-        var base_id := StringName("terrain_%s_base" % terrain_key)
+        var terrain_key: String = String(terrain).to_lower()
+        var base_id: StringName = StringName("terrain_%s_base" % terrain_key)
         _terrain_base_assets[terrain] = base_id
         _register_asset(base_id, AssetRole.TERRAIN, 1, _resolve_scene_path(TERRAIN_BASE_SCENE_PATHS, terrain))
     _terrain_rotation_steps = {
@@ -191,15 +199,15 @@ func _clear_registrations() -> void:
     _terrain_rotation_steps.clear()
 
 func _register_asset(asset_id: StringName, role: AssetRole, rotation_steps: int, scene_path: String) -> void:
-    _asset_roles[asset_id] = role
+    _asset_roles[asset_id] = int(role)
     _asset_rotation_steps[asset_id] = max(1, rotation_steps)
     _asset_resource_paths[asset_id] = scene_path
 
 func _register_terrain_variants(terrain_type: StringName, rotation_steps: int, scene_paths: Dictionary) -> void:
     var variant_map: Dictionary = {}
-    var terrain_key := String(terrain_type).to_lower()
+    var terrain_key: String = String(terrain_type).to_lower()
     for variant in VARIANT_IDS:
-        var overlay_id := StringName("terrain_%s_%s" % [terrain_key, String(variant)])
+        var overlay_id: StringName = StringName("terrain_%s_%s" % [terrain_key, String(variant)])
         variant_map[variant] = overlay_id
         _register_asset(overlay_id, AssetRole.TERRAIN, rotation_steps, _resolve_scene_path(scene_paths, variant))
     _terrain_overlay_assets[terrain_type] = variant_map
@@ -209,12 +217,12 @@ func _register_decor_variants(terrain_type: StringName, rotation_steps: int, sce
     if scene_paths.is_empty():
         _terrain_decor_assets[terrain_type] = variant_map
         return
-    var terrain_key := String(terrain_type).to_lower()
+    var terrain_key: String = String(terrain_type).to_lower()
     for variant in VARIANT_IDS:
-        var scene_path := _resolve_scene_path(scene_paths, variant)
+        var scene_path: String = _resolve_scene_path(scene_paths, variant)
         if scene_path.is_empty():
             continue
-        var decor_id := StringName("decor_%s_trees_%s" % [terrain_key, String(variant)])
+        var decor_id: StringName = StringName("decor_%s_trees_%s" % [terrain_key, String(variant)])
         variant_map[variant] = decor_id
         _register_asset(decor_id, AssetRole.DECOR, rotation_steps, scene_path)
     _terrain_decor_assets[terrain_type] = variant_map
@@ -223,7 +231,7 @@ func _get_scene_path_map(source: Dictionary, terrain_type: StringName) -> Dictio
     var entry: Variant = source.get(terrain_type)
     if typeof(entry) == TYPE_DICTIONARY:
         return entry as Dictionary
-    var key := String(terrain_type)
+    var key: String = String(terrain_type)
     entry = source.get(key)
     if typeof(entry) == TYPE_DICTIONARY:
         return entry as Dictionary
@@ -236,18 +244,18 @@ func _resolve_scene_path(scene_paths: Dictionary, key: Variant) -> String:
     if scene_paths.has(key):
         return String(scene_paths[key])
     if key is StringName:
-        var string_key := String(key)
+        var string_key: String = String(key)
         if scene_paths.has(string_key):
             return String(scene_paths[string_key])
-        var lower := string_key.to_lower()
+        var lower: String = string_key.to_lower()
         if scene_paths.has(lower):
             return String(scene_paths[lower])
     elif key is String:
-        var string_value := key
-        var name_key := StringName(string_value)
+        var string_value: String = key
+        var name_key: StringName = StringName(string_value)
         if scene_paths.has(name_key):
             return String(scene_paths[name_key])
-        var lower_case := string_value.to_lower()
+        var lower_case: String = string_value.to_lower()
         if scene_paths.has(lower_case):
             return String(scene_paths[lower_case])
     return ""

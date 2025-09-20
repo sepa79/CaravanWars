@@ -1,6 +1,8 @@
 extends RefCounted
 class_name LayerInstance
 
+const AssetCatalog := preload("res://mapgen/data/AssetCatalog.gd")
+
 var asset_id: StringName
 var rotation: int
 var scale: float
@@ -17,7 +19,7 @@ func _init(
     scale = p_scale
     offset = p_offset
 
-func to_serializable(catalog = null) -> Dictionary:
+func to_serializable(catalog: AssetCatalog = null) -> Dictionary:
     var result: Dictionary = {
         "asset_id": String(asset_id),
         "rotation": rotation,

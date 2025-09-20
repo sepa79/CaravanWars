@@ -6,6 +6,11 @@ const LayerInstanceScript := preload("res://mapgen/data/LayerInstance.gd")
 const MapDataScript := preload("res://mapgen/data/MapData.gd")
 const TileScript := preload("res://mapgen/data/Tile.gd")
 
+const AssetCatalog := AssetCatalogScript
+const LayerInstance := LayerInstanceScript
+const MapData := MapDataScript
+const Tile := TileScript
+
 const PHASE_TERRAIN := StringName("terrain")
 const BASE_SCALE_FACTOR := 0.3
 
@@ -27,8 +32,8 @@ var edge_jitter: int
 var random_feature_density: float
 var terrain_settings
 var hex_grid: HexGrid
-var asset_catalog
-var map_data
+var asset_catalog: AssetCatalog
+var map_data: MapData
 
 var _map_seed: int = 0
 
@@ -79,7 +84,7 @@ func set_phase_payload(phase: StringName, data: Variant) -> void:
 func get_phase_payload(phase: StringName) -> Variant:
     return get_stage_result(phase)
 
-func get_map_data():
+func get_map_data() -> MapData:
     return map_data
 
 func to_dictionary() -> Dictionary:
@@ -127,16 +132,16 @@ func _populate_stub_tiles() -> void:
         AssetCatalogScript.TERRAIN_MOUNTAINS,
     ]
     for index in terrains.size():
-        var terrain_type := terrains[index]
-        var q := index
-        var r := 0
-        var tile := _build_tile(q, r, terrain_type)
+        var terrain_type: StringName = terrains[index]
+        var q: int = index
+        var r: int = 0
+        var tile: Tile = _build_tile(q, r, terrain_type)
         map_data.set_tile(tile)
     map_data.set_dimensions(max(1, terrains.size()), 1)
     map_data.set_phase_payload(PHASE_TERRAIN, {"tiles": map_data.tiles.size()})
 
-func _build_tile(q: int, r: int, terrain_type: StringName):
-    var tile = TileScript.new(q, r)
+func _build_tile(q: int, r: int, terrain_type: StringName) -> Tile:
+    var tile: Tile = TileScript.new(q, r)
     tile.terrain_type = terrain_type
     tile.height_value = _deterministic_height(q, r, terrain_type)
     tile.visual_variant = _deterministic_variant(q, r, terrain_type)
@@ -145,30 +150,30 @@ func _build_tile(q: int, r: int, terrain_type: StringName):
     _build_draw_stack(tile)
     return tile
 
-func _build_draw_stack(tile) -> void:
+func _build_draw_stack(tile: Tile) -> void:
     tile.clear_layers()
-    var base_layer := LayerInstanceScript.new(
+    var base_layer: LayerInstance = LayerInstanceScript.new(
         asset_catalog.get_base_asset_id(),
         0,
         _calculate_base_scale(tile.height_value),
         Vector2.ZERO
     )
     tile.add_layer(base_layer)
-    var base_asset := asset_catalog.get_terrain_base_asset(tile.terrain_type)
+    var base_asset: StringName = asset_catalog.get_terrain_base_asset(tile.terrain_type)
     if base_asset != StringName():
         tile.add_layer(LayerInstanceScript.new(base_asset, 0, 1.0, Vector2.ZERO))
-    var overlay_asset := asset_catalog.get_terrain_overlay_asset(tile.terrain_type, tile.visual_variant)
+    var overlay_asset: StringName = asset_catalog.get_terrain_overlay_asset(tile.terrain_type, tile.visual_variant)
     if overlay_asset != StringName():
-        var overlay_rotation := tile.tile_rotation
-        var steps := asset_catalog.get_rotation_steps(overlay_asset)
+        var overlay_rotation: int = tile.tile_rotation
+        var steps: int = asset_catalog.get_rotation_steps(overlay_asset)
         if steps <= 1:
             overlay_rotation = 0
         tile.add_layer(LayerInstanceScript.new(overlay_asset, overlay_rotation, 1.0, Vector2.ZERO))
     if tile.with_trees:
-        var decor_asset := asset_catalog.get_terrain_decor_asset(tile.terrain_type, tile.visual_variant)
+        var decor_asset: StringName = asset_catalog.get_terrain_decor_asset(tile.terrain_type, tile.visual_variant)
         if decor_asset != StringName():
-            var decor_rotation := tile.tile_rotation
-            var decor_steps := asset_catalog.get_rotation_steps(decor_asset)
+            var decor_rotation: int = tile.tile_rotation
+            var decor_steps: int = asset_catalog.get_rotation_steps(decor_asset)
             if decor_steps <= 1:
                 decor_rotation = 0
             tile.add_layer(LayerInstanceScript.new(decor_asset, decor_rotation, 1.0, Vector2.ZERO))
@@ -180,29 +185,29 @@ func _deterministic_variant(q: int, r: int, terrain_type: StringName) -> StringN
     var variants: Array[StringName] = asset_catalog.get_variants_for_terrain(terrain_type)
     if variants.is_empty():
         return TileScript.VARIANT_A
-    var index := posmod(_hash_seed(q, r, terrain_type, "variant"), variants.size())
+    var index: int = posmod(_hash_seed(q, r, terrain_type, "variant"), variants.size())
     return variants[index]
 
 func _deterministic_rotation(q: int, r: int, terrain_type: StringName) -> int:
-    var steps := asset_catalog.get_rotation_steps_for_terrain(terrain_type)
+    var steps: int = asset_catalog.get_rotation_steps_for_terrain(terrain_type)
     if steps <= 1:
         return 0
     return posmod(_hash_seed(q, r, terrain_type, "rotation"), steps)
 
 func _deterministic_with_trees(q: int, r: int, terrain_type: StringName, variant: StringName) -> bool:
-    var decor_asset := asset_catalog.get_terrain_decor_asset(terrain_type, variant)
+    var decor_asset: StringName = asset_catalog.get_terrain_decor_asset(terrain_type, variant)
     if decor_asset == StringName():
         return false
-    var value := posmod(_hash_seed(q, r, terrain_type, "trees"), 100)
+    var value: int = posmod(_hash_seed(q, r, terrain_type, "trees"), 100)
     return value % 2 == 0
 
 func _deterministic_height(q: int, r: int, terrain_type: StringName) -> float:
-    var value := posmod(_hash_seed(q, r, terrain_type, "height"), 1000)
-    var normalized := float(value) / 999.0
+    var value: int = posmod(_hash_seed(q, r, terrain_type, "height"), 1000)
+    var normalized: float = float(value) / 999.0
     return clampf(0.2 + normalized * 0.6, 0.0, 1.0)
 
 func _hash_seed(q: int, r: int, terrain_type: StringName, label: String) -> int:
-    var raw := int(hash([_map_seed, q, r, String(terrain_type), label]))
+    var raw: int = int(hash([_map_seed, q, r, String(terrain_type), label]))
     if raw < 0:
         raw = -raw
     return raw
