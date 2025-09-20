@@ -9,6 +9,8 @@ const PHASE_SETTLEMENTS := StringName("settlements")
 const PHASE_ROADS := StringName("roads")
 const PHASE_FORTS := StringName("forts")
 
+const MAP_DATA_SCRIPT := preload("res://mapgen/data/MapData.gd")
+
 const PHASE_SEQUENCE: Array[StringName] = [
     PHASE_TERRAIN,
     PHASE_RIVERS,
@@ -27,6 +29,8 @@ func _init(p_config: HexMapConfig = HexMapConfig.new()) -> void:
     config = p_config.duplicate_config()
     data_builder = HexMapData.new(config)
     phase_handlers = {}
+    if MAP_DATA_SCRIPT == null:
+        push_warning("[HexMapGenerator] Unable to preload MapData script")
 
 func generate() -> MapData:
     var dataset: MapData = data_builder.prepare_for_generation()

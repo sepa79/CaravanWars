@@ -162,6 +162,7 @@ func _ready() -> void:
     _update_texts()
     if not Net.run_mode.is_empty():
         World.prepare_map_for_run_mode(Net.run_mode, null, true)
+        World.ensure_map_generated(Net.run_mode)
     _load_config_from_world()
     _apply_config_to_controls()
     _refresh_map_view()
@@ -621,6 +622,7 @@ func _regenerate_map() -> void:
     if Net.run_mode.is_empty():
         return
     World.prepare_map_for_run_mode(Net.run_mode, _current_config, true)
+    World.ensure_map_generated(Net.run_mode)
     _load_config_from_world()
     _apply_config_to_controls()
     _refresh_map_view()

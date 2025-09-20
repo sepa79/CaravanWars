@@ -42,6 +42,16 @@ func prepare_map_for_run_mode(run_mode: String, config: Variant = null, force: b
     _prepared_configs[run_mode] = chosen_config
     _prepared_maps.erase(run_mode)
 
+func ensure_map_generated(run_mode: String) -> void:
+    if run_mode.is_empty():
+        return
+    if not _prepared_configs.has(run_mode):
+        return
+    var stored_map: Variant = get_prepared_map(run_mode)
+    if stored_map != null:
+        return
+    _generate_map_for_run_mode(run_mode)
+
 func get_prepared_map(run_mode: String) -> Variant:
     var stored: Variant = _prepared_maps.get(run_mode)
     if stored == null:
@@ -78,6 +88,10 @@ func _generate_map_for_run_mode(run_mode: String) -> Variant:
     var config: Variant = _prepared_configs.get(run_mode)
     if config == null:
         return null
+    var data_script := _get_map_data_script()
+    if data_script == null:
+        push_warning("[World] Unable to load map data script")
+        return null
     var generator_script := _get_hex_map_generator_script()
     if generator_script == null:
         push_warning("[World] Unable to load map generator script")
@@ -90,7 +104,6 @@ func _generate_map_for_run_mode(run_mode: String) -> Variant:
         push_warning("[World] Unable to instantiate HexMapGenerator")
         return null
     var map_data: Variant = generator_instance.generate()
-    var data_script := _get_map_data_script()
     if data_script != null and (map_data == null or not (map_data is Object) or map_data.get_script() != data_script):
         push_warning("[World] Prepared map payload is not MapData: %s" % [map_data])
         return null
