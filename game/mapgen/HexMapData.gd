@@ -16,7 +16,8 @@ var map_seed: int:
             map_data.map_seed = value
     get:
         return _map_seed
-var map_radius: int
+var map_width: int
+var map_height: int
 var kingdom_count: int
 var rivers_cap: int
 var road_aggressiveness: float
@@ -24,7 +25,7 @@ var fort_global_cap: int
 var fort_spacing: int
 var edge_settings: Dictionary = {}
 var edge_jitter: int
-var random_feature_density: float
+var random_feature_settings: Dictionary = {}
 var terrain_settings
 var hex_grid: HexGrid
 var asset_catalog: AssetCatalog
@@ -34,7 +35,8 @@ var _map_seed: int = 0
 
 func _init(p_config: HexMapConfig) -> void:
     _map_seed = p_config.map_seed
-    map_radius = p_config.map_radius
+    map_width = max(1, p_config.map_width)
+    map_height = max(1, p_config.map_height)
     kingdom_count = p_config.kingdom_count
     rivers_cap = p_config.rivers_cap
     road_aggressiveness = p_config.road_aggressiveness
@@ -42,10 +44,10 @@ func _init(p_config: HexMapConfig) -> void:
     fort_spacing = p_config.fort_spacing
     edge_settings = p_config.get_all_edge_settings().duplicate(true)
     edge_jitter = p_config.edge_jitter
-    random_feature_density = p_config.random_feature_density
+    random_feature_settings = p_config.get_random_feature_settings()
     terrain_settings = p_config.terrain_settings.duplicate_settings()
     asset_catalog = AssetCatalogScript.new()
-    map_data = MapDataScript.new(_map_seed, 0, 0, asset_catalog)
+    map_data = MapDataScript.new(_map_seed, map_width, map_height, asset_catalog)
     _apply_meta_to_map_data()
     _populate_stub_tiles()
 
@@ -53,7 +55,7 @@ func attach_grid(p_grid: HexGrid) -> void:
     hex_grid = p_grid
 
 func prepare_for_generation():
-    map_data = MapDataScript.new(_map_seed, 0, 0, asset_catalog)
+    map_data = MapDataScript.new(_map_seed, map_width, map_height, asset_catalog)
     _apply_meta_to_map_data()
     _populate_stub_tiles()
     return map_data
@@ -92,6 +94,7 @@ func _apply_meta_to_map_data() -> void:
         return
     map_data.map_seed = _map_seed
     map_data.set_catalog(asset_catalog)
+    map_data.set_dimensions(map_width, map_height)
     map_data.apply_meta(_build_meta_dictionary())
     if terrain_settings != null and terrain_settings.has_method("to_dictionary"):
         map_data.set_terrain_settings(terrain_settings.to_dictionary())
@@ -103,7 +106,8 @@ func _apply_meta_to_map_data() -> void:
 func _build_meta_dictionary() -> Dictionary:
     return {
         "seed": _map_seed,
-        "map_radius": map_radius,
+        "width": map_width,
+        "height": map_height,
         "kingdom_count": kingdom_count,
         "params": {
             "rivers_cap": rivers_cap,
@@ -112,7 +116,7 @@ func _build_meta_dictionary() -> Dictionary:
             "fort_spacing": fort_spacing,
             "edge_settings": edge_settings.duplicate(true),
             "edge_jitter": edge_jitter,
-            "random_feature_density": random_feature_density,
+            "random_features": random_feature_settings.duplicate(true),
         },
     }
 
@@ -132,7 +136,7 @@ func _populate_stub_tiles() -> void:
         var r: int = 0
         var tile: Tile = _build_tile(q, r, terrain_type)
         map_data.set_tile(tile)
-    map_data.set_dimensions(max(1, terrains.size()), 1)
+    map_data.set_dimensions(map_width, map_height)
     map_data.set_phase_payload(PHASE_TERRAIN, {"tiles": map_data.tiles.size()})
 
 func _build_tile(q: int, r: int, terrain_type: StringName) -> Tile:
