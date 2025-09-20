@@ -3,6 +3,7 @@ extends Control
 const CI_AUTO_SINGLEPLAYER_ENV := "CI_AUTO_SINGLEPLAYER"
 const CI_AUTO_QUIT_ENV := "CI_AUTO_QUIT"
 const HEX_MAP_CONFIG_SCRIPT := preload("res://mapgen/HexMapConfig.gd")
+const MAP_DATA_SCRIPT := preload("res://mapgen/data/MapData.gd")
 const LAND_BASE_LEGEND_ID := "land_base"
 const LAND_REGION_COUNT_IDS: Array = ["plains", "valley", "hills", "mountains"]
 
@@ -601,9 +602,8 @@ func _refresh_map_view() -> void:
         return
     var prepared_map: Variant = World.get_prepared_map(Net.run_mode)
     var map_dictionary: Dictionary = {}
-    if prepared_map is HexMapData:
-        var typed_map := prepared_map as HexMapData
-        map_dictionary = typed_map.to_dictionary()
+    if MAP_DATA_SCRIPT != null and prepared_map is MAP_DATA_SCRIPT:
+        map_dictionary = (prepared_map as MAP_DATA_SCRIPT).to_dictionary()
     elif typeof(prepared_map) == TYPE_DICTIONARY:
         map_dictionary = prepared_map
     if map_dictionary.is_empty():

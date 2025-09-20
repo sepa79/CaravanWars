@@ -1,7 +1,21 @@
 extends RefCounted
 class_name HexMapData
 
-var map_seed: int
+const AssetCatalogScript := preload("res://mapgen/data/AssetCatalog.gd")
+const LayerInstanceScript := preload("res://mapgen/data/LayerInstance.gd")
+const MapDataScript := preload("res://mapgen/data/MapData.gd")
+const TileScript := preload("res://mapgen/data/Tile.gd")
+
+const PHASE_TERRAIN := StringName("terrain")
+const BASE_SCALE_FACTOR := 0.3
+
+var map_seed: int:
+    set(value):
+        _map_seed = value
+        if map_data != null:
+            map_data.seed = value
+    get:
+        return _map_seed
 var map_radius: int
 var kingdom_count: int
 var rivers_cap: int
@@ -13,118 +27,182 @@ var edge_jitter: int
 var random_feature_density: float
 var terrain_settings
 var hex_grid: HexGrid
-var stage_results: Dictionary = {}
+var asset_catalog
+var map_data
+
+var _map_seed: int = 0
 
 func _init(p_config: HexMapConfig) -> void:
-    map_seed = p_config.map_seed
+    _map_seed = p_config.map_seed
     map_radius = p_config.map_radius
     kingdom_count = p_config.kingdom_count
     rivers_cap = p_config.rivers_cap
     road_aggressiveness = p_config.road_aggressiveness
     fort_global_cap = p_config.fort_global_cap
     fort_spacing = p_config.fort_spacing
-    edge_settings = p_config.get_all_edge_settings()
+    edge_settings = p_config.get_all_edge_settings().duplicate(true)
     edge_jitter = p_config.edge_jitter
     random_feature_density = p_config.random_feature_density
     terrain_settings = p_config.terrain_settings.duplicate_settings()
-    stage_results = {}
+    asset_catalog = AssetCatalogScript.new()
+    map_data = MapDataScript.new(_map_seed, 0, 0, asset_catalog)
+    _apply_meta_to_map_data()
+    _populate_stub_tiles()
 
 func attach_grid(p_grid: HexGrid) -> void:
     hex_grid = p_grid
 
+func prepare_for_generation():
+    map_data = MapDataScript.new(_map_seed, 0, 0, asset_catalog)
+    _apply_meta_to_map_data()
+    _populate_stub_tiles()
+    return map_data
+
 func set_stage_result(phase: StringName, data: Variant) -> void:
-    stage_results[phase] = data
+    if map_data == null:
+        return
+    map_data.set_phase_payload(phase, data)
 
 func get_stage_result(phase: StringName) -> Variant:
-    return stage_results.get(phase)
+    if map_data == null:
+        return null
+    return map_data.get_phase_payload(phase)
 
 func clear_stage_results() -> void:
-    stage_results.clear()
+    if map_data == null:
+        return
+    map_data.clear_phase_payloads()
+
+func set_phase_payload(phase: StringName, data: Variant) -> void:
+    set_stage_result(phase, data)
+
+func get_phase_payload(phase: StringName) -> Variant:
+    return get_stage_result(phase)
+
+func get_map_data():
+    return map_data
 
 func to_dictionary() -> Dictionary:
-    var result: Dictionary = {
-        "meta": {
-            "seed": map_seed,
-            "map_radius": map_radius,
-            "kingdom_count": kingdom_count,
-            "params": {
-                "rivers_cap": rivers_cap,
-                "road_aggressiveness": road_aggressiveness,
-                "fort_global_cap": fort_global_cap,
-                "fort_spacing": fort_spacing,
-                "edge_settings": edge_settings,
-                "edge_jitter": edge_jitter,
-                "random_feature_density": random_feature_density,
-            },
+    if map_data == null:
+        return {}
+    return map_data.to_dictionary()
+
+func _apply_meta_to_map_data() -> void:
+    if map_data == null:
+        return
+    map_data.seed = _map_seed
+    map_data.set_catalog(asset_catalog)
+    map_data.apply_meta(_build_meta_dictionary())
+    if terrain_settings != null and terrain_settings.has_method("to_dictionary"):
+        map_data.set_terrain_settings(terrain_settings.to_dictionary())
+    else:
+        map_data.set_terrain_settings({})
+    map_data.set_terrain_metadata({})
+    map_data.clear_phase_payloads()
+
+func _build_meta_dictionary() -> Dictionary:
+    return {
+        "seed": _map_seed,
+        "map_radius": map_radius,
+        "kingdom_count": kingdom_count,
+        "params": {
+            "rivers_cap": rivers_cap,
+            "road_aggressiveness": road_aggressiveness,
+            "fort_global_cap": fort_global_cap,
+            "fort_spacing": fort_spacing,
+            "edge_settings": edge_settings.duplicate(true),
+            "edge_jitter": edge_jitter,
+            "random_feature_density": random_feature_density,
         },
-        "hexes": [],
-        "edges": [],
-        "points": [],
-        "labels": {},
-        "terrain": {},
-        "terrain_settings": terrain_settings.to_dictionary(),
     }
-    var terrain: Variant = stage_results.get(StringName("terrain"))
-    if typeof(terrain) == TYPE_DICTIONARY:
-        var hex_entries: Dictionary = terrain.get("hexes", {})
-        var hex_array: Array[Dictionary] = []
-        for key in hex_entries.keys():
-            var info: Dictionary = hex_entries[key]
-            var entry := {
-                "coord": info.get("coord", key),
-                "region": info.get("region", ""),
-                "is_water": info.get("is_water", false),
-                "is_sea": info.get("is_sea", false),
-                "elev": info.get("elev", 0.0),
-                "world_height": info.get("world_height", info.get("elev", 0.0)),
-                "layers": _duplicate_hex_layers(info.get("layers", [])),
-                "layer_region_map": _duplicate_layer_region_map(info.get("layer_region_map", {})),
-                "surface_variant": info.get("surface_variant", ""),
-                "river_mask": info.get("river_mask", 0),
-                "river_class": info.get("river_class", 0),
-                "is_mouth": info.get("is_mouth", false),
-                "river_variant": info.get("river_variant", ""),
-                "river_rotation": info.get("river_rotation", 0),
-            }
-            hex_array.append(entry)
-        result["hexes"] = hex_array
-        var terrain_meta: Dictionary = {}
-        if terrain.has("regions"):
-            terrain_meta["regions"] = terrain["regions"]
-        if terrain.has("validation"):
-            terrain_meta["validation"] = terrain["validation"]
-        if terrain_meta.size() > 0:
-            result["terrain"] = terrain_meta
-    return result
 
-func _duplicate_hex_layers(source: Variant) -> Array:
-    var layers: Array = []
-    if typeof(source) != TYPE_ARRAY:
-        return layers
-    for entry_variant in source:
-        if typeof(entry_variant) != TYPE_DICTIONARY:
-            continue
-        var layer_dict: Dictionary = entry_variant
-        var layer_id := String(layer_dict.get("id", ""))
-        var mesh_region := String(layer_dict.get("mesh_region", ""))
-        var variant := String(layer_dict.get("variant", ""))
-        layers.append({
-            "id": layer_id,
-            "mesh_region": mesh_region,
-            "variant": variant,
-        })
-    return layers
+func _populate_stub_tiles() -> void:
+    if map_data == null:
+        return
+    map_data.clear_tiles()
+    var terrains: Array[StringName] = [
+        AssetCatalogScript.TERRAIN_SEA,
+        AssetCatalogScript.TERRAIN_PLAINS,
+        AssetCatalogScript.TERRAIN_HILLS,
+        AssetCatalogScript.TERRAIN_MOUNTAINS,
+    ]
+    for index in terrains.size():
+        var terrain_type := terrains[index]
+        var q := index
+        var r := 0
+        var tile := _build_tile(q, r, terrain_type)
+        map_data.set_tile(tile)
+    map_data.set_dimensions(max(1, terrains.size()), 1)
+    map_data.set_phase_payload(PHASE_TERRAIN, {"tiles": map_data.tiles.size()})
 
-func _duplicate_layer_region_map(source: Variant) -> Dictionary:
-    var mapping: Dictionary = {}
-    if typeof(source) != TYPE_DICTIONARY:
-        return mapping
-    for key in (source as Dictionary).keys():
-        var mesh_region := String(key)
-        var list_variant: Variant = (source as Dictionary).get(key)
-        var layer_ids: Array = []
-        if list_variant is Array:
-            for id_variant in list_variant:
-                layer_ids.append(String(id_variant))
-        mapping[mesh_region] = layer_ids
-    return mapping
+func _build_tile(q: int, r: int, terrain_type: StringName):
+    var tile = TileScript.new(q, r)
+    tile.terrain_type = terrain_type
+    tile.height_value = _deterministic_height(q, r, terrain_type)
+    tile.visual_variant = _deterministic_variant(q, r, terrain_type)
+    tile.tile_rotation = _deterministic_rotation(q, r, terrain_type)
+    tile.with_trees = _deterministic_with_trees(q, r, terrain_type, tile.visual_variant)
+    _build_draw_stack(tile)
+    return tile
+
+func _build_draw_stack(tile) -> void:
+    tile.clear_layers()
+    var base_layer := LayerInstanceScript.new(
+        asset_catalog.get_base_asset_id(),
+        0,
+        _calculate_base_scale(tile.height_value),
+        Vector2.ZERO
+    )
+    tile.add_layer(base_layer)
+    var base_asset := asset_catalog.get_terrain_base_asset(tile.terrain_type)
+    if base_asset != StringName():
+        tile.add_layer(LayerInstanceScript.new(base_asset, 0, 1.0, Vector2.ZERO))
+    var overlay_asset := asset_catalog.get_terrain_overlay_asset(tile.terrain_type, tile.visual_variant)
+    if overlay_asset != StringName():
+        var overlay_rotation := tile.tile_rotation
+        var steps := asset_catalog.get_rotation_steps(overlay_asset)
+        if steps <= 1:
+            overlay_rotation = 0
+        tile.add_layer(LayerInstanceScript.new(overlay_asset, overlay_rotation, 1.0, Vector2.ZERO))
+    if tile.with_trees:
+        var decor_asset := asset_catalog.get_terrain_decor_asset(tile.terrain_type, tile.visual_variant)
+        if decor_asset != StringName():
+            var decor_rotation := tile.tile_rotation
+            var decor_steps := asset_catalog.get_rotation_steps(decor_asset)
+            if decor_steps <= 1:
+                decor_rotation = 0
+            tile.add_layer(LayerInstanceScript.new(decor_asset, decor_rotation, 1.0, Vector2.ZERO))
+
+func _calculate_base_scale(height_value: float) -> float:
+    return 1.0 + BASE_SCALE_FACTOR * clampf(height_value, 0.0, 1.0)
+
+func _deterministic_variant(q: int, r: int, terrain_type: StringName) -> StringName:
+    var variants: Array[StringName] = asset_catalog.get_variants_for_terrain(terrain_type)
+    if variants.is_empty():
+        return TileScript.VARIANT_A
+    var index := posmod(_hash_seed(q, r, terrain_type, "variant"), variants.size())
+    return variants[index]
+
+func _deterministic_rotation(q: int, r: int, terrain_type: StringName) -> int:
+    var steps := asset_catalog.get_rotation_steps_for_terrain(terrain_type)
+    if steps <= 1:
+        return 0
+    return posmod(_hash_seed(q, r, terrain_type, "rotation"), steps)
+
+func _deterministic_with_trees(q: int, r: int, terrain_type: StringName, variant: StringName) -> bool:
+    var decor_asset := asset_catalog.get_terrain_decor_asset(terrain_type, variant)
+    if decor_asset == StringName():
+        return false
+    var value := posmod(_hash_seed(q, r, terrain_type, "trees"), 100)
+    return value % 2 == 0
+
+func _deterministic_height(q: int, r: int, terrain_type: StringName) -> float:
+    var value := posmod(_hash_seed(q, r, terrain_type, "height"), 1000)
+    var normalized := float(value) / 999.0
+    return clampf(0.2 + normalized * 0.6, 0.0, 1.0)
+
+func _hash_seed(q: int, r: int, terrain_type: StringName, label: String) -> int:
+    var raw := int(hash([_map_seed, q, r, String(terrain_type), label]))
+    if raw < 0:
+        raw = -raw
+    return raw

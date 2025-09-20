@@ -39,6 +39,26 @@ script_classes=[{
 "class": "HexMapGenerator",
 "language": "GDScript",
 "path": "res://mapgen/HexMapGenerator.gd"
+}, {
+"base": "RefCounted",
+"class": "AssetCatalog",
+"language": "GDScript",
+"path": "res://mapgen/data/AssetCatalog.gd"
+}, {
+"base": "RefCounted",
+"class": "LayerInstance",
+"language": "GDScript",
+"path": "res://mapgen/data/LayerInstance.gd"
+}, {
+"base": "RefCounted",
+"class": "MapData",
+"language": "GDScript",
+"path": "res://mapgen/data/MapData.gd"
+}, {
+"base": "RefCounted",
+"class": "Tile",
+"language": "GDScript",
+"path": "res://mapgen/data/Tile.gd"
 }]
 script_class_icons={}
 
