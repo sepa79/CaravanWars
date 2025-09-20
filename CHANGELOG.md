@@ -19,6 +19,7 @@ Fixed
 - Land surface placement now anchors scaled meshes by their top face so hills and valleys render at the expected relative heights above the base prism.
 - Land base prisms now scale from their mesh bounds so tile tops line up with per-hex elevations instead of hovering above neighbors.
 - Map setup legend toggles now dim the intended terrain regions instead of misreading button states as region identifiers.
+- Map preview land stacks now keep plains above the shared grass base, clamp hill and mountain variants to their requested heights, and drop plains from river tiles so river meshes rest directly on the grass layer.
 
 0.2.1 — 2025-09-19
 Added

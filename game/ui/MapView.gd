@@ -1133,10 +1133,12 @@ func _determine_valley_top(world_height: float, grass_top: float) -> float:
     return max(world_height, min_top)
 
 func _should_skip_layer_entry(region: String, layer_id: String, entry: Dictionary) -> bool:
-    if layer_id == "valley":
-        var mask := int(entry.get("river_mask", 0))
-        if mask != 0:
-            return true
+    var mask := int(entry.get("river_mask", 0))
+    var has_river := mask != 0 or bool(entry.get("is_mouth", false))
+    if layer_id == "valley" and has_river:
+        return true
+    if layer_id == "plain" and has_river:
+        return true
     return false
 
 func _make_land_base_transform(base_mesh: Mesh, base_aabb: AABB, world_center: Vector3, world_height: float, base_height: float) -> Transform3D:
@@ -1155,22 +1157,33 @@ func _make_land_base_transform(base_mesh: Mesh, base_aabb: AABB, world_center: V
     return Transform3D(basis, origin)
 
 func _make_land_surface_transform(surface_mesh: Mesh, world_center: Vector3, layer_top: float, layer_bottom: float) -> Transform3D:
-    var origin := Vector3(world_center.x, layer_top, world_center.z)
+    var top_height := layer_top
+    var bottom_height := layer_bottom
+    if top_height < bottom_height:
+        var swap := top_height
+        top_height = bottom_height
+        bottom_height = swap
+    var desired_height := top_height - bottom_height
+    if desired_height < 0.0:
+        desired_height = 0.0
+    var origin := Vector3(world_center.x, bottom_height, world_center.z)
     var basis := Basis.IDENTITY
     if surface_mesh == null:
+        if desired_height <= LAND_SURFACE_PIVOT_EPSILON:
+            return Transform3D(basis, origin)
+        basis = basis.scaled(Vector3(1.0, desired_height, 1.0))
         return Transform3D(basis, origin)
     var surface_aabb := surface_mesh.get_aabb()
     var min_y: float = surface_aabb.position.y
     var height: float = surface_aabb.size.y
-    var max_y: float = min_y + height
-    var desired_height: float = max(layer_top - layer_bottom, LAND_SURFACE_PIVOT_EPSILON)
-    if max_y <= LAND_SURFACE_PIVOT_EPSILON:
-        var safe_height: float = max(height, LAND_SURFACE_PIVOT_EPSILON)
-        var y_scale: float = desired_height / safe_height
-        basis = basis.scaled(Vector3(1.0, y_scale, 1.0))
-        origin.y = layer_top - max_y * y_scale
-    else:
-        origin.y = layer_bottom - min_y
+    if is_zero_approx(height):
+        origin.y = bottom_height - min_y
+        return Transform3D(basis, origin)
+    var y_scale: float = 0.0
+    if desired_height > 0.0:
+        y_scale = desired_height / height
+    basis = basis.scaled(Vector3(1.0, y_scale, 1.0))
+    origin.y = bottom_height - min_y * y_scale
     return Transform3D(basis, origin)
 
 func _select_land_surface_variant(mesh_region: String, axial: Vector2i) -> String:
