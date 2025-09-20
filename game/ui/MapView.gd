@@ -813,7 +813,7 @@ func _make_land_surface_transform(surface_mesh: Mesh, world_center: Vector3, wor
         var safe_height: float = max(height, LAND_SURFACE_PIVOT_EPSILON)
         var y_scale: float = base_scale / safe_height
         basis = basis.scaled(Vector3(1.0, y_scale, 1.0))
-        origin.y = world_height - max_y * y_scale
+        origin.y = world_height - min_y * y_scale
     else:
         origin.y = world_height - min_y
     return Transform3D(basis, origin)
