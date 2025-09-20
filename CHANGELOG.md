@@ -4,6 +4,7 @@ Unreleased
 Added
 - Rivers now generate from mountain peaks, record per-hex masks, classes, mouths, and emit validation results for missing sinks.
 - Map setup preview batches river meshes by class, supports visibility toggles, and marks river mouths above the terrain grid.
+- Centralized terrain defaults, layer stacks, and mesh paths in a TerrainSettings resource shared between the generator and map view.
 Changed
 - Plains carved by rivers automatically downgrade to valleys and lakes prefer to open downstream outlets when terrain allows.
 - Map generation defaults now start with mountain-mountain-hills-sea-sea-hills edge bands, edge depths 2/2/2/2/5/2, edge jitter 3, and medium random features.
@@ -12,8 +13,11 @@ Changed
 - Map preview now anchors the grass base to half a sea tile below the waterline, stacks plains, hills, and mountains as layered pieces, and aligns rivers atop the exposed grass instead of intersecting surface meshes.
 - Map preview instantiates dedicated HexTileStack nodes per hex so layered land meshes replace shared MultiMeshes and respond directly to legend transparency controls.
 - Map preview sanitizes hex metadata into typed HexTileStack entries so tile and river refreshes no longer perform per-call Variant guards while updating transparency and meshes.
+- Map preview trusts the serialized terrain metadata and skips hexes without explicit regions or layer variants instead of guessing legacy defaults.
 - Map setup legend entries are now toggle buttons that dim or restore their terrain type in the 3D preview instead of being passive labels.
 - Map setup legend now includes a grass background toggle, taller buttons, and a minimum panel height so the controls stay legible next to the preview.
+- Hex map generation now serializes precomputed tile layer stacks, explicit surface_variant keys, and river orientations so MapView renders from the supplied metadata instead of recreating decisions with hard-coded tables.
+- Contribution rules now clarify that backwards compatibility is unsupported and developers must rely on the live code for authoritative data.
 Fixed
 - Corrected river peak ordering to compare coordinates without using the nonexistent `String` constructor in Godot 4.
 - Map preview river batching now preloads all twelve river tiles, classifies masks by canonical rotations, and renders each combination with its dedicated mesh.

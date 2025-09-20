@@ -34,3 +34,7 @@ RULES_ALWAYS_READ — twarde zasady
 
 5) Zakres faz
 - Dopóki faza nie przewiduje implementacji, **nie tworzymy kodu**. Najpierw dokument, potem skeleton, potem kod.
+
+6) Kompatybilność danych
+- Nigdy nie zgaduj — korzystaj wyłącznie z wartości zdefiniowanych w aktualnym kodzie lub konfiguracji.
+- Nie utrzymujemy kompatybilności wstecznej; jedynym źródłem prawdy jest bieżąca wersja projektu.

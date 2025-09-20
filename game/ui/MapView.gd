@@ -5,7 +5,7 @@ class_name MapView
 
 signal cities_changed(cities: Array)
 
-const LAND_BASE_SCENE := preload("res://assets/gltf/tiles/base/hex_grass_bottom.gltf")
+const TerrainSettingsResource := preload("res://map/TerrainSettings.gd")
 const HEX_TILE_STACK: GDScript = preload("res://ui/map_view/HexTileStack.gd")
 
 class TileEntry:
@@ -26,8 +26,13 @@ class HexEntry:
     var river_mask: int
     var river_class: int
     var is_river_mouth: bool
+    var layer_stack: Array
+    var layer_region_map: Dictionary
+    var river_variant: String
+    var river_rotation: int
+    var surface_variant: String
 
-    func _init(axial_coord_value: Vector2i = Vector2i.ZERO, region_id_value: String = "", elevation_value: float = LAND_DEFAULT_ELEVATION, world_height_value: float = 0.0, river_mask_value: int = 0, river_class_value: int = 1, is_river_mouth_value: bool = false) -> void:
+    func _init(axial_coord_value: Vector2i = Vector2i.ZERO, region_id_value: String = "", elevation_value: float = 0.0, world_height_value: float = 0.0, river_mask_value: int = 0, river_class_value: int = 1, is_river_mouth_value: bool = false, layer_stack_value: Array = [], layer_region_map_value: Dictionary = {}, river_variant_value: String = "", river_rotation_value: int = 0, surface_variant_value: String = "") -> void:
         axial_coord = axial_coord_value
         region_id = region_id_value
         elevation = elevation_value
@@ -35,14 +40,11 @@ class HexEntry:
         river_mask = river_mask_value
         river_class = river_class_value
         is_river_mouth = is_river_mouth_value
-
-class TileStackInfo:
-    var layer_stack: Array[HexTileStack.TileLayer]
-    var layer_region_map: Dictionary
-
-    func _init() -> void:
-        layer_stack = []
-        layer_region_map = {}
+        layer_stack = layer_stack_value.duplicate() if not layer_stack_value.is_empty() else []
+        layer_region_map = layer_region_map_value.duplicate() if not layer_region_map_value.is_empty() else {}
+        river_variant = river_variant_value
+        river_rotation = river_rotation_value
+        surface_variant = surface_variant_value
 
 class RiverTileInfo:
     var axial_coord: Vector2i
@@ -60,118 +62,6 @@ class RiverTileInfo:
         river_class = river_class_value
         is_mouth = is_mouth_value
 
-const LAND_SURFACE_SCENES: Dictionary = {
-    "plains": {
-        "A": preload("res://assets/gltf/tiles/base/hex_grass.gltf"),
-    },
-    "valley": {
-        "A": preload("res://assets/gltf/tiles/base/hex_grass.gltf"),
-    },
-    "hills": {
-        "A": preload("res://assets/gltf/decoration/nature/hills_A.gltf"),
-        "B": preload("res://assets/gltf/decoration/nature/hills_B.gltf"),
-        "C": preload("res://assets/gltf/decoration/nature/hills_C.gltf"),
-    },
-    "mountains": {
-        "A": preload("res://assets/gltf/decoration/nature/mountain_A.gltf"),
-        "B": preload("res://assets/gltf/decoration/nature/mountain_B.gltf"),
-        "C": preload("res://assets/gltf/decoration/nature/mountain_C.gltf"),
-    },
-}
-
-const LAND_REGION_ORDER := ["plains", "valley", "hills", "mountains"]
-
-const LAND_SURFACE_VARIANT_ORDER: Dictionary = {
-    "plains": ["A"],
-    "valley": ["A"],
-    "hills": ["A", "B", "C"],
-    "mountains": ["A", "B", "C"],
-}
-
-const LAND_REFERENCE_LEVELS: Dictionary = {
-    "sea": 0.0,
-    "lake": 0.12,
-    "valley": 0.2,
-    "plains": 0.5,
-    "hills": 0.68,
-    "mountains": 0.9,
-}
-
-const LAND_LAYER_STACK: Dictionary = {
-    "plains": [
-        {"id": "plain", "mesh_region": "plains"},
-    ],
-    "valley": [
-        {"id": "valley", "mesh_region": "valley"},
-    ],
-    "hills": [
-        {"id": "plain", "mesh_region": "plains"},
-        {"id": "hills", "mesh_region": "hills"},
-    ],
-    "mountains": [
-        {"id": "plain", "mesh_region": "plains"},
-        {"id": "mountains", "mesh_region": "mountains"},
-    ],
-}
-
-const REGION_SCENES: Dictionary = {
-    "plains": {
-        "base": LAND_BASE_SCENE,
-        "surfaces": LAND_SURFACE_SCENES["plains"],
-    },
-    "hills": {
-        "base": LAND_BASE_SCENE,
-        "surfaces": LAND_SURFACE_SCENES["hills"],
-    },
-    "mountains": {
-        "base": LAND_BASE_SCENE,
-        "surfaces": LAND_SURFACE_SCENES["mountains"],
-    },
-    "valley": {
-        "base": LAND_BASE_SCENE,
-        "surfaces": LAND_SURFACE_SCENES["valley"],
-    },
-    "lake": preload("res://assets/gltf/tiles/base/hex_water.gltf"),
-    "sea": preload("res://assets/gltf/tiles/base/hex_water.gltf"),
-}
-
-const SHORELINE_SCENES: Dictionary = {
-    "A": preload("res://assets/gltf/tiles/coast/hex_coast_A.gltf"),
-    "B": preload("res://assets/gltf/tiles/coast/hex_coast_B.gltf"),
-    "C": preload("res://assets/gltf/tiles/coast/hex_coast_C.gltf"),
-    "D": preload("res://assets/gltf/tiles/coast/hex_coast_D.gltf"),
-    "E": preload("res://assets/gltf/tiles/coast/hex_coast_E.gltf"),
-}
-
-const RIVER_SCENES: Dictionary = {
-    "straight": preload("res://assets/gltf/tiles/rivers/hex_river_A.gltf"),
-    "source": preload("res://assets/gltf/tiles/rivers/hex_river_B.gltf"),
-    "bend": preload("res://assets/gltf/tiles/rivers/hex_river_C.gltf"),
-    "alternating": preload("res://assets/gltf/tiles/rivers/hex_river_D.gltf"),
-    "fork_left": preload("res://assets/gltf/tiles/rivers/hex_river_E.gltf"),
-    "fork_right": preload("res://assets/gltf/tiles/rivers/hex_river_F.gltf"),
-    "tee": preload("res://assets/gltf/tiles/rivers/hex_river_G.gltf"),
-    "quad_fan": preload("res://assets/gltf/tiles/rivers/hex_river_H.gltf"),
-    "quad_split": preload("res://assets/gltf/tiles/rivers/hex_river_I.gltf"),
-    "cross": preload("res://assets/gltf/tiles/rivers/hex_river_J.gltf"),
-    "flood": preload("res://assets/gltf/tiles/rivers/hex_river_K.gltf"),
-    "mouth": preload("res://assets/gltf/tiles/rivers/hex_river_L.gltf"),
-}
-
-const RIVER_VARIANT_DEFINITIONS: Array = [
-    {"key": "straight", "mask": 9},
-    {"key": "source", "mask": 10},
-    {"key": "bend", "mask": 12},
-    {"key": "alternating", "mask": 42},
-    {"key": "fork_left", "mask": 11},
-    {"key": "fork_right", "mask": 41},
-    {"key": "tee", "mask": 28},
-    {"key": "quad_fan", "mask": 29},
-    {"key": "quad_split", "mask": 54},
-    {"key": "cross", "mask": 57},
-    {"key": "flood", "mask": 62},
-    {"key": "mouth", "mask": 63, "is_mouth": true},
-]
 
 const RIVER_MASK_BIT_COUNT := 6
 const RIVER_ROTATION_STEP: float = PI / 3.0
@@ -200,8 +90,6 @@ const CAMERA_ROTATE_SPEED: float = 0.01
 const CAMERA_PAN_MARGIN_RATIO: float = 0.25
 const CAMERA_PAN_MARGIN_MIN: float = 4.0
 
-const LAND_DEFAULT_ELEVATION: float = 0.35
-const LAND_ELEVATION_SCALE: float = 1.0
 const LAND_BASE_MIN_HEIGHT: float = 0.05
 const LAND_SURFACE_PIVOT_EPSILON: float = 0.0001
 const LAND_LAYER_MIN_THICKNESS: float = 0.02
@@ -211,6 +99,7 @@ const TERRAIN_TRANSPARENCY_DIMMED: float = 0.5
 
 var map_data: Dictionary = {}
 
+var _terrain_settings = TerrainSettingsResource.new()
 var _mesh_library: Dictionary = {}
 var _tiles: Dictionary[Vector2i, TileEntry] = {}
 var _water_layers: Dictionary = {}
@@ -218,7 +107,6 @@ var _river_layers: Dictionary = {}
 var _river_marker_layer: MultiMeshInstance3D
 var _river_tile_cache: Dictionary[Vector2i, RiverTileInfo] = {}
 var _hex_entries: Array[HexEntry] = []
-var _river_mask_lookup: Dictionary = _create_river_mask_lookup()
 var _needs_refresh: bool = false
 var _map_bounds: Dictionary = {}
 var _camera_zoom: float = 1.0
@@ -261,6 +149,7 @@ func _exit_tree() -> void:
 
 func set_map_data(data: Dictionary) -> void:
     map_data = data
+    _load_terrain_settings_from_data(map_data)
     _hex_entries = _sanitize_hex_entries(data.get("hexes"))
     _cache_river_entries()
     if data.is_empty():
@@ -284,6 +173,13 @@ func set_show_roads(_value: bool) -> void:
 func set_show_rivers(value: bool) -> void:
     _show_rivers = value
     _update_river_visibility()
+
+func _load_terrain_settings_from_data(data: Dictionary) -> void:
+    var settings_data: Variant = data.get("terrain_settings")
+    _terrain_settings = TerrainSettingsResource.new()
+    if typeof(settings_data) == TYPE_DICTIONARY:
+        _terrain_settings.apply_overrides(settings_data)
+    _build_mesh_library()
 
 func set_region_visibility(region_id: String, fully_visible: bool) -> void:
     if region_id == "land_base":
@@ -425,48 +321,56 @@ func _build_mesh_library() -> void:
         "rivers": {},
         "river_marker": null,
     }
-    for region in REGION_SCENES.keys():
-        var definition: Variant = REGION_SCENES[region]
-        if definition is PackedScene:
-            var water_mesh: Mesh = _extract_mesh(definition)
-            if water_mesh != null:
-                _mesh_library["water"][region] = water_mesh
+    var base_mesh: Mesh = _load_mesh_from_path(_terrain_settings.land_base_scene_path)
+    if base_mesh != null:
+        _mesh_library["land_base"] = base_mesh
+    var land_surfaces: Dictionary = {}
+    var surface_paths: Dictionary = _terrain_settings.land_surface_paths
+    for region in surface_paths.keys():
+        var region_meshes: Dictionary = {}
+        var region_variants: Variant = surface_paths.get(region)
+        if typeof(region_variants) != TYPE_DICTIONARY:
             continue
-        if typeof(definition) != TYPE_DICTIONARY:
-            continue
-        var land_definition: Dictionary = definition
-        if _mesh_library["land_base"] == null:
-            var base_scene: Variant = land_definition.get("base")
-            if base_scene is PackedScene:
-                var base_mesh: Mesh = _extract_mesh(base_scene)
-                if base_mesh != null:
-                    _mesh_library["land_base"] = base_mesh
-        var surface_definition: Variant = land_definition.get("surfaces")
-        if typeof(surface_definition) != TYPE_DICTIONARY:
-            continue
-        var surface_meshes: Dictionary = {}
-        for variant_key in (surface_definition as Dictionary).keys():
-            var surface_scene: Variant = surface_definition[variant_key]
-            if not (surface_scene is PackedScene):
-                continue
-            var surface_mesh: Mesh = _extract_mesh(surface_scene)
+        for variant_key in (region_variants as Dictionary).keys():
+            var path_value := String((region_variants as Dictionary)[variant_key])
+            var surface_mesh: Mesh = _load_mesh_from_path(path_value)
             if surface_mesh != null:
-                surface_meshes[variant_key] = surface_mesh
-        if not surface_meshes.is_empty():
-            _mesh_library["land_surfaces"][region] = surface_meshes
-    for case_key in SHORELINE_SCENES.keys():
-        var coast_scene: PackedScene = SHORELINE_SCENES[case_key]
-        var coast_mesh: Mesh = _extract_mesh(coast_scene)
+                region_meshes[variant_key] = surface_mesh
+        if not region_meshes.is_empty():
+            land_surfaces[region] = region_meshes
+    _mesh_library["land_surfaces"] = land_surfaces
+    var water_meshes: Dictionary = {}
+    var water_paths: Dictionary = _terrain_settings.water_scene_paths
+    for region in water_paths.keys():
+        var mesh: Mesh = _load_mesh_from_path(String(water_paths[region]))
+        if mesh != null:
+            water_meshes[region] = mesh
+    _mesh_library["water"] = water_meshes
+    var shoreline_meshes: Dictionary = {}
+    var shoreline_paths: Dictionary = _terrain_settings.shoreline_scene_paths
+    for case_key in shoreline_paths.keys():
+        var coast_mesh: Mesh = _load_mesh_from_path(String(shoreline_paths[case_key]))
         if coast_mesh != null:
-            _mesh_library["shorelines"][case_key] = coast_mesh
+            shoreline_meshes[case_key] = coast_mesh
+    _mesh_library["shorelines"] = shoreline_meshes
     var river_meshes: Dictionary = {}
-    for variant in RIVER_SCENES.keys():
-        var river_scene: PackedScene = RIVER_SCENES[variant]
-        var river_mesh: Mesh = _extract_mesh(river_scene)
+    var river_paths: Dictionary = _terrain_settings.river_scene_paths
+    for variant in river_paths.keys():
+        var river_mesh: Mesh = _load_mesh_from_path(String(river_paths[variant]))
         if river_mesh != null:
             river_meshes[variant] = river_mesh
     _mesh_library["rivers"] = river_meshes
     _mesh_library["river_marker"] = _build_river_marker_mesh()
+
+func _load_mesh_from_path(path: String) -> Mesh:
+    if path.is_empty():
+        return null
+    var resource := ResourceLoader.load(path)
+    if resource is PackedScene:
+        return _extract_mesh(resource)
+    if resource is Mesh:
+        return resource as Mesh
+    return null
 
 func _extract_mesh(scene: PackedScene) -> Mesh:
     if scene == null:
@@ -680,7 +584,7 @@ func _update_region_layers() -> void:
             continue
         var region := entry.region_id
         if region.is_empty():
-            region = "plains"
+            continue
         var axial := entry.axial_coord
         var world_center := _axial_to_world(axial)
         if region == "sea" or region == "lake":
@@ -709,15 +613,11 @@ func _update_region_layers() -> void:
             tile_stack.transform = Transform3D(Basis.IDENTITY, world_center)
         var plain_top := _determine_plain_top(region, entry.world_height, _land_grass_top)
         var valley_top := _determine_valley_top(entry.world_height, _land_grass_top)
-        var stack_info := _build_land_stack(entry, plain_top, valley_top)
-        tile_stack.configure_stack(entry.world_height, stack_info.layer_stack, mesh_bundle)
+        var tile_layers := _build_tile_layers(entry, plain_top, valley_top)
+        tile_stack.configure_stack(tile_layers, mesh_bundle)
         tile_entry.stack_node = tile_stack
         tile_entry.region_id = region
-        var region_layers: Dictionary = {}
-        for layer_region in stack_info.layer_region_map.keys():
-            var layer_ids: Array = stack_info.layer_region_map[layer_region]
-            var copied_ids: Array = layer_ids.duplicate()
-            region_layers[layer_region] = copied_ids
+        var region_layers := _duplicate_layer_region_map(entry.layer_region_map)
         tile_entry.layer_region_map = region_layers
         var combined_base: float = max(_land_base_transparency, _get_region_transparency(region))
         tile_stack.set_base_transparency(combined_base)
@@ -804,16 +704,21 @@ func _sanitize_hex_entries(source: Variant) -> Array[HexEntry]:
         var entry_dict := entry_variant as Dictionary
         var region := String(entry_dict.get("region", ""))
         if region.is_empty():
-            region = "plains"
+            continue
         var axial := _coord_to_axial(entry_dict.get("coord"))
-        var elevation := _sanitize_elevation(entry_dict.get("elev", LAND_DEFAULT_ELEVATION))
-        var world_height := _elevation_to_world_height(elevation)
+        var elevation: float = _sanitize_elevation(entry_dict.get("elev", _terrain_settings.default_land_elevation))
+        var world_height: float = _sanitize_world_height(entry_dict.get("world_height", elevation))
         var river_mask := int(entry_dict.get("river_mask", 0))
         var river_class := int(entry_dict.get("river_class", 1))
         if river_class <= 0:
             river_class = 1
         var is_mouth := bool(entry_dict.get("is_mouth", false))
-        sanitized.append(HexEntry.new(axial, region, elevation, world_height, river_mask, river_class, is_mouth))
+        var layer_stack := _sanitize_layer_stack(entry_dict.get("layers", []))
+        var layer_region_map := _sanitize_layer_region_map(entry_dict.get("layer_region_map", {}))
+        var river_variant := String(entry_dict.get("river_variant", ""))
+        var river_rotation := int(entry_dict.get("river_rotation", 0))
+        var surface_variant := String(entry_dict.get("surface_variant", ""))
+        sanitized.append(HexEntry.new(axial, region, elevation, world_height, river_mask, river_class, is_mouth, layer_stack, layer_region_map, river_variant, river_rotation, surface_variant))
     return sanitized
 
 func _group_hexes_by_region() -> Dictionary:
@@ -823,14 +728,14 @@ func _group_hexes_by_region() -> Dictionary:
             continue
         var region := entry.region_id
         if region.is_empty():
-            region = "plains"
+            continue
         var region_entries: Array = grouped.get(region, [])
         region_entries.append(entry)
         grouped[region] = region_entries
     return grouped
 
 func _sanitize_elevation(value: Variant) -> float:
-    var elevation := LAND_DEFAULT_ELEVATION
+    var elevation: float = _terrain_settings.default_land_elevation
     var value_type := typeof(value)
     if value_type == TYPE_FLOAT or value_type == TYPE_INT:
         elevation = float(value)
@@ -839,18 +744,98 @@ func _sanitize_elevation(value: Variant) -> float:
         if not is_nan(parsed) and not is_inf(parsed):
             elevation = parsed
     if is_nan(elevation) or is_inf(elevation):
-        elevation = LAND_DEFAULT_ELEVATION
+        elevation = _terrain_settings.default_land_elevation
     elevation = clampf(elevation, 0.0, 1.0)
     return elevation
 
-func _elevation_to_world_height(elevation: float) -> float:
-    var scaled := elevation * LAND_ELEVATION_SCALE
-    if scaled < 0.0:
-        return 0.0
-    return scaled
+func _sanitize_world_height(value: Variant) -> float:
+    var height := 0.0
+    var value_type := typeof(value)
+    if value_type == TYPE_FLOAT or value_type == TYPE_INT:
+        height = float(value)
+    elif value_type == TYPE_STRING:
+        var parsed := String(value).to_float()
+        if not is_nan(parsed) and not is_inf(parsed):
+            height = parsed
+    if is_nan(height) or is_inf(height) or height < 0.0:
+        height = 0.0
+    return height
+
+func _sanitize_layer_stack(value: Variant) -> Array:
+    var layers: Array = []
+    if typeof(value) != TYPE_ARRAY:
+        return layers
+    for entry_variant in value:
+        if typeof(entry_variant) != TYPE_DICTIONARY:
+            continue
+        var layer_dict: Dictionary = entry_variant
+        var layer_id := String(layer_dict.get("id", ""))
+        if layer_id.is_empty():
+            continue
+        var mesh_region := String(layer_dict.get("mesh_region", ""))
+        var variant_key := String(layer_dict.get("variant", ""))
+        layers.append({
+            "id": layer_id,
+            "mesh_region": mesh_region,
+            "variant": variant_key,
+        })
+    return layers
+
+func _sanitize_layer_region_map(value: Variant) -> Dictionary:
+    var mapping: Dictionary = {}
+    if typeof(value) != TYPE_DICTIONARY:
+        return mapping
+    for key in (value as Dictionary).keys():
+        var mesh_region := String(key)
+        var list_variant: Variant = (value as Dictionary)[key]
+        var layer_ids: Array = []
+        if list_variant is Array:
+            for id_variant in list_variant:
+                layer_ids.append(String(id_variant))
+        mapping[mesh_region] = layer_ids
+    return mapping
+
+func _duplicate_layer_region_map(source: Dictionary) -> Dictionary:
+    var mapping: Dictionary = {}
+    for key in source.keys():
+        var mesh_region := String(key)
+        var ids_variant: Variant = source[key]
+        var copied_ids: Array = []
+        if ids_variant is Array:
+            copied_ids = (ids_variant as Array).duplicate()
+        mapping[mesh_region] = copied_ids
+    return mapping
+
+func _build_tile_layers(entry: HexEntry, plain_top: float, valley_top: float) -> Array[HexTileStack.TileLayer]:
+    var layers: Array[HexTileStack.TileLayer] = []
+    for layer_variant in entry.layer_stack:
+        if typeof(layer_variant) != TYPE_DICTIONARY:
+            continue
+        var layer_dict: Dictionary = layer_variant
+        var layer_id := String(layer_dict.get("id", ""))
+        if layer_id.is_empty():
+            continue
+        var mesh_region := String(layer_dict.get("mesh_region", entry.region_id))
+        var variant_key := String(layer_dict.get("variant", ""))
+        if variant_key.is_empty():
+            continue
+        var top_height := entry.world_height
+        var bottom_height := _land_grass_top
+        if layer_id == "plain":
+            top_height = plain_top
+            bottom_height = _land_grass_top
+        elif layer_id == "valley":
+            top_height = valley_top
+            bottom_height = _land_grass_top
+        elif layer_id == "hills" or layer_id == "mountains":
+            top_height = entry.world_height
+            bottom_height = plain_top
+        var tile_layer := HexTileStack.TileLayer.new(layer_id, mesh_region, variant_key, top_height, bottom_height)
+        layers.append(tile_layer)
+    return layers
 
 func _resolve_reference_height(region_id: String) -> float:
-    var value_variant: Variant = LAND_REFERENCE_LEVELS.get(region_id, 0.0)
+    var value_variant: Variant = _terrain_settings.reference_levels.get(region_id, 0.0)
     if typeof(value_variant) == TYPE_FLOAT or typeof(value_variant) == TYPE_INT:
         return float(value_variant)
     return 0.0
@@ -878,7 +863,7 @@ func _compute_grass_stack(grouped_hexes: Dictionary) -> Dictionary:
         sea_aabb = sea_mesh.get_aabb()
     var sea_height_extent := sea_aabb.size.y
     if sea_height_extent <= LAND_SURFACE_PIVOT_EPSILON:
-        sea_height_extent = LAND_REFERENCE_LEVELS.get("lake", 0.12) * 0.5
+        sea_height_extent = _terrain_settings.reference_levels.get("lake", 0.12) * 0.5
     var grass_height: float = max(sea_height_extent * 0.5, LAND_BASE_MIN_HEIGHT)
     var grass_top: float = sea_height - sea_height_extent * 0.5
     return {
@@ -898,91 +883,6 @@ func _determine_valley_top(world_height: float, grass_top: float) -> float:
     var min_top := grass_top + LAND_LAYER_MIN_THICKNESS
     return max(world_height, min_top)
 
-func _build_land_stack(entry: HexEntry, plain_top: float, valley_top: float) -> TileStackInfo:
-    var info := TileStackInfo.new()
-    var region_id := entry.region_id
-    if not LAND_LAYER_STACK.has(region_id):
-        return info
-    var layer_definitions: Array = LAND_LAYER_STACK.get(region_id, [])
-    var axial := entry.axial_coord
-    for layer_definition_variant in layer_definitions:
-        if not (layer_definition_variant is Dictionary):
-            continue
-        var layer_definition: Dictionary = layer_definition_variant
-        var layer_id := String(layer_definition.get("id", ""))
-        if layer_id.is_empty():
-            continue
-        if _should_skip_layer_entry(entry, layer_id):
-            continue
-        var mesh_region := String(layer_definition.get("mesh_region", region_id))
-        var variant_key := _select_land_surface_variant(mesh_region, axial)
-        if variant_key.is_empty():
-            continue
-        var top_height := entry.world_height
-        var bottom_height := _land_grass_top
-        if layer_id == "plain":
-            top_height = plain_top
-            bottom_height = _land_grass_top
-        elif layer_id == "valley":
-            top_height = valley_top
-            bottom_height = _land_grass_top
-        elif layer_id == "hills" or layer_id == "mountains":
-            top_height = entry.world_height
-            bottom_height = plain_top
-        var tile_layer := HexTileStack.TileLayer.new(layer_id, mesh_region, variant_key, top_height, bottom_height)
-        info.layer_stack.append(tile_layer)
-        if not info.layer_region_map.has(mesh_region):
-            info.layer_region_map[mesh_region] = []
-        var layer_list: Array = info.layer_region_map.get(mesh_region, [])
-        if not layer_list.has(layer_id):
-            layer_list.append(layer_id)
-        info.layer_region_map[mesh_region] = layer_list
-    return info
-
-func _should_skip_layer_entry(entry: HexEntry, layer_id: String) -> bool:
-    var has_river := entry.river_mask != 0 or entry.is_river_mouth
-    if layer_id == "valley" and has_river:
-        return true
-    if layer_id == "plain" and has_river:
-        return true
-    return false
-
-func _select_land_surface_variant(mesh_region_id: String, axial: Vector2i) -> String:
-    var variant_list: Array = []
-    var defined_variants: Variant = LAND_SURFACE_VARIANT_ORDER.get(mesh_region_id, [])
-    if defined_variants is Array:
-        variant_list = (defined_variants as Array).duplicate()
-    var surface_meshes: Dictionary = _mesh_library.get("land_surfaces", {}).get(mesh_region_id, {})
-    if variant_list.is_empty():
-        variant_list = surface_meshes.keys()
-        variant_list.sort()
-    if variant_list.is_empty():
-        return ""
-    if variant_list.size() == 1:
-        return String(variant_list[0])
-    var hashed := _hash_axial_coord(axial)
-    if hashed < 0:
-        hashed = -hashed
-    var index := hashed % variant_list.size()
-    return String(variant_list[index])
-
-func _hash_axial_coord(coord: Vector2i) -> int:
-    var hash_value := int(coord.x) * 92837111
-    hash_value ^= int(coord.y) * 689287499
-    hash_value ^= hash_value >> 13
-    hash_value &= 0x7fffffff
-    return hash_value
-
-func _ordered_land_regions(land_surfaces: Dictionary) -> Array:
-    var ordered: Array = []
-    for region in LAND_REGION_ORDER:
-        if land_surfaces.has(region):
-            ordered.append(region)
-    for region in land_surfaces.keys():
-        if ordered.has(region):
-            continue
-        ordered.append(region)
-    return ordered
 
 func _cache_river_entries() -> void:
     _river_tile_cache.clear()
@@ -991,104 +891,15 @@ func _cache_river_entries() -> void:
             continue
         var sanitized_mask := entry.river_mask & ((1 << RIVER_MASK_BIT_COUNT) - 1)
         var is_mouth := entry.is_river_mouth
+        var variant := String(entry.river_variant)
         if sanitized_mask == 0 and not is_mouth:
             continue
-        var variant_info := _resolve_river_variant(sanitized_mask, is_mouth)
-        var variant := String(variant_info.get("variant", ""))
         if variant.is_empty():
             continue
-        var rotation := int(variant_info.get("rotation", 0))
+        var rotation_steps := int(entry.river_rotation)
         var river_class: int = max(entry.river_class, 1)
-        var cached_entry := RiverTileInfo.new(entry.axial_coord, sanitized_mask, variant, rotation, river_class, is_mouth)
+        var cached_entry := RiverTileInfo.new(entry.axial_coord, sanitized_mask, variant, rotation_steps, river_class, is_mouth)
         _river_tile_cache[entry.axial_coord] = cached_entry
-
-func _count_bits(value: int) -> int:
-    var count := 0
-    var working := value
-    while working != 0:
-        working &= working - 1
-        count += 1
-    return count
-
-func _resolve_river_variant(mask: int, is_mouth: bool) -> Dictionary:
-    if is_mouth:
-        return {
-            "variant": "mouth",
-            "rotation": 0,
-        }
-    var sanitized_mask := mask & ((1 << RIVER_MASK_BIT_COUNT) - 1)
-    if sanitized_mask == 0:
-        return {}
-    var lookup_value: Variant = _river_mask_lookup.get(sanitized_mask)
-    if typeof(lookup_value) == TYPE_DICTIONARY:
-        return (lookup_value as Dictionary).duplicate()
-    return _find_best_river_variant(sanitized_mask)
-
-func _rotate_mask(mask: int, steps: int) -> int:
-    var rotated := 0
-    for i in range(RIVER_MASK_BIT_COUNT):
-        if (mask & (1 << i)) == 0:
-            continue
-        var new_index := (i + steps) % RIVER_MASK_BIT_COUNT
-        rotated |= 1 << new_index
-    return rotated
-
-func _create_river_mask_lookup() -> Dictionary:
-    var lookup: Dictionary = {}
-    for definition_variant in RIVER_VARIANT_DEFINITIONS:
-        if typeof(definition_variant) != TYPE_DICTIONARY:
-            continue
-        var definition: Dictionary = definition_variant
-        var key := String(definition.get("key", ""))
-        if key.is_empty():
-            continue
-        var canonical := int(definition.get("mask", 0))
-        if canonical <= 0:
-            continue
-        for rotation in range(RIVER_MASK_BIT_COUNT):
-            var rotated := _rotate_mask(canonical, rotation)
-            if rotated == 0:
-                continue
-            if lookup.has(rotated):
-                continue
-            lookup[rotated] = {
-                "variant": key,
-                "rotation": rotation,
-            }
-    return lookup
-
-func _find_best_river_variant(mask: int) -> Dictionary:
-    var best_variant := ""
-    var best_rotation := 0
-    var best_overlap := -1
-    for definition_variant in RIVER_VARIANT_DEFINITIONS:
-        if typeof(definition_variant) != TYPE_DICTIONARY:
-            continue
-        var definition: Dictionary = definition_variant
-        var key := String(definition.get("key", ""))
-        if key.is_empty():
-            continue
-        var canonical := int(definition.get("mask", 0))
-        if canonical <= 0:
-            continue
-        for rotation in range(RIVER_MASK_BIT_COUNT):
-            var rotated := _rotate_mask(canonical, rotation)
-            if rotated == mask:
-                return {
-                    "variant": key,
-                    "rotation": rotation,
-                }
-            var overlap := _count_bits(mask & rotated)
-            if overlap > best_overlap:
-                best_overlap = overlap
-                best_variant = key
-                best_rotation = rotation
-    if best_variant.is_empty():
-        return {}
-    return {
-        "variant": best_variant,
-        "rotation": best_rotation,
-    }
 
 func _scale_vector_for_class(class_value: int) -> Vector3:
     var factor := 1.0 + float(max(class_value - 1, 0)) * RIVER_CLASS_SCALE_STEP
@@ -1184,8 +995,8 @@ func _update_river_layers() -> void:
                 world_position.y = _land_grass_top + RIVER_Y_OFFSET
                 var rotation_steps := entry.rotation_steps % 6
                 var rotation_basis := Basis(Vector3.UP, float(rotation_steps) * RIVER_ROTATION_STEP)
-                var basis := rotation_basis.scaled(_scale_vector_for_class(class_value))
-                var transform := Transform3D(basis, world_position)
+                var instance_basis := rotation_basis.scaled(_scale_vector_for_class(class_value))
+                var transform := Transform3D(instance_basis, world_position)
                 multimesh.set_instance_transform(index, transform)
             used_keys["%d:%s" % [class_value, variant]] = true
     _cleanup_unused_river_layers(used_keys)
@@ -1307,8 +1118,8 @@ func _apply_default_camera_frame() -> void:
     var direction := target - origin
     if direction.length_squared() < 0.001:
         direction = Vector3.FORWARD
-    var basis := Basis.looking_at(direction.normalized(), Vector3.UP)
-    _camera.transform = Transform3D(basis, origin)
+    var camera_basis := Basis.looking_at(direction.normalized(), Vector3.UP)
+    _camera.transform = Transform3D(camera_basis, origin)
 
 func _update_camera_framing() -> void:
     if _camera == null:
@@ -1340,8 +1151,8 @@ func _update_camera_framing() -> void:
     var direction: Vector3 = target - origin
     if direction.length_squared() < 0.001:
         direction = Vector3.FORWARD
-    var basis := Basis.looking_at(direction.normalized(), Vector3.UP)
-    _camera.transform = Transform3D(basis, origin)
+    var camera_basis := Basis.looking_at(direction.normalized(), Vector3.UP)
+    _camera.transform = Transform3D(camera_basis, origin)
     if _sun_light != null:
         _sun_light.transform.origin = center
 
@@ -1366,8 +1177,8 @@ func _configure_preview_light() -> void:
     if direction.length_squared() < 0.001:
         direction = Vector3(-0.5, -1.0, -0.5)
     direction = direction.normalized()
-    var basis := Basis.looking_at(direction, Vector3.UP)
-    _sun_light.transform = Transform3D(basis, _sun_light.transform.origin)
+    var light_basis := Basis.looking_at(direction, Vector3.UP)
+    _sun_light.transform = Transform3D(light_basis, _sun_light.transform.origin)
 
 func _configure_input_capture() -> void:
     if self is Control:
