@@ -614,7 +614,7 @@ func _update_region_layers() -> void:
         var plain_top := _determine_plain_top(region, entry.world_height, _land_grass_top)
         var valley_top := _determine_valley_top(entry.world_height, _land_grass_top)
         var tile_layers := _build_tile_layers(entry, plain_top, valley_top)
-        tile_stack.configure_stack(entry.world_height, tile_layers, mesh_bundle)
+        tile_stack.configure_stack(tile_layers, mesh_bundle)
         tile_entry.stack_node = tile_stack
         tile_entry.region_id = region
         var region_layers := _duplicate_layer_region_map(entry.layer_region_map)
@@ -896,9 +896,9 @@ func _cache_river_entries() -> void:
             continue
         if variant.is_empty():
             continue
-        var rotation := int(entry.river_rotation)
+        var rotation_steps := int(entry.river_rotation)
         var river_class: int = max(entry.river_class, 1)
-        var cached_entry := RiverTileInfo.new(entry.axial_coord, sanitized_mask, variant, rotation, river_class, is_mouth)
+        var cached_entry := RiverTileInfo.new(entry.axial_coord, sanitized_mask, variant, rotation_steps, river_class, is_mouth)
         _river_tile_cache[entry.axial_coord] = cached_entry
 
 func _scale_vector_for_class(class_value: int) -> Vector3:
@@ -995,8 +995,8 @@ func _update_river_layers() -> void:
                 world_position.y = _land_grass_top + RIVER_Y_OFFSET
                 var rotation_steps := entry.rotation_steps % 6
                 var rotation_basis := Basis(Vector3.UP, float(rotation_steps) * RIVER_ROTATION_STEP)
-                var basis := rotation_basis.scaled(_scale_vector_for_class(class_value))
-                var transform := Transform3D(basis, world_position)
+                var instance_basis := rotation_basis.scaled(_scale_vector_for_class(class_value))
+                var transform := Transform3D(instance_basis, world_position)
                 multimesh.set_instance_transform(index, transform)
             used_keys["%d:%s" % [class_value, variant]] = true
     _cleanup_unused_river_layers(used_keys)
@@ -1118,8 +1118,8 @@ func _apply_default_camera_frame() -> void:
     var direction := target - origin
     if direction.length_squared() < 0.001:
         direction = Vector3.FORWARD
-    var basis := Basis.looking_at(direction.normalized(), Vector3.UP)
-    _camera.transform = Transform3D(basis, origin)
+    var camera_basis := Basis.looking_at(direction.normalized(), Vector3.UP)
+    _camera.transform = Transform3D(camera_basis, origin)
 
 func _update_camera_framing() -> void:
     if _camera == null:
@@ -1151,8 +1151,8 @@ func _update_camera_framing() -> void:
     var direction: Vector3 = target - origin
     if direction.length_squared() < 0.001:
         direction = Vector3.FORWARD
-    var basis := Basis.looking_at(direction.normalized(), Vector3.UP)
-    _camera.transform = Transform3D(basis, origin)
+    var camera_basis := Basis.looking_at(direction.normalized(), Vector3.UP)
+    _camera.transform = Transform3D(camera_basis, origin)
     if _sun_light != null:
         _sun_light.transform.origin = center
 
@@ -1177,8 +1177,8 @@ func _configure_preview_light() -> void:
     if direction.length_squared() < 0.001:
         direction = Vector3(-0.5, -1.0, -0.5)
     direction = direction.normalized()
-    var basis := Basis.looking_at(direction, Vector3.UP)
-    _sun_light.transform = Transform3D(basis, _sun_light.transform.origin)
+    var light_basis := Basis.looking_at(direction, Vector3.UP)
+    _sun_light.transform = Transform3D(light_basis, _sun_light.transform.origin)
 
 func _configure_input_capture() -> void:
     if self is Control:

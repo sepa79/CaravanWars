@@ -45,7 +45,7 @@ var _base_transparency: float = 0.0
 var _layer_transparency: Dictionary[String, float] = {}
 var _cached_stack: Array[TileLayer] = []
 
-func configure_stack(elev: float, stack: Array[TileLayer], mesh_bundle: MeshBundle) -> void:
+func configure_stack(stack: Array[TileLayer], mesh_bundle: MeshBundle) -> void:
     var base_instance := _ensure_base_instance()
     base_instance.mesh = mesh_bundle.base_mesh_resource
     base_instance.visible = mesh_bundle.base_mesh_resource != null
@@ -139,10 +139,10 @@ func _hide_unused_layers(retained: Dictionary[String, bool]) -> void:
 
 func _make_base_transform(base_mesh_value: Mesh, base_aabb_value: AABB, grass_top_height: float, grass_layer_height: float) -> Transform3D:
     var origin := Vector3(0.0, grass_top_height, 0.0)
-    var basis := Basis.IDENTITY
+    var local_basis := Basis.IDENTITY
     if base_mesh_value == null:
-        basis = basis.scaled(Vector3(1.0, grass_layer_height, 1.0))
-        return Transform3D(basis, origin)
+        local_basis = local_basis.scaled(Vector3(1.0, grass_layer_height, 1.0))
+        return Transform3D(local_basis, origin)
     var min_y: float = base_aabb_value.position.y
     var height: float = base_aabb_value.size.y
     var max_y: float = min_y + height
@@ -150,9 +150,9 @@ func _make_base_transform(base_mesh_value: Mesh, base_aabb_value: AABB, grass_to
     var y_scale: float = 0.0
     if safe_height > 0.0:
         y_scale = grass_layer_height / safe_height
-    basis = basis.scaled(Vector3(1.0, y_scale, 1.0))
+    local_basis = local_basis.scaled(Vector3(1.0, y_scale, 1.0))
     origin.y = grass_top_height - max_y * y_scale
-    return Transform3D(basis, origin)
+    return Transform3D(local_basis, origin)
 
 func _make_surface_transform(surface_mesh_value: Mesh, layer_top_height: float, layer_bottom_height: float) -> Transform3D:
     var top_height := layer_top_height
@@ -165,12 +165,12 @@ func _make_surface_transform(surface_mesh_value: Mesh, layer_top_height: float, 
     if desired_height < 0.0:
         desired_height = 0.0
     var origin := Vector3(0.0, bottom_height, 0.0)
-    var basis := Basis.IDENTITY
+    var local_basis := Basis.IDENTITY
     if surface_mesh_value == null:
         if desired_height <= SURFACE_PIVOT_EPSILON:
-            return Transform3D(basis, origin)
-        basis = basis.scaled(Vector3(1.0, desired_height, 1.0))
-        return Transform3D(basis, origin)
+            return Transform3D(local_basis, origin)
+        local_basis = local_basis.scaled(Vector3(1.0, desired_height, 1.0))
+        return Transform3D(local_basis, origin)
     var surface_aabb := surface_mesh_value.get_aabb()
     var min_y: float = surface_aabb.position.y
     var height: float = surface_aabb.size.y
@@ -178,19 +178,19 @@ func _make_surface_transform(surface_mesh_value: Mesh, layer_top_height: float, 
     if max_y <= SURFACE_PIVOT_EPSILON:
         if is_zero_approx(height):
             origin.y = bottom_height - min_y
-            return Transform3D(basis, origin)
+            return Transform3D(local_basis, origin)
         var y_scale_below: float = 0.0
         if desired_height > SURFACE_PIVOT_EPSILON:
             y_scale_below = desired_height / height
-        basis = basis.scaled(Vector3(1.0, y_scale_below, 1.0))
+        local_basis = local_basis.scaled(Vector3(1.0, y_scale_below, 1.0))
         origin.y = bottom_height - min_y * y_scale_below
-        return Transform3D(basis, origin)
+        return Transform3D(local_basis, origin)
     var span: float = max_y - min_y
     if span <= SURFACE_PIVOT_EPSILON or desired_height <= SURFACE_PIVOT_EPSILON:
         origin.y = bottom_height - min_y
-        return Transform3D(basis, origin)
+        return Transform3D(local_basis, origin)
     var y_scale: float = desired_height / span
-    basis = basis.scaled(Vector3(1.0, y_scale, 1.0))
+    local_basis = local_basis.scaled(Vector3(1.0, y_scale, 1.0))
     var scaled_min_y := min_y * y_scale
     var scaled_max_y := max_y * y_scale
     var origin_from_bottom := bottom_height - scaled_min_y
@@ -199,7 +199,7 @@ func _make_surface_transform(surface_mesh_value: Mesh, layer_top_height: float, 
     if abs(origin_from_top - origin_from_bottom) > SURFACE_PIVOT_EPSILON:
         aligned_origin_y = (origin_from_bottom + origin_from_top) * 0.5
     origin.y = aligned_origin_y
-    return Transform3D(basis, origin)
+    return Transform3D(local_basis, origin)
 
 func _transform_aabb(input_aabb: AABB, input_transform: Transform3D) -> AABB:
     var start: Vector3 = input_aabb.position
