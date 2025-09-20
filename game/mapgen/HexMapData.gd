@@ -1,15 +1,10 @@
 extends RefCounted
 class_name HexMapData
 
-const AssetCatalogScript := preload("res://mapgen/data/AssetCatalog.gd")
-const LayerInstanceScript := preload("res://mapgen/data/LayerInstance.gd")
-const MapDataScript := preload("res://mapgen/data/MapData.gd")
-const TileScript := preload("res://mapgen/data/Tile.gd")
-
-const AssetCatalog := AssetCatalogScript
-const LayerInstance := LayerInstanceScript
-const MapData := MapDataScript
-const Tile := TileScript
+const AssetCatalogScript: GDScript = preload("res://mapgen/data/AssetCatalog.gd")
+const LayerInstanceScript: GDScript = preload("res://mapgen/data/LayerInstance.gd")
+const MapDataScript: GDScript = preload("res://mapgen/data/MapData.gd")
+const TileScript: GDScript = preload("res://mapgen/data/Tile.gd")
 
 const PHASE_TERRAIN := StringName("terrain")
 const BASE_SCALE_FACTOR := 0.3

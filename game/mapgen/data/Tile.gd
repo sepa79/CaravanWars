@@ -1,9 +1,6 @@
 extends RefCounted
 class_name Tile
 
-const LayerInstance := preload("res://mapgen/data/LayerInstance.gd")
-const AssetCatalog := preload("res://mapgen/data/AssetCatalog.gd")
-
 const TERRAIN_SEA := StringName("SEA")
 const TERRAIN_PLAINS := StringName("PLAINS")
 const TERRAIN_HILLS := StringName("HILLS")

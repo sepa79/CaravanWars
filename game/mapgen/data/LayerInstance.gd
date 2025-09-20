@@ -1,7 +1,7 @@
 extends RefCounted
 class_name LayerInstance
 
-const AssetCatalog := preload("res://mapgen/data/AssetCatalog.gd")
+const AssetCatalogScript: GDScript = preload("res://mapgen/data/AssetCatalog.gd")
 
 var asset_id: StringName
 var rotation: int
@@ -27,7 +27,7 @@ func to_serializable(catalog: AssetCatalog = null) -> Dictionary:
         "offset": offset,
     }
     if catalog != null:
-        result["role"] = AssetCatalog.role_to_string(catalog.get_role(asset_id))
+        result["role"] = AssetCatalogScript.role_to_string(catalog.get_role(asset_id))
         result["rotation_steps"] = catalog.get_rotation_steps(asset_id)
         var scene_path := catalog.get_asset_path(asset_id)
         if not scene_path.is_empty():

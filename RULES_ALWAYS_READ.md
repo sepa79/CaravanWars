@@ -20,6 +20,7 @@ RULES_ALWAYS_READ — twarde zasady
   - `update`, `draw`, `play`, `stop`
   - `scale`, `seed`, `params`
 - Gdy odkryjesz nową kolizję nazwy z API Godota, natychmiast dopisz ją do powyższej listy i stosuj nowe nazewnictwo.
+- Nie twórz `const` ani aliasów skryptów o nazwach identycznych jak zarejestrowane `class_name` (np. `AssetCatalog`, `LayerInstance`, `MapData`, `Tile`). Jeśli znajdziesz nową kolizję, dopisz ją do tej listy zakazanych aliasów.
 - Autoloady (nazwy singletonów): `App`, `I18N`, `Net`, `World`, później `Debug`, `Ai`.
 
 3) I18N (obowiązkowe)

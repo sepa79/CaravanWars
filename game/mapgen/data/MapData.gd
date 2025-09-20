@@ -1,9 +1,6 @@
 extends RefCounted
 class_name MapData
 
-const AssetCatalog := preload("res://mapgen/data/AssetCatalog.gd")
-const Tile := preload("res://mapgen/data/Tile.gd")
-
 var map_seed: int
 var width: int
 var height: int
