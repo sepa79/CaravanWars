@@ -6,6 +6,7 @@ Added
 - Map setup preview batches river meshes by class, supports visibility toggles, and marks river mouths above the terrain grid.
 - Centralized terrain defaults, layer stacks, and mesh paths in a TerrainSettings resource shared between the generator and map view.
 Changed
+- Game startup now instantiates the hex map generator stub with default configuration values so the console reflects the expected seed.
 - Plains carved by rivers automatically downgrade to valleys and lakes prefer to open downstream outlets when terrain allows.
 - Map generation defaults now start with mountain-mountain-hills-sea-sea-hills edge bands, edge depths 2/2/2/2/5/2, edge jitter 3, and medium random features.
 - Default map seed now initializes to 12345 and the base radius default is 16 so generated maps start from the requested large baseline.
@@ -27,6 +28,9 @@ Fixed
 - Map setup legend toggles now dim the intended terrain regions instead of misreading button states as region identifiers.
 - Map preview land stacks now keep plains above the shared grass base, clamp hill and mountain variants to their requested heights, and drop plains from river tiles so river meshes rest directly on the grass layer.
 - Cleared Map view and HexTileStack warnings by renaming tile data fields, method parameters, and helper APIs flagged for shadowing in the Godot editor.
+
+Removed
+- Retired the legacy map generator and preview implementations, leaving a stub pipeline that preserves terrain-to-asset and river metadata for the upcoming rework.
 
 0.2.1 — 2025-09-19
 Added

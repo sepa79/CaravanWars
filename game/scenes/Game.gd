@@ -13,7 +13,7 @@ func _ready() -> void:
     map_data = World.take_prepared_map(Net.run_mode)
     if map_data == null:
         used_prepared = false
-        var config: HexMapConfig = HexMapConfig.new(Time.get_ticks_msec())
+        var config: HexMapConfig = HexMapConfig.new()
         var generator: HexMapGenerator = HexMapGenerator.new(config)
         map_data = generator.generate()
     if not map_data is HexMapData:

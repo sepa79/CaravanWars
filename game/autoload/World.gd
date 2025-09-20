@@ -36,7 +36,7 @@ func prepare_map_for_run_mode(run_mode: String, config: Variant = null, force: b
     if config_script != null and config is Object and config.has_method("duplicate_config") and config.get_script() == config_script:
         chosen_config = config.duplicate_config()
     else:
-        chosen_config = config_script.new(Time.get_ticks_msec())
+        chosen_config = config_script.new()
     if chosen_config == null:
         push_warning("[World] Failed to build map config for run mode %s" % [run_mode])
         return
