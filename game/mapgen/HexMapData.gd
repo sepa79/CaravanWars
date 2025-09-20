@@ -49,7 +49,6 @@ func _init(p_config: HexMapConfig) -> void:
     asset_catalog = AssetCatalogScript.new()
     map_data = MapDataScript.new(_map_seed, map_width, map_height, asset_catalog)
     _apply_meta_to_map_data()
-    _populate_stub_tiles()
 
 func attach_grid(p_grid: HexGrid) -> void:
     hex_grid = p_grid
@@ -57,7 +56,7 @@ func attach_grid(p_grid: HexGrid) -> void:
 func prepare_for_generation():
     map_data = MapDataScript.new(_map_seed, map_width, map_height, asset_catalog)
     _apply_meta_to_map_data()
-    _populate_stub_tiles()
+    clear_tiles()
     return map_data
 
 func set_stage_result(phase: StringName, data: Variant) -> void:
@@ -120,44 +119,42 @@ func _build_meta_dictionary() -> Dictionary:
         },
     }
 
-func _populate_stub_tiles() -> void:
+func clear_tiles() -> void:
     if map_data == null:
         return
     map_data.clear_tiles()
-    var terrains: Array[StringName] = [
-        AssetCatalogScript.TERRAIN_SEA,
-        AssetCatalogScript.TERRAIN_PLAINS,
-        AssetCatalogScript.TERRAIN_HILLS,
-        AssetCatalogScript.TERRAIN_MOUNTAINS,
-    ]
-    for index in terrains.size():
-        var terrain_type: StringName = terrains[index]
-        var q: int = index
-        var r: int = 0
-        var tile: Tile = _build_tile(q, r, terrain_type)
-        map_data.set_tile(tile)
-    map_data.set_dimensions(map_width, map_height)
-    map_data.set_phase_payload(PHASE_TERRAIN, {"tiles": map_data.tiles.size()})
 
-func _build_tile(q: int, r: int, terrain_type: StringName) -> Tile:
+func create_tile(
+    q: int,
+    r: int,
+    terrain_type: StringName,
+    height_value: float,
+    rotation: int,
+    variant: StringName,
+    with_trees: bool
+) -> Tile:
     var tile: Tile = TileScript.new(q, r)
     tile.terrain_type = terrain_type
-    tile.height_value = _deterministic_height(q, r, terrain_type)
-    tile.visual_variant = _deterministic_variant(q, r, terrain_type)
-    tile.tile_rotation = _deterministic_rotation(q, r, terrain_type)
-    tile.with_trees = _deterministic_with_trees(q, r, terrain_type, tile.visual_variant)
-    _build_draw_stack(tile)
+    tile.height_value = clampf(height_value, 0.0, 1.0)
+    tile.tile_rotation = rotation
+    tile.visual_variant = variant
+    tile.with_trees = with_trees
+    build_draw_stack(tile)
     return tile
 
-func _build_draw_stack(tile: Tile) -> void:
+func build_draw_stack(tile: Tile) -> void:
+    if tile == null:
+        return
     tile.clear_layers()
-    var base_layer: LayerInstance = LayerInstanceScript.new(
-        asset_catalog.get_base_asset_id(),
-        0,
-        _calculate_base_scale(tile.height_value),
-        Vector2.ZERO
+    var base_asset_id: StringName = asset_catalog.get_base_asset_id()
+    tile.add_layer(
+        LayerInstanceScript.new(
+            base_asset_id,
+            0,
+            _calculate_base_scale(tile.height_value),
+            Vector2.ZERO
+        )
     )
-    tile.add_layer(base_layer)
     var base_asset: StringName = asset_catalog.get_terrain_base_asset(tile.terrain_type)
     if base_asset != StringName():
         tile.add_layer(LayerInstanceScript.new(base_asset, 0, 1.0, Vector2.ZERO))
@@ -177,36 +174,10 @@ func _build_draw_stack(tile: Tile) -> void:
                 decor_rotation = 0
             tile.add_layer(LayerInstanceScript.new(decor_asset, decor_rotation, 1.0, Vector2.ZERO))
 
+func store_tile(tile: Tile) -> void:
+    if map_data == null or tile == null:
+        return
+    map_data.set_tile(tile)
+
 func _calculate_base_scale(height_value: float) -> float:
     return 1.0 + BASE_SCALE_FACTOR * clampf(height_value, 0.0, 1.0)
-
-func _deterministic_variant(q: int, r: int, terrain_type: StringName) -> StringName:
-    var variants: Array[StringName] = asset_catalog.get_variants_for_terrain(terrain_type)
-    if variants.is_empty():
-        return TileScript.VARIANT_A
-    var index: int = posmod(_hash_seed(q, r, terrain_type, "variant"), variants.size())
-    return variants[index]
-
-func _deterministic_rotation(q: int, r: int, terrain_type: StringName) -> int:
-    var steps: int = asset_catalog.get_rotation_steps_for_terrain(terrain_type)
-    if steps <= 1:
-        return 0
-    return posmod(_hash_seed(q, r, terrain_type, "rotation"), steps)
-
-func _deterministic_with_trees(q: int, r: int, terrain_type: StringName, variant: StringName) -> bool:
-    var decor_asset: StringName = asset_catalog.get_terrain_decor_asset(terrain_type, variant)
-    if decor_asset == StringName():
-        return false
-    var value: int = posmod(_hash_seed(q, r, terrain_type, "trees"), 100)
-    return value % 2 == 0
-
-func _deterministic_height(q: int, r: int, terrain_type: StringName) -> float:
-    var value: int = posmod(_hash_seed(q, r, terrain_type, "height"), 1000)
-    var normalized: float = float(value) / 999.0
-    return clampf(0.2 + normalized * 0.6, 0.0, 1.0)
-
-func _hash_seed(q: int, r: int, terrain_type: StringName, label: String) -> int:
-    var raw: int = int(hash([_map_seed, q, r, String(terrain_type), label]))
-    if raw < 0:
-        raw = -raw
-    return raw
