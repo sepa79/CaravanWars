@@ -39,26 +39,6 @@ script_classes=[{
 "class": "HexMapGenerator",
 "language": "GDScript",
 "path": "res://mapgen/HexMapGenerator.gd"
-}, {
-"base": "RefCounted",
-"class": "MapViewNode",
-"language": "GDScript",
-"path": "res://mapview/MapNode.gd"
-}, {
-"base": "RefCounted",
-"class": "MapViewEdge",
-"language": "GDScript",
-"path": "res://mapview/Edge.gd"
-}, {
-"base": "RefCounted",
-"class": "MapViewRegion",
-"language": "GDScript",
-"path": "res://mapview/Region.gd"
-}, {
-"base": "Node3D",
-"class": "HexTileStack",
-"language": "GDScript",
-"path": "res://ui/map_view/HexTileStack.gd"
 }]
 script_class_icons={}
 

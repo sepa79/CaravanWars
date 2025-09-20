@@ -606,6 +606,12 @@ func _refresh_map_view() -> void:
         map_dictionary = typed_map.to_dictionary()
     elif typeof(prepared_map) == TYPE_DICTIONARY:
         map_dictionary = prepared_map
+    if map_dictionary.is_empty():
+        var prepared_config: Variant = World.get_prepared_config(Net.run_mode)
+        if prepared_config is HexMapConfig:
+            var typed_config := prepared_config as HexMapConfig
+            if typed_config.terrain_settings != null and typed_config.terrain_settings.has_method("to_dictionary"):
+                map_dictionary["terrain_settings"] = typed_config.terrain_settings.to_dictionary()
     map_view.set_map_data(map_dictionary)
     _update_region_legend(map_dictionary)
 
