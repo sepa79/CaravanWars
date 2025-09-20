@@ -584,7 +584,7 @@ func _update_region_layers() -> void:
             continue
         var region := entry.region_id
         if region.is_empty():
-            region = "plains"
+            continue
         var axial := entry.axial_coord
         var world_center := _axial_to_world(axial)
         if region == "sea" or region == "lake":
@@ -704,7 +704,7 @@ func _sanitize_hex_entries(source: Variant) -> Array[HexEntry]:
         var entry_dict := entry_variant as Dictionary
         var region := String(entry_dict.get("region", ""))
         if region.is_empty():
-            region = "plains"
+            continue
         var axial := _coord_to_axial(entry_dict.get("coord"))
         var elevation: float = _sanitize_elevation(entry_dict.get("elev", _terrain_settings.default_land_elevation))
         var world_height: float = _sanitize_world_height(entry_dict.get("world_height", elevation))
@@ -728,7 +728,7 @@ func _group_hexes_by_region() -> Dictionary:
             continue
         var region := entry.region_id
         if region.is_empty():
-            region = "plains"
+            continue
         var region_entries: Array = grouped.get(region, [])
         region_entries.append(entry)
         grouped[region] = region_entries
@@ -818,7 +818,7 @@ func _build_tile_layers(entry: HexEntry, plain_top: float, valley_top: float) ->
         var mesh_region := String(layer_dict.get("mesh_region", entry.region_id))
         var variant_key := String(layer_dict.get("variant", ""))
         if variant_key.is_empty():
-            variant_key = entry.surface_variant if not entry.surface_variant.is_empty() else variant_key
+            continue
         var top_height := entry.world_height
         var bottom_height := _land_grass_top
         if layer_id == "plain":

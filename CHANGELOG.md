@@ -13,9 +13,11 @@ Changed
 - Map preview now anchors the grass base to half a sea tile below the waterline, stacks plains, hills, and mountains as layered pieces, and aligns rivers atop the exposed grass instead of intersecting surface meshes.
 - Map preview instantiates dedicated HexTileStack nodes per hex so layered land meshes replace shared MultiMeshes and respond directly to legend transparency controls.
 - Map preview sanitizes hex metadata into typed HexTileStack entries so tile and river refreshes no longer perform per-call Variant guards while updating transparency and meshes.
+- Map preview trusts the serialized terrain metadata and skips hexes without explicit regions or layer variants instead of guessing legacy defaults.
 - Map setup legend entries are now toggle buttons that dim or restore their terrain type in the 3D preview instead of being passive labels.
 - Map setup legend now includes a grass background toggle, taller buttons, and a minimum panel height so the controls stay legible next to the preview.
 - Hex map generation now serializes precomputed tile layer stacks, explicit surface_variant keys, and river orientations so MapView renders from the supplied metadata instead of recreating decisions with hard-coded tables.
+- Contribution rules now clarify that backwards compatibility is unsupported and developers must rely on the live code for authoritative data.
 Fixed
 - Corrected river peak ordering to compare coordinates without using the nonexistent `String` constructor in Godot 4.
 - Map preview river batching now preloads all twelve river tiles, classifies masks by canonical rotations, and renders each combination with its dedicated mesh.
