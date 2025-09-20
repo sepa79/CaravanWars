@@ -26,11 +26,12 @@ RULES_ALWAYS_READ — twarde zasady
 - Pluralizacja: opiszemy w `docs/i18n/Localization_Guide.md` (PL ma bardziej złożone reguły).
 
 4) Proces repo
-- SemVer + Keep a Changelog. Każda zmiana aktualizuje `CHANGELOG.md`.
+- SemVer + Keep a Changelog. Każda duża zmiana aktualizuje `CHANGELOG.md`.
 - Conventional Commits: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`.
 - Każdy PR: checklisty akceptacyjne, link do issue, brak zmian „obok tematu”.
 - Dla każdego zmodyfikowanego pliku GDScript uruchom `godot --headless --check`.
 - Żadnych sekretów, promptów i danych binarnych bez uzasadnienia.
+- Żadnych danych binarnych, nigdy - Codex PR nie obsluguje takich plikow.
 
 5) Zakres faz
 - Dopóki faza nie przewiduje implementacji, **nie tworzymy kodu**. Najpierw dokument, potem skeleton, potem kod.
