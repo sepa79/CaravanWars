@@ -3,7 +3,14 @@ extends Control
 const CI_AUTO_SINGLEPLAYER_ENV := "CI_AUTO_SINGLEPLAYER"
 const CI_AUTO_QUIT_ENV := "CI_AUTO_QUIT"
 const HEX_MAP_CONFIG_SCRIPT := preload("res://mapgen/HexMapConfig.gd")
+const LAND_BASE_LEGEND_ID := "land_base"
+const LAND_REGION_COUNT_IDS: Array = ["plains", "valley", "hills", "mountains"]
+
 const REGION_LEGEND_ENTRIES: Array = [
+    {
+        "id": LAND_BASE_LEGEND_ID,
+        "color": Color(0.52, 0.74, 0.31),
+    },
     {
         "id": "plains",
         "color": Color(0.58, 0.75, 0.39),
@@ -694,6 +701,11 @@ func _ensure_legend_controls() -> void:
     if legend_container == null:
         return
     legend_container.visible = false
+    legend_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    var container_min := legend_container.custom_minimum_size
+    if container_min.y < 400.0:
+        container_min.y = 400.0
+        legend_container.custom_minimum_size = container_min
     if _legend_title_label == null:
         _legend_title_label = Label.new()
         _legend_title_label.name = "LegendTitle"
@@ -716,6 +728,7 @@ func _ensure_legend_controls() -> void:
             button.button_pressed = true
             button.flat = true
             button.focus_mode = Control.FOCUS_NONE
+            button.custom_minimum_size = Vector2(0.0, 32.0)
             button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
             button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
             var row := HBoxContainer.new()
@@ -757,6 +770,7 @@ func _update_region_legend(map_dictionary: Dictionary) -> void:
         if entry_id.is_empty():
             continue
         _legend_counts[entry_id] = 0
+    var base_total := 0
     if typeof(map_dictionary) == TYPE_DICTIONARY:
         var terrain: Variant = map_dictionary.get("terrain")
         if typeof(terrain) == TYPE_DICTIONARY:
@@ -766,8 +780,13 @@ func _update_region_legend(map_dictionary: Dictionary) -> void:
                 if typeof(counts) == TYPE_DICTIONARY:
                     for key in counts.keys():
                         var region_id := String(key)
+                        var count_value := int(counts[key])
                         if _legend_counts.has(region_id):
-                            _legend_counts[region_id] = int(counts[key])
+                            _legend_counts[region_id] = count_value
+                        if LAND_REGION_COUNT_IDS.has(region_id):
+                            base_total += count_value
+    if _legend_counts.has(LAND_BASE_LEGEND_ID):
+        _legend_counts[LAND_BASE_LEGEND_ID] = base_total
     _update_legend_texts()
     if legend_container != null:
         legend_container.visible = _legend_has_any_counts()
@@ -780,7 +799,10 @@ func _legend_has_any_counts() -> bool:
 
 func _on_legend_entry_toggled(enabled: bool, entry_id: String) -> void:
     if map_view != null:
-        map_view.set_region_visibility(entry_id, enabled)
+        if entry_id == LAND_BASE_LEGEND_ID:
+            map_view.set_land_base_visibility(enabled)
+        else:
+            map_view.set_region_visibility(entry_id, enabled)
     _update_legend_entry_visual(entry_id)
 
 func _update_legend_entry_visual(entry_id: String) -> void:

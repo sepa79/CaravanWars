@@ -10,11 +10,13 @@ Changed
 - Default map seed now initializes to 12345 and the base radius default is 16 so generated maps start from the requested large baseline.
 - Map preview terrain now reuses a shared land base prism, scales per-hex elevation for surface placement, and deterministically cycles hill and mountain variants by coordinate.
 - Map setup legend entries are now toggle buttons that dim or restore their terrain type in the 3D preview instead of being passive labels.
+- Map setup legend now includes a grass background toggle, taller buttons, and a minimum panel height so the controls stay legible next to the preview.
 Fixed
 - Corrected river peak ordering to compare coordinates without using the nonexistent `String` constructor in Godot 4.
 - Map preview river batching now preloads all twelve river tiles, classifies masks by canonical rotations, and renders each combination with its dedicated mesh.
 - Map preview land surfaces now rescale shared meshes to match per-hex elevation and sit flush atop the prism bases without overlapping geometry.
 - Land surface placement now anchors scaled meshes by their top face so hills and valleys render at the expected relative heights above the base prism.
+- Land base prisms now scale from their mesh bounds so tile tops line up with per-hex elevations instead of hovering above neighbors.
 - Map setup legend toggles now dim the intended terrain regions instead of misreading button states as region identifiers.
 
 0.2.1 — 2025-09-19
