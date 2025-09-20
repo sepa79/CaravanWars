@@ -3,7 +3,14 @@ extends Control
 const CI_AUTO_SINGLEPLAYER_ENV := "CI_AUTO_SINGLEPLAYER"
 const CI_AUTO_QUIT_ENV := "CI_AUTO_QUIT"
 const HEX_MAP_CONFIG_SCRIPT := preload("res://mapgen/HexMapConfig.gd")
+const LAND_BASE_LEGEND_ID := "land_base"
+const LAND_REGION_COUNT_IDS: Array = ["plains", "valley", "hills", "mountains"]
+
 const REGION_LEGEND_ENTRIES: Array = [
+    {
+        "id": LAND_BASE_LEGEND_ID,
+        "color": Color(0.52, 0.74, 0.31),
+    },
     {
         "id": "plains",
         "color": Color(0.58, 0.75, 0.39),
@@ -473,7 +480,7 @@ func _get_radius_limit() -> int:
 
 func _update_edge_width_limits() -> void:
     var max_radius := _get_radius_limit()
-    var previous_state := _updating_controls
+    var previous_update_state := _updating_controls
     _updating_controls = true
     for edge_id in _edge_controls.keys():
         var entry: Dictionary = _edge_controls[edge_id]
@@ -487,7 +494,7 @@ func _update_edge_width_limits() -> void:
         _edge_jitter_spinbox.max_value = float(max_radius)
         if _edge_jitter_spinbox.value > _edge_jitter_spinbox.max_value:
             _edge_jitter_spinbox.value = _edge_jitter_spinbox.max_value
-    _updating_controls = previous_state
+    _updating_controls = previous_update_state
 
 func _clamp_edge_widths_to_radius() -> void:
     if _current_config == null:
@@ -694,6 +701,11 @@ func _ensure_legend_controls() -> void:
     if legend_container == null:
         return
     legend_container.visible = false
+    legend_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    var container_min := legend_container.custom_minimum_size
+    if container_min.y < 400.0:
+        container_min.y = 400.0
+        legend_container.custom_minimum_size = container_min
     if _legend_title_label == null:
         _legend_title_label = Label.new()
         _legend_title_label.name = "LegendTitle"
@@ -709,14 +721,25 @@ func _ensure_legend_controls() -> void:
             var entry_id := String(entry.get("id", ""))
             if entry_id.is_empty():
                 continue
+            var base_color: Color = entry.get("color", Color.WHITE)
+            var button := Button.new()
+            button.name = "%sToggle" % entry_id.capitalize()
+            button.toggle_mode = true
+            button.button_pressed = true
+            button.flat = true
+            button.focus_mode = Control.FOCUS_NONE
+            button.custom_minimum_size = Vector2(0.0, 32.0)
+            button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+            button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
             var row := HBoxContainer.new()
             row.name = "%sRow" % entry_id.capitalize()
             row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
             row.alignment = BoxContainer.ALIGNMENT_BEGIN
+            button.add_child(row)
             var swatch := ColorRect.new()
             swatch.custom_minimum_size = LEGEND_SWATCH_SIZE
             swatch.size_flags_vertical = Control.SIZE_FILL
-            swatch.color = entry.get("color", Color.WHITE)
+            swatch.color = base_color
             swatch.mouse_filter = Control.MOUSE_FILTER_IGNORE
             var label := Label.new()
             label.name = "%sLabel" % entry_id.capitalize()
@@ -725,11 +748,15 @@ func _ensure_legend_controls() -> void:
             label.mouse_filter = Control.MOUSE_FILTER_IGNORE
             row.add_child(swatch)
             row.add_child(label)
-            _legend_entries_container.add_child(row)
+            _legend_entries_container.add_child(button)
+            button.toggled.connect(_on_legend_entry_toggled.bind(entry_id))
             _legend_rows[entry_id] = {
                 "label": label,
                 "swatch": swatch,
+                "button": button,
+                "color": base_color,
             }
+            _on_legend_entry_toggled(true, entry_id)
     for entry in REGION_LEGEND_ENTRIES:
         var entry_id := String(entry.get("id", ""))
         if entry_id.is_empty():
@@ -743,6 +770,7 @@ func _update_region_legend(map_dictionary: Dictionary) -> void:
         if entry_id.is_empty():
             continue
         _legend_counts[entry_id] = 0
+    var base_total := 0
     if typeof(map_dictionary) == TYPE_DICTIONARY:
         var terrain: Variant = map_dictionary.get("terrain")
         if typeof(terrain) == TYPE_DICTIONARY:
@@ -752,8 +780,13 @@ func _update_region_legend(map_dictionary: Dictionary) -> void:
                 if typeof(counts) == TYPE_DICTIONARY:
                     for key in counts.keys():
                         var region_id := String(key)
+                        var count_value := int(counts[key])
                         if _legend_counts.has(region_id):
-                            _legend_counts[region_id] = int(counts[key])
+                            _legend_counts[region_id] = count_value
+                        if LAND_REGION_COUNT_IDS.has(region_id):
+                            base_total += count_value
+    if _legend_counts.has(LAND_BASE_LEGEND_ID):
+        _legend_counts[LAND_BASE_LEGEND_ID] = base_total
     _update_legend_texts()
     if legend_container != null:
         legend_container.visible = _legend_has_any_counts()
@@ -763,6 +796,37 @@ func _legend_has_any_counts() -> bool:
         if int(value) > 0:
             return true
     return false
+
+func _on_legend_entry_toggled(enabled: bool, entry_id: String) -> void:
+    if map_view != null:
+        if entry_id == LAND_BASE_LEGEND_ID:
+            map_view.set_land_base_visibility(enabled)
+        else:
+            map_view.set_region_visibility(entry_id, enabled)
+    _update_legend_entry_visual(entry_id)
+
+func _update_legend_entry_visual(entry_id: String) -> void:
+    var row_entry: Dictionary = _legend_rows.get(entry_id, {})
+    var button: Button = null
+    if row_entry.has("button") and row_entry["button"] is Button:
+        button = row_entry["button"] as Button
+    var swatch: ColorRect = null
+    if row_entry.has("swatch") and row_entry["swatch"] is ColorRect:
+        swatch = row_entry["swatch"] as ColorRect
+    var label: Label = null
+    if row_entry.has("label") and row_entry["label"] is Label:
+        label = row_entry["label"] as Label
+    var base_color: Color = row_entry.get("color", Color.WHITE)
+    var is_enabled := true
+    if button != null:
+        is_enabled = button.button_pressed
+    var alpha := 1.0 if is_enabled else 0.5
+    if swatch != null:
+        var color := base_color
+        color.a = alpha
+        swatch.color = color
+    if label != null:
+        label.modulate = Color(1.0, 1.0, 1.0, 1.0) if is_enabled else Color(1.0, 1.0, 1.0, 0.65)
 
 func _update_legend_texts() -> void:
     if legend_container == null:
@@ -786,3 +850,4 @@ func _update_legend_texts() -> void:
             "name": localized_name,
             "count": count_value,
         })
+        _update_legend_entry_visual(entry_id)

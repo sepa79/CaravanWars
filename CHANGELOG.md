@@ -8,9 +8,21 @@ Changed
 - Plains carved by rivers automatically downgrade to valleys and lakes prefer to open downstream outlets when terrain allows.
 - Map generation defaults now start with mountain-mountain-hills-sea-sea-hills edge bands, edge depths 2/2/2/2/5/2, edge jitter 3, and medium random features.
 - Default map seed now initializes to 12345 and the base radius default is 16 so generated maps start from the requested large baseline.
+- Map preview terrain now reuses a shared land base prism, scales per-hex elevation for surface placement, and deterministically cycles hill and mountain variants by coordinate.
+- Map preview now anchors the grass base to half a sea tile below the waterline, stacks plains, hills, and mountains as layered pieces, and aligns rivers atop the exposed grass instead of intersecting surface meshes.
+- Map preview instantiates dedicated HexTileStack nodes per hex so layered land meshes replace shared MultiMeshes and respond directly to legend transparency controls.
+- Map preview sanitizes hex metadata into typed HexTileStack entries so tile and river refreshes no longer perform per-call Variant guards while updating transparency and meshes.
+- Map setup legend entries are now toggle buttons that dim or restore their terrain type in the 3D preview instead of being passive labels.
+- Map setup legend now includes a grass background toggle, taller buttons, and a minimum panel height so the controls stay legible next to the preview.
 Fixed
 - Corrected river peak ordering to compare coordinates without using the nonexistent `String` constructor in Godot 4.
 - Map preview river batching now preloads all twelve river tiles, classifies masks by canonical rotations, and renders each combination with its dedicated mesh.
+- Map preview land surfaces now rescale shared meshes to match per-hex elevation and sit flush atop the prism bases without overlapping geometry.
+- Land surface placement now anchors scaled meshes by their top face so hills and valleys render at the expected relative heights above the base prism.
+- Land base prisms now scale from their mesh bounds so tile tops line up with per-hex elevations instead of hovering above neighbors.
+- Map setup legend toggles now dim the intended terrain regions instead of misreading button states as region identifiers.
+- Map preview land stacks now keep plains above the shared grass base, clamp hill and mountain variants to their requested heights, and drop plains from river tiles so river meshes rest directly on the grass layer.
+- Cleared Map view and HexTileStack warnings by renaming tile data fields, method parameters, and helper APIs flagged for shadowing in the Godot editor.
 
 0.2.1 — 2025-09-19
 Added
