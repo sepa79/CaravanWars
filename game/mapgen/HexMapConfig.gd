@@ -1,6 +1,8 @@
 extends RefCounted
 class_name HexMapConfig
 
+const TerrainSettingsResource := preload("res://map/TerrainSettings.gd")
+
 const DEFAULT_MAP_SEED := 12345
 const DEFAULT_MAP_RADIUS := 16
 const DEFAULT_KINGDOM_COUNT := 3
@@ -59,6 +61,7 @@ var fort_spacing: int
 var edge_settings: Dictionary = {}
 var edge_jitter: int
 var random_feature_density: float
+var terrain_settings
 
 func _init(
     p_seed: int = DEFAULT_MAP_SEED,
@@ -70,7 +73,8 @@ func _init(
     p_fort_spacing: int = DEFAULT_FORT_SPACING,
     p_edge_settings: Dictionary = {},
     p_edge_jitter: int = DEFAULT_EDGE_JITTER,
-    p_random_feature_density: float = DEFAULT_RANDOM_FEATURE_DENSITY
+    p_random_feature_density: float = DEFAULT_RANDOM_FEATURE_DENSITY,
+    p_terrain_settings = null
 ) -> void:
     map_seed = p_seed if p_seed != 0 else Time.get_ticks_msec()
     map_radius = max(1, p_map_radius)
@@ -82,6 +86,10 @@ func _init(
     edge_settings = _sanitize_edge_settings(p_edge_settings)
     edge_jitter = max(0, p_edge_jitter)
     random_feature_density = clampf(p_random_feature_density, 0.0, 1.0)
+    if p_terrain_settings == null:
+        terrain_settings = TerrainSettingsResource.new()
+    else:
+        terrain_settings = p_terrain_settings.duplicate_settings()
 
 func duplicate_config() -> HexMapConfig:
     var script: Script = get_script()
@@ -95,7 +103,8 @@ func duplicate_config() -> HexMapConfig:
         fort_spacing,
         edge_settings,
         edge_jitter,
-        random_feature_density
+        random_feature_density,
+        terrain_settings
     )
     return clone
 
@@ -113,6 +122,7 @@ func to_dictionary() -> Dictionary:
             "edge_jitter": edge_jitter,
             "random_feature_density": random_feature_density,
         },
+        "terrain_settings": terrain_settings.to_dictionary(),
     }
 
 func get_edge_setting(edge_name: String) -> Dictionary:
