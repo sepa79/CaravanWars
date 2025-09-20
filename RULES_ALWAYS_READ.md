@@ -2,6 +2,7 @@ RULES_ALWAYS_READ — twarde zasady
 
 1) Technologie i styl
 - Godot 4.x, **GDScript (typed)**. To nie Python — żadnych idiomów Pythona w komentarzach ani nazwach.
+- Wszystko MUSI być typowane statycznie — deklaruj typy dla zmiennych, parametrów i wartości zwracanych.
 - Operator `?:` jest zabroniony — używaj `wartosc_if` if `warunek` else `wartosc_else`.
 - Pliki scen/zasobów edytuj w Godot. Nie modyfikuj ręcznie `.tscn`/`.tres`.
 - Wcięcia: 4 spacje. UTF‑8. LF. Nowa linia na końcu każdego pliku.
@@ -18,6 +19,8 @@ RULES_ALWAYS_READ — twarde zasady
   - `duplicate`, `free`, `queue_free`
   - `update`, `draw`, `play`, `stop`
   - `scale`, `seed`, `params`
+- Gdy odkryjesz nową kolizję nazwy z API Godota, natychmiast dopisz ją do powyższej listy i stosuj nowe nazewnictwo.
+- Nie twórz `const` ani aliasów skryptów o nazwach identycznych jak zarejestrowane `class_name` (np. `AssetCatalog`, `LayerInstance`, `MapData`, `Tile`). Jeśli znajdziesz nową kolizję, dopisz ją do tej listy zakazanych aliasów.
 - Autoloady (nazwy singletonów): `App`, `I18N`, `Net`, `World`, później `Debug`, `Ai`.
 
 3) I18N (obowiązkowe)

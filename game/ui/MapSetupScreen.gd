@@ -3,6 +3,7 @@ extends Control
 const CI_AUTO_SINGLEPLAYER_ENV := "CI_AUTO_SINGLEPLAYER"
 const CI_AUTO_QUIT_ENV := "CI_AUTO_QUIT"
 const HEX_MAP_CONFIG_SCRIPT := preload("res://mapgen/HexMapConfig.gd")
+const MAP_DATA_SCRIPT := preload("res://mapgen/data/MapData.gd")
 const LAND_BASE_LEGEND_ID := "land_base"
 const LAND_REGION_COUNT_IDS: Array = ["plains", "valley", "hills", "mountains"]
 
@@ -150,19 +151,19 @@ func _ready() -> void:
     start_button.pressed.connect(_on_start_pressed)
     back_button.pressed.connect(_on_back_pressed)
     random_seed_button.pressed.connect(_on_random_seed_pressed)
-    seed_spinbox.value_changed.connect(_on_seed_value_changed)
-    kingdom_spinbox.value_changed.connect(_on_kingdoms_changed)
-    rivers_spinbox.value_changed.connect(_on_rivers_changed)
-    radius_spinbox.value_changed.connect(_on_radius_changed)
     _ensure_legend_controls()
     _strip_legacy_controls()
     _configure_param_ranges()
     _ensure_edge_controls()
     _update_texts()
     if not Net.run_mode.is_empty():
-        World.prepare_map_for_run_mode(Net.run_mode, null, true)
+        World.prepare_and_generate_map(Net.run_mode)
     _load_config_from_world()
     _apply_config_to_controls()
+    seed_spinbox.value_changed.connect(_on_seed_value_changed)
+    kingdom_spinbox.value_changed.connect(_on_kingdoms_changed)
+    rivers_spinbox.value_changed.connect(_on_rivers_changed)
+    radius_spinbox.value_changed.connect(_on_radius_changed)
     _refresh_map_view()
     _on_net_state_changed(Net.state)
     if Net.run_mode == "single" and _should_drive_ci_singleplayer():
@@ -601,9 +602,8 @@ func _refresh_map_view() -> void:
         return
     var prepared_map: Variant = World.get_prepared_map(Net.run_mode)
     var map_dictionary: Dictionary = {}
-    if prepared_map is HexMapData:
-        var typed_map := prepared_map as HexMapData
-        map_dictionary = typed_map.to_dictionary()
+    if MAP_DATA_SCRIPT != null and prepared_map is MAP_DATA_SCRIPT:
+        map_dictionary = (prepared_map as MAP_DATA_SCRIPT).to_dictionary()
     elif typeof(prepared_map) == TYPE_DICTIONARY:
         map_dictionary = prepared_map
     if map_dictionary.is_empty():
@@ -620,7 +620,7 @@ func _regenerate_map() -> void:
         return
     if Net.run_mode.is_empty():
         return
-    World.prepare_map_for_run_mode(Net.run_mode, _current_config, true)
+    World.prepare_and_generate_map(Net.run_mode, _current_config, true)
     _load_config_from_world()
     _apply_config_to_controls()
     _refresh_map_view()

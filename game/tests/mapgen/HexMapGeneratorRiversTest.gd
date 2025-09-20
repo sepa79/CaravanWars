@@ -26,22 +26,33 @@ func _test_generator_uses_config_seed() -> void:
     var config := HexMapConfigScript.new() as HexMapConfig
     config.map_seed = 424242
     var generator: HexMapGenerator = HexMapGeneratorScript.new(config)
-    var data: HexMapData = generator.generate()
-    _check(data is HexMapData, "Generator stub should return HexMapData.")
-    if data is HexMapData:
-        _check((data as HexMapData).map_seed == 424242, "Returned map data should preserve the configured seed.")
+    var data: MapData = generator.generate()
+    _check(data is MapData, "Generator stub should return MapData.")
+    if data is MapData:
+        var typed := data as MapData
+        _check(typed.map_seed == 424242, "Returned map data should preserve the configured seed.")
+        var tiles := typed.get_tiles()
+        _check(tiles.size() > 0, "Stub map should include at least one tile.")
+        if tiles.size() > 0:
+            var tile := tiles[0]
+            _check(tile.draw_stack.size() >= 2, "Tile should include layered draw stack for rendering.")
+            if tile.draw_stack.size() > 0:
+                var base_layer := tile.draw_stack[0]
+                _check(base_layer.asset_id == typed.asset_catalog.get_base_asset_id(), "First draw layer should use the base terrain asset.")
+                var base_scene_path := typed.asset_catalog.get_asset_path(base_layer.asset_id)
+                _check(not base_scene_path.is_empty(), "Base terrain asset should resolve to a scene path.")
 
 func _test_phase_handlers_receive_map_data() -> void:
     var generator: HexMapGenerator = HexMapGeneratorScript.new(HexMapConfigScript.new() as HexMapConfig)
     var invoked: bool = false
-    var handler := func(map_data: HexMapData, phase: StringName) -> void:
+    var handler := func(map_data: MapData, phase: StringName) -> void:
         invoked = true
-        map_data.set_stage_result(phase, {"called": true})
+        map_data.set_phase_payload(phase, {"called": true})
     generator.set_phase_handler(HexMapGeneratorScript.PHASE_TERRAIN, handler)
-    var data: HexMapData = generator.generate()
+    var data: MapData = generator.generate()
     _check(invoked, "Custom phase handler should be invoked by the stub pipeline.")
-    var stored: Variant = data.get_stage_result(HexMapGeneratorScript.PHASE_TERRAIN)
+    var stored: Variant = data.get_phase_payload(HexMapGeneratorScript.PHASE_TERRAIN)
     if typeof(stored) == TYPE_DICTIONARY:
-        _check(bool(stored.get("called", false)), "Phase handler should be able to write to map data stage results.")
+        _check(bool(stored.get("called", false)), "Phase handler should be able to write to map data payloads.")
     else:
-        _record_failure("Phase handler did not update the expected stage result payload.")
+        _record_failure("Phase handler did not update the expected phase payload.")

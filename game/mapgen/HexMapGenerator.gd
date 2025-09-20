@@ -9,6 +9,8 @@ const PHASE_SETTLEMENTS := StringName("settlements")
 const PHASE_ROADS := StringName("roads")
 const PHASE_FORTS := StringName("forts")
 
+const MAP_DATA_SCRIPT := preload("res://mapgen/data/MapData.gd")
+
 const PHASE_SEQUENCE: Array[StringName] = [
     PHASE_TERRAIN,
     PHASE_RIVERS,
@@ -20,18 +22,20 @@ const PHASE_SEQUENCE: Array[StringName] = [
 ]
 
 var config: HexMapConfig
-var map_data: HexMapData
+var data_builder: HexMapData
 var phase_handlers: Dictionary = {}
 
 func _init(p_config: HexMapConfig = HexMapConfig.new()) -> void:
     config = p_config.duplicate_config()
-    map_data = HexMapData.new(config)
+    data_builder = HexMapData.new(config)
     phase_handlers = {}
+    if MAP_DATA_SCRIPT == null:
+        push_warning("[HexMapGenerator] Unable to preload MapData script")
 
-func generate() -> HexMapData:
-    map_data.clear_stage_results()
+func generate() -> MapData:
+    var dataset: MapData = data_builder.prepare_for_generation()
     print("[HexMapGenerator] Stub generating map using seed %d (radius=%d, kingdoms=%d)" % [
-        config.map_seed,
+        dataset.map_seed,
         config.map_radius,
         config.kingdom_count,
     ])
@@ -43,10 +47,10 @@ func generate() -> HexMapData:
                 0:
                     handler.call()
                 1:
-                    handler.call(map_data)
+                    handler.call(dataset)
                 _:
-                    handler.call(map_data, phase)
-    return map_data
+                    handler.call(dataset, phase)
+    return dataset
 
 func set_phase_handler(phase: StringName, handler: Callable) -> void:
     if not PHASE_SEQUENCE.has(phase):
@@ -60,8 +64,8 @@ func get_phase_handler(phase: StringName) -> Callable:
 func clear_phase_handler(phase: StringName) -> void:
     phase_handlers.erase(phase)
 
-func get_map_data() -> HexMapData:
-    return map_data
+func get_map_data() -> MapData:
+    return data_builder.get_map_data()
 
 func _determine_handler_argument_count(handler: Callable) -> int:
     var target := handler.get_object()

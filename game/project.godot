@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="CaravanWars"
-config/version="0.2.1"
+config/version="0.2.2"
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.4")
 script_classes=[{
@@ -39,6 +39,26 @@ script_classes=[{
 "class": "HexMapGenerator",
 "language": "GDScript",
 "path": "res://mapgen/HexMapGenerator.gd"
+}, {
+"base": "RefCounted",
+"class": "AssetCatalog",
+"language": "GDScript",
+"path": "res://mapgen/data/AssetCatalog.gd"
+}, {
+"base": "RefCounted",
+"class": "LayerInstance",
+"language": "GDScript",
+"path": "res://mapgen/data/LayerInstance.gd"
+}, {
+"base": "RefCounted",
+"class": "MapData",
+"language": "GDScript",
+"path": "res://mapgen/data/MapData.gd"
+}, {
+"base": "RefCounted",
+"class": "Tile",
+"language": "GDScript",
+"path": "res://mapgen/data/Tile.gd"
 }]
 script_class_icons={}
 
