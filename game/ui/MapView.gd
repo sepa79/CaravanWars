@@ -6,6 +6,7 @@ class_name MapView
 signal cities_changed(cities: Array)
 
 const LAND_BASE_SCENE := preload("res://assets/gltf/tiles/base/hex_grass_bottom.gltf")
+const HEX_TILE_STACK: GDScript = preload("res://ui/map_view/HexTileStack.gd")
 
 const LAND_SURFACE_SCENES: Dictionary = {
     "plains": {
@@ -159,7 +160,8 @@ const TERRAIN_TRANSPARENCY_DIMMED: float = 0.5
 var map_data: Dictionary = {}
 
 var _mesh_library: Dictionary = {}
-var _region_layers: Dictionary = {}
+var _tiles: Dictionary = {}
+var _water_layers: Dictionary = {}
 var _river_layers: Dictionary = {}
 var _river_marker_layer: MultiMeshInstance3D
 var _river_tile_cache: Dictionary = {}
@@ -182,6 +184,7 @@ var _land_grass_height: float = LAND_BASE_MIN_HEIGHT
 
 var _viewport: SubViewport
 var _terrain_root: Node3D
+var _land_tile_root: Node3D
 var _viewport_container: Control
 var _input_capture: Control
 var _camera_rig: Node3D
@@ -192,7 +195,8 @@ func _ready() -> void:
     _ensure_viewport_structure()
     _configure_viewport()
     _build_mesh_library()
-    _ensure_region_layers()
+    _ensure_land_tile_root()
+    _ensure_water_layers()
     call_deferred("_complete_preview_setup")
     _update_camera_framing()
     _needs_refresh = true
@@ -443,169 +447,57 @@ func _build_river_marker_mesh() -> Mesh:
     marker.material = marker_material
     return marker
 
-func _ensure_region_layers() -> void:
+func _ensure_land_tile_root() -> void:
     if _terrain_root == null:
         return
-    var land_surfaces: Dictionary = _mesh_library.get("land_surfaces", {})
-    var land_base_mesh: Mesh = _mesh_library.get("land_base")
-    if land_base_mesh != null:
-        if _region_layers.has("land_base") and typeof(_region_layers["land_base"]) != TYPE_DICTIONARY:
-            var legacy_base: Variant = _region_layers["land_base"]
-            if legacy_base is MultiMeshInstance3D and is_instance_valid(legacy_base):
-                (legacy_base as MultiMeshInstance3D).queue_free()
-            _region_layers.erase("land_base")
-        if not _region_layers.has("land_base") or typeof(_region_layers["land_base"]) != TYPE_DICTIONARY:
-            _region_layers["land_base"] = {}
-        var base_layers_variant: Variant = _region_layers.get("land_base")
-        var base_layers: Dictionary = {}
-        if typeof(base_layers_variant) == TYPE_DICTIONARY:
-            base_layers = base_layers_variant
-        else:
-            base_layers = {}
-            _region_layers["land_base"] = base_layers
-        for region in land_surfaces.keys():
-            var base_instance: MultiMeshInstance3D = base_layers.get(region, null)
-            if base_instance == null:
-                base_instance = MultiMeshInstance3D.new()
-                base_instance.name = "%sBaseLayer" % region.capitalize()
-                base_instance.unique_name_in_owner = true
-                _terrain_root.add_child(base_instance)
-                base_layers[region] = base_instance
-            if base_instance.multimesh == null:
-                base_instance.multimesh = MultiMesh.new()
-            base_instance.multimesh.transform_format = MultiMesh.TRANSFORM_3D
-            base_instance.multimesh.mesh = land_base_mesh
-            var base_transparency: float = max(_get_region_transparency(region), _land_base_transparency)
-            base_instance.transparency = base_transparency
-    elif _region_layers.has("land_base") and typeof(_region_layers["land_base"]) == TYPE_DICTIONARY:
-        var cleanup_base_layers: Variant = _region_layers.get("land_base")
-        if typeof(cleanup_base_layers) == TYPE_DICTIONARY:
-            var base_layers: Dictionary = cleanup_base_layers
-            for instance_variant in base_layers.values():
-                if instance_variant is MultiMeshInstance3D:
-                    (instance_variant as MultiMeshInstance3D).queue_free()
-        _region_layers.erase("land_base")
-    if not _region_layers.has("land_surfaces") or typeof(_region_layers["land_surfaces"]) != TYPE_DICTIONARY:
-        _region_layers["land_surfaces"] = {}
-    var surface_layers_variant: Variant = _region_layers.get("land_surfaces")
-    var surface_layers: Dictionary = {}
-    if typeof(surface_layers_variant) == TYPE_DICTIONARY:
-        surface_layers = surface_layers_variant
-    else:
-        surface_layers = {}
-        _region_layers["land_surfaces"] = surface_layers
-    for region in LAND_LAYER_STACK.keys():
-        var layer_definitions_variant: Variant = LAND_LAYER_STACK.get(region, [])
-        if typeof(layer_definitions_variant) != TYPE_ARRAY:
-            continue
-        var layer_definitions: Array = layer_definitions_variant
-        if layer_definitions.is_empty():
-            continue
-        var region_layers_variant: Variant = surface_layers.get(region)
-        var region_layers: Dictionary = {}
-        if typeof(region_layers_variant) == TYPE_DICTIONARY:
-            region_layers = region_layers_variant
-        surface_layers[region] = region_layers
-        for layer_definition_variant in layer_definitions:
-            if typeof(layer_definition_variant) != TYPE_DICTIONARY:
-                continue
-            var layer_definition: Dictionary = layer_definition_variant
-            var layer_id := String(layer_definition.get("id", ""))
-            if layer_id.is_empty():
-                continue
-            var mesh_region := String(layer_definition.get("mesh_region", region))
-            var mesh_map_variant: Variant = land_surfaces.get(mesh_region, {})
-            if typeof(mesh_map_variant) != TYPE_DICTIONARY:
-                continue
-            var mesh_map: Dictionary = mesh_map_variant
-            if mesh_map.is_empty():
-                continue
-            var variant_layers_variant: Variant = region_layers.get(layer_id)
-            var variant_layers: Dictionary = {}
-            if typeof(variant_layers_variant) == TYPE_DICTIONARY:
-                variant_layers = variant_layers_variant
-            region_layers[layer_id] = variant_layers
-            var ordered_variants: Array = LAND_SURFACE_VARIANT_ORDER.get(mesh_region, [])
-            var processed_variants: Array = []
-            for variant_key in ordered_variants:
-                if not mesh_map.has(variant_key):
-                    continue
-                var mesh: Mesh = mesh_map[variant_key]
-                if mesh == null:
-                    continue
-                _ensure_surface_layer_instance(variant_layers, region, layer_id, variant_key, mesh)
-                processed_variants.append(variant_key)
-            for variant_key in mesh_map.keys():
-                if processed_variants.has(variant_key):
-                    continue
-                var mesh: Mesh = mesh_map[variant_key]
-                if mesh == null:
-                    continue
-                _ensure_surface_layer_instance(variant_layers, region, layer_id, variant_key, mesh)
-    if not _region_layers.has("water") or typeof(_region_layers["water"]) != TYPE_DICTIONARY:
-        _region_layers["water"] = {}
-    var water_layers_variant: Variant = _region_layers.get("water")
-    var water_layers: Dictionary = {}
-    if typeof(water_layers_variant) == TYPE_DICTIONARY:
-        water_layers = water_layers_variant
-    else:
-        water_layers = {}
-        _region_layers["water"] = water_layers
+    _land_tile_root = _terrain_root.get_node_or_null("%LandTiles") as Node3D
+    if _land_tile_root == null:
+        _land_tile_root = Node3D.new()
+        _land_tile_root.name = "LandTiles"
+        _land_tile_root.unique_name_in_owner = true
+        _terrain_root.add_child(_land_tile_root)
+
+func _ensure_water_layers() -> void:
+    if _terrain_root == null:
+        return
     var water_meshes: Dictionary = _mesh_library.get("water", {})
+    var retained_regions: Array = []
     for region in water_meshes.keys():
-        var mesh: Mesh = water_meshes[region]
-        if mesh == null:
+        var mesh_variant: Variant = water_meshes[region]
+        if not (mesh_variant is Mesh):
             continue
-        var existing_instance: MultiMeshInstance3D = water_layers.get(region, null)
-        if existing_instance == null:
-            var multimesh := MultiMesh.new()
-            multimesh.transform_format = MultiMesh.TRANSFORM_3D
-            multimesh.mesh = mesh
-            var instance := MultiMeshInstance3D.new()
+        var mesh := mesh_variant as Mesh
+        var instance: MultiMeshInstance3D = null
+        if _water_layers.has(region):
+            var existing_variant: Variant = _water_layers[region]
+            if existing_variant is MultiMeshInstance3D:
+                instance = existing_variant as MultiMeshInstance3D
+        if instance == null:
+            instance = MultiMeshInstance3D.new()
             instance.name = "%sRegionLayer" % region.capitalize()
             instance.unique_name_in_owner = true
-            instance.multimesh = multimesh
             _terrain_root.add_child(instance)
-            water_layers[region] = instance
-            existing_instance = instance
-        else:
-            if existing_instance.multimesh == null:
-                existing_instance.multimesh = MultiMesh.new()
-        existing_instance.multimesh.transform_format = MultiMesh.TRANSFORM_3D
-        existing_instance.multimesh.mesh = mesh
-        existing_instance.transparency = _get_region_transparency(region)
-    _apply_all_region_transparency()
-
-func _ensure_surface_layer_instance(region_layers: Dictionary, region: String, layer_id: String, variant_key: String, mesh: Mesh) -> void:
-    if not region_layers.has(layer_id) or typeof(region_layers[layer_id]) != TYPE_DICTIONARY:
-        region_layers[layer_id] = {}
-    var layer_map: Dictionary = region_layers[layer_id]
-    var instance: MultiMeshInstance3D = layer_map.get(variant_key, null)
-    if instance == null:
-        var multimesh := MultiMesh.new()
-        multimesh.transform_format = MultiMesh.TRANSFORM_3D
-        multimesh.mesh = mesh
-        instance = MultiMeshInstance3D.new()
-        instance.name = _format_surface_layer_name(region, layer_id, variant_key)
-        instance.unique_name_in_owner = true
-        instance.multimesh = multimesh
-        _terrain_root.add_child(instance)
-        layer_map[variant_key] = instance
-    else:
+            _water_layers[region] = instance
         if instance.multimesh == null:
             instance.multimesh = MultiMesh.new()
-        instance.multimesh.transform_format = MultiMesh.TRANSFORM_3D
+            instance.multimesh.transform_format = MultiMesh.TRANSFORM_3D
+        elif instance.multimesh.transform_format != MultiMesh.TRANSFORM_3D and instance.multimesh.instance_count == 0:
+            instance.multimesh.transform_format = MultiMesh.TRANSFORM_3D
         instance.multimesh.mesh = mesh
-    instance.transparency = _get_region_transparency(region)
-    region_layers[layer_id] = layer_map
-
-func _format_surface_layer_name(region: String, layer_id: String, variant_key: String) -> String:
-    var name_prefix := region.capitalize()
-    var layer_suffix := layer_id.capitalize()
-    var variant_suffix := variant_key.capitalize() if not variant_key.is_empty() else ""
-    if variant_suffix.is_empty():
-        return "%s%sLayer" % [name_prefix, layer_suffix]
-    return "%s%sLayer%s" % [name_prefix, layer_suffix, variant_suffix]
+        instance.visible = true
+        retained_regions.append(region)
+    var to_remove: Array = []
+    for region in _water_layers.keys():
+        if retained_regions.has(region):
+            continue
+        var instance_variant: Variant = _water_layers[region]
+        if instance_variant is MultiMeshInstance3D:
+            var node := instance_variant as MultiMeshInstance3D
+            if is_instance_valid(node):
+                node.queue_free()
+        to_remove.append(region)
+    for region in to_remove:
+        _water_layers.erase(region)
 
 func _merge_bounds_with_aabb(min_pos: Vector3, max_pos: Vector3, has_positions: bool, aabb: AABB) -> Dictionary:
     var start: Vector3 = aabb.position
@@ -666,61 +558,63 @@ func _get_region_transparency(region: String) -> float:
 
 func _apply_region_transparency(region: String) -> void:
     var transparency := _get_region_transparency(region)
-    if _region_layers.has("land_base") and typeof(_region_layers["land_base"]) == TYPE_DICTIONARY:
-        var base_layers_variant: Variant = _region_layers.get("land_base")
-        if typeof(base_layers_variant) == TYPE_DICTIONARY:
-            var base_layers: Dictionary = base_layers_variant
-            if base_layers.has(region):
-                var base_instance: Variant = base_layers[region]
-                if base_instance is MultiMeshInstance3D:
-                    var combined: float = max(transparency, _land_base_transparency)
-                    (base_instance as MultiMeshInstance3D).transparency = combined
-    if _region_layers.has("land_surfaces") and typeof(_region_layers["land_surfaces"]) == TYPE_DICTIONARY:
-        var surface_layers_variant: Variant = _region_layers.get("land_surfaces")
-        if typeof(surface_layers_variant) == TYPE_DICTIONARY:
-            var surface_layers: Dictionary = surface_layers_variant
-            if surface_layers.has(region):
-                var region_layers_variant: Variant = surface_layers[region]
-                if typeof(region_layers_variant) == TYPE_DICTIONARY:
-                    var region_layers: Dictionary = region_layers_variant
-                    for layer_id in region_layers.keys():
-                        var variant_layers_variant: Variant = region_layers[layer_id]
-                        if typeof(variant_layers_variant) != TYPE_DICTIONARY:
-                            continue
-                        var variant_layers: Dictionary = variant_layers_variant
-                        for variant_key in variant_layers.keys():
-                            var instance_variant: Variant = variant_layers[variant_key]
-                            if instance_variant is MultiMeshInstance3D:
-                                (instance_variant as MultiMeshInstance3D).transparency = transparency
-    if _region_layers.has("water") and typeof(_region_layers["water"]) == TYPE_DICTIONARY:
-        var water_layers_variant: Variant = _region_layers.get("water")
-        if typeof(water_layers_variant) == TYPE_DICTIONARY:
-            var water_layers: Dictionary = water_layers_variant
-            if water_layers.has(region):
-                var water_instance: Variant = water_layers[region]
-                if water_instance is MultiMeshInstance3D:
-                    (water_instance as MultiMeshInstance3D).transparency = transparency
+    for tile_entry_variant in _tiles.values():
+        if typeof(tile_entry_variant) != TYPE_DICTIONARY:
+            continue
+        var tile_entry: Dictionary = tile_entry_variant
+        var node_variant: Variant = tile_entry.get("node")
+        if node_variant == null:
+            continue
+        if not (node_variant is Object):
+            continue
+        if not node_variant.has_method("set_layer_transparency"):
+            continue
+        var layer_map_variant: Variant = tile_entry.get("layer_regions", {})
+        if typeof(layer_map_variant) != TYPE_DICTIONARY:
+            continue
+        var layer_map: Dictionary = layer_map_variant
+        if not layer_map.has(region):
+            continue
+        var layer_ids_variant: Variant = layer_map[region]
+        if typeof(layer_ids_variant) != TYPE_ARRAY:
+            continue
+        var layer_ids: Array = layer_ids_variant
+        for layer_id_variant in layer_ids:
+            var layer_id := String(layer_id_variant)
+            if layer_id.is_empty():
+                continue
+            node_variant.set_layer_transparency(layer_id, transparency)
 
 func _apply_all_region_transparency() -> void:
     for region in _region_transparency.keys():
         _apply_region_transparency(String(region))
     _apply_land_base_transparency()
+    _apply_water_transparency()
 
 func _apply_land_base_transparency() -> void:
-    if not _region_layers.has("land_base"):
-        return
-    var base_layers_variant: Variant = _region_layers["land_base"]
-    if typeof(base_layers_variant) != TYPE_DICTIONARY:
-        return
-    var base_layers: Dictionary = base_layers_variant
-    for key in base_layers.keys():
-        var base_instance: Variant = base_layers[key]
-        if not (base_instance is MultiMeshInstance3D):
+    for tile_entry_variant in _tiles.values():
+        if typeof(tile_entry_variant) != TYPE_DICTIONARY:
             continue
-        var region := String(key)
+        var tile_entry: Dictionary = tile_entry_variant
+        var node_variant: Variant = tile_entry.get("node")
+        if node_variant == null:
+            continue
+        if not (node_variant is Object):
+            continue
+        if not node_variant.has_method("set_base_transparency"):
+            continue
+        var region := String(tile_entry.get("region", ""))
         var region_transparency := _get_region_transparency(region)
         var combined: float = max(region_transparency, _land_base_transparency)
-        (base_instance as MultiMeshInstance3D).transparency = combined
+        node_variant.set_base_transparency(combined)
+
+func _apply_water_transparency() -> void:
+    for region in _water_layers.keys():
+        var instance_variant: Variant = _water_layers[region]
+        if not (instance_variant is MultiMeshInstance3D):
+            continue
+        var instance := instance_variant as MultiMeshInstance3D
+        instance.transparency = _get_region_transparency(region)
 
 func _refresh_layers_if_needed() -> void:
     if not _needs_refresh:
@@ -732,296 +626,162 @@ func _refresh_layers_if_needed() -> void:
     _update_river_layers()
 
 func _update_region_layers() -> void:
+    _ensure_land_tile_root()
+    _ensure_water_layers()
     var grouped_hexes := _group_hexes_by_region()
     var min_pos := Vector3(INF, INF, INF)
     var max_pos := Vector3(-INF, -INF, -INF)
     var has_positions := false
     var land_surfaces: Dictionary = _mesh_library.get("land_surfaces", {})
-    var land_surface_layers: Dictionary = {}
-    if _region_layers.has("land_surfaces") and typeof(_region_layers["land_surfaces"]) == TYPE_DICTIONARY:
-        var surface_layers_variant: Variant = _region_layers.get("land_surfaces")
-        if typeof(surface_layers_variant) == TYPE_DICTIONARY:
-            land_surface_layers = surface_layers_variant
-    var ordered_land_regions: Array = _ordered_land_regions(land_surfaces)
-    var land_base_layers: Dictionary = {}
-    if _region_layers.has("land_base") and typeof(_region_layers["land_base"]) == TYPE_DICTIONARY:
-        var base_layers_variant: Variant = _region_layers.get("land_base")
-        if typeof(base_layers_variant) == TYPE_DICTIONARY:
-            land_base_layers = base_layers_variant
     var land_base_mesh: Mesh = _mesh_library.get("land_base")
-    var land_base_aabb := AABB()
-    if land_base_mesh != null:
-        land_base_aabb = land_base_mesh.get_aabb()
     var grass_stack := _compute_grass_stack(grouped_hexes)
     _land_grass_top = float(grass_stack.get("top", 0.0))
     _land_grass_height = max(float(grass_stack.get("height", LAND_BASE_MIN_HEIGHT)), LAND_BASE_MIN_HEIGHT)
-    var surface_counts: Dictionary = {}
-    for region in ordered_land_regions:
-        var hex_entries: Array = grouped_hexes.get(region, [])
-        var layer_definitions_variant: Variant = LAND_LAYER_STACK.get(region, [])
-        if typeof(layer_definitions_variant) != TYPE_ARRAY:
-            surface_counts[region] = {}
+    var tile_meshes := {
+        "base": land_base_mesh,
+        "grass_top": _land_grass_top,
+        "grass_height": _land_grass_height,
+        "surfaces": land_surfaces,
+    }
+    var entries_variant: Variant = map_data.get("hexes")
+    var entries: Array = []
+    if typeof(entries_variant) == TYPE_ARRAY:
+        entries = entries_variant
+    var seen_coords: Dictionary = {}
+    var water_transforms: Dictionary = {}
+    var water_meshes: Dictionary = _mesh_library.get("water", {})
+    for entry_variant in entries:
+        if typeof(entry_variant) != TYPE_DICTIONARY:
             continue
-        var layer_definitions: Array = layer_definitions_variant
-        var region_counts: Dictionary = {}
-        for layer_definition_variant in layer_definitions:
-            if typeof(layer_definition_variant) != TYPE_DICTIONARY:
+        var entry: Dictionary = entry_variant
+        var region := String(entry.get("region", ""))
+        if region.is_empty():
+            region = "plains"
+        var axial := _coord_to_axial(entry.get("coord"))
+        var world_center := _axial_to_world(axial)
+        if region == "sea" or region == "lake":
+            var transform := Transform3D(Basis.IDENTITY, world_center)
+            var stored_variant: Variant = water_transforms.get(region, [])
+            var stored: Array = []
+            if typeof(stored_variant) == TYPE_ARRAY:
+                stored = stored_variant
+            stored.append(transform)
+            water_transforms[region] = stored
+            continue
+        seen_coords[axial] = true
+        var tile_entry: Dictionary = {}
+        if _tiles.has(axial) and typeof(_tiles[axial]) == TYPE_DICTIONARY:
+            tile_entry = _tiles[axial]
+        var tile_node_variant: Variant = tile_entry.get("node")
+        var tile_node_3d: Node3D = null
+        if tile_node_variant is Node3D:
+            tile_node_3d = tile_node_variant as Node3D
+        if tile_node_3d == null:
+            tile_node_variant = HEX_TILE_STACK.new()
+            if tile_node_variant is Node3D:
+                tile_node_3d = tile_node_variant as Node3D
+            else:
                 continue
-            var layer_definition: Dictionary = layer_definition_variant
-            var layer_id := String(layer_definition.get("id", ""))
-            if layer_id.is_empty():
+            tile_node_3d.name = "HexTile_%d_%d" % [axial.x, axial.y]
+            tile_node_3d.transform = Transform3D(Basis.IDENTITY, world_center)
+            if _land_tile_root != null:
+                _land_tile_root.add_child(tile_node_3d)
+            else:
+                _terrain_root.add_child(tile_node_3d)
+        else:
+            tile_node_3d.transform = Transform3D(Basis.IDENTITY, world_center)
+        var tile_stack: Variant = tile_node_variant
+        if tile_stack == null:
+            continue
+        var world_height := _world_height_from_entry(entry)
+        var plain_top := _determine_plain_top(region, world_height, _land_grass_top)
+        var valley_top := _determine_valley_top(world_height, _land_grass_top)
+        var stack_info := _build_land_stack(region, entry, axial, world_height, plain_top, valley_top)
+        var stack_variant: Variant = stack_info.get("stack", [])
+        var stack: Array = []
+        if typeof(stack_variant) == TYPE_ARRAY:
+            stack = stack_variant
+        tile_stack.configure(world_height, stack, tile_meshes)
+        var layer_regions_variant: Variant = stack_info.get("layer_regions", {})
+        var layer_regions: Dictionary = {}
+        if typeof(layer_regions_variant) == TYPE_DICTIONARY:
+            layer_regions = layer_regions_variant
+        tile_entry["node"] = tile_stack
+        tile_entry["region"] = region
+        tile_entry["layer_regions"] = layer_regions
+        _tiles[axial] = tile_entry
+        var combined_base: float = max(_land_base_transparency, _get_region_transparency(region))
+        tile_stack.set_base_transparency(combined_base)
+        for layer_region in layer_regions.keys():
+            var mesh_region := String(layer_region)
+            var layer_transparency := _get_region_transparency(mesh_region)
+            var layer_ids_variant: Variant = layer_regions[mesh_region]
+            if typeof(layer_ids_variant) != TYPE_ARRAY:
                 continue
-            var mesh_region := String(layer_definition.get("mesh_region", region))
-            var mesh_map_variant: Variant = land_surfaces.get(mesh_region, {})
-            if typeof(mesh_map_variant) != TYPE_DICTIONARY:
-                continue
-            var mesh_map: Dictionary = mesh_map_variant
-            if mesh_map.is_empty():
-                continue
-            var layer_counts: Dictionary = {}
-            for entry_variant in hex_entries:
-                if typeof(entry_variant) != TYPE_DICTIONARY:
-                    continue
-                var entry: Dictionary = entry_variant
-                if _should_skip_layer_entry(region, layer_id, entry):
-                    continue
-                var axial := _coord_to_axial(entry.get("coord"))
-                var variant_key := _select_land_surface_variant(mesh_region, axial)
-                if variant_key.is_empty():
-                    continue
-                if not mesh_map.has(variant_key):
-                    continue
-                layer_counts[variant_key] = int(layer_counts.get(variant_key, 0)) + 1
-            region_counts[layer_id] = layer_counts
-        surface_counts[region] = region_counts
-    var surface_indices: Dictionary = {}
-    if typeof(land_surface_layers) == TYPE_DICTIONARY:
-        for region in land_surface_layers.keys():
-            var region_layers_variant: Variant = land_surface_layers[region]
-            if typeof(region_layers_variant) != TYPE_DICTIONARY:
-                continue
-            var region_layers: Dictionary = region_layers_variant
-            var region_counts_variant: Variant = surface_counts.get(region, {})
-            var region_counts: Dictionary = {}
-            if typeof(region_counts_variant) == TYPE_DICTIONARY:
-                region_counts = region_counts_variant
-            var layer_indices: Dictionary = {}
-            for layer_id in region_layers.keys():
-                var variant_layers_variant: Variant = region_layers[layer_id]
-                if typeof(variant_layers_variant) != TYPE_DICTIONARY:
-                    continue
-                var variant_layers: Dictionary = variant_layers_variant
-                var counts_variant: Variant = region_counts.get(layer_id, {})
-                var counts: Dictionary = {}
-                if typeof(counts_variant) == TYPE_DICTIONARY:
-                    counts = counts_variant
-                var variant_indices: Dictionary = {}
-                for variant_key in variant_layers.keys():
-                    var instance_variant: Variant = variant_layers[variant_key]
-                    if not (instance_variant is MultiMeshInstance3D):
-                        continue
-                    var surface_instance := instance_variant as MultiMeshInstance3D
-                    if surface_instance.multimesh == null:
-                        continue
-                    var target_count := int(counts.get(variant_key, 0))
-                    surface_instance.multimesh.instance_count = target_count
-                    variant_indices[variant_key] = 0
-                layer_indices[layer_id] = variant_indices
-            surface_indices[region] = layer_indices
-    var base_indices: Dictionary = {}
-    for region in ordered_land_regions:
-        var hex_entries: Array = grouped_hexes.get(region, [])
-        var base_instance_variant: Variant = land_base_layers.get(region)
-        var base_multimesh: MultiMesh = null
-        if base_instance_variant is MultiMeshInstance3D:
-            var base_instance := base_instance_variant as MultiMeshInstance3D
-            base_multimesh = base_instance.multimesh
-            if base_multimesh != null:
-                base_multimesh.instance_count = hex_entries.size()
-        var base_index := 0
-        var layer_definitions_variant: Variant = LAND_LAYER_STACK.get(region, [])
-        var layer_definitions: Array = []
-        if typeof(layer_definitions_variant) == TYPE_ARRAY:
-            layer_definitions = layer_definitions_variant
-        var layer_indices_variant: Variant = surface_indices.get(region, {})
-        var layer_indices: Dictionary = {}
-        if typeof(layer_indices_variant) == TYPE_DICTIONARY:
-            layer_indices = layer_indices_variant
-        for entry_variant in hex_entries:
-            if typeof(entry_variant) != TYPE_DICTIONARY:
-                continue
-            var entry: Dictionary = entry_variant
-            var axial := _coord_to_axial(entry.get("coord"))
-            var world_center := _axial_to_world(axial)
-            var world_height := _world_height_from_entry(entry)
-            if base_multimesh != null and base_index < base_multimesh.instance_count:
-                var base_transform := _make_land_base_transform(land_base_mesh, land_base_aabb, world_center, _land_grass_top, _land_grass_height)
-                base_multimesh.set_instance_transform(base_index, base_transform)
-                if land_base_mesh != null:
-                    var transformed_base := _transform_aabb(land_base_aabb, base_transform)
-                    var merged_base := _merge_bounds_with_aabb(min_pos, max_pos, has_positions, transformed_base)
-                    min_pos = merged_base.get("min", min_pos)
-                    max_pos = merged_base.get("max", max_pos)
-                    has_positions = bool(merged_base.get("has", has_positions))
-                else:
-                    var merged_base_point := _merge_bounds_with_point(min_pos, max_pos, has_positions, base_transform.origin)
-                    min_pos = merged_base_point.get("min", min_pos)
-                    max_pos = merged_base_point.get("max", max_pos)
-                    has_positions = bool(merged_base_point.get("has", has_positions))
-                base_index += 1
-            if layer_definitions.is_empty():
-                continue
-            var plain_top := _determine_plain_top(region, world_height, _land_grass_top)
-            var valley_top := _determine_valley_top(world_height, _land_grass_top)
-            for layer_definition_variant in layer_definitions:
-                if typeof(layer_definition_variant) != TYPE_DICTIONARY:
-                    continue
-                var layer_definition: Dictionary = layer_definition_variant
-                var layer_id := String(layer_definition.get("id", ""))
+            var layer_ids: Array = layer_ids_variant
+            for layer_id_variant in layer_ids:
+                var layer_id := String(layer_id_variant)
                 if layer_id.is_empty():
                     continue
-                if _should_skip_layer_entry(region, layer_id, entry):
-                    continue
-                var mesh_region := String(layer_definition.get("mesh_region", region))
-                var variant_key := _select_land_surface_variant(mesh_region, axial)
-                if variant_key.is_empty():
-                    continue
-                var region_layer_variant: Variant = land_surface_layers.get(region, {})
-                if typeof(region_layer_variant) != TYPE_DICTIONARY:
-                    continue
-                var region_layer_map: Dictionary = region_layer_variant
-                if not region_layer_map.has(layer_id):
-                    continue
-                var variant_layers_variant: Variant = region_layer_map.get(layer_id)
-                if typeof(variant_layers_variant) != TYPE_DICTIONARY:
-                    continue
-                var variant_layers: Dictionary = variant_layers_variant
-                if not variant_layers.has(variant_key):
-                    continue
-                var surface_instance_variant: Variant = variant_layers[variant_key]
-                if not (surface_instance_variant is MultiMeshInstance3D):
-                    continue
-                var surface_instance := surface_instance_variant as MultiMeshInstance3D
-                var surface_multimesh := surface_instance.multimesh
-                if surface_multimesh == null:
-                    continue
-                var variant_index_variant: Variant = layer_indices.get(layer_id, {})
-                var variant_index_map: Dictionary = {}
-                if typeof(variant_index_variant) == TYPE_DICTIONARY:
-                    variant_index_map = variant_index_variant
-                var variant_index := int(variant_index_map.get(variant_key, 0))
-                if variant_index >= surface_multimesh.instance_count:
-                    continue
-                var surface_mesh: Mesh = surface_multimesh.mesh
-                if surface_mesh == null:
-                    var mesh_map_variant: Variant = land_surfaces.get(mesh_region, {})
-                    if typeof(mesh_map_variant) == TYPE_DICTIONARY and mesh_map_variant.has(variant_key):
-                        var mapped_mesh_variant: Variant = mesh_map_variant[variant_key]
-                        if mapped_mesh_variant is Mesh:
-                            surface_mesh = mapped_mesh_variant
-                var top_height := world_height
-                var bottom_height := _land_grass_top
-                if layer_id == "plain":
-                    top_height = plain_top
-                    bottom_height = _land_grass_top
-                elif layer_id == "valley":
-                    top_height = valley_top
-                    bottom_height = _land_grass_top
-                elif layer_id == "hills" or layer_id == "mountains":
-                    bottom_height = plain_top
-                var surface_transform := _make_land_surface_transform(surface_mesh, world_center, top_height, bottom_height)
-                surface_multimesh.set_instance_transform(variant_index, surface_transform)
-                if surface_mesh != null:
-                    var surface_aabb := surface_mesh.get_aabb()
-                    var transformed_surface := _transform_aabb(surface_aabb, surface_transform)
-                    var merged_surface := _merge_bounds_with_aabb(min_pos, max_pos, has_positions, transformed_surface)
-                    min_pos = merged_surface.get("min", min_pos)
-                    max_pos = merged_surface.get("max", max_pos)
-                    has_positions = bool(merged_surface.get("has", has_positions))
-                else:
-                    var merged_surface_point := _merge_bounds_with_point(min_pos, max_pos, has_positions, surface_transform.origin)
-                    min_pos = merged_surface_point.get("min", min_pos)
-                    max_pos = merged_surface_point.get("max", max_pos)
-                    has_positions = bool(merged_surface_point.get("has", has_positions))
-                variant_index_map[variant_key] = variant_index + 1
-                layer_indices[layer_id] = variant_index_map
-            surface_indices[region] = layer_indices
-        base_indices[region] = base_index
-    for region in land_base_layers.keys():
-        var base_instance_variant: Variant = land_base_layers[region]
-        if not (base_instance_variant is MultiMeshInstance3D):
+                tile_stack.set_layer_transparency(layer_id, layer_transparency)
+        var tile_bounds: Dictionary = tile_stack.get_combined_aabb()
+        if typeof(tile_bounds) == TYPE_DICTIONARY and bool(tile_bounds.get("has", false)):
+            var aabb_variant: Variant = tile_bounds.get("aabb")
+            if typeof(aabb_variant) == TYPE_AABB:
+                var tile_aabb: AABB = aabb_variant
+                var merged := _merge_bounds_with_aabb(min_pos, max_pos, has_positions, tile_aabb)
+                min_pos = merged.get("min", min_pos)
+                max_pos = merged.get("max", max_pos)
+                has_positions = bool(merged.get("has", has_positions))
+    var tiles_to_remove: Array = []
+    for key in _tiles.keys():
+        if not seen_coords.has(key):
+            tiles_to_remove.append(key)
+    for key in tiles_to_remove:
+        var tile_entry_variant: Variant = _tiles[key]
+        if typeof(tile_entry_variant) == TYPE_DICTIONARY:
+            var node_variant: Variant = tile_entry_variant.get("node")
+            if node_variant is Node3D:
+                var node := node_variant as Node3D
+                if is_instance_valid(node):
+                    node.queue_free()
+        _tiles.erase(key)
+    for region in _water_layers.keys():
+        var instance_variant: Variant = _water_layers[region]
+        if not (instance_variant is MultiMeshInstance3D):
             continue
-        var base_instance := base_instance_variant as MultiMeshInstance3D
-        if base_instance.multimesh == null:
-            continue
-        var final_count_variant: Variant = base_indices.get(region, 0)
-        base_instance.multimesh.instance_count = int(final_count_variant)
-    for region in surface_indices.keys():
-        var region_layers_variant: Variant = land_surface_layers.get(region, {})
-        if typeof(region_layers_variant) != TYPE_DICTIONARY:
-            continue
-        var region_layers: Dictionary = region_layers_variant
-        var layer_indices_variant: Variant = surface_indices.get(region, {})
-        if typeof(layer_indices_variant) != TYPE_DICTIONARY:
-            continue
-        var layer_indices: Dictionary = layer_indices_variant
-        for layer_id in layer_indices.keys():
-            if not region_layers.has(layer_id):
+        var instance := instance_variant as MultiMeshInstance3D
+        if instance.multimesh == null:
+            instance.multimesh = MultiMesh.new()
+            instance.multimesh.transform_format = MultiMesh.TRANSFORM_3D
+            var mesh_variant: Variant = water_meshes.get(region)
+            if mesh_variant is Mesh:
+                instance.multimesh.mesh = mesh_variant
+        var transforms_variant: Variant = water_transforms.get(region, [])
+        var transforms: Array = []
+        if typeof(transforms_variant) == TYPE_ARRAY:
+            transforms = transforms_variant
+        var multimesh := instance.multimesh
+        multimesh.instance_count = transforms.size()
+        var water_mesh: Mesh = multimesh.mesh
+        for index in range(transforms.size()):
+            var transform_variant: Variant = transforms[index]
+            if typeof(transform_variant) != TYPE_TRANSFORM3D:
                 continue
-            var variant_layers_variant: Variant = region_layers.get(layer_id)
-            if typeof(variant_layers_variant) != TYPE_DICTIONARY:
-                continue
-            var variant_layers: Dictionary = variant_layers_variant
-            var variant_index_variant: Variant = layer_indices.get(layer_id, {})
-            if typeof(variant_index_variant) != TYPE_DICTIONARY:
-                continue
-            var variant_index_map: Dictionary = variant_index_variant
-            for variant_key in variant_index_map.keys():
-                if not variant_layers.has(variant_key):
-                    continue
-                var surface_instance_variant: Variant = variant_layers[variant_key]
-                if not (surface_instance_variant is MultiMeshInstance3D):
-                    continue
-                var surface_instance := surface_instance_variant as MultiMeshInstance3D
-                if surface_instance.multimesh == null:
-                    continue
-                surface_instance.multimesh.instance_count = int(variant_index_map.get(variant_key, 0))
-    if _region_layers.has("water") and typeof(_region_layers["water"]) == TYPE_DICTIONARY:
-        var water_layers_variant: Variant = _region_layers.get("water")
-        if typeof(water_layers_variant) == TYPE_DICTIONARY:
-            var water_layers: Dictionary = water_layers_variant
-            for region in water_layers.keys():
-                var water_instance: MultiMeshInstance3D = water_layers[region]
-                if water_instance == null or water_instance.multimesh == null:
-                    continue
-                var hex_entries: Array = grouped_hexes.get(region, [])
-                var water_multimesh := water_instance.multimesh
-                water_multimesh.instance_count = hex_entries.size()
-                var water_mesh: Mesh = water_multimesh.mesh
-                var index: int = 0
-                for entry_variant in hex_entries:
-                    if typeof(entry_variant) != TYPE_DICTIONARY:
-                        continue
-                    var entry: Dictionary = entry_variant
-                    var axial := _coord_to_axial(entry.get("coord"))
-                    var world_position := _axial_to_world(axial)
-                    var water_transform := Transform3D(Basis.IDENTITY, world_position)
-                    if index < water_multimesh.instance_count:
-                        water_multimesh.set_instance_transform(index, water_transform)
-                        if water_mesh != null:
-                            var water_aabb := water_mesh.get_aabb()
-                            var transformed_water := _transform_aabb(water_aabb, water_transform)
-                            var merged_water := _merge_bounds_with_aabb(min_pos, max_pos, has_positions, transformed_water)
-                            min_pos = merged_water.get("min", min_pos)
-                            max_pos = merged_water.get("max", max_pos)
-                            has_positions = bool(merged_water.get("has", has_positions))
-                        else:
-                            var merged_water_point := _merge_bounds_with_point(min_pos, max_pos, has_positions, world_position)
-                            min_pos = merged_water_point.get("min", min_pos)
-                            max_pos = merged_water_point.get("max", max_pos)
-                            has_positions = bool(merged_water_point.get("has", has_positions))
-                        index += 1
-                water_multimesh.instance_count = index
+            var transform: Transform3D = transform_variant
+            multimesh.set_instance_transform(index, transform)
+            if water_mesh != null:
+                var water_aabb := water_mesh.get_aabb()
+                var transformed_water := _transform_aabb(water_aabb, transform)
+                var merged_water := _merge_bounds_with_aabb(min_pos, max_pos, has_positions, transformed_water)
+                min_pos = merged_water.get("min", min_pos)
+                max_pos = merged_water.get("max", max_pos)
+                has_positions = bool(merged_water.get("has", has_positions))
+            else:
+                var merged_water_point := _merge_bounds_with_point(min_pos, max_pos, has_positions, transform.origin)
+                min_pos = merged_water_point.get("min", min_pos)
+                max_pos = merged_water_point.get("max", max_pos)
+                has_positions = bool(merged_water_point.get("has", has_positions))
     if has_positions:
         _map_bounds = {
             "min": min_pos,
@@ -1132,6 +892,60 @@ func _determine_valley_top(world_height: float, grass_top: float) -> float:
     var min_top := grass_top + LAND_LAYER_MIN_THICKNESS
     return max(world_height, min_top)
 
+func _build_land_stack(region: String, entry: Dictionary, axial: Vector2i, world_height: float, plain_top: float, valley_top: float) -> Dictionary:
+    var stack: Array = []
+    var layer_regions: Dictionary = {}
+    var layer_definitions_variant: Variant = LAND_LAYER_STACK.get(region, [])
+    if typeof(layer_definitions_variant) != TYPE_ARRAY:
+        return {
+            "stack": stack,
+            "layer_regions": layer_regions,
+        }
+    var layer_definitions: Array = layer_definitions_variant
+    for layer_definition_variant in layer_definitions:
+        if typeof(layer_definition_variant) != TYPE_DICTIONARY:
+            continue
+        var layer_definition: Dictionary = layer_definition_variant
+        var layer_id := String(layer_definition.get("id", ""))
+        if layer_id.is_empty():
+            continue
+        if _should_skip_layer_entry(region, layer_id, entry):
+            continue
+        var mesh_region := String(layer_definition.get("mesh_region", region))
+        var variant_key := _select_land_surface_variant(mesh_region, axial)
+        if variant_key.is_empty():
+            continue
+        var top_height := world_height
+        var bottom_height := _land_grass_top
+        if layer_id == "plain":
+            top_height = plain_top
+            bottom_height = _land_grass_top
+        elif layer_id == "valley":
+            top_height = valley_top
+            bottom_height = _land_grass_top
+        elif layer_id == "hills" or layer_id == "mountains":
+            top_height = world_height
+            bottom_height = plain_top
+        var layer_entry := {
+            "id": layer_id,
+            "mesh_region": mesh_region,
+            "variant": variant_key,
+            "top": top_height,
+            "bottom": bottom_height,
+        }
+        stack.append(layer_entry)
+        var layer_list_variant: Variant = layer_regions.get(mesh_region, [])
+        var layer_list: Array = []
+        if typeof(layer_list_variant) == TYPE_ARRAY:
+            layer_list = layer_list_variant
+        if not layer_list.has(layer_id):
+            layer_list.append(layer_id)
+        layer_regions[mesh_region] = layer_list
+    return {
+        "stack": stack,
+        "layer_regions": layer_regions,
+    }
+
 func _should_skip_layer_entry(_region: String, layer_id: String, entry: Dictionary) -> bool:
     var mask := int(entry.get("river_mask", 0))
     var has_river := mask != 0 or bool(entry.get("is_mouth", false))
@@ -1140,68 +954,6 @@ func _should_skip_layer_entry(_region: String, layer_id: String, entry: Dictiona
     if layer_id == "plain" and has_river:
         return true
     return false
-
-func _make_land_base_transform(base_mesh: Mesh, base_aabb: AABB, world_center: Vector3, world_height: float, base_height: float) -> Transform3D:
-    var origin := Vector3(world_center.x, world_height, world_center.z)
-    var basis := Basis.IDENTITY
-    if base_mesh == null:
-        basis = basis.scaled(Vector3(1.0, base_height, 1.0))
-        return Transform3D(basis, origin)
-    var min_y: float = base_aabb.position.y
-    var height: float = base_aabb.size.y
-    var max_y: float = min_y + height
-    var safe_height: float = max(height, LAND_SURFACE_PIVOT_EPSILON)
-    var y_scale: float = base_height / safe_height
-    basis = basis.scaled(Vector3(1.0, y_scale, 1.0))
-    origin.y = world_height - max_y * y_scale
-    return Transform3D(basis, origin)
-
-func _make_land_surface_transform(surface_mesh: Mesh, world_center: Vector3, layer_top: float, layer_bottom: float) -> Transform3D:
-    var top_height := layer_top
-    var bottom_height := layer_bottom
-    if top_height < bottom_height:
-        var swap := top_height
-        top_height = bottom_height
-        bottom_height = swap
-    var desired_height := top_height - bottom_height
-    if desired_height < 0.0:
-        desired_height = 0.0
-    var origin := Vector3(world_center.x, bottom_height, world_center.z)
-    var basis := Basis.IDENTITY
-    if surface_mesh == null:
-        if desired_height <= LAND_SURFACE_PIVOT_EPSILON:
-            return Transform3D(basis, origin)
-        basis = basis.scaled(Vector3(1.0, desired_height, 1.0))
-        return Transform3D(basis, origin)
-    var surface_aabb := surface_mesh.get_aabb()
-    var min_y: float = surface_aabb.position.y
-    var height: float = surface_aabb.size.y
-    var max_y: float = min_y + height
-    if max_y <= LAND_SURFACE_PIVOT_EPSILON:
-        if is_zero_approx(height):
-            origin.y = bottom_height - min_y
-            return Transform3D(basis, origin)
-        var y_scale_below: float = 0.0
-        if desired_height > LAND_SURFACE_PIVOT_EPSILON:
-            y_scale_below = desired_height / height
-        basis = basis.scaled(Vector3(1.0, y_scale_below, 1.0))
-        origin.y = bottom_height - min_y * y_scale_below
-        return Transform3D(basis, origin)
-    var span: float = max_y - min_y
-    if span <= LAND_SURFACE_PIVOT_EPSILON or desired_height <= LAND_SURFACE_PIVOT_EPSILON:
-        origin.y = bottom_height - min_y
-        return Transform3D(basis, origin)
-    var y_scale: float = desired_height / span
-    basis = basis.scaled(Vector3(1.0, y_scale, 1.0))
-    var scaled_min_y := min_y * y_scale
-    var scaled_max_y := max_y * y_scale
-    var origin_from_bottom := bottom_height - scaled_min_y
-    var origin_from_top := top_height - scaled_max_y
-    var aligned_origin_y := origin_from_bottom
-    if abs(origin_from_top - origin_from_bottom) > LAND_SURFACE_PIVOT_EPSILON:
-        aligned_origin_y = (origin_from_bottom + origin_from_top) * 0.5
-    origin.y = aligned_origin_y
-    return Transform3D(basis, origin)
 
 func _select_land_surface_variant(mesh_region: String, axial: Vector2i) -> String:
     var variant_list: Array = []
