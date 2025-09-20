@@ -54,6 +54,11 @@ script_classes=[{
 "class": "MapViewRegion",
 "language": "GDScript",
 "path": "res://mapview/Region.gd"
+}, {
+"base": "Node3D",
+"class": "HexTileStack",
+"language": "GDScript",
+"path": "res://ui/map_view/HexTileStack.gd"
 }]
 script_class_icons={}
 

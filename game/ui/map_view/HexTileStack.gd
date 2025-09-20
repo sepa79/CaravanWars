@@ -3,60 +3,78 @@ class_name HexTileStack
 
 const SURFACE_PIVOT_EPSILON: float = 0.0001
 
-var _base_instance: MeshInstance3D
-var _layer_nodes: Dictionary = {}
-var _base_transparency: float = 0.0
-var _layer_transparency: Dictionary = {}
-var _cached_stack: Array = []
+class TileLayer:
+    var id: String
+    var mesh_region: String
+    var variant: String
+    var top: float
+    var bottom: float
 
-func configure(elev: float, stack: Array, meshes: Dictionary) -> void:
-    var base_mesh: Mesh = null
-    var base_mesh_variant: Variant = meshes.get("base")
-    if base_mesh_variant is Mesh:
-        base_mesh = base_mesh_variant as Mesh
+    func _init(id: String = "", mesh_region: String = "", variant: String = "", top: float = 0.0, bottom: float = 0.0) -> void:
+        self.id = id
+        self.mesh_region = mesh_region
+        self.variant = variant
+        self.top = top
+        self.bottom = bottom
+
+class MeshBundle:
+    var base_mesh: Mesh
+    var grass_top: float
+    var grass_height: float
+    var surfaces: Dictionary
+
+    func _init(base_mesh: Mesh = null, grass_top: float = 0.0, grass_height: float = 0.0, surfaces: Dictionary = {}) -> void:
+        self.base_mesh = base_mesh
+        self.grass_top = grass_top
+        self.grass_height = grass_height
+        self.surfaces = surfaces
+
+    func get_surface_mesh(mesh_region: String, variant_key: String) -> Mesh:
+        if surfaces.is_empty() or not surfaces.has(mesh_region):
+            return null
+        var region_meshes: Dictionary = surfaces[mesh_region]
+        if not variant_key.is_empty() and region_meshes.has(variant_key):
+            return region_meshes[variant_key]
+        for mesh in region_meshes.values():
+            return mesh
+        return null
+
+var _base_instance: MeshInstance3D
+var _layer_nodes: Dictionary[String, MeshInstance3D] = {}
+var _base_transparency: float = 0.0
+var _layer_transparency: Dictionary[String, float] = {}
+var _cached_stack: Array[TileLayer] = []
+
+func configure(elev: float, stack: Array[TileLayer], meshes: MeshBundle) -> void:
     var base_instance := _ensure_base_instance()
-    base_instance.mesh = base_mesh
-    base_instance.visible = base_mesh != null
-    var grass_top := float(meshes.get("grass_top", elev))
-    var grass_height := float(meshes.get("grass_height", 0.0))
-    if grass_height < 0.0:
-        grass_height = 0.0
+    base_instance.mesh = meshes.base_mesh
+    base_instance.visible = meshes.base_mesh != null
     var base_aabb := AABB()
-    if base_mesh != null:
-        base_aabb = base_mesh.get_aabb()
-    var base_transform := _make_base_transform(base_mesh, base_aabb, grass_top, grass_height)
+    if meshes.base_mesh != null:
+        base_aabb = meshes.base_mesh.get_aabb()
+    var base_transform := _make_base_transform(meshes.base_mesh, base_aabb, meshes.grass_top, meshes.grass_height)
     base_instance.transform = base_transform
     base_instance.transparency = clampf(_base_transparency, 0.0, 1.0)
-    var surfaces_variant: Variant = meshes.get("surfaces")
-    var surface_meshes: Dictionary = {}
-    if typeof(surfaces_variant) == TYPE_DICTIONARY:
-        surface_meshes = surfaces_variant
-    var retained_layers: Dictionary = {}
-    for layer_variant in stack:
-        if typeof(layer_variant) != TYPE_DICTIONARY:
+    var retained_layers: Dictionary[String, bool] = {}
+    _cached_stack.clear()
+    for layer in stack:
+        if layer == null:
             continue
-        var layer_data: Dictionary = layer_variant
-        var layer_id := String(layer_data.get("id", ""))
-        if layer_id.is_empty():
-            continue
-        var mesh_region := String(layer_data.get("mesh_region", ""))
-        var variant_key := String(layer_data.get("variant", ""))
-        var layer_top := float(layer_data.get("top", elev))
-        var layer_bottom := float(layer_data.get("bottom", layer_top))
-        var surface_mesh := _resolve_surface_mesh(surface_meshes, mesh_region, variant_key)
-        var layer_instance := _ensure_layer_instance(layer_id)
+        _cached_stack.append(layer)
+        var layer_instance := _ensure_layer_instance(layer.id)
+        var surface_mesh := meshes.get_surface_mesh(layer.mesh_region, layer.variant)
         layer_instance.mesh = surface_mesh
         if surface_mesh != null:
-            layer_instance.transform = _make_surface_transform(surface_mesh, layer_top, layer_bottom)
+            layer_instance.transform = _make_surface_transform(surface_mesh, layer.top, layer.bottom)
             layer_instance.visible = true
         else:
             layer_instance.transform = Transform3D.IDENTITY
             layer_instance.visible = false
-        var transparency := clampf(float(_layer_transparency.get(layer_id, 0.0)), 0.0, 1.0)
+        var stored_transparency: float = _layer_transparency.get(layer.id, 0.0)
+        var transparency := clampf(stored_transparency, 0.0, 1.0)
         layer_instance.transparency = transparency
-        retained_layers[layer_id] = true
+        retained_layers[layer.id] = true
     _hide_unused_layers(retained_layers)
-    _cached_stack = stack.duplicate()
 
 func set_base_transparency(value: float) -> void:
     _base_transparency = clampf(value, 0.0, 1.0)
@@ -67,9 +85,7 @@ func set_layer_transparency(layer_id: String, value: float) -> void:
     var clamped := clampf(value, 0.0, 1.0)
     _layer_transparency[layer_id] = clamped
     if _layer_nodes.has(layer_id):
-        var instance_variant: Variant = _layer_nodes[layer_id]
-        if instance_variant is MeshInstance3D:
-            (instance_variant as MeshInstance3D).transparency = clamped
+        _layer_nodes[layer_id].transparency = clamped
 
 func get_combined_aabb() -> Dictionary:
     var has_bounds := false
@@ -80,14 +96,10 @@ func get_combined_aabb() -> Dictionary:
         var transformed_base := _transform_aabb(base_aabb, root_transform * _base_instance.transform)
         combined = transformed_base
         has_bounds = true
-    for key in _layer_nodes.keys():
-        var instance_variant: Variant = _layer_nodes[key]
-        if not (instance_variant is MeshInstance3D):
+    for mesh_instance in _layer_nodes.values():
+        if mesh_instance == null or mesh_instance.mesh == null or not mesh_instance.visible:
             continue
-        var mesh_instance := instance_variant as MeshInstance3D
-        if mesh_instance.mesh == null or not mesh_instance.visible:
-            continue
-        var mesh_aabb := mesh_instance.mesh.get_aabb()
+        var mesh_aabb: AABB = mesh_instance.mesh.get_aabb()
         var transformed := _transform_aabb(mesh_aabb, root_transform * mesh_instance.transform)
         if not has_bounds:
             combined = transformed
@@ -108,39 +120,22 @@ func _ensure_base_instance() -> MeshInstance3D:
 
 func _ensure_layer_instance(layer_id: String) -> MeshInstance3D:
     if _layer_nodes.has(layer_id):
-        var existing_variant: Variant = _layer_nodes[layer_id]
-        if existing_variant is MeshInstance3D:
-            return existing_variant as MeshInstance3D
+        return _layer_nodes[layer_id]
     var instance := MeshInstance3D.new()
     instance.name = "%sLayer" % layer_id.capitalize()
     add_child(instance)
     _layer_nodes[layer_id] = instance
     return instance
 
-func _hide_unused_layers(retained: Dictionary) -> void:
+func _hide_unused_layers(retained: Dictionary[String, bool]) -> void:
     for key in _layer_nodes.keys():
         if retained.has(key):
             continue
-        var instance_variant: Variant = _layer_nodes[key]
-        if not (instance_variant is MeshInstance3D):
+        var mesh_instance := _layer_nodes[key]
+        if mesh_instance == null:
             continue
-        var mesh_instance := instance_variant as MeshInstance3D
         mesh_instance.visible = false
         mesh_instance.mesh = null
-
-func _resolve_surface_mesh(surface_meshes: Dictionary, mesh_region: String, variant_key: String) -> Mesh:
-    var region_variant: Variant = surface_meshes.get(mesh_region)
-    if typeof(region_variant) != TYPE_DICTIONARY:
-        return null
-    var region_meshes: Dictionary = region_variant
-    if not variant_key.is_empty() and region_meshes.has(variant_key):
-        var mesh_variant: Variant = region_meshes[variant_key]
-        if mesh_variant is Mesh:
-            return mesh_variant as Mesh
-    for value in region_meshes.values():
-        if value is Mesh:
-            return value as Mesh
-    return null
 
 func _make_base_transform(base_mesh: Mesh, base_aabb: AABB, grass_top: float, grass_height: float) -> Transform3D:
     var origin := Vector3(0.0, grass_top, 0.0)

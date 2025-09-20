@@ -11,6 +11,7 @@ Changed
 - Map preview terrain now reuses a shared land base prism, scales per-hex elevation for surface placement, and deterministically cycles hill and mountain variants by coordinate.
 - Map preview now anchors the grass base to half a sea tile below the waterline, stacks plains, hills, and mountains as layered pieces, and aligns rivers atop the exposed grass instead of intersecting surface meshes.
 - Map preview instantiates dedicated HexTileStack nodes per hex so layered land meshes replace shared MultiMeshes and respond directly to legend transparency controls.
+- Map preview sanitizes hex metadata into typed HexTileStack entries so tile and river refreshes no longer perform per-call Variant guards while updating transparency and meshes.
 - Map setup legend entries are now toggle buttons that dim or restore their terrain type in the 3D preview instead of being passive labels.
 - Map setup legend now includes a grass background toggle, taller buttons, and a minimum panel height so the controls stay legible next to the preview.
 Fixed
