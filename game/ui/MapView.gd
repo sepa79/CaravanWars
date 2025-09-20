@@ -1176,14 +1176,31 @@ func _make_land_surface_transform(surface_mesh: Mesh, world_center: Vector3, lay
     var surface_aabb := surface_mesh.get_aabb()
     var min_y: float = surface_aabb.position.y
     var height: float = surface_aabb.size.y
-    if is_zero_approx(height):
+    var max_y: float = min_y + height
+    if max_y <= LAND_SURFACE_PIVOT_EPSILON:
+        if is_zero_approx(height):
+            origin.y = bottom_height - min_y
+            return Transform3D(basis, origin)
+        var y_scale_below: float = 0.0
+        if desired_height > LAND_SURFACE_PIVOT_EPSILON:
+            y_scale_below = desired_height / height
+        basis = basis.scaled(Vector3(1.0, y_scale_below, 1.0))
+        origin.y = bottom_height - min_y * y_scale_below
+        return Transform3D(basis, origin)
+    var span: float = max_y - min_y
+    if span <= LAND_SURFACE_PIVOT_EPSILON or desired_height <= LAND_SURFACE_PIVOT_EPSILON:
         origin.y = bottom_height - min_y
         return Transform3D(basis, origin)
-    var y_scale: float = 0.0
-    if desired_height > 0.0:
-        y_scale = desired_height / height
+    var y_scale: float = desired_height / span
     basis = basis.scaled(Vector3(1.0, y_scale, 1.0))
-    origin.y = bottom_height - min_y * y_scale
+    var scaled_min_y := min_y * y_scale
+    var scaled_max_y := max_y * y_scale
+    var origin_from_bottom := bottom_height - scaled_min_y
+    var origin_from_top := top_height - scaled_max_y
+    var aligned_origin_y := origin_from_bottom
+    if abs(origin_from_top - origin_from_bottom) > LAND_SURFACE_PIVOT_EPSILON:
+        aligned_origin_y = (origin_from_bottom + origin_from_top) * 0.5
+    origin.y = aligned_origin_y
     return Transform3D(basis, origin)
 
 func _select_land_surface_variant(mesh_region: String, axial: Vector2i) -> String:
