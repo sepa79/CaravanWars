@@ -1,8 +1,11 @@
 Changelog
 
 Unreleased
-- Restarted the hex map generator work with a stubbed pipeline triggered when singleplayer begins.
-  The new implementation uses the default seed and configuration.
+- Nothing yet.
+
+0.2.2 — 2025-09-20
+- Restarted the hex map generator work with a stubbed pipeline triggered when singleplayer or host setup begins, producing a typed `MapData` dataset immediately.
+- Asset catalog entries now resolve to concrete `res://` scene files so Phase 1 draw stacks carry loadable resources into the game scene.
 
 0.2.0 — 2025-09-19
 - Delivered the second proof of concept focusing on the map setup UI and preview experience.
