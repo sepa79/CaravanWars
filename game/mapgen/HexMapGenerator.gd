@@ -11,6 +11,7 @@ const PHASE_FORTS := StringName("forts")
 
 const MAP_DATA_SCRIPT := preload("res://mapgen/data/MapData.gd")
 const TerrainPhaseScript := preload("res://mapgen/phase1/TerrainPhase.gd")
+const DebugBoardScript := preload("res://mapgen/phase1/DebugBoard.gd")
 
 const PHASE_SEQUENCE: Array[StringName] = [
     PHASE_TERRAIN,
@@ -27,6 +28,10 @@ var data_builder: HexMapData
 var phase_handlers: Dictionary = {}
 var _builtin_handlers: Dictionary = {}
 var _terrain_phase: RefCounted
+var debug_board_enabled: bool = false
+
+var _debug_board_builder: RefCounted
+var _debug_board_seed_override: int = 0
 
 func _init(p_config: HexMapConfig = HexMapConfig.new()) -> void:
     config = p_config.duplicate_config()
@@ -38,8 +43,12 @@ func _init(p_config: HexMapConfig = HexMapConfig.new()) -> void:
     if TerrainPhaseScript != null:
         _terrain_phase = TerrainPhaseScript.new(config, data_builder)
         _builtin_handlers[PHASE_TERRAIN] = Callable(_terrain_phase, "run")
+    if DebugBoardScript != null:
+        _debug_board_builder = DebugBoardScript.new(config, data_builder)
 
 func generate() -> MapData:
+    if debug_board_enabled and _debug_board_builder != null:
+        return _debug_board_builder.build(_get_debug_board_seed())
     var dataset: MapData = data_builder.prepare_for_generation()
     print("[HexMapGenerator] Generating map using seed %d (size=%dx%d, kingdoms=%d)" % [
         dataset.map_seed,
@@ -71,6 +80,27 @@ func clear_phase_handler(phase: StringName) -> void:
 func get_map_data() -> MapData:
     return data_builder.get_map_data()
 
+func set_debug_board_enabled(enabled: bool, seed: int = 0) -> void:
+    debug_board_enabled = enabled
+    if seed != 0:
+        _debug_board_seed_override = seed
+
+func is_debug_board_enabled() -> bool:
+    return debug_board_enabled
+
+func set_debug_board_seed(seed: int) -> void:
+    _debug_board_seed_override = seed
+
+func get_debug_board_seed() -> int:
+    return _get_debug_board_seed()
+
+func generate_debug_board(seed: int = 0) -> MapData:
+    if _debug_board_builder == null:
+        push_warning("[HexMapGenerator] Debug board script unavailable, returning empty map data")
+        return data_builder.prepare_for_generation()
+    var target_seed: int = seed if seed != 0 else _get_debug_board_seed()
+    return _debug_board_builder.build(target_seed)
+
 func _invoke_handler(handler: Callable, dataset: MapData, phase: StringName) -> void:
     var arg_count := _determine_handler_argument_count(handler)
     match arg_count:
@@ -80,6 +110,11 @@ func _invoke_handler(handler: Callable, dataset: MapData, phase: StringName) -> 
             handler.call(dataset)
         _:
             handler.call(dataset, phase)
+
+func _get_debug_board_seed() -> int:
+    if _debug_board_seed_override != 0:
+        return _debug_board_seed_override
+    return config.map_seed
 
 func _determine_handler_argument_count(handler: Callable) -> int:
     var target := handler.get_object()
