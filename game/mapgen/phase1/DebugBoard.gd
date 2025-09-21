@@ -13,11 +13,11 @@ func _init(p_config: HexMapConfig, p_data_builder: HexMapData) -> void:
     config = p_config
     data_builder = p_data_builder
 
-func build(seed: int) -> MapData:
+func build(board_seed: int) -> MapData:
     var catalog: AssetCatalog = data_builder.asset_catalog
     if catalog == null:
         catalog = AssetCatalogScript.new()
-    var final_seed: int = seed if seed != 0 else config.map_seed
+    var final_seed: int = board_seed if board_seed != 0 else config.map_seed
     var terrains: Array[StringName] = AssetCatalogScript.ALL_TERRAINS.duplicate()
     var variants: Array[StringName] = TileScript.ALL_VARIANTS.duplicate()
     var tree_states: Array[bool] = [false, true]

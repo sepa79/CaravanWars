@@ -58,10 +58,10 @@ func generate() -> MapData:
     ])
     for phase in PHASE_SEQUENCE:
         var builtin_handler: Callable = _builtin_handlers.get(phase, Callable())
-        if builtin_handler != Callable():
+        if builtin_handler.is_valid():
             _invoke_handler(builtin_handler, dataset, phase)
         var handler: Callable = phase_handlers.get(phase, Callable())
-        if handler != Callable():
+        if handler.is_valid():
             _invoke_handler(handler, dataset, phase)
     return dataset
 
@@ -80,25 +80,25 @@ func clear_phase_handler(phase: StringName) -> void:
 func get_map_data() -> MapData:
     return data_builder.get_map_data()
 
-func set_debug_board_enabled(enabled: bool, seed: int = 0) -> void:
+func set_debug_board_enabled(enabled: bool, board_seed: int = 0) -> void:
     debug_board_enabled = enabled
-    if seed != 0:
-        _debug_board_seed_override = seed
+    if board_seed != 0:
+        _debug_board_seed_override = board_seed
 
 func is_debug_board_enabled() -> bool:
     return debug_board_enabled
 
-func set_debug_board_seed(seed: int) -> void:
-    _debug_board_seed_override = seed
+func set_debug_board_seed(board_seed: int) -> void:
+    _debug_board_seed_override = board_seed
 
 func get_debug_board_seed() -> int:
     return _get_debug_board_seed()
 
-func generate_debug_board(seed: int = 0) -> MapData:
+func generate_debug_board(board_seed: int = 0) -> MapData:
     if _debug_board_builder == null:
         push_warning("[HexMapGenerator] Debug board script unavailable, returning empty map data")
         return data_builder.prepare_for_generation()
-    var target_seed: int = seed if seed != 0 else _get_debug_board_seed()
+    var target_seed: int = board_seed if board_seed != 0 else _get_debug_board_seed()
     return _debug_board_builder.build(target_seed)
 
 func _invoke_handler(handler: Callable, dataset: MapData, phase: StringName) -> void:

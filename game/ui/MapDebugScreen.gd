@@ -158,24 +158,24 @@ func _update_texts() -> void:
     if _back_button != null:
         _back_button.text = I18N.t("menu.back")
 
-func _on_seed_value_changed(value: float) -> void:
+func _on_seed_value_changed(_value: float) -> void:
     if _is_setting_seed:
         return
     _regenerate_map()
 
 func _on_random_seed_pressed() -> void:
-    var new_seed := int(_rng.randi_range(1, 999_999_999))
-    _set_seed_value(new_seed)
+    var random_seed_value := int(_rng.randi_range(1, 999_999_999))
+    _set_seed_value(random_seed_value)
     _regenerate_map()
 
 func _on_generate_pressed() -> void:
     _regenerate_map()
 
-func _set_seed_value(seed: int) -> void:
+func _set_seed_value(board_seed: int) -> void:
     if _seed_spinbox == null:
         return
     _is_setting_seed = true
-    _seed_spinbox.value = float(max(1, seed))
+    _seed_spinbox.value = float(max(1, board_seed))
     _is_setting_seed = false
 
 func _regenerate_map() -> void:
