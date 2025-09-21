@@ -467,7 +467,8 @@ func _unhandled_input(event: InputEvent) -> void:
             _rotating_camera = false
 
 func _is_pointer_over_viewport(pointer_position: Vector2) -> bool:
-    return get_global_rect().has_point(pointer_position)
+    var local_rect := Rect2(Vector2.ZERO, size)
+    return local_rect.has_point(pointer_position)
 
 func _apply_zoom_step(direction: float) -> void:
     var multiplier: float = 1.0

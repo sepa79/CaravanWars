@@ -3,6 +3,8 @@ Changelog
 Unreleased
 - Added orbit-style mouse controls to the debug map viewer so artists can pan, rotate, tilt, and zoom the preview.
 - Added a map debugger entry to the main menu that opens a dedicated screen for the deterministic debug board showcase.
+- Fixed the debug map viewport hit testing so orbit camera controls respond inside the resized debugger layout.
+- Set the default window size to 1920x1080 and allowed resizing to match common desktop workflows.
 
 0.2.2 — 2025-09-20
 - Restarted the hex map generator work with a stubbed pipeline triggered when singleplayer or host setup begins, producing a typed `MapData` dataset immediately.
