@@ -14,6 +14,16 @@ const CAMERA_MIN_DISTANCE: float = 6.0
 const CAMERA_MIN_ALTITUDE: float = 8.0
 const CAMERA_DISTANCE_SCALE: float = 0.9
 const CAMERA_ALTITUDE_SCALE: float = 0.6
+const CAMERA_MIN_PITCH: float = deg_to_rad(20.0)
+const CAMERA_MAX_PITCH: float = deg_to_rad(80.0)
+const CAMERA_BASE_YAW: float = deg_to_rad(45.0)
+const CAMERA_DISTANCE_MIN_FACTOR: float = 0.35
+const CAMERA_DISTANCE_MAX_FACTOR: float = 4.0
+const CAMERA_ROTATE_SPEED: float = 0.01
+const CAMERA_TILT_SPEED: float = 0.01
+const CAMERA_PAN_SPEED: float = 0.015
+const CAMERA_ZOOM_STEP: float = 0.12
+const SQRT_TWO: float = sqrt(2.0)
 const LIGHT_ROTATION := Vector3(-55.0, -45.0, 0.0)
 const LIGHT_ENERGY: float = 1.35
 const AMBIENT_COLOR := Color(0.65, 0.7, 0.8)
@@ -66,8 +76,20 @@ var _camera: Camera3D
 var _directional_light: DirectionalLight3D
 var _environment_node: WorldEnvironment
 var _scene_cache: Dictionary = {}
+var _camera_target: Vector3 = Vector3.ZERO
+var _camera_distance: float = 12.0
+var _camera_base_distance: float = 12.0
+var _camera_min_distance: float = 2.0
+var _camera_max_distance: float = 120.0
+var _camera_yaw: float = CAMERA_BASE_YAW
+var _camera_pitch: float = deg_to_rad(45.0)
+var _camera_pan_scale: float = 1.0
+var _camera_user_override: bool = false
+var _panning_camera: bool = false
+var _rotating_camera: bool = false
 
 func _ready() -> void:
+    mouse_filter = Control.MOUSE_FILTER_STOP
     _ensure_viewport_nodes()
     _ensure_environment()
     _ensure_camera()
@@ -80,6 +102,9 @@ func set_map_data(data: Dictionary) -> void:
     _load_terrain_settings_from_data(map_data)
     _cache_river_entries()
     _rebuild_assets()
+    _camera_user_override = false
+    _panning_camera = false
+    _rotating_camera = false
     _rebuild_map()
     cities_changed.emit([])
 
@@ -360,10 +385,115 @@ func _should_render_layer(layer_dict: Dictionary) -> bool:
 func _update_camera_focus(center: Vector3, extent: float) -> void:
     if _camera == null:
         return
-    var horizontal_distance: float = max(extent * CAMERA_DISTANCE_SCALE, CAMERA_MIN_DISTANCE)
+    var horizontal_span: float = max(extent * CAMERA_DISTANCE_SCALE, CAMERA_MIN_DISTANCE)
     var altitude: float = max(extent * CAMERA_ALTITUDE_SCALE, CAMERA_MIN_ALTITUDE)
-    var new_position := center + Vector3(horizontal_distance, altitude, horizontal_distance)
-    _camera.look_at_from_position(new_position, center, Vector3.UP)
+    var plane_distance: float = horizontal_span * SQRT_TWO
+    var new_pitch: float = atan2(altitude, plane_distance)
+    var new_distance: float = sqrt(plane_distance * plane_distance + altitude * altitude)
+    _camera_target = center
+    _camera_base_distance = new_distance
+    _camera_min_distance = max(new_distance * CAMERA_DISTANCE_MIN_FACTOR, 1.0)
+    _camera_max_distance = max(new_distance * CAMERA_DISTANCE_MAX_FACTOR, _camera_min_distance + 1.0)
+    _camera_pan_scale = max(extent, 1.0)
+    if not _camera_user_override:
+        _camera_yaw = CAMERA_BASE_YAW
+        _camera_pitch = clamp(new_pitch, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
+        _camera_distance = new_distance
+    _apply_camera_transform()
+
+func _apply_camera_transform() -> void:
+    if _camera == null:
+        return
+    var pitch_sin := sin(_camera_pitch)
+    var pitch_cos := cos(_camera_pitch)
+    var altitude_limit: float = CAMERA_MIN_ALTITUDE / max(pitch_sin, 0.01)
+    var horizontal_limit: float = (CAMERA_MIN_DISTANCE * SQRT_TWO) / max(pitch_cos, 0.01)
+    var min_distance: float = max(_camera_min_distance, altitude_limit, horizontal_limit)
+    var max_distance: float = max(_camera_max_distance, min_distance + 0.01)
+    _camera_distance = clamp(_camera_distance, min_distance, max_distance)
+    _camera_pitch = clamp(_camera_pitch, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
+    _camera_yaw = fposmod(_camera_yaw, TAU)
+    var horizontal_distance: float = pitch_cos * _camera_distance
+    var offset := Vector3(
+        sin(_camera_yaw) * horizontal_distance,
+        pitch_sin * _camera_distance,
+        cos(_camera_yaw) * horizontal_distance
+    )
+    _camera.look_at_from_position(_camera_target + offset, _camera_target, Vector3.UP)
+
+func _gui_input(event: InputEvent) -> void:
+    if _camera == null:
+        return
+    if event is InputEventMouseButton:
+        var button := event as InputEventMouseButton
+        match button.button_index:
+            MOUSE_BUTTON_MIDDLE:
+                if button.pressed and _is_pointer_over_viewport(button.position):
+                    _panning_camera = true
+                    _camera_user_override = true
+                    accept_event()
+                elif not button.pressed:
+                    _panning_camera = false
+            MOUSE_BUTTON_RIGHT:
+                if button.pressed and _is_pointer_over_viewport(button.position):
+                    _rotating_camera = true
+                    _camera_user_override = true
+                    accept_event()
+                elif not button.pressed:
+                    _rotating_camera = false
+            MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN:
+                if button.pressed and _is_pointer_over_viewport(button.position):
+                    var direction := -1.0 if button.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0
+                    _camera_user_override = true
+                    _apply_zoom_step(direction)
+                    accept_event()
+    elif event is InputEventMouseMotion:
+        var motion := event as InputEventMouseMotion
+        if _panning_camera:
+            _camera_user_override = true
+            _apply_pan(motion.relative)
+            accept_event()
+        elif _rotating_camera:
+            _camera_user_override = true
+            _apply_rotation(motion.relative)
+            accept_event()
+
+func _unhandled_input(event: InputEvent) -> void:
+    if event is InputEventMouseButton:
+        var button := event as InputEventMouseButton
+        if button.button_index == MOUSE_BUTTON_MIDDLE and not button.pressed:
+            _panning_camera = false
+        elif button.button_index == MOUSE_BUTTON_RIGHT and not button.pressed:
+            _rotating_camera = false
+
+func _is_pointer_over_viewport(position: Vector2) -> bool:
+    return get_global_rect().has_point(position)
+
+func _apply_zoom_step(direction: float) -> void:
+    var multiplier: float = 1.0
+    if direction < 0.0:
+        multiplier = 1.0 - CAMERA_ZOOM_STEP
+    else:
+        multiplier = 1.0 + CAMERA_ZOOM_STEP
+    _camera_distance *= multiplier
+    _apply_camera_transform()
+
+func _apply_pan(relative: Vector2) -> void:
+    if relative == Vector2.ZERO:
+        return
+    var right := Vector3(cos(_camera_yaw), 0.0, -sin(_camera_yaw))
+    var forward := Vector3(-sin(_camera_yaw), 0.0, -cos(_camera_yaw))
+    var scale: float = CAMERA_PAN_SPEED * max(_camera_distance, 1.0) / max(_camera_pan_scale, 1.0)
+    var delta := (-right * relative.x + forward * relative.y) * scale
+    _camera_target += delta
+    _apply_camera_transform()
+
+func _apply_rotation(relative: Vector2) -> void:
+    if relative == Vector2.ZERO:
+        return
+    _camera_yaw -= relative.x * CAMERA_ROTATE_SPEED
+    _camera_pitch = clamp(_camera_pitch + relative.y * CAMERA_TILT_SPEED, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
+    _apply_camera_transform()
 
 func _load_scene(scene_path: String) -> PackedScene:
     if _scene_cache.has(scene_path):

@@ -1,6 +1,7 @@
 Changelog
 
 Unreleased
+- Added orbit-style mouse controls to the debug map viewer so artists can pan, rotate, tilt, and zoom the preview.
 - Added a map debugger entry to the main menu that opens a dedicated screen for the deterministic debug board showcase.
 
 0.2.2 — 2025-09-20
