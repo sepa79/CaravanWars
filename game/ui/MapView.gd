@@ -17,8 +17,8 @@ const CAMERA_ALTITUDE_SCALE: float = 0.6
 const CAMERA_MIN_PITCH: float = deg_to_rad(20.0)
 const CAMERA_MAX_PITCH: float = deg_to_rad(80.0)
 const CAMERA_BASE_YAW: float = deg_to_rad(45.0)
-const CAMERA_DISTANCE_MIN_FACTOR: float = 0.35
-const CAMERA_DISTANCE_MAX_FACTOR: float = 4.0
+const CAMERA_DISTANCE_MIN_FACTOR: float = 0.2
+const CAMERA_DISTANCE_MAX_FACTOR: float = 8.0
 const CAMERA_ROTATE_SPEED: float = 0.01
 const CAMERA_TILT_SPEED: float = 0.01
 const CAMERA_PAN_SPEED: float = 0.015
@@ -466,8 +466,8 @@ func _unhandled_input(event: InputEvent) -> void:
         elif button.button_index == MOUSE_BUTTON_RIGHT and not button.pressed:
             _rotating_camera = false
 
-func _is_pointer_over_viewport(position: Vector2) -> bool:
-    return get_global_rect().has_point(position)
+func _is_pointer_over_viewport(pointer_position: Vector2) -> bool:
+    return get_global_rect().has_point(pointer_position)
 
 func _apply_zoom_step(direction: float) -> void:
     var multiplier: float = 1.0
@@ -483,8 +483,8 @@ func _apply_pan(relative: Vector2) -> void:
         return
     var right := Vector3(cos(_camera_yaw), 0.0, -sin(_camera_yaw))
     var forward := Vector3(-sin(_camera_yaw), 0.0, -cos(_camera_yaw))
-    var scale: float = CAMERA_PAN_SPEED * max(_camera_distance, 1.0) / max(_camera_pan_scale, 1.0)
-    var delta := (-right * relative.x + forward * relative.y) * scale
+    var pan_scale_factor: float = CAMERA_PAN_SPEED * max(_camera_distance, 1.0) / max(_camera_pan_scale, 1.0)
+    var delta := (-right * relative.x + forward * relative.y) * pan_scale_factor
     _camera_target += delta
     _apply_camera_transform()
 

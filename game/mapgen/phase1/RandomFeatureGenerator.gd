@@ -21,39 +21,39 @@ enum FeatureType {
     HILL,
 }
 
-func apply(seed: int, width: int, height: int, base_heights: Dictionary, config: HexMapConfig) -> Dictionary:
+func apply(rng_state: int, width: int, height: int, base_heights: Dictionary, config: HexMapConfig) -> Dictionary:
     var result: Dictionary = base_heights.duplicate(true)
     var settings: Dictionary = config.get_random_feature_settings()
-    var feature_count: int = _determine_feature_count(seed, settings)
+    var feature_count: int = _determine_feature_count(rng_state, settings)
     if feature_count <= 0:
         return result
-    var centers: Array[Vector2i] = _pick_feature_centers(seed, width, height, feature_count)
+    var centers: Array[Vector2i] = _pick_feature_centers(rng_state, width, height, feature_count)
     if centers.is_empty():
         return result
     var falloff: String = String(settings.get("falloff", "smooth")).to_lower()
     var mode: String = String(settings.get("mode", "auto")).to_lower()
     for index in range(centers.size()):
         var center: Vector2i = centers[index]
-        var feature_type: FeatureType = _choose_feature_type(seed, index, mode)
+        var feature_type: FeatureType = _choose_feature_type(rng_state, index, mode)
         _apply_feature(result, center, width, height, feature_type, falloff)
     return result
 
-func _determine_feature_count(seed: int, settings: Dictionary) -> int:
+func _determine_feature_count(rng_state: int, settings: Dictionary) -> int:
     var override_value: Variant = settings.get("count_override")
     if typeof(override_value) == TYPE_INT and int(override_value) >= 0:
         return int(override_value)
     var intensity: String = String(settings.get("intensity", "none")).to_lower()
     match intensity:
         "low":
-            return ScopedRngScript.rand_int_scope(seed, ["features", "low"], "count", 2, 3)
+            return ScopedRngScript.rand_int_scope(rng_state, ["features", "low"], "count", 2, 3)
         "medium":
-            return ScopedRngScript.rand_int_scope(seed, ["features", "medium"], "count", 5, 7)
+            return ScopedRngScript.rand_int_scope(rng_state, ["features", "medium"], "count", 5, 7)
         "high":
-            return ScopedRngScript.rand_int_scope(seed, ["features", "high"], "count", 10, 14)
+            return ScopedRngScript.rand_int_scope(rng_state, ["features", "high"], "count", 10, 14)
         _:
             return 0
 
-func _pick_feature_centers(seed: int, width: int, height: int, count: int) -> Array[Vector2i]:
+func _pick_feature_centers(rng_state: int, width: int, height: int, count: int) -> Array[Vector2i]:
     var centers: Array[Vector2i] = []
     if width <= 0 or height <= 0:
         return centers
@@ -66,8 +66,8 @@ func _pick_feature_centers(seed: int, width: int, height: int, count: int) -> Ar
         var q_max: int = max(margin_q, width - 1 - margin_q)
         var r_min: int = margin_r
         var r_max: int = max(margin_r, height - 1 - margin_r)
-        var q_value: int = ScopedRngScript.rand_int_scope(seed, scope + ["q"], "position", q_min, q_max)
-        var r_value: int = ScopedRngScript.rand_int_scope(seed, scope + ["r"], "position", r_min, r_max)
+        var q_value: int = ScopedRngScript.rand_int_scope(rng_state, scope + ["q"], "position", q_min, q_max)
+        var r_value: int = ScopedRngScript.rand_int_scope(rng_state, scope + ["r"], "position", r_min, r_max)
         var candidate := Vector2i(q_value, r_value)
         var attempts: int = 0
         while used.has(candidate) and attempts < width * height:
@@ -84,14 +84,14 @@ func _pick_feature_centers(seed: int, width: int, height: int, count: int) -> Ar
         centers.append(candidate)
     return centers
 
-func _choose_feature_type(seed: int, index: int, mode: String) -> FeatureType:
+func _choose_feature_type(rng_state: int, index: int, mode: String) -> FeatureType:
     match mode:
         "peaks_only":
             return FeatureType.PEAK
         "hills_only":
             return FeatureType.HILL
         _:
-            var roll: float = ScopedRngScript.rand_scope(seed, ["feature", index], "mode")
+            var roll: float = ScopedRngScript.rand_scope(rng_state, ["feature", index], "mode")
             if roll < 0.4:
                 return FeatureType.PEAK
             return FeatureType.HILL
