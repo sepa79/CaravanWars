@@ -48,6 +48,7 @@ func _build_ui() -> void:
     root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     root.size_flags_vertical = Control.SIZE_EXPAND_FILL
     root.alignment = BoxContainer.ALIGNMENT_BEGIN
+    root.add_theme_constant_override("separation", 12)
     margin.add_child(root)
 
     var header := HBoxContainer.new()
@@ -71,12 +72,30 @@ func _build_ui() -> void:
     _back_button.pressed.connect(_on_back_pressed)
     header.add_child(_back_button)
 
+    var content_row := HBoxContainer.new()
+    content_row.name = "ContentRow"
+    content_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    content_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    content_row.alignment = BoxContainer.ALIGNMENT_BEGIN
+    content_row.add_theme_constant_override("separation", 16)
+    root.add_child(content_row)
+
+    var control_panel := VBoxContainer.new()
+    control_panel.name = "ControlPanel"
+    control_panel.custom_minimum_size = Vector2(320.0, 0.0)
+    control_panel.size_flags_horizontal = Control.SIZE_FILL
+    control_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    control_panel.size_flags_stretch_ratio = 0.0
+    control_panel.alignment = BoxContainer.ALIGNMENT_BEGIN
+    control_panel.add_theme_constant_override("separation", 12)
+    content_row.add_child(control_panel)
+
     var controls_row := HBoxContainer.new()
     controls_row.name = "SeedRow"
     controls_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     controls_row.alignment = BoxContainer.ALIGNMENT_BEGIN
     controls_row.add_theme_constant_override("separation", 12)
-    root.add_child(controls_row)
+    control_panel.add_child(controls_row)
 
     _seed_label = Label.new()
     _seed_label.name = "SeedLabel"
@@ -109,7 +128,7 @@ func _build_ui() -> void:
     _info_label.name = "Info"
     _info_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _info_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    root.add_child(_info_label)
+    control_panel.add_child(_info_label)
 
     var map_node: Node = MAP_VIEW_SCENE.instantiate()
     if map_node is MapView:
@@ -118,10 +137,11 @@ func _build_ui() -> void:
         _map_view = null
         push_warning("[MapDebugScreen] MapView scene failed to instantiate")
     if _map_view != null:
-        _map_view.custom_minimum_size = Vector2(0.0, 480.0)
+        _map_view.custom_minimum_size = Vector2(0.0, 0.0)
         _map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         _map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-        root.add_child(_map_view)
+        _map_view.size_flags_stretch_ratio = 1.0
+        content_row.add_child(_map_view)
 
 func _create_generator() -> void:
     if HEX_MAP_CONFIG_SCRIPT == null or HEX_MAP_GENERATOR_SCRIPT == null:
