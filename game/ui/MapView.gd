@@ -4,7 +4,20 @@ class_name MapView
 signal cities_changed(cities: Array)
 
 const TerrainSettingsResource := preload("res://map/TerrainSettings.gd")
+const HexCoordScript: GDScript = preload("res://mapgen/HexCoord.gd")
+const HexGridScript: GDScript = preload("res://mapgen/HexGrid.gd")
+
 const RIVER_MASK_BIT_COUNT := 6
+const HEX_WORLD_SIZE: float = 1.0
+const LAYER_HEIGHT_STEP: float = 0.2
+const CAMERA_MIN_DISTANCE: float = 6.0
+const CAMERA_MIN_ALTITUDE: float = 8.0
+const CAMERA_DISTANCE_SCALE: float = 0.9
+const CAMERA_ALTITUDE_SCALE: float = 0.6
+const LIGHT_ROTATION := Vector3(-55.0, -45.0, 0.0)
+const LIGHT_ENERGY: float = 1.35
+const AMBIENT_COLOR := Color(0.65, 0.7, 0.8)
+const AMBIENT_ENERGY: float = 0.9
 
 class RiverTileInfo:
     var axial_coord: Vector2i
@@ -41,19 +54,33 @@ class RiverTileInfo:
 
 var map_data: Dictionary = {}
 
-var _terrain_settings = TerrainSettingsResource.new()
+var _terrain_settings: Object = TerrainSettingsResource.new()
 var _terrain_asset_map: Dictionary = {}
 var _river_tiles: Dictionary[Vector2i, RiverTileInfo] = {}
 var _show_rivers: bool = true
+var _hex_grid: HexGrid = HexGridScript.new(1)
+var _terrain_viewport: SubViewport
+var _terrain_root: Node3D
+var _map_container: Node3D
+var _camera: Camera3D
+var _directional_light: DirectionalLight3D
+var _environment_node: WorldEnvironment
+var _scene_cache: Dictionary = {}
 
 func _ready() -> void:
+    _ensure_viewport_nodes()
+    _ensure_environment()
+    _ensure_camera()
+    _ensure_lighting()
     _rebuild_assets()
+    _rebuild_map()
 
 func set_map_data(data: Dictionary) -> void:
     map_data = _duplicate_dictionary(data)
     _load_terrain_settings_from_data(map_data)
     _cache_river_entries()
     _rebuild_assets()
+    _rebuild_map()
     cities_changed.emit([])
 
 func set_edit_mode(_value: bool) -> void:
@@ -70,6 +97,7 @@ func set_show_roads(_value: bool) -> void:
 
 func set_show_rivers(value: bool) -> void:
     _show_rivers = value
+    _rebuild_map()
 
 func set_region_visibility(_region_id: String, _fully_visible: bool) -> void:
     pass
@@ -119,11 +147,88 @@ func get_river_tiles() -> Dictionary:
         result[axial] = info.to_dictionary()
     return result
 
+func _ensure_viewport_nodes() -> void:
+    if _terrain_viewport != null and _terrain_root != null and _map_container != null:
+        return
+    _terrain_viewport = _find_viewport(self)
+    if _terrain_viewport == null:
+        if not is_instance_of(self, SubViewportContainer):
+            return
+        var created_viewport: SubViewport = SubViewport.new()
+        created_viewport.name = "TerrainViewport"
+        created_viewport.own_world_3d = true
+        created_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+        add_child(created_viewport)
+        _terrain_viewport = created_viewport
+    if not _terrain_viewport.own_world_3d:
+        _terrain_viewport.own_world_3d = true
+    _terrain_root = _terrain_viewport.get_node_or_null("TerrainRoot") as Node3D
+    if _terrain_root == null:
+        _terrain_root = Node3D.new()
+        _terrain_root.name = "TerrainRoot"
+        _terrain_viewport.add_child(_terrain_root)
+    _map_container = _terrain_root.get_node_or_null("MapContainer") as Node3D
+    if _map_container == null:
+        _map_container = Node3D.new()
+        _map_container.name = "MapContainer"
+        _terrain_root.add_child(_map_container)
+
+func _ensure_environment() -> void:
+    if _terrain_root == null:
+        return
+    if _environment_node != null and is_instance_valid(_environment_node):
+        return
+    var environment: Environment = Environment.new()
+    environment.ambient_light_color = AMBIENT_COLOR
+    environment.ambient_light_energy = AMBIENT_ENERGY
+    environment.ambient_light_sky_contribution = 1.0
+    var world_environment: WorldEnvironment = WorldEnvironment.new()
+    world_environment.name = "WorldEnvironment"
+    world_environment.environment = environment
+    _terrain_root.add_child(world_environment)
+    _environment_node = world_environment
+
+func _ensure_camera() -> void:
+    if _terrain_viewport == null:
+        return
+    if _camera != null and is_instance_valid(_camera):
+        return
+    for child in _terrain_viewport.get_children():
+        if child is Camera3D:
+            _camera = child as Camera3D
+            if _camera != null and is_instance_valid(_camera):
+                _camera.current = true
+                return
+    _camera = Camera3D.new()
+    _camera.name = "DebugCamera"
+    var initial_position := Vector3(0.0, CAMERA_MIN_ALTITUDE, CAMERA_MIN_DISTANCE)
+    _camera.look_at_from_position(initial_position, Vector3.ZERO, Vector3.UP)
+    _camera.near = 0.1
+    _camera.far = 500.0
+    _camera.current = true
+    _terrain_viewport.add_child(_camera)
+
+func _ensure_lighting() -> void:
+    if _terrain_root == null:
+        return
+    for child in _terrain_root.get_children():
+        if child is DirectionalLight3D:
+            _directional_light = child as DirectionalLight3D
+            break
+    if _directional_light == null:
+        _directional_light = DirectionalLight3D.new()
+        _directional_light.name = "SunLight"
+        _directional_light.rotation_degrees = LIGHT_ROTATION
+        _directional_light.light_energy = LIGHT_ENERGY
+        _terrain_root.add_child(_directional_light)
+
 func _load_terrain_settings_from_data(data: Dictionary) -> void:
     var settings_data: Variant = data.get("terrain_settings")
-    _terrain_settings = TerrainSettingsResource.new()
+    var new_settings: Object = TerrainSettingsResource.new()
     if typeof(settings_data) == TYPE_DICTIONARY:
-        _terrain_settings.apply_overrides(settings_data)
+        if new_settings is Resource and new_settings.has_method("apply_overrides"):
+            new_settings.call("apply_overrides", settings_data)
+    _terrain_settings = new_settings
 
 func _rebuild_assets() -> void:
     _terrain_asset_map = _build_asset_map()
@@ -145,9 +250,10 @@ func _cache_river_entries() -> void:
         if typeof(entry_variant) != TYPE_DICTIONARY:
             continue
         var entry: Dictionary = entry_variant
-        var axial_coord: Variant = _extract_axial(entry.get("coord"))
-        if axial_coord == null:
+        var axial_coord_variant: Variant = _extract_axial(entry.get("coord"))
+        if axial_coord_variant == null:
             continue
+        var axial_coord: Vector2i = axial_coord_variant as Vector2i
         var raw_mask := int(entry.get("river_mask", 0))
         var mask_bits := raw_mask & ((1 << RIVER_MASK_BIT_COUNT) - 1)
         var is_mouth := bool(entry.get("is_mouth", false))
@@ -161,6 +267,134 @@ func _cache_river_entries() -> void:
         var info := RiverTileInfo.new(axial_coord, mask_bits, variant_key, rotation_steps, class_value, is_mouth)
         _river_tiles[axial_coord] = info
 
+func _rebuild_map() -> void:
+    _ensure_viewport_nodes()
+    if _map_container == null:
+        return
+    _clear_map_container()
+    var hex_list_variant: Variant = map_data.get("hexes", [])
+    if typeof(hex_list_variant) != TYPE_ARRAY:
+        _update_camera_focus(Vector3.ZERO, 1.0)
+        return
+    var hex_list: Array = hex_list_variant
+    if hex_list.is_empty():
+        _update_camera_focus(Vector3.ZERO, 1.0)
+        return
+    var min_x := INF
+    var max_x := -INF
+    var min_z := INF
+    var max_z := -INF
+    for entry_variant in hex_list:
+        if typeof(entry_variant) != TYPE_DICTIONARY:
+            continue
+        var entry: Dictionary = entry_variant
+        var axial: Variant = _extract_axial(entry.get("coord"))
+        if axial == null:
+            continue
+        var axial_coord: Vector2i = axial as Vector2i
+        var world_2d: Vector2 = _axial_to_world(axial_coord)
+        var world_position := Vector3(world_2d.x, 0.0, world_2d.y)
+        var tile_node := Node3D.new()
+        tile_node.name = "Tile_%d_%d" % [axial_coord.x, axial_coord.y]
+        tile_node.position = world_position
+        _map_container.add_child(tile_node)
+        var draw_stack_variant: Variant = entry.get("draw_stack", [])
+        _populate_tile_layers(tile_node, draw_stack_variant)
+        min_x = min(min_x, world_position.x)
+        max_x = max(max_x, world_position.x)
+        min_z = min(min_z, world_position.z)
+        max_z = max(max_z, world_position.z)
+    var center := Vector3((min_x + max_x) * 0.5, 0.0, (min_z + max_z) * 0.5)
+    var extent_x: float = max_x - min_x
+    var extent_z: float = max_z - min_z
+    var extent: float = max(max(extent_x, extent_z), 1.0)
+    _update_camera_focus(center, extent)
+
+func _clear_map_container() -> void:
+    if _map_container == null:
+        return
+    for child in _map_container.get_children():
+        child.queue_free()
+
+func _populate_tile_layers(tile_node: Node3D, draw_stack_variant: Variant) -> void:
+    if tile_node == null:
+        return
+    if typeof(draw_stack_variant) != TYPE_ARRAY:
+        return
+    var draw_stack: Array = draw_stack_variant
+    var layer_offset_index: int = 0
+    for layer_variant in draw_stack:
+        if typeof(layer_variant) != TYPE_DICTIONARY:
+            continue
+        var layer_dict: Dictionary = layer_variant
+        if not _should_render_layer(layer_dict):
+            continue
+        var scene_path: String = _resolve_scene_path(layer_dict)
+        if scene_path.is_empty():
+            continue
+        var packed_scene: PackedScene = _load_scene(scene_path)
+        if packed_scene == null:
+            continue
+        var instance: Node = packed_scene.instantiate()
+        var layer_node: Node3D = _ensure_node3d(instance)
+        layer_node.name = "Layer%d" % layer_offset_index
+        var scale_value: float = float(layer_dict.get("scale", 1.0))
+        layer_node.scale = Vector3(scale_value, scale_value, scale_value)
+        var rotation_steps: int = max(int(layer_dict.get("rotation_steps", 0)), 1)
+        var rotation_index: int = int(layer_dict.get("rotation", 0))
+        var angle_radians: float = TAU * float(rotation_index) / float(rotation_steps)
+        layer_node.rotation = Vector3(0.0, angle_radians, 0.0)
+        var offset_2d: Vector2 = _to_vector2(layer_dict.get("offset", Vector2.ZERO))
+        layer_node.position = Vector3(offset_2d.x, float(layer_offset_index) * LAYER_HEIGHT_STEP, offset_2d.y)
+        tile_node.add_child(layer_node)
+        layer_offset_index += 1
+
+func _should_render_layer(layer_dict: Dictionary) -> bool:
+    if _show_rivers:
+        return true
+    var role: String = String(layer_dict.get("role", ""))
+    if role == "RIVER":
+        return false
+    return true
+
+func _update_camera_focus(center: Vector3, extent: float) -> void:
+    if _camera == null:
+        return
+    var horizontal_distance: float = max(extent * CAMERA_DISTANCE_SCALE, CAMERA_MIN_DISTANCE)
+    var altitude: float = max(extent * CAMERA_ALTITUDE_SCALE, CAMERA_MIN_ALTITUDE)
+    var new_position := center + Vector3(horizontal_distance, altitude, horizontal_distance)
+    _camera.look_at_from_position(new_position, center, Vector3.UP)
+
+func _load_scene(scene_path: String) -> PackedScene:
+    if _scene_cache.has(scene_path):
+        var cached: Variant = _scene_cache[scene_path]
+        return cached if cached is PackedScene else null
+    var resource: Resource = load(scene_path)
+    if resource is PackedScene:
+        _scene_cache[scene_path] = resource
+        return resource
+    _scene_cache[scene_path] = null
+    push_warning("[MapView] Unable to load scene at %s" % scene_path)
+    return null
+
+func _ensure_node3d(node: Node) -> Node3D:
+    if node is Node3D:
+        return node as Node3D
+    var holder := Node3D.new()
+    holder.name = node.name
+    holder.add_child(node)
+    return holder
+
+func _resolve_scene_path(layer_dict: Dictionary) -> String:
+    var direct: String = String(layer_dict.get("scene_path", ""))
+    if not direct.is_empty():
+        return direct
+    return String(layer_dict.get("resource", ""))
+
+func _axial_to_world(axial: Vector2i) -> Vector2:
+    var coord: HexCoord = HexCoordScript.new(axial.x, axial.y) as HexCoord
+    return _hex_grid.axial_to_world(coord, HEX_WORLD_SIZE)
+
 func _extract_axial(coord_variant: Variant) -> Variant:
     if coord_variant is Vector2i:
         return coord_variant
@@ -172,12 +406,35 @@ func _extract_axial(coord_variant: Variant) -> Variant:
         return Vector2i(int(array[0]), int(array[1]))
     return null
 
+func _to_vector2(value: Variant) -> Vector2:
+    if value is Vector2:
+        return value as Vector2
+    if value is Vector2i:
+        var vector := value as Vector2i
+        return Vector2(vector.x, vector.y)
+    if value is Array and value.size() >= 2:
+        var array := value as Array
+        return Vector2(float(array[0]), float(array[1]))
+    return Vector2.ZERO
+
+func _find_viewport(root: Node) -> SubViewport:
+    if root == null:
+        return null
+    if root is SubViewport:
+        return root as SubViewport
+    for child in root.get_children():
+        var candidate := _find_viewport(child)
+        if candidate != null:
+            return candidate
+    return null
+
 func _duplicate_dictionary(source: Variant) -> Dictionary:
     var copy: Dictionary = {}
     if typeof(source) != TYPE_DICTIONARY:
         return copy
-    for key in (source as Dictionary).keys():
-        var value: Variant = (source as Dictionary)[key]
+    var original: Dictionary = source
+    for key in original.keys():
+        var value: Variant = original[key]
         match typeof(value):
             TYPE_DICTIONARY:
                 copy[key] = _duplicate_dictionary(value)
@@ -191,7 +448,8 @@ func _duplicate_array(source: Variant) -> Array:
     var copy: Array = []
     if typeof(source) != TYPE_ARRAY:
         return copy
-    for value in source:
+    var original: Array = source
+    for value in original:
         match typeof(value):
             TYPE_DICTIONARY:
                 copy.append(_duplicate_dictionary(value))

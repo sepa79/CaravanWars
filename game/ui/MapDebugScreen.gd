@@ -118,6 +118,7 @@ func _build_ui() -> void:
         _map_view = null
         push_warning("[MapDebugScreen] MapView scene failed to instantiate")
     if _map_view != null:
+        _map_view.custom_minimum_size = Vector2(0.0, 480.0)
         _map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         _map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
         root.add_child(_map_view)
