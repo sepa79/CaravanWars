@@ -90,7 +90,10 @@ var _rotating_camera: bool = false
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP
+    _configure_container_stretch()
     _ensure_viewport_nodes()
+    _update_viewport_size()
+    resized.connect(_on_control_resized)
     _ensure_environment()
     _ensure_camera()
     _ensure_lighting()
@@ -185,6 +188,7 @@ func _ensure_viewport_nodes() -> void:
         created_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
         add_child(created_viewport)
         _terrain_viewport = created_viewport
+    _update_viewport_size()
     if not _terrain_viewport.own_world_3d:
         _terrain_viewport.own_world_3d = true
     _terrain_root = _terrain_viewport.get_node_or_null("TerrainRoot") as Node3D
@@ -558,6 +562,29 @@ func _find_viewport(root: Node) -> SubViewport:
         if candidate != null:
             return candidate
     return null
+
+func _configure_container_stretch() -> void:
+    if not has_method("set_stretch"):
+        return
+    var is_stretching := bool(get("stretch"))
+    if is_stretching:
+        return
+    set("stretch", true)
+    set("stretch_shrink", 1.0)
+
+func _on_control_resized() -> void:
+    _update_viewport_size()
+
+func _update_viewport_size() -> void:
+    if _terrain_viewport == null:
+        return
+    var rect_size: Vector2 = size
+    var desired_width := int(max(1.0, round(rect_size.x)))
+    var desired_height := int(max(1.0, round(rect_size.y)))
+    var desired_size := Vector2i(desired_width, desired_height)
+    if _terrain_viewport.size == desired_size:
+        return
+    _terrain_viewport.size = desired_size
 
 func _duplicate_dictionary(source: Variant) -> Dictionary:
     var copy: Dictionary = {}
