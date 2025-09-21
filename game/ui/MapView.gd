@@ -564,10 +564,11 @@ func _find_viewport(root: Node) -> SubViewport:
     return null
 
 func _configure_container_stretch() -> void:
-    if not has_method("set_stretch"):
+    if not is_instance_of(self, SubViewportContainer):
         return
-    var is_stretching := bool(get("stretch"))
-    if is_stretching:
+    var current_stretch := bool(get("stretch"))
+    var current_shrink := float(get("stretch_shrink"))
+    if current_stretch and is_equal_approx(current_shrink, 1.0):
         return
     set("stretch", true)
     set("stretch_shrink", 1.0)
