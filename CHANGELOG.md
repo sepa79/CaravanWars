@@ -1,6 +1,7 @@
 Changelog
 
 Unreleased
+- Expanded the map debugger layout so the 3D preview fills the window while controls float in a compact overlay.
 - Added orbit-style mouse controls to the debug map viewer so artists can pan, rotate, tilt, and zoom the preview.
 - Added a map debugger entry to the main menu that opens a dedicated screen for the deterministic debug board showcase.
 - Fixed the debug map viewport hit testing so orbit camera controls respond inside the resized debugger layout.

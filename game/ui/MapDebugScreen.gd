@@ -4,6 +4,7 @@ class_name MapDebugScreen
 const MAP_VIEW_SCENE: PackedScene = preload("res://ui/MapView.tscn")
 const HEX_MAP_CONFIG_SCRIPT: GDScript = preload("res://mapgen/HexMapConfig.gd")
 const HEX_MAP_GENERATOR_SCRIPT: GDScript = preload("res://mapgen/HexMapGenerator.gd")
+const CONTROL_PANEL_WIDTH: float = 360.0
 
 var _title_label: Label
 var _seed_label: Label
@@ -34,27 +35,51 @@ func _unhandled_input(event: InputEvent) -> void:
         _on_back_pressed()
 
 func _build_ui() -> void:
-    var margin := MarginContainer.new()
-    margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    margin.add_theme_constant_override("margin_left", 16)
-    margin.add_theme_constant_override("margin_top", 16)
-    margin.add_theme_constant_override("margin_right", 16)
-    margin.add_theme_constant_override("margin_bottom", 16)
-    add_child(margin)
+    var map_node: Node = MAP_VIEW_SCENE.instantiate()
+    if map_node is MapView:
+        _map_view = map_node as MapView
+    else:
+        _map_view = null
+        push_warning("[MapDebugScreen] MapView scene failed to instantiate")
+    if _map_view != null:
+        _map_view.name = "MapViewport"
+        _map_view.set_anchors_preset(Control.PRESET_FULL_RECT)
+        _map_view.offset_left = 0.0
+        _map_view.offset_top = 0.0
+        _map_view.offset_right = 0.0
+        _map_view.offset_bottom = 0.0
+        _map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        _map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+        add_child(_map_view)
 
-    var root := VBoxContainer.new()
-    root.name = "Content"
-    root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    root.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    root.alignment = BoxContainer.ALIGNMENT_BEGIN
-    root.add_theme_constant_override("separation", 12)
-    margin.add_child(root)
+    var overlay := Control.new()
+    overlay.name = "Overlay"
+    overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+    overlay.offset_left = 0.0
+    overlay.offset_top = 0.0
+    overlay.offset_right = 0.0
+    overlay.offset_bottom = 0.0
+    overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    overlay.z_index = 1
+    add_child(overlay)
+
+    var overlay_column := VBoxContainer.new()
+    overlay_column.name = "OverlayColumn"
+    overlay_column.position = Vector2(16.0, 16.0)
+    overlay_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    overlay_column.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+    overlay_column.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+    overlay_column.alignment = BoxContainer.ALIGNMENT_BEGIN
+    overlay_column.add_theme_constant_override("separation", 12)
+    overlay.add_child(overlay_column)
 
     var header := HBoxContainer.new()
-    header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    header.name = "Header"
+    header.custom_minimum_size = Vector2(CONTROL_PANEL_WIDTH, 0.0)
+    header.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+    header.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     header.alignment = BoxContainer.ALIGNMENT_BEGIN
-    root.add_child(header)
+    overlay_column.add_child(header)
 
     _title_label = Label.new()
     _title_label.name = "Title"
@@ -64,6 +89,7 @@ func _build_ui() -> void:
 
     var spacer := Control.new()
     spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
     header.add_child(spacer)
 
     _back_button = Button.new()
@@ -72,23 +98,29 @@ func _build_ui() -> void:
     _back_button.pressed.connect(_on_back_pressed)
     header.add_child(_back_button)
 
-    var content_row := HBoxContainer.new()
-    content_row.name = "ContentRow"
-    content_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    content_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    content_row.alignment = BoxContainer.ALIGNMENT_BEGIN
-    content_row.add_theme_constant_override("separation", 16)
-    root.add_child(content_row)
+    var control_frame := PanelContainer.new()
+    control_frame.name = "ControlFrame"
+    control_frame.custom_minimum_size = Vector2(CONTROL_PANEL_WIDTH, 0.0)
+    control_frame.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+    control_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+    overlay_column.add_child(control_frame)
+
+    var control_margin := MarginContainer.new()
+    control_margin.name = "ControlMargin"
+    control_margin.add_theme_constant_override("margin_left", 12)
+    control_margin.add_theme_constant_override("margin_top", 12)
+    control_margin.add_theme_constant_override("margin_right", 12)
+    control_margin.add_theme_constant_override("margin_bottom", 12)
+    control_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    control_frame.add_child(control_margin)
 
     var control_panel := VBoxContainer.new()
     control_panel.name = "ControlPanel"
-    control_panel.custom_minimum_size = Vector2(320.0, 0.0)
-    control_panel.size_flags_horizontal = Control.SIZE_FILL
-    control_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-    control_panel.size_flags_stretch_ratio = 0.0
+    control_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    control_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
     control_panel.alignment = BoxContainer.ALIGNMENT_BEGIN
     control_panel.add_theme_constant_override("separation", 12)
-    content_row.add_child(control_panel)
+    control_margin.add_child(control_panel)
 
     var controls_row := HBoxContainer.new()
     controls_row.name = "SeedRow"
@@ -129,19 +161,6 @@ func _build_ui() -> void:
     _info_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _info_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     control_panel.add_child(_info_label)
-
-    var map_node: Node = MAP_VIEW_SCENE.instantiate()
-    if map_node is MapView:
-        _map_view = map_node as MapView
-    else:
-        _map_view = null
-        push_warning("[MapDebugScreen] MapView scene failed to instantiate")
-    if _map_view != null:
-        _map_view.custom_minimum_size = Vector2(0.0, 0.0)
-        _map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-        _map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-        _map_view.size_flags_stretch_ratio = 1.0
-        content_row.add_child(_map_view)
 
 func _create_generator() -> void:
     if HEX_MAP_CONFIG_SCRIPT == null or HEX_MAP_GENERATOR_SCRIPT == null:
