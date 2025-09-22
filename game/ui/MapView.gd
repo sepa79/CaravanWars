@@ -28,6 +28,12 @@ const LIGHT_ROTATION := Vector3(-55.0, -45.0, 0.0)
 const LIGHT_ENERGY: float = 1.35
 const AMBIENT_COLOR := Color(0.65, 0.7, 0.8)
 const AMBIENT_ENERGY: float = 0.9
+const CORNER_MARKER_SIZE := Vector2(16.0, 16.0)
+const CORNER_MARKER_MARGIN: float = 8.0
+const CORNER_MARKER_TOP_LEFT_COLOR := Color(0.95, 0.35, 0.35)
+const CORNER_MARKER_TOP_RIGHT_COLOR := Color(0.35, 0.85, 0.45)
+const CORNER_MARKER_BOTTOM_LEFT_COLOR := Color(0.35, 0.55, 0.95)
+const CORNER_MARKER_BOTTOM_RIGHT_COLOR := Color(0.9, 0.8, 0.35)
 
 class RiverTileInfo:
     var axial_coord: Vector2i
@@ -87,13 +93,24 @@ var _camera_pan_scale: float = 1.0
 var _camera_user_override: bool = false
 var _panning_camera: bool = false
 var _rotating_camera: bool = false
+var _observed_viewport: Viewport
+var _pending_viewport_resize: bool = false
+
+func _enter_tree() -> void:
+    _ensure_viewport_subscription()
+
+func _exit_tree() -> void:
+    _disconnect_observed_viewport()
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_STOP
     _configure_container_stretch()
     _ensure_viewport_nodes()
-    _update_viewport_size()
-    resized.connect(_on_control_resized)
+    _ensure_corner_markers()
+    _ensure_viewport_subscription()
+    if not resized.is_connected(_on_control_resized):
+        resized.connect(_on_control_resized)
+    _queue_viewport_resize()
     _ensure_environment()
     _ensure_camera()
     _ensure_lighting()
@@ -188,7 +205,7 @@ func _ensure_viewport_nodes() -> void:
         created_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
         add_child(created_viewport)
         _terrain_viewport = created_viewport
-    _update_viewport_size()
+    _queue_viewport_resize()
     if not _terrain_viewport.own_world_3d:
         _terrain_viewport.own_world_3d = true
     _terrain_root = _terrain_viewport.get_node_or_null("TerrainRoot") as Node3D
@@ -563,6 +580,68 @@ func _find_viewport(root: Node) -> SubViewport:
             return candidate
     return null
 
+func _ensure_corner_markers() -> void:
+    var marker_configs: Array[Dictionary] = [
+        {
+            "name": "CornerTopLeft",
+            "preset": Control.PRESET_TOP_LEFT,
+            "offset_left": CORNER_MARKER_MARGIN,
+            "offset_top": CORNER_MARKER_MARGIN,
+            "offset_right": CORNER_MARKER_MARGIN + CORNER_MARKER_SIZE.x,
+            "offset_bottom": CORNER_MARKER_MARGIN + CORNER_MARKER_SIZE.y,
+            "color": CORNER_MARKER_TOP_LEFT_COLOR,
+        },
+        {
+            "name": "CornerTopRight",
+            "preset": Control.PRESET_TOP_RIGHT,
+            "offset_left": -CORNER_MARKER_MARGIN - CORNER_MARKER_SIZE.x,
+            "offset_top": CORNER_MARKER_MARGIN,
+            "offset_right": -CORNER_MARKER_MARGIN,
+            "offset_bottom": CORNER_MARKER_MARGIN + CORNER_MARKER_SIZE.y,
+            "color": CORNER_MARKER_TOP_RIGHT_COLOR,
+        },
+        {
+            "name": "CornerBottomLeft",
+            "preset": Control.PRESET_BOTTOM_LEFT,
+            "offset_left": CORNER_MARKER_MARGIN,
+            "offset_top": -CORNER_MARKER_MARGIN - CORNER_MARKER_SIZE.y,
+            "offset_right": CORNER_MARKER_MARGIN + CORNER_MARKER_SIZE.x,
+            "offset_bottom": -CORNER_MARKER_MARGIN,
+            "color": CORNER_MARKER_BOTTOM_LEFT_COLOR,
+        },
+        {
+            "name": "CornerBottomRight",
+            "preset": Control.PRESET_BOTTOM_RIGHT,
+            "offset_left": -CORNER_MARKER_MARGIN - CORNER_MARKER_SIZE.x,
+            "offset_top": -CORNER_MARKER_MARGIN - CORNER_MARKER_SIZE.y,
+            "offset_right": -CORNER_MARKER_MARGIN,
+            "offset_bottom": -CORNER_MARKER_MARGIN,
+            "color": CORNER_MARKER_BOTTOM_RIGHT_COLOR,
+        },
+    ]
+    for config in marker_configs:
+        var marker_name := String(config.get("name", ""))
+        if marker_name.is_empty():
+            continue
+        var marker := get_node_or_null(NodePath(marker_name)) as ColorRect
+        if marker == null:
+            marker = ColorRect.new()
+            marker.name = marker_name
+            add_child(marker)
+        marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        marker.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+        marker.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+        marker.focus_mode = Control.FOCUS_NONE
+        marker.z_index = 100
+        marker.color = config.get("color", Color.WHITE)
+        marker.set_anchors_preset(int(config.get("preset", Control.PRESET_TOP_LEFT)))
+        marker.offset_left = float(config.get("offset_left", 0.0))
+        marker.offset_top = float(config.get("offset_top", 0.0))
+        marker.offset_right = float(config.get("offset_right", CORNER_MARKER_SIZE.x))
+        marker.offset_bottom = float(config.get("offset_bottom", CORNER_MARKER_SIZE.y))
+        if marker.get_parent() == self:
+            move_child(marker, get_child_count() - 1)
+
 func _configure_container_stretch() -> void:
     if not is_instance_of(self, SubViewportContainer):
         return
@@ -574,6 +653,36 @@ func _configure_container_stretch() -> void:
     set("stretch_shrink", 1.0)
 
 func _on_control_resized() -> void:
+    _queue_viewport_resize()
+
+func _ensure_viewport_subscription() -> void:
+    var host_viewport: Viewport = get_viewport()
+    if host_viewport == _observed_viewport:
+        return
+    _disconnect_observed_viewport()
+    _observed_viewport = host_viewport
+    if _observed_viewport != null and not _observed_viewport.size_changed.is_connected(_on_viewport_size_changed):
+        _observed_viewport.size_changed.connect(_on_viewport_size_changed)
+    _queue_viewport_resize()
+
+func _disconnect_observed_viewport() -> void:
+    if _observed_viewport == null:
+        return
+    if _observed_viewport.size_changed.is_connected(_on_viewport_size_changed):
+        _observed_viewport.size_changed.disconnect(_on_viewport_size_changed)
+    _observed_viewport = null
+
+func _on_viewport_size_changed() -> void:
+    _queue_viewport_resize()
+
+func _queue_viewport_resize() -> void:
+    if _pending_viewport_resize:
+        return
+    _pending_viewport_resize = true
+    call_deferred("_flush_pending_viewport_resize")
+
+func _flush_pending_viewport_resize() -> void:
+    _pending_viewport_resize = false
     _update_viewport_size()
 
 func _update_viewport_size() -> void:
