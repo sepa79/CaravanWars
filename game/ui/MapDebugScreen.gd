@@ -22,6 +22,10 @@ var _is_setting_seed: bool = false
 
 func _ready() -> void:
     set_anchors_preset(Control.PRESET_FULL_RECT)
+    size = get_viewport_rect().size
+    var host_viewport: Viewport = get_viewport()
+    if host_viewport != null and not host_viewport.size_changed.is_connected(_on_viewport_resized):
+        host_viewport.size_changed.connect(_on_viewport_resized)
     _rng.randomize()
     _build_ui()
     I18N.language_changed.connect(_on_language_changed)
@@ -274,3 +278,6 @@ func _to_vector2i(value: Variant) -> Vector2i:
 func _on_back_pressed() -> void:
     Net.run_mode = ""
     App.goto_scene("res://scenes/StartMenu.tscn")
+
+func _on_viewport_resized() -> void:
+    size = get_viewport_rect().size

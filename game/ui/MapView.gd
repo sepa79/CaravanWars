@@ -197,7 +197,7 @@ func _ensure_viewport_nodes() -> void:
         return
     _terrain_viewport = _find_viewport(self)
     if _terrain_viewport == null:
-        if not is_instance_of(self, SubViewportContainer):
+        if not is_class("SubViewportContainer"):
             return
         var created_viewport: SubViewport = SubViewport.new()
         created_viewport.name = "TerrainViewport"
@@ -643,7 +643,7 @@ func _ensure_corner_markers() -> void:
             move_child(marker, get_child_count() - 1)
 
 func _configure_container_stretch() -> void:
-    if not is_instance_of(self, SubViewportContainer):
+    if not is_class("SubViewportContainer"):
         return
     var current_stretch := bool(get("stretch"))
     var current_shrink := float(get("stretch_shrink"))
