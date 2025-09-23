@@ -2,6 +2,7 @@ extends Control
 
 const CI_AUTO_SINGLEPLAYER_ENV := "CI_AUTO_SINGLEPLAYER"
 const CI_AUTO_QUIT_ENV := "CI_AUTO_QUIT"
+const MAP_DEBUG_SCREEN_SCRIPT := preload("res://ui/MapDebugScreen.gd")
 
 static var _ci_has_driven_singleplayer: bool = false
 static var _ci_quit_scheduled: bool = false
@@ -19,6 +20,8 @@ static var _ci_quit_scheduled: bool = false
 @onready var version_label: Label = $Version
 @onready var connecting_ui: Control = preload("res://scenes/Connecting.tscn").instantiate()
 
+var _map_debug_button: Button
+
 func _log(msg: String) -> void:
     print("[StartMenu] %s" % msg)
 
@@ -26,6 +29,7 @@ func _ready() -> void:
     I18N.language_changed.connect(update_texts)
     Net.state_changed.connect(_on_net_state_changed)
     add_child(connecting_ui)
+    _ensure_map_debug_button()
     update_texts()
     main_menu.get_node("Multiplayer").grab_focus()
     _log("ready")
@@ -40,6 +44,8 @@ func update_texts() -> void:
     main_menu.get_node("SinglePlayer").text = I18N.t("menu.start_single")
     main_menu.get_node("Multiplayer").text = I18N.t("menu.start_multi")
     main_menu.get_node("Settings").text = I18N.t("menu.settings")
+    if _map_debug_button != null:
+        _map_debug_button.text = I18N.t("menu.map_debugger")
     var lang_text := I18N.t("menu.language_en") if I18N.current_lang == I18N.LANG_EN else I18N.t("menu.language_pl")
     main_menu.get_node("Language").text = "%s: %s" % [I18N.t("menu.language"), lang_text]
     main_menu.get_node("Quit").text = I18N.t("menu.quit")
@@ -52,6 +58,26 @@ func update_texts() -> void:
     join_address_cancel_button.text = I18N.t("common.cancel")
     var build_type := "Debug" if OS.is_debug_build() else "Release"
     version_label.text = "%s %s\n%s %s" % [I18N.t("menu.version"), ProjectSettings.get_setting("application/config/version"), I18N.t("menu.build_type"), build_type]
+
+func _ensure_map_debug_button() -> void:
+    if main_menu == null:
+        return
+    if _map_debug_button != null and is_instance_valid(_map_debug_button):
+        return
+    var existing: Node = main_menu.get_node_or_null("MapDebug")
+    if existing is Button:
+        _map_debug_button = existing as Button
+    else:
+        var button := Button.new()
+        button.name = "MapDebug"
+        button.focus_mode = Control.FOCUS_ALL
+        main_menu.add_child(button)
+        var quit_button: Button = main_menu.get_node_or_null("Quit") as Button
+        if quit_button != null:
+            main_menu.move_child(button, quit_button.get_index())
+        _map_debug_button = button
+    if not _map_debug_button.pressed.is_connected(_on_map_debug_pressed):
+        _map_debug_button.pressed.connect(_on_map_debug_pressed)
 
 func _on_single_player_pressed() -> void:
     _log("single player pressed")
@@ -70,6 +96,16 @@ func _on_multiplayer_pressed() -> void:
 func _on_settings_pressed() -> void:
     _log("settings pressed")
     show_not_available()
+
+func _on_map_debug_pressed() -> void:
+    _log("map debug pressed")
+    Net.run_mode = ""
+    if MAP_DEBUG_SCREEN_SCRIPT == null:
+        return
+    var debug_screen: Control = MAP_DEBUG_SCREEN_SCRIPT.new()
+    if debug_screen == null:
+        return
+    App.goto_scene_instance(debug_screen)
 
 func _on_language_pressed() -> void:
     _log("language pressed")

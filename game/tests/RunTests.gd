@@ -2,6 +2,7 @@ extends SceneTree
 
 const TestSuites := [
     preload("res://tests/mapgen/HexMapGeneratorTerrainTest.gd"),
+    preload("res://tests/mapgen/DebugBoardTest.gd"),
     preload("res://tests/mapgen/Phase1TerrainPipelineTest.gd"),
 ]
 

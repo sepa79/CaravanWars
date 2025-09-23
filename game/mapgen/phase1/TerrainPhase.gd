@@ -40,19 +40,19 @@ func run(map_data: MapData) -> Dictionary:
         return {}
     var width: int = config.map_width
     var height: int = config.map_height
-    var seed: int = config.map_seed
+    var rng_state: int = config.map_seed
     var base_generator: RefCounted = BaseHeightGeneratorScript.new()
-    var base_heights: Dictionary = base_generator.generate(width, height, seed, config)
+    var base_heights: Dictionary = base_generator.generate(width, height, rng_state, config)
     var feature_generator: RefCounted = RandomFeatureGeneratorScript.new()
-    var feature_heights: Dictionary = feature_generator.apply(seed, width, height, base_heights, config)
+    var feature_heights: Dictionary = feature_generator.apply(rng_state, width, height, base_heights, config)
     var edge_shaper: RefCounted = EdgeShaperScript.new()
     var final_heights: Dictionary = edge_shaper.apply(width, height, feature_heights, config)
     data.clear_tiles()
-    var payload: Dictionary = _populate_tiles(map_data, final_heights, seed)
+    var payload: Dictionary = _populate_tiles(map_data, final_heights, rng_state)
     data.set_phase_payload(HexMapData.PHASE_TERRAIN, payload)
     return payload
 
-func _populate_tiles(map_data: MapData, heights: Dictionary, seed: int) -> Dictionary:
+func _populate_tiles(map_data: MapData, heights: Dictionary, rng_state: int) -> Dictionary:
     var tile_count: int = 0
     for r in range(config.map_height):
         for q in range(config.map_width):
@@ -60,9 +60,9 @@ func _populate_tiles(map_data: MapData, heights: Dictionary, seed: int) -> Dicti
             var base_height: float = float(heights.get(axial, 0.5))
             var terrain_type: StringName = _classify_height(base_height)
             var visual_height: float = _compute_visual_height(base_height, terrain_type)
-            var variant: StringName = _choose_variant(seed, q, r, terrain_type)
-            var rotation: int = _choose_rotation(seed, q, r, terrain_type)
-            var with_trees: bool = _should_have_trees(seed, q, r, terrain_type, variant)
+            var variant: StringName = _choose_variant(rng_state, q, r, terrain_type)
+            var rotation: int = _choose_rotation(rng_state, q, r, terrain_type)
+            var with_trees: bool = _should_have_trees(rng_state, q, r, terrain_type, variant)
             var tile: Tile = data.create_tile(q, r, terrain_type, visual_height, rotation, variant, with_trees)
             data.store_tile(tile)
             tile_count += 1
@@ -86,24 +86,24 @@ func _compute_visual_height(base_height: float, terrain_type: StringName) -> flo
     var bias: float = float(VISUAL_BIAS.get(terrain_type, 0.0))
     return clampf(base_height + bias, 0.0, 1.0)
 
-func _choose_variant(seed: int, q: int, r: int, terrain_type: StringName) -> StringName:
+func _choose_variant(rng_state: int, q: int, r: int, terrain_type: StringName) -> StringName:
     var catalog: AssetCatalog = data.asset_catalog
     if catalog == null:
         return TileScript.VARIANT_A
     var variants: Array[StringName] = catalog.get_variants_for_terrain(terrain_type)
     if variants.is_empty():
         return TileScript.VARIANT_A
-    return ScopedRngScript.rand_variant(seed, q, r, "variant", variants)
+    return ScopedRngScript.rand_variant(rng_state, q, r, "variant", variants)
 
-func _choose_rotation(seed: int, q: int, r: int, terrain_type: StringName) -> int:
+func _choose_rotation(rng_state: int, q: int, r: int, terrain_type: StringName) -> int:
     var catalog: AssetCatalog = data.asset_catalog
     if catalog == null:
         return 0
     var steps: int = catalog.get_rotation_steps_for_terrain(terrain_type)
-    return ScopedRngScript.rand_rotation(seed, q, r, "rotation", steps)
+    return ScopedRngScript.rand_rotation(rng_state, q, r, "rotation", steps)
 
 func _should_have_trees(
-    seed: int,
+    rng_state: int,
     q: int,
     r: int,
     terrain_type: StringName,
@@ -116,4 +116,4 @@ func _should_have_trees(
     if decor_asset == StringName():
         return false
     var probability: float = float(TREE_PROBABILITY.get(terrain_type, 0.0))
-    return ScopedRngScript.rand_bool(seed, q, r, "trees", probability)
+    return ScopedRngScript.rand_bool(rng_state, q, r, "trees", probability)
