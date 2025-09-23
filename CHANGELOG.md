@@ -1,6 +1,9 @@
 Changelog
 
 Unreleased
+- Nothing yet.
+
+0.2.3 — 2025-09-22
 - Expanded the map debugger layout so the 3D preview fills the window while controls float in a compact overlay.
 - Ensured the debug map viewport's internal render surface resizes with the window so the 3D preview truly fills the screen.
 - Improved the debug viewport sizing hooks to follow window changes reliably and added corner markers so the rendered viewports' bounds are obvious while testing.
