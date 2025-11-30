@@ -8,8 +8,8 @@ const HexCoordScript: GDScript = preload("res://mapgen/HexCoord.gd")
 const HexGridScript: GDScript = preload("res://mapgen/HexGrid.gd")
 
 const RIVER_MASK_BIT_COUNT := 6
-const HEX_WORLD_SIZE: float = 1.0
-const LAYER_HEIGHT_STEP: float = 0.2
+const HEX_WORLD_SIZE: float = 2.0 / sqrt(3.0)
+const LAYER_HEIGHT_STEP: float = 0.05
 const CAMERA_MIN_DISTANCE: float = 6.0
 const CAMERA_MIN_ALTITUDE: float = 8.0
 const CAMERA_DISTANCE_SCALE: float = 0.9
@@ -34,6 +34,9 @@ const CORNER_MARKER_TOP_LEFT_COLOR := Color(0.95, 0.35, 0.35)
 const CORNER_MARKER_TOP_RIGHT_COLOR := Color(0.35, 0.85, 0.45)
 const CORNER_MARKER_BOTTOM_LEFT_COLOR := Color(0.35, 0.55, 0.95)
 const CORNER_MARKER_BOTTOM_RIGHT_COLOR := Color(0.9, 0.8, 0.35)
+const MAP_VIEW_DEBUG_TAG := "[MapView]"
+const MAP_VIEW_DEBUG_MEASURE: bool = false
+const MAP_VIEW_MAX_LAYERS: int = 0
 
 class RiverTileInfo:
     var axial_coord: Vector2i
@@ -95,6 +98,7 @@ var _panning_camera: bool = false
 var _rotating_camera: bool = false
 var _observed_viewport: Viewport
 var _pending_viewport_resize: bool = false
+var _debug_measure_done: bool = false
 
 func _enter_tree() -> void:
     _ensure_viewport_subscription()
@@ -103,6 +107,7 @@ func _exit_tree() -> void:
     _disconnect_observed_viewport()
 
 func _ready() -> void:
+    print("%s ready; HEX_WORLD_SIZE=%f" % [MAP_VIEW_DEBUG_TAG, HEX_WORLD_SIZE])
     mouse_filter = Control.MOUSE_FILTER_STOP
     _configure_container_stretch()
     _ensure_viewport_nodes()
@@ -355,12 +360,65 @@ func _rebuild_map() -> void:
     var extent_z: float = max_z - min_z
     var extent: float = max(max(extent_x, extent_z), 1.0)
     _update_camera_focus(center, extent)
+    if MAP_VIEW_DEBUG_MEASURE and not _debug_measure_done:
+        _debug_measure_done = true
+        _debug_measure_first_tile()
 
 func _clear_map_container() -> void:
     if _map_container == null:
         return
     for child in _map_container.get_children():
         child.queue_free()
+
+func _debug_measure_first_tile() -> void:
+    if _map_container == null:
+        return
+    if _map_container.get_child_count() == 0:
+        return
+    var tile_node := _map_container.get_child(0) as Node3D
+    if tile_node == null:
+        return
+    print("%s Measuring tile '%s'" % [MAP_VIEW_DEBUG_TAG, tile_node.name])
+    _debug_log_layer_bounds(tile_node, "Layer0")
+    _debug_log_layer_bounds(tile_node, "Layer1")
+    _debug_log_layer_bounds(tile_node, "Layer2")
+
+func _debug_log_layer_bounds(tile_node: Node3D, layer_name: String) -> void:
+    var layer := tile_node.get_node_or_null(layer_name) as Node3D
+    if layer == null:
+        print("%s %s: not found" % [MAP_VIEW_DEBUG_TAG, layer_name])
+        return
+    var bounds: AABB = _collect_layer_aabb(layer)
+    print(
+        "%s %s AABB origin=%s size=%s" % [
+            MAP_VIEW_DEBUG_TAG,
+            layer_name,
+            str(bounds.position),
+            str(bounds.size),
+        ]
+    )
+
+func _collect_layer_aabb(root: Node3D) -> AABB:
+    var has_bounds: bool = false
+    var combined := AABB()
+    if root is MeshInstance3D:
+        var mesh_instance := root as MeshInstance3D
+        var mesh_aabb: AABB = mesh_instance.get_aabb()
+        combined = mesh_aabb
+        has_bounds = true
+    for child in root.get_children():
+        if child is Node3D:
+            var child_node := child as Node3D
+            var child_aabb: AABB = _collect_layer_aabb(child_node)
+            if child_aabb.size != Vector3.ZERO:
+                if not has_bounds:
+                    combined = child_aabb
+                    has_bounds = true
+                else:
+                    combined = combined.merge(child_aabb)
+    if has_bounds:
+        return combined
+    return AABB()
 
 func _populate_tile_layers(tile_node: Node3D, draw_stack_variant: Variant) -> void:
     if tile_node == null:
@@ -370,6 +428,8 @@ func _populate_tile_layers(tile_node: Node3D, draw_stack_variant: Variant) -> vo
     var draw_stack: Array = draw_stack_variant
     var layer_offset_index: int = 0
     for layer_variant in draw_stack:
+        if MAP_VIEW_MAX_LAYERS > 0 and layer_offset_index >= MAP_VIEW_MAX_LAYERS:
+            break
         if typeof(layer_variant) != TYPE_DICTIONARY:
             continue
         var layer_dict: Dictionary = layer_variant
@@ -385,21 +445,28 @@ func _populate_tile_layers(tile_node: Node3D, draw_stack_variant: Variant) -> vo
         var layer_node: Node3D = _ensure_node3d(instance)
         layer_node.name = "Layer%d" % layer_offset_index
         var scale_value: float = float(layer_dict.get("scale", 1.0))
-        layer_node.scale = Vector3(scale_value, scale_value, scale_value)
+        var role: String = String(layer_dict.get("role", ""))
+        if role == "BASE":
+            layer_node.scale = Vector3(1.0, scale_value, 1.0)
+        else:
+            layer_node.scale = Vector3(scale_value, scale_value, scale_value)
         var rotation_steps: int = max(int(layer_dict.get("rotation_steps", 0)), 1)
         var rotation_index: int = int(layer_dict.get("rotation", 0))
         var angle_radians: float = TAU * float(rotation_index) / float(rotation_steps)
         layer_node.rotation = Vector3(0.0, angle_radians, 0.0)
         var offset_2d: Vector2 = _to_vector2(layer_dict.get("offset", Vector2.ZERO))
-        layer_node.position = Vector3(offset_2d.x, float(layer_offset_index) * LAYER_HEIGHT_STEP, offset_2d.y)
+        var height_offset: float = 0.0
+        if role != "BASE":
+            height_offset = float(layer_offset_index) * LAYER_HEIGHT_STEP
+        layer_node.position = Vector3(offset_2d.x, height_offset, offset_2d.y)
         tile_node.add_child(layer_node)
         layer_offset_index += 1
 
 func _should_render_layer(layer_dict: Dictionary) -> bool:
-    if _show_rivers:
-        return true
     var role: String = String(layer_dict.get("role", ""))
-    if role == "RIVER":
+    if role == "BASE":
+        return false
+    if not _show_rivers and role == "RIVER":
         return false
     return true
 

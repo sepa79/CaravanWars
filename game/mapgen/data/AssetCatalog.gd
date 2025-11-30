@@ -30,8 +30,8 @@ const BASE_ASSET_SCENE_PATH := "res://assets/gltf/tiles/base/hex_grass_bottom.gl
 const TERRAIN_BASE_SCENE_PATHS: Dictionary = {
     TERRAIN_SEA: "res://assets/gltf/tiles/base/hex_water.gltf",
     TERRAIN_PLAINS: "res://assets/gltf/tiles/base/hex_grass.gltf",
-    TERRAIN_HILLS: "res://assets/gltf/tiles/base/hex_grass_sloped_low.gltf",
-    TERRAIN_MOUNTAINS: "res://assets/gltf/tiles/base/hex_grass_sloped_high.gltf",
+    TERRAIN_HILLS: "res://assets/gltf/tiles/base/hex_grass.gltf",
+    TERRAIN_MOUNTAINS: "res://assets/gltf/tiles/base/hex_grass.gltf",
 }
 
 const TERRAIN_OVERLAY_SCENE_PATHS: Dictionary = {
@@ -181,8 +181,8 @@ func _register_default_assets() -> void:
         TERRAIN_HILLS: 6,
         TERRAIN_MOUNTAINS: 6,
     }
-    _register_terrain_variants(TERRAIN_SEA, 1, _get_scene_path_map(TERRAIN_OVERLAY_SCENE_PATHS, TERRAIN_SEA))
-    _register_terrain_variants(TERRAIN_PLAINS, 1, _get_scene_path_map(TERRAIN_OVERLAY_SCENE_PATHS, TERRAIN_PLAINS))
+    # Overlay variants are only used for hills and mountains.
+    # Plains and sea rely on the terrain base layer plus optional decor.
     _register_terrain_variants(TERRAIN_HILLS, 6, _get_scene_path_map(TERRAIN_OVERLAY_SCENE_PATHS, TERRAIN_HILLS))
     _register_terrain_variants(TERRAIN_MOUNTAINS, 6, _get_scene_path_map(TERRAIN_OVERLAY_SCENE_PATHS, TERRAIN_MOUNTAINS))
     _register_decor_variants(TERRAIN_PLAINS, 1, _get_scene_path_map(TERRAIN_DECOR_SCENE_PATHS, TERRAIN_PLAINS))
