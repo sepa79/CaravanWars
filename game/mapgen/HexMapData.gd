@@ -159,20 +159,26 @@ func build_draw_stack(tile: Tile) -> void:
     if base_asset != StringName():
         tile.add_layer(LayerInstanceScript.new(base_asset, 0, 1.0, Vector2.ZERO))
     var overlay_asset: StringName = asset_catalog.get_terrain_overlay_asset(tile.terrain_type, tile.visual_variant)
+    var decor_asset: StringName = StringName()
+    if tile.with_trees:
+        decor_asset = asset_catalog.get_terrain_decor_asset(tile.terrain_type, tile.visual_variant)
+    # For hills and mountains, use a single combined mesh when trees are enabled.
+    if tile.terrain_type == AssetCatalogScript.TERRAIN_HILLS or tile.terrain_type == AssetCatalogScript.TERRAIN_MOUNTAINS:
+        if tile.with_trees and decor_asset != StringName():
+            overlay_asset = decor_asset
+            decor_asset = StringName()
     if overlay_asset != StringName():
         var overlay_rotation: int = tile.tile_rotation
         var steps: int = asset_catalog.get_rotation_steps(overlay_asset)
         if steps <= 1:
             overlay_rotation = 0
         tile.add_layer(LayerInstanceScript.new(overlay_asset, overlay_rotation, 1.0, Vector2.ZERO))
-    if tile.with_trees:
-        var decor_asset: StringName = asset_catalog.get_terrain_decor_asset(tile.terrain_type, tile.visual_variant)
-        if decor_asset != StringName():
-            var decor_rotation: int = tile.tile_rotation
-            var decor_steps: int = asset_catalog.get_rotation_steps(decor_asset)
-            if decor_steps <= 1:
-                decor_rotation = 0
-            tile.add_layer(LayerInstanceScript.new(decor_asset, decor_rotation, 1.0, Vector2.ZERO))
+    if decor_asset != StringName():
+        var decor_rotation: int = tile.tile_rotation
+        var decor_steps: int = asset_catalog.get_rotation_steps(decor_asset)
+        if decor_steps <= 1:
+            decor_rotation = 0
+        tile.add_layer(LayerInstanceScript.new(decor_asset, decor_rotation, 1.0, Vector2.ZERO))
 
 func store_tile(tile: Tile) -> void:
     if map_data == null or tile == null:
