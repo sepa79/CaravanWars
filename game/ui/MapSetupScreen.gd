@@ -123,6 +123,7 @@ const FEATURE_FALLOFF_OPTIONS: Array = [
 ]
 
 const FEATURE_COUNT_DISABLED_VALUE := -1
+const MAP_SETUP_DEBUG_TAG := "[MapSetup]"
 
 @onready var start_button: Button = $HBox/ControlsScroll/Controls/Buttons/Start
 @onready var back_button: Button = $HBox/ControlsScroll/Controls/Buttons/Back
@@ -742,13 +743,22 @@ func _load_config_from_world() -> void:
         _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
 
 func _refresh_map_view() -> void:
+    print("%s _refresh_map_view run_mode=%s" % [MAP_SETUP_DEBUG_TAG, Net.run_mode])
     if map_view == null:
+        print("%s no map_view instance" % MAP_SETUP_DEBUG_TAG)
         _update_region_legend({})
         return
     var prepared_map: Variant = World.get_prepared_map(Net.run_mode)
+    if prepared_map == null:
+        print("%s World.get_prepared_map returned null" % MAP_SETUP_DEBUG_TAG)
+    elif prepared_map is Object:
+        print("%s prepared_map class=%s" % [MAP_SETUP_DEBUG_TAG, prepared_map.get_class()])
+    else:
+        print("%s prepared_map typeof=%d" % [MAP_SETUP_DEBUG_TAG, typeof(prepared_map)])
     var map_dictionary: Dictionary = {}
-    if MAP_DATA_SCRIPT != null and prepared_map is MAP_DATA_SCRIPT:
-        map_dictionary = (prepared_map as MAP_DATA_SCRIPT).to_dictionary()
+    if prepared_map is MapData:
+        var typed_map := prepared_map as MapData
+        map_dictionary = typed_map.to_dictionary()
     elif typeof(prepared_map) == TYPE_DICTIONARY:
         map_dictionary = prepared_map
     if map_dictionary.is_empty():
@@ -757,6 +767,7 @@ func _refresh_map_view() -> void:
             var typed_config := prepared_config as HexMapConfig
             if typed_config.terrain_settings != null and typed_config.terrain_settings.has_method("to_dictionary"):
                 map_dictionary["terrain_settings"] = typed_config.terrain_settings.to_dictionary()
+    print("%s map_dictionary keys=%s" % [MAP_SETUP_DEBUG_TAG, str(map_dictionary.keys())])
     map_view.set_map_data(map_dictionary)
     _update_region_legend(map_dictionary)
 

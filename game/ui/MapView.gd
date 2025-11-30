@@ -123,6 +123,12 @@ func _ready() -> void:
     _rebuild_map()
 
 func set_map_data(data: Dictionary) -> void:
+    var hex_count := 0
+    if typeof(data) == TYPE_DICTIONARY:
+        var hexes_variant: Variant = data.get("hexes")
+        if typeof(hexes_variant) == TYPE_ARRAY:
+            hex_count = (hexes_variant as Array).size()
+    print("%s set_map_data hexes=%d" % [MAP_VIEW_DEBUG_TAG, hex_count])
     map_data = _duplicate_dictionary(data)
     _load_terrain_settings_from_data(map_data)
     _cache_river_entries()
@@ -200,15 +206,25 @@ func get_river_tiles() -> Dictionary:
 func _ensure_viewport_nodes() -> void:
     if _terrain_viewport != null and _terrain_root != null and _map_container != null:
         return
-    _terrain_viewport = _find_viewport(self)
+    var viewport_parent: Node = get_node_or_null("ViewportContainer")
+    if viewport_parent == null:
+        var container := SubViewportContainer.new()
+        container.name = "ViewportContainer"
+        if self is Control:
+            var ctrl := self as Control
+            container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+            container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+            ctrl.add_child(container)
+        else:
+            add_child(container)
+        viewport_parent = container
+    _terrain_viewport = _find_viewport(viewport_parent)
     if _terrain_viewport == null:
-        if not is_class("SubViewportContainer"):
-            return
         var created_viewport: SubViewport = SubViewport.new()
         created_viewport.name = "TerrainViewport"
         created_viewport.own_world_3d = true
         created_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-        add_child(created_viewport)
+        viewport_parent.add_child(created_viewport)
         _terrain_viewport = created_viewport
     _queue_viewport_resize()
     if not _terrain_viewport.own_world_3d:
