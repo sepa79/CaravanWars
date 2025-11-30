@@ -1,6 +1,8 @@
 extends RefCounted
 class_name EdgeShaper
 
+const ScopedRngScript: GDScript = preload("res://mapgen/phase1/ScopedRng.gd")
+
 const EDGE_ORDER: Array[String] = [
     "north",
     "east",
@@ -25,11 +27,22 @@ const EDGE_PRIORITY: Dictionary = {
 func apply(width: int, height: int, heights: Dictionary, config: HexMapConfig) -> Dictionary:
     var result: Dictionary = heights.duplicate(true)
     var edges: Dictionary = config.get_all_edge_settings()
+    var jitter_steps: int = max(0, config.edge_jitter)
+    var rng_state: int = config.map_seed
     for r in range(height):
         for q in range(width):
             var axial := Vector2i(q, r)
             var base_height: float = float(heights.get(axial, 0.5))
-            var shaped_height: float = _shape_height_for_tile(q, r, width, height, edges, base_height)
+            var shaped_height: float = _shape_height_for_tile(
+                q,
+                r,
+                width,
+                height,
+                edges,
+                base_height,
+                jitter_steps,
+                rng_state
+            )
             result[axial] = shaped_height
     return result
 
@@ -39,7 +52,9 @@ func _shape_height_for_tile(
     width: int,
     height: int,
     edges: Dictionary,
-    base_height: float
+    base_height: float,
+    jitter_steps: int,
+    rng_state: int
 ) -> float:
     var best_height: float = base_height
     var best_priority: int = -1
@@ -51,7 +66,20 @@ func _shape_height_for_tile(
         if band_width <= 0:
             continue
         var distance: int = _distance_to_edge(direction, q, r, width, height)
-        if distance >= band_width:
+        var effective_distance: int = distance
+        if jitter_steps > 0:
+            var jitter: int = ScopedRngScript.rand_int(
+                rng_state,
+                q,
+                r,
+                "edge_jitter_%s" % direction,
+                -jitter_steps,
+                jitter_steps
+            )
+            effective_distance = distance + jitter
+            if effective_distance < 0:
+                effective_distance = 0
+        if effective_distance >= band_width:
             continue
         var terrain_type: String = String(edge_info.get("type", HexMapConfig.DEFAULT_EDGE_TYPE)).to_lower()
         var priority: int = int(EDGE_PRIORITY.get(terrain_type, 0))
@@ -60,7 +88,7 @@ func _shape_height_for_tile(
         if priority == best_priority and direction_index >= best_order:
             continue
         var target_height: float = float(EDGE_TARGET_LEVELS.get(terrain_type, base_height))
-        var t: float = _smoothstep(0.0, float(max(1, band_width)), float(distance))
+        var t: float = _smoothstep(0.0, float(max(1, band_width)), float(effective_distance))
         var candidate: float = lerpf(target_height, base_height, t)
         best_priority = priority
         best_order = direction_index
