@@ -164,6 +164,9 @@ var _feature_falloff_label: Label
 var _feature_falloff_option: OptionButton
 var _feature_count_label: Label
 var _feature_count_spinbox: SpinBox
+var _regen_timer: Timer
+var _regen_pending: bool = false
+const REGEN_DEBOUNCE_TIME: float = 0.25
 
 func _ready() -> void:
     _rng.randomize()
@@ -186,6 +189,11 @@ func _ready() -> void:
     rivers_spinbox.value_changed.connect(_on_rivers_changed)
     width_spinbox.value_changed.connect(_on_width_changed)
     height_spinbox.value_changed.connect(_on_height_changed)
+    _regen_timer = Timer.new()
+    _regen_timer.one_shot = true
+    _regen_timer.wait_time = REGEN_DEBOUNCE_TIME
+    add_child(_regen_timer)
+    _regen_timer.timeout.connect(_on_regen_timer_timeout)
     _refresh_map_view()
     _on_net_state_changed(Net.state)
     if Net.run_mode == "single" and _should_drive_ci_singleplayer():
@@ -574,7 +582,7 @@ func _on_feature_intensity_selected(index: int) -> void:
     if _current_config == null:
         _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
     _current_config.update_random_feature_setting("intensity", option_id)
-    _regenerate_map()
+    _schedule_regenerate_map()
 
 func _on_feature_mode_selected(index: int) -> void:
     if _updating_controls:
@@ -585,7 +593,7 @@ func _on_feature_mode_selected(index: int) -> void:
     if _current_config == null:
         _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
     _current_config.update_random_feature_setting("mode", option_id)
-    _regenerate_map()
+    _schedule_regenerate_map()
 
 func _on_feature_falloff_selected(index: int) -> void:
     if _updating_controls:
@@ -596,7 +604,7 @@ func _on_feature_falloff_selected(index: int) -> void:
     if _current_config == null:
         _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
     _current_config.update_random_feature_setting("falloff", option_id)
-    _regenerate_map()
+    _schedule_regenerate_map()
 
 func _on_feature_count_override_changed(value: float) -> void:
     if _updating_controls:
@@ -608,7 +616,7 @@ func _on_feature_count_override_changed(value: float) -> void:
         _current_config.update_random_feature_setting("count_override", null)
     else:
         _current_config.update_random_feature_setting("count_override", rounded)
-    _regenerate_map()
+    _schedule_regenerate_map()
 
 func _get_map_width_value() -> int:
     if _current_config != null:
@@ -682,7 +690,7 @@ func _on_edge_type_selected(index: int, edge_name: String) -> void:
     var setting: Dictionary = _current_config.get_edge_setting(edge_name)
     var width_value := int(setting.get("width", 0))
     _current_config.set_edge_setting(edge_name, terrain_type, width_value)
-    _regenerate_map()
+    _schedule_regenerate_map()
 
 func _on_edge_width_changed(value: float, edge_name: String) -> void:
     if _updating_controls:
@@ -693,7 +701,7 @@ func _on_edge_width_changed(value: float, edge_name: String) -> void:
     var terrain_type := String(setting.get("type", "plains"))
     var width_value := clampi(int(round(value)), 0, _get_edge_limit(edge_name))
     _current_config.set_edge_setting(edge_name, terrain_type, width_value)
-    _regenerate_map()
+    _schedule_regenerate_map()
 
 func _on_edge_jitter_changed(value: float) -> void:
     if _updating_controls:
@@ -701,7 +709,7 @@ func _on_edge_jitter_changed(value: float) -> void:
     if _current_config == null:
         _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
     _current_config.edge_jitter = max(0, int(round(value)))
-    _regenerate_map()
+    _schedule_regenerate_map()
 
 func _update_texts() -> void:
     title_label.text = I18N.t("setup.title")
@@ -781,13 +789,27 @@ func _regenerate_map() -> void:
     _apply_config_to_controls()
     _refresh_map_view()
 
+func _schedule_regenerate_map() -> void:
+    if _regen_timer == null:
+        _regenerate_map()
+        return
+    _regen_pending = true
+    _regen_timer.stop()
+    _regen_timer.start()
+
+func _on_regen_timer_timeout() -> void:
+    if not _regen_pending:
+        return
+    _regen_pending = false
+    _regenerate_map()
+
 func _on_seed_value_changed(value: float) -> void:
     if _updating_controls:
         return
     if _current_config == null:
         _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
     _current_config.map_seed = int(value)
-    _regenerate_map()
+    _schedule_regenerate_map()
 
 func _on_random_seed_pressed() -> void:
     if _current_config == null:
@@ -795,7 +817,7 @@ func _on_random_seed_pressed() -> void:
     var new_seed := int(_rng.randi_range(1, 999_999_999))
     _current_config.map_seed = new_seed
     _apply_config_to_controls()
-    _regenerate_map()
+    _schedule_regenerate_map()
 
 func _on_kingdoms_changed(value: float) -> void:
     if _updating_controls:
@@ -803,7 +825,7 @@ func _on_kingdoms_changed(value: float) -> void:
     if _current_config == null:
         _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
     _current_config.kingdom_count = max(1, int(value))
-    _regenerate_map()
+    _schedule_regenerate_map()
 
 func _on_rivers_changed(value: float) -> void:
     if _updating_controls:
@@ -811,7 +833,7 @@ func _on_rivers_changed(value: float) -> void:
     if _current_config == null:
         _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
     _current_config.rivers_cap = max(0, int(value))
-    _regenerate_map()
+    _schedule_regenerate_map()
 
 func _on_width_changed(value: float) -> void:
     if _updating_controls:
@@ -821,7 +843,7 @@ func _on_width_changed(value: float) -> void:
     _current_config.map_width = max(1, int(round(value)))
     _clamp_edge_widths_to_dimensions()
     _update_edge_width_limits()
-    _regenerate_map()
+    _schedule_regenerate_map()
 
 func _on_height_changed(value: float) -> void:
     if _updating_controls:
@@ -831,7 +853,7 @@ func _on_height_changed(value: float) -> void:
     _current_config.map_height = max(1, int(round(value)))
     _clamp_edge_widths_to_dimensions()
     _update_edge_width_limits()
-    _regenerate_map()
+    _schedule_regenerate_map()
 
 func _on_start_pressed() -> void:
     match Net.run_mode:
