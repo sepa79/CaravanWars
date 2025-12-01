@@ -58,7 +58,8 @@ func _shape_height_for_tile(
 ) -> float:
     var best_height: float = base_height
     var best_priority: int = -1
-    var best_order: int = EDGE_ORDER.size()
+    var best_terrain: String = ""
+    var best_distance: int = 0
     for direction_index in range(EDGE_ORDER.size()):
         var direction: String = EDGE_ORDER[direction_index]
         var edge_info: Dictionary = edges.get(direction, {})
@@ -83,15 +84,19 @@ func _shape_height_for_tile(
             continue
         var terrain_type: String = String(edge_info.get("type", HexMapConfig.DEFAULT_EDGE_TYPE)).to_lower()
         var priority: int = int(EDGE_PRIORITY.get(terrain_type, 0))
-        if priority < best_priority:
-            continue
-        if priority == best_priority and direction_index >= best_order:
+        var should_use: bool = false
+        if priority > best_priority:
+            should_use = true
+        elif priority == best_priority and terrain_type == best_terrain and effective_distance < best_distance:
+            should_use = true
+        if not should_use:
             continue
         var target_height: float = float(EDGE_TARGET_LEVELS.get(terrain_type, base_height))
         var t: float = _smoothstep(0.0, float(max(1, band_width)), float(effective_distance))
         var candidate: float = lerpf(target_height, base_height, t)
         best_priority = priority
-        best_order = direction_index
+        best_terrain = terrain_type
+        best_distance = effective_distance
         best_height = candidate
     return best_height
 

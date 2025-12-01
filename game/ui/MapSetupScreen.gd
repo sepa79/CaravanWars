@@ -167,6 +167,8 @@ var _feature_count_spinbox: SpinBox
 var _regen_timer: Timer
 var _regen_pending: bool = false
 const REGEN_DEBOUNCE_TIME: float = 0.25
+var _camera_reset_button: Button
+var _camera_topdown_toggle: CheckBox
 
 func _ready() -> void:
     _rng.randomize()
@@ -225,7 +227,9 @@ func _strip_legacy_controls() -> void:
         if node != null:
             node.visible = false
     if layers_row != null:
-        layers_row.visible = false
+        for child in layers_row.get_children():
+            child.visible = false
+        _ensure_camera_controls()
 
 func _configure_param_ranges() -> void:
     seed_spinbox.step = 1.0
@@ -243,6 +247,27 @@ func _configure_param_ranges() -> void:
     height_spinbox.step = 1.0
     height_spinbox.min_value = 1.0
     height_spinbox.max_value = 256.0
+
+func _ensure_camera_controls() -> void:
+    if layers_row == null:
+        return
+    if _camera_reset_button == null:
+        var reset_button := Button.new()
+        reset_button.name = "CameraReset"
+        reset_button.focus_mode = Control.FOCUS_ALL
+        reset_button.pressed.connect(_on_camera_reset_pressed)
+        layers_row.add_child(reset_button)
+        _camera_reset_button = reset_button
+    if _camera_topdown_toggle == null:
+        var topdown_toggle := CheckBox.new()
+        topdown_toggle.name = "CameraTopDown"
+        topdown_toggle.focus_mode = Control.FOCUS_ALL
+        topdown_toggle.button_pressed = false
+        topdown_toggle.toggled.connect(_on_camera_topdown_toggled)
+        layers_row.add_child(topdown_toggle)
+        _camera_topdown_toggle = topdown_toggle
+    _update_camera_controls_texts()
+    layers_row.visible = true
 
 func _ensure_edge_controls() -> void:
     if params_grid == null:
@@ -721,9 +746,16 @@ func _update_texts() -> void:
     height_label.text = I18N.t("setup.map_height")
     start_button.text = I18N.t("setup.start")
     back_button.text = I18N.t("menu.back")
+    _update_camera_controls_texts()
     _update_edge_controls_texts()
     _update_feature_controls_texts()
     _update_legend_texts()
+
+func _update_camera_controls_texts() -> void:
+    if _camera_reset_button != null:
+        _camera_reset_button.text = I18N.t("setup.camera_reset")
+    if _camera_topdown_toggle != null:
+        _camera_topdown_toggle.text = I18N.t("setup.camera_topdown")
 
 func _apply_config_to_controls() -> void:
     if _current_config == null:
@@ -854,6 +886,14 @@ func _on_height_changed(value: float) -> void:
     _clamp_edge_widths_to_dimensions()
     _update_edge_width_limits()
     _schedule_regenerate_map()
+
+func _on_camera_reset_pressed() -> void:
+    if map_view != null:
+        map_view.reset_camera()
+
+func _on_camera_topdown_toggled(enabled: bool) -> void:
+    if map_view != null:
+        map_view.set_topdown_camera(enabled)
 
 func _on_start_pressed() -> void:
     match Net.run_mode:

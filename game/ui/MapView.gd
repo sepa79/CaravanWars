@@ -37,6 +37,9 @@ const CORNER_MARKER_BOTTOM_RIGHT_COLOR := Color(0.9, 0.8, 0.35)
 const MAP_VIEW_DEBUG_TAG := "[MapView]"
 const MAP_VIEW_DEBUG_MEASURE: bool = false
 const MAP_VIEW_MAX_LAYERS: int = 0
+const CAMERA_TOPDOWN_PITCH: float = deg_to_rad(75.0)
+const CAMERA_TOPDOWN_YAW: float = 0.0
+const CAMERA_TOPDOWN_MARGIN: float = 1.1
 
 class RiverTileInfo:
     var axial_coord: Vector2i
@@ -99,6 +102,9 @@ var _rotating_camera: bool = false
 var _observed_viewport: Viewport
 var _pending_viewport_resize: bool = false
 var _debug_measure_done: bool = false
+var _use_topdown_camera: bool = false
+var _last_focus_extent: float = 1.0
+var _topdown_zoom: float = 1.0
 
 func _enter_tree() -> void:
     _ensure_viewport_subscription()
@@ -138,6 +144,17 @@ func set_map_data(data: Dictionary) -> void:
     _rotating_camera = false
     _rebuild_map()
     cities_changed.emit([])
+
+func reset_camera() -> void:
+    _camera_user_override = false
+    _topdown_zoom = 1.0
+    _update_camera_focus(_camera_target, _last_focus_extent)
+
+func set_topdown_camera(enabled: bool) -> void:
+    _use_topdown_camera = enabled
+    _camera_user_override = false
+    _topdown_zoom = 1.0
+    _update_camera_focus(_camera_target, _last_focus_extent)
 
 func set_edit_mode(_value: bool) -> void:
     pass
@@ -499,15 +516,37 @@ func _update_camera_focus(center: Vector3, extent: float) -> void:
     _camera_min_distance = max(new_distance * CAMERA_DISTANCE_MIN_FACTOR, 1.0)
     _camera_max_distance = max(new_distance * CAMERA_DISTANCE_MAX_FACTOR, _camera_min_distance + 1.0)
     _camera_pan_scale = max(extent, 1.0)
-    if not _camera_user_override:
-        _camera_yaw = CAMERA_BASE_YAW
-        _camera_pitch = clamp(new_pitch, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
-        _camera_distance = new_distance
-    _apply_camera_transform()
+    _last_focus_extent = extent
+    if _use_topdown_camera:
+        _apply_topdown_camera_transform()
+    else:
+        var desired_yaw: float = CAMERA_BASE_YAW
+        var desired_pitch: float = new_pitch
+        if not _camera_user_override:
+            _camera_yaw = desired_yaw
+            _camera_pitch = clamp(desired_pitch, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
+            _camera_distance = new_distance
+        _apply_camera_transform()
+
+func _apply_topdown_camera_transform() -> void:
+    if _camera == null:
+        return
+    _camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+    var base_size: float = max(_last_focus_extent * CAMERA_TOPDOWN_MARGIN, 1.0)
+    var ortho_size: float = max(base_size / max(_topdown_zoom, 0.25), 0.5)
+    _camera.size = ortho_size
+    var height: float = max(_last_focus_extent * 1.0, CAMERA_MIN_ALTITUDE)
+    var position := _camera_target + Vector3(0.0, height, 0.0)
+    _camera.look_at_from_position(position, _camera_target, Vector3.BACK)
 
 func _apply_camera_transform() -> void:
     if _camera == null:
         return
+    if _use_topdown_camera:
+        _apply_topdown_camera_transform()
+        return
+    if _camera.projection != Camera3D.PROJECTION_PERSPECTIVE:
+        _camera.projection = Camera3D.PROJECTION_PERSPECTIVE
     var pitch_sin := sin(_camera_pitch)
     var pitch_cos := cos(_camera_pitch)
     var altitude_limit: float = CAMERA_MIN_ALTITUDE / max(pitch_sin, 0.01)
@@ -575,26 +614,42 @@ func _is_pointer_over_viewport(pointer_position: Vector2) -> bool:
     return local_rect.has_point(pointer_position)
 
 func _apply_zoom_step(direction: float) -> void:
+    var effective_direction: float = direction
+    if _use_topdown_camera:
+        effective_direction = -direction
     var multiplier: float = 1.0
-    if direction < 0.0:
+    if effective_direction < 0.0:
         multiplier = 1.0 - CAMERA_ZOOM_STEP
     else:
         multiplier = 1.0 + CAMERA_ZOOM_STEP
-    _camera_distance *= multiplier
-    _apply_camera_transform()
+    if _use_topdown_camera:
+        _topdown_zoom *= multiplier
+        _topdown_zoom = clampf(_topdown_zoom, 0.25, 4.0)
+        _apply_topdown_camera_transform()
+    else:
+        _camera_distance *= multiplier
+        _apply_camera_transform()
 
 func _apply_pan(relative: Vector2) -> void:
     if relative == Vector2.ZERO:
         return
-    var right := Vector3(cos(_camera_yaw), 0.0, -sin(_camera_yaw))
-    var forward := Vector3(-sin(_camera_yaw), 0.0, -cos(_camera_yaw))
-    var pan_scale_factor: float = CAMERA_PAN_SPEED * max(_camera_distance, 1.0) / max(_camera_pan_scale, 1.0)
-    var delta := (-right * relative.x + forward * relative.y) * pan_scale_factor
-    _camera_target += delta
-    _apply_camera_transform()
+    if _use_topdown_camera:
+        var pan_scale_factor: float = CAMERA_PAN_SPEED * max(_last_focus_extent, 1.0)
+        var delta := Vector3(-relative.x, 0.0, relative.y) * pan_scale_factor
+        _camera_target += delta
+        _apply_topdown_camera_transform()
+    else:
+        var right := Vector3(cos(_camera_yaw), 0.0, -sin(_camera_yaw))
+        var forward := Vector3(-sin(_camera_yaw), 0.0, -cos(_camera_yaw))
+        var pan_scale_factor_persp: float = CAMERA_PAN_SPEED * max(_camera_distance, 1.0) / max(_camera_pan_scale, 1.0)
+        var delta_persp := (-right * relative.x + forward * relative.y) * pan_scale_factor_persp
+        _camera_target += delta_persp
+        _apply_camera_transform()
 
 func _apply_rotation(relative: Vector2) -> void:
     if relative == Vector2.ZERO:
+        return
+    if _use_topdown_camera:
         return
     _camera_yaw -= relative.x * CAMERA_ROTATE_SPEED
     _camera_pitch = clamp(_camera_pitch + relative.y * CAMERA_TILT_SPEED, CAMERA_MIN_PITCH, CAMERA_MAX_PITCH)
@@ -627,8 +682,16 @@ func _resolve_scene_path(layer_dict: Dictionary) -> String:
     return String(layer_dict.get("resource", ""))
 
 func _axial_to_world(axial: Vector2i) -> Vector2:
-    var coord: HexCoord = HexCoordScript.new(axial.x, axial.y) as HexCoord
-    return _hex_grid.axial_to_world(coord, HEX_WORLD_SIZE)
+    var q: int = axial.x
+    var r: int = axial.y
+    var tile_width: float = sqrt(3.0) * HEX_WORLD_SIZE
+    var tile_height: float = 2.0 * HEX_WORLD_SIZE
+    var x_offset: float = 0.0
+    if (r & 1) != 0:
+        x_offset = tile_width * 0.5
+    var x: float = tile_width * float(q) + x_offset
+    var y: float = 0.75 * tile_height * float(r)
+    return Vector2(x, y)
 
 func _extract_axial(coord_variant: Variant) -> Variant:
     if coord_variant is Vector2i:
