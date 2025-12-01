@@ -10,6 +10,8 @@ const HexGridScript: GDScript = preload("res://mapgen/HexGrid.gd")
 const RIVER_MASK_BIT_COUNT := 6
 const HEX_WORLD_SIZE: float = 2.0 / sqrt(3.0)
 const LAYER_HEIGHT_STEP: float = 0.05
+const TILE_HEIGHT_SCALE: float = 8.0
+const SEA_BASE_LEVEL: float = 0.1
 const CAMERA_MIN_DISTANCE: float = 2.5
 const CAMERA_MIN_ALTITUDE: float = 4.0
 const CAMERA_DISTANCE_SCALE: float = 0.9
@@ -40,6 +42,7 @@ const MAP_VIEW_MAX_LAYERS: int = 0
 const CAMERA_TOPDOWN_PITCH: float = deg_to_rad(75.0)
 const CAMERA_TOPDOWN_YAW: float = 0.0
 const CAMERA_TOPDOWN_MARGIN: float = 1.1
+const BARE_MOUNTAIN_EXTRA_HEIGHT: float = 0.0
 
 class RiverTileInfo:
     var axial_coord: Vector2i
@@ -105,6 +108,15 @@ var _debug_measure_done: bool = false
 var _use_topdown_camera: bool = false
 var _last_focus_extent: float = 1.0
 var _topdown_zoom: float = 1.0
+var _elevation_bands: Dictionary = {}
+var _elevation_band_step: float = 0.1
+var _elevation_debug: bool = false
+const ELEVATION_BAND_MAX_DEBUG: float = 12.0
+var _roughness_values: Dictionary = {}
+var _roughness_min: float = 0.0
+var _roughness_max: float = 0.0
+var _roughness_debug: bool = false
+const ROUGHNESS_EPSILON: float = 0.0001
 
 func _enter_tree() -> void:
     _ensure_viewport_subscription()
@@ -137,6 +149,7 @@ func set_map_data(data: Dictionary) -> void:
     print("%s set_map_data hexes=%d" % [MAP_VIEW_DEBUG_TAG, hex_count])
     map_data = _duplicate_dictionary(data)
     _load_terrain_settings_from_data(map_data)
+    _load_elevation_metadata(map_data)
     _cache_river_entries()
     _rebuild_assets()
     _camera_user_override = false
@@ -158,6 +171,12 @@ func set_topdown_camera(enabled: bool) -> void:
 
 func set_edit_mode(_value: bool) -> void:
     pass
+
+func set_elevation_debug(enabled: bool) -> void:
+    _elevation_debug = enabled
+    if enabled:
+        _roughness_debug = false
+    _rebuild_map()
 
 func set_road_mode(_mode: String) -> void:
     pass
@@ -202,8 +221,11 @@ func set_show_forts(_value: bool) -> void:
 func set_show_fertility(_value: bool) -> void:
     pass
 
-func set_show_roughness(_value: bool) -> void:
-    pass
+func set_show_roughness(value: bool) -> void:
+    _roughness_debug = value
+    if value:
+        _elevation_debug = false
+    _rebuild_map()
 
 func get_kingdom_colors() -> Dictionary:
     return {}
@@ -310,9 +332,54 @@ func _load_terrain_settings_from_data(data: Dictionary) -> void:
     var settings_data: Variant = data.get("terrain_settings")
     var new_settings: Object = TerrainSettingsResource.new()
     if typeof(settings_data) == TYPE_DICTIONARY:
-        if new_settings is Resource and new_settings.has_method("apply_overrides"):
-            new_settings.call("apply_overrides", settings_data)
+          if new_settings is Resource and new_settings.has_method("apply_overrides"):
+              new_settings.call("apply_overrides", settings_data)
     _terrain_settings = new_settings
+
+func _load_elevation_metadata(source: Dictionary) -> void:
+    _elevation_bands.clear()
+    _elevation_band_step = 0.1
+    _roughness_values.clear()
+    _roughness_min = 0.0
+    _roughness_max = 0.0
+    var terrain_variant: Variant = source.get("terrain")
+    if typeof(terrain_variant) != TYPE_DICTIONARY:
+        return
+    var terrain: Dictionary = terrain_variant
+    var elevation_variant: Variant = terrain.get("elevation_analysis")
+    if typeof(elevation_variant) != TYPE_DICTIONARY:
+        return
+    var elevation: Dictionary = elevation_variant
+    _elevation_band_step = float(elevation.get("band_step", _elevation_band_step))
+    var bands_variant: Variant = elevation.get("bands")
+    if typeof(bands_variant) != TYPE_DICTIONARY:
+        return
+    var bands_dict: Dictionary = bands_variant
+    for key in bands_dict.keys():
+        var axial_variant: Variant = _extract_axial(key)
+        if axial_variant == null:
+            continue
+        var axial: Vector2i = axial_variant as Vector2i
+        _elevation_bands[axial] = int(bands_dict[key])
+    var roughness_variant: Variant = elevation.get("roughness")
+    if typeof(roughness_variant) == TYPE_DICTIONARY:
+        var roughness_dict: Dictionary = roughness_variant
+        var local_min: float = INF
+        var local_max: float = 0.0
+        for key in roughness_dict.keys():
+            var axial_variant: Variant = _extract_axial(key)
+            if axial_variant == null:
+                continue
+            var axial: Vector2i = axial_variant as Vector2i
+            var value: float = float(roughness_dict[key])
+            _roughness_values[axial] = value
+            if value < local_min:
+                local_min = value
+            if value > local_max:
+                local_max = value
+        if local_min != INF:
+            _roughness_min = local_min
+            _roughness_max = local_max
 
 func _rebuild_assets() -> void:
     _terrain_asset_map = _build_asset_map()
@@ -377,13 +444,26 @@ func _rebuild_map() -> void:
             continue
         var axial_coord: Vector2i = axial as Vector2i
         var world_2d: Vector2 = _axial_to_world(axial_coord)
-        var world_position := Vector3(world_2d.x, 0.0, world_2d.y)
+        var height_value: float = float(entry.get("height_value", 0.0))
+        var terrain_type: String = String(entry.get("terrain_type", ""))
+        var with_trees: bool = bool(entry.get("with_trees", false))
+        var world_y: float = 0.0
+        if terrain_type != "SEA":
+            var relative_height: float = max(0.0, height_value - SEA_BASE_LEVEL)
+            world_y = relative_height * TILE_HEIGHT_SCALE
+        var world_position := Vector3(world_2d.x, world_y, world_2d.y)
         var tile_node := Node3D.new()
         tile_node.name = "Tile_%d_%d" % [axial_coord.x, axial_coord.y]
         tile_node.position = world_position
         _map_container.add_child(tile_node)
         var draw_stack_variant: Variant = entry.get("draw_stack", [])
-        _populate_tile_layers(tile_node, draw_stack_variant)
+        var band: int = int(_elevation_bands.get(axial_coord, 0))
+        var roughness_value: float = 0.0
+        if _roughness_debug:
+            roughness_value = float(_roughness_values.get(axial_coord, 0.0))
+            if terrain_type == "SEA":
+                roughness_value = 0.0
+        _populate_tile_layers(tile_node, draw_stack_variant, band, roughness_value)
         min_x = min(min_x, world_position.x)
         max_x = max(max_x, world_position.x)
         min_z = min(min_z, world_position.z)
@@ -453,7 +533,12 @@ func _collect_layer_aabb(root: Node3D) -> AABB:
         return combined
     return AABB()
 
-func _populate_tile_layers(tile_node: Node3D, draw_stack_variant: Variant) -> void:
+func _populate_tile_layers(
+    tile_node: Node3D,
+    draw_stack_variant: Variant,
+    elevation_band: int,
+    roughness_value: float
+) -> void:
     if tile_node == null:
         return
     if typeof(draw_stack_variant) != TYPE_ARRAY:
@@ -492,6 +577,11 @@ func _populate_tile_layers(tile_node: Node3D, draw_stack_variant: Variant) -> vo
         if role != "BASE":
             height_offset = float(layer_offset_index) * LAYER_HEIGHT_STEP
         layer_node.position = Vector3(offset_2d.x, height_offset, offset_2d.y)
+        if layer_offset_index == 0:
+            if _elevation_debug:
+                _apply_elevation_color(layer_node, elevation_band)
+            elif _roughness_debug:
+                _apply_roughness_color(layer_node, roughness_value)
         tile_node.add_child(layer_node)
         layer_offset_index += 1
 
@@ -502,6 +592,38 @@ func _should_render_layer(layer_dict: Dictionary) -> bool:
     if not _show_rivers and role == "RIVER":
         return false
     return true
+
+func _get_elevation_color(band: int) -> Color:
+    var normalized: float = clamp(float(band) / ELEVATION_BAND_MAX_DEBUG, 0.0, 1.0)
+    var gray: float = lerp(0.25, 0.98, normalized)
+    return Color(gray, gray, gray)
+
+func _apply_elevation_color(root: Node3D, band: int) -> void:
+    var color: Color = _get_elevation_color(band)
+    _apply_color_to_meshes(root, color)
+func _get_roughness_color(roughness_value: float) -> Color:
+    var min_value: float = _roughness_min
+    var max_value: float = _roughness_max
+    if max_value <= min_value + ROUGHNESS_EPSILON:
+        return Color(0.0, 0.0, 0.0)
+    var t: float = clamp((roughness_value - min_value) / (max_value - min_value), 0.0, 1.0)
+    var gray: float = lerp(0.0, 0.98, t)
+    return Color(gray, gray, gray)
+
+func _apply_roughness_color(root: Node3D, roughness_value: float) -> void:
+    var color: Color = _get_roughness_color(roughness_value)
+    _apply_color_to_meshes(root, color)
+
+func _apply_color_to_meshes(node: Node, color: Color) -> void:
+    if node is MeshInstance3D:
+        var mesh_node := node as MeshInstance3D
+        var material := StandardMaterial3D.new()
+        material.albedo_color = color
+        material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+        mesh_node.material_overlay = material
+    for child in node.get_children():
+        if child is Node:
+            _apply_color_to_meshes(child, color)
 
 func _update_camera_focus(center: Vector3, extent: float) -> void:
     if _camera == null:

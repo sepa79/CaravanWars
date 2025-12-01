@@ -164,11 +164,15 @@ var _feature_falloff_label: Label
 var _feature_falloff_option: OptionButton
 var _feature_count_label: Label
 var _feature_count_spinbox: SpinBox
+var _feature_roughness_label: Label
+var _feature_roughness_spinbox: SpinBox
 var _regen_timer: Timer
 var _regen_pending: bool = false
 const REGEN_DEBOUNCE_TIME: float = 0.25
 var _camera_reset_button: Button
 var _camera_topdown_toggle: CheckBox
+var _elevation_debug_toggle: CheckBox
+var _roughness_debug_toggle: CheckBox
 
 func _ready() -> void:
     _rng.randomize()
@@ -266,6 +270,22 @@ func _ensure_camera_controls() -> void:
         topdown_toggle.toggled.connect(_on_camera_topdown_toggled)
         layers_row.add_child(topdown_toggle)
         _camera_topdown_toggle = topdown_toggle
+    if _elevation_debug_toggle == null:
+        var elev_toggle := CheckBox.new()
+        elev_toggle.name = "ElevationDebug"
+        elev_toggle.focus_mode = Control.FOCUS_ALL
+        elev_toggle.button_pressed = false
+        elev_toggle.toggled.connect(_on_elevation_debug_toggled)
+        layers_row.add_child(elev_toggle)
+        _elevation_debug_toggle = elev_toggle
+    if _roughness_debug_toggle == null:
+        var rough_toggle := CheckBox.new()
+        rough_toggle.name = "RoughnessDebug"
+        rough_toggle.focus_mode = Control.FOCUS_ALL
+        rough_toggle.button_pressed = false
+        rough_toggle.toggled.connect(_on_roughness_debug_toggled)
+        layers_row.add_child(rough_toggle)
+        _roughness_debug_toggle = rough_toggle
     _update_camera_controls_texts()
     layers_row.visible = true
 
@@ -427,6 +447,23 @@ func _ensure_feature_controls() -> void:
         _feature_count_spinbox.value_changed.connect(Callable(self, "_on_feature_count_override_changed"))
     if _feature_count_spinbox.get_parent() == null:
         params_grid.add_child(_feature_count_spinbox)
+    if _feature_roughness_label == null:
+        _feature_roughness_label = Label.new()
+        _feature_roughness_label.name = "FeatureRoughnessLabel"
+        _feature_roughness_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+        _feature_roughness_label.size_flags_horizontal = Control.SIZE_FILL
+    if _feature_roughness_label.get_parent() == null:
+        params_grid.add_child(_feature_roughness_label)
+    if _feature_roughness_spinbox == null:
+        _feature_roughness_spinbox = SpinBox.new()
+        _feature_roughness_spinbox.name = "FeatureRoughnessScale"
+        _feature_roughness_spinbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        _feature_roughness_spinbox.step = 0.25
+        _feature_roughness_spinbox.min_value = 0.25
+        _feature_roughness_spinbox.max_value = 4.0
+        _feature_roughness_spinbox.value_changed.connect(Callable(self, "_on_feature_roughness_changed"))
+    if _feature_roughness_spinbox.get_parent() == null:
+        params_grid.add_child(_feature_roughness_spinbox)
 
 func _populate_edge_type_button(button: OptionButton) -> void:
     if button == null:
@@ -518,6 +555,10 @@ func _update_feature_controls_texts() -> void:
         _feature_count_label.text = I18N.t("setup.feature.count_override")
     if _feature_count_spinbox != null:
         _feature_count_spinbox.tooltip_text = I18N.t("setup.feature.count_override_tooltip")
+    if _feature_roughness_label != null:
+        _feature_roughness_label.text = I18N.t("setup.feature.roughness_scale")
+    if _feature_roughness_spinbox != null:
+        _feature_roughness_spinbox.tooltip_text = I18N.t("setup.feature.roughness_scale_tooltip")
 
 func _update_feature_option_button_texts(button: OptionButton, options: Array) -> void:
     if button == null:
@@ -585,6 +626,11 @@ func _apply_random_feature_settings_to_controls() -> void:
         count_value = float(count_override)
     if _feature_count_spinbox != null:
         _feature_count_spinbox.value = count_value
+    var roughness_scale: float = 1.0
+    if settings.has("roughness_scale"):
+        roughness_scale = float(settings.get("roughness_scale", 1.0))
+    if _feature_roughness_spinbox != null:
+        _feature_roughness_spinbox.value = roughness_scale
 
 func _select_option_by_metadata(button: OptionButton, target_id: String) -> void:
     if button == null:
@@ -641,6 +687,15 @@ func _on_feature_count_override_changed(value: float) -> void:
         _current_config.update_random_feature_setting("count_override", null)
     else:
         _current_config.update_random_feature_setting("count_override", rounded)
+    _schedule_regenerate_map()
+
+func _on_feature_roughness_changed(value: float) -> void:
+    if _updating_controls:
+        return
+    if _current_config == null:
+        _current_config = HEX_MAP_CONFIG_SCRIPT.new() as HexMapConfig
+    var clamped: float = clampf(value, 0.25, 4.0)
+    _current_config.update_random_feature_setting("roughness_scale", clamped)
     _schedule_regenerate_map()
 
 func _get_map_width_value() -> int:
@@ -756,6 +811,10 @@ func _update_camera_controls_texts() -> void:
         _camera_reset_button.text = I18N.t("setup.camera_reset")
     if _camera_topdown_toggle != null:
         _camera_topdown_toggle.text = I18N.t("setup.camera_topdown")
+    if _elevation_debug_toggle != null:
+        _elevation_debug_toggle.text = I18N.t("setup.show_elevation_debug")
+    if _roughness_debug_toggle != null:
+        _roughness_debug_toggle.text = I18N.t("setup.show_roughness_debug")
 
 func _apply_config_to_controls() -> void:
     if _current_config == null:
@@ -894,6 +953,18 @@ func _on_camera_reset_pressed() -> void:
 func _on_camera_topdown_toggled(enabled: bool) -> void:
     if map_view != null:
         map_view.set_topdown_camera(enabled)
+
+func _on_elevation_debug_toggled(enabled: bool) -> void:
+    if map_view != null:
+        map_view.set_elevation_debug(enabled)
+    if enabled and _roughness_debug_toggle != null and _roughness_debug_toggle.button_pressed:
+        _roughness_debug_toggle.button_pressed = false
+
+func _on_roughness_debug_toggled(enabled: bool) -> void:
+    if map_view != null:
+        map_view.set_show_roughness(enabled)
+    if enabled and _elevation_debug_toggle != null and _elevation_debug_toggle.button_pressed:
+        _elevation_debug_toggle.button_pressed = false
 
 func _on_start_pressed() -> void:
     match Net.run_mode:

@@ -51,9 +51,9 @@ const TERRAIN_OVERLAY_SCENE_PATHS: Dictionary = {
         VARIANT_C: "res://assets/gltf/decoration/nature/hills_C.gltf",
     },
     TERRAIN_MOUNTAINS: {
-        VARIANT_A: "res://assets/gltf/decoration/nature/mountain_A.gltf",
-        VARIANT_B: "res://assets/gltf/decoration/nature/mountain_B.gltf",
-        VARIANT_C: "res://assets/gltf/decoration/nature/mountain_C.gltf",
+        VARIANT_A: "res://assets/gltf/decoration/nature/mountain_A_grass.gltf",
+        VARIANT_B: "res://assets/gltf/decoration/nature/mountain_B_grass.gltf",
+        VARIANT_C: "res://assets/gltf/decoration/nature/mountain_C_grass.gltf",
     },
 }
 

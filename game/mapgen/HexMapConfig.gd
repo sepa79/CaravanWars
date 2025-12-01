@@ -66,6 +66,7 @@ const DEFAULT_FEATURE_INTENSITY := "none"
 const DEFAULT_FEATURE_MODE := "auto"
 const DEFAULT_FEATURE_FALLOFF := "smooth"
 const DEFAULT_FEATURE_COUNT_OVERRIDE := null
+const DEFAULT_ROUGHNESS_SCALE: float = 1.0
 
 var map_seed: int
 var map_width: int
@@ -223,4 +224,12 @@ func _sanitize_random_feature_settings(source: Dictionary) -> Dictionary:
         _:
             sanitized_count = DEFAULT_FEATURE_COUNT_OVERRIDE
     sanitized["count_override"] = sanitized_count
+    var roughness_variant: Variant = source.get("roughness_scale", DEFAULT_ROUGHNESS_SCALE)
+    var roughness_scale: float = DEFAULT_ROUGHNESS_SCALE
+    match typeof(roughness_variant):
+        TYPE_FLOAT, TYPE_INT:
+            roughness_scale = clampf(float(roughness_variant), 0.25, 4.0)
+        _:
+            roughness_scale = DEFAULT_ROUGHNESS_SCALE
+    sanitized["roughness_scale"] = roughness_scale
     return sanitized

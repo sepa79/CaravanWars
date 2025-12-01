@@ -24,6 +24,9 @@ enum FeatureType {
 func apply(rng_state: int, width: int, height: int, base_heights: Dictionary, config: HexMapConfig) -> Dictionary:
     var result: Dictionary = base_heights.duplicate(true)
     var settings: Dictionary = config.get_random_feature_settings()
+    var roughness_scale: float = 1.0
+    if settings.has("roughness_scale"):
+        roughness_scale = clampf(float(settings.get("roughness_scale", 1.0)), 0.25, 4.0)
     var feature_count: int = _determine_feature_count(rng_state, settings)
     if feature_count <= 0:
         return result
@@ -35,7 +38,7 @@ func apply(rng_state: int, width: int, height: int, base_heights: Dictionary, co
     for index in range(centers.size()):
         var center: Vector2i = centers[index]
         var feature_type: FeatureType = _choose_feature_type(rng_state, index, mode)
-        _apply_feature(result, center, width, height, feature_type, falloff)
+        _apply_feature(result, center, width, height, feature_type, falloff, roughness_scale)
     return result
 
 func _determine_feature_count(rng_state: int, settings: Dictionary) -> int:
@@ -102,24 +105,44 @@ func _apply_feature(
     width: int,
     height: int,
     feature_type: FeatureType,
-    falloff: String
+    falloff: String,
+    roughness_scale: float
 ) -> void:
     for r in range(height):
         for q in range(width):
             var axial := Vector2i(q, r)
             var base_value: float = float(heights.get(axial, BASELINE_HEIGHT))
             var distance: float = float(_axial_distance(center, axial))
-            var feature_height: float = _compute_feature_height(distance, feature_type, falloff)
+            var feature_height: float = _compute_feature_height(
+                distance,
+                feature_type,
+                falloff,
+                base_value,
+                roughness_scale
+            )
             if feature_height <= base_value:
                 continue
             heights[axial] = feature_height
 
-func _compute_feature_height(distance: float, feature_type: FeatureType, falloff: String) -> float:
+func _compute_feature_height(
+    distance: float,
+    feature_type: FeatureType,
+    falloff: String,
+    base_value: float,
+    roughness_scale: float
+) -> float:
     match feature_type:
         FeatureType.PEAK:
-            return _compute_peak_height(distance, falloff)
+            return _scale_feature_height(_compute_peak_height(distance, falloff), base_value, roughness_scale)
         _:
-            return _compute_hill_height(distance, falloff)
+            return _scale_feature_height(_compute_hill_height(distance, falloff), base_value, roughness_scale)
+
+func _scale_feature_height(raw_height: float, base_value: float, roughness_scale: float) -> float:
+    if raw_height <= base_value:
+        return raw_height
+    var delta: float = raw_height - base_value
+    var scaled: float = base_value + delta * roughness_scale
+    return clampf(scaled, 0.0, 1.0)
 
 func _compute_peak_height(distance: float, falloff: String) -> float:
     if distance <= PEAK_CORE_RADIUS:
