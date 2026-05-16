@@ -84,6 +84,10 @@ class WorldEventIn(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class DomainEventIn(BaseModel):
+    world_event: WorldEventIn
+
+
 class MemoryEntryIn(BaseModel):
     id: str | None = None
     owner_id: str

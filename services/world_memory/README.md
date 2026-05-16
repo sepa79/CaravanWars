@@ -136,6 +136,7 @@ Useful endpoints:
 - `POST /relationships`
 - `POST /world-events`
 - `GET /world-events`
+- `POST /domain-events/ingest`
 - `POST /world-events/{event_id}/remember`
 - `POST /memory-entries`
 - `GET /memory-entries`
@@ -146,6 +147,51 @@ Useful endpoints:
 - `POST /conversations/{conversation_id}/turns`
 - `POST /dialogue-context`
 - `GET /memory-search?query=...`
+
+## Domain Event Ingest
+
+Use `POST /domain-events/ingest` for simulation events that should become WorldMemory state.
+
+The endpoint stores one canonical `world_event`, then creates per-entity `memory_entries` for event types it understands. The `text` field is only a technical fallback. Gameplay, debug UI, and later LLM rumor rendering should primarily use structured `metadata`.
+
+Current v0 mappings:
+
+- `goods_transferred`: creates one party memory entry and one location memory entry.
+- `location_economy_ticked`: creates one location memory entry.
+- `location_need_declared`: creates one location memory entry.
+- `worldsim_location_observed`: creates one observer owner memory entry.
+- `worldsim_party_observed`: creates one observer owner memory entry.
+- `party_travel_started`: creates one party memory entry.
+- `party_arrived`: creates one party memory entry.
+- `party_order_assigned`: creates order ledger entries for the recipient party, issuer actor, direct manager actor, and target location when present.
+
+Example:
+
+```json
+{
+  "world_event": {
+    "id": "goods_transferred:merchant_party_01:day:1.000",
+    "event_type": "goods_transferred",
+    "text": "goods_transferred",
+    "location_id": "opole_stronghold",
+    "occurred_at": "day:1.000",
+    "importance": 0.7,
+    "reliability": 1.0,
+    "tags": ["simulation", "goods_transferred", "food", "opole_stronghold", "merchant_party_01"],
+    "metadata": {
+      "party_id": "merchant_party_01",
+      "location_id": "opole_stronghold",
+      "goods_id": "food",
+      "amount": 10,
+      "direction": "withdraw_from_location"
+    }
+  }
+}
+```
+
+For this event, `merchant_party_01` gets `owner_goods_delta = 10`, while `opole_stronghold` gets `owner_goods_delta = -10`, both linked to the same `source_event_id`.
+
+`GET /memory-search` now searches `memory_entries`, not the older `memory_events` table. The older table remains for prototype conversation memory and compatibility with early demo helpers.
 
 ## Memory Transfer Example
 

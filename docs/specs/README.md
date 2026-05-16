@@ -83,7 +83,13 @@ TODO
 - Party cargo v0: `docs/specs/economy/party_cargo_v0.md`
 - Location economy v0: `docs/specs/economy/location_economy_v0.md`
 - Merchant autoplay scenario v0: `docs/specs/economy/merchant_autoplay_scenario_v0.md`
+- Merchant memory AI v0: `docs/specs/economy/merchant_memory_ai_v0.md`
+- Mayor food manager v0: `docs/specs/economy/mayor_food_manager_v0.md`
+- Mayor supply planner v0: `docs/specs/economy/mayor_supply_planner_v0.md`
+- City supply party v0: `docs/specs/economy/city_supply_party_v0.md`
+- Quartermaster AI v0: `docs/specs/economy/quartermaster_ai_v0.md`
 - Planned route geometry v0: `docs/specs/regions/route_geometry_v0.md`
+- WorldSim observation pipeline v0: `docs/specs/worldsim/observation_pipeline_v0.md`
 - Region graph seed data: `game/data/regions/silesia.json`
 - Region graph loader/model code: `game/world/`
 - Party travel config: `game/data/simulation/party_travel.json`

@@ -33,6 +33,8 @@ Local LLM support is a presentation and interpretation layer, not a simulation o
 
 Durable NPC and party memory lives outside Godot in the WorldMemory service. Rumors spread by copying and mutating private memory entries between important actors and parties, not through a central rumor registry. See `docs/architecture/WORLD_MEMORY_AND_RUMORS.md`.
 
+AI memory is exclusively WorldMemory-owned. Godot managers and LLM decision jobs must not keep separate private memory or scan global authoritative state as knowledge. Observations pass through WorldSim and become owner-specific WorldMemory entries before AI uses them. See `docs/architecture/AI_MEMORY_BOUNDARY.md`.
+
 LLM execution should live in a separate stateless LLM Service. The simulation orchestrates: it pulls context from WorldMemory, calls the LLM Service, validates the proposal, and writes accepted results. See `docs/architecture/LLM_SERVICE.md`.
 
 ## Main components
@@ -42,7 +44,7 @@ LLM execution should live in a separate stateless LLM Service. The simulation or
 | Authoritative simulation | Owns command validation and state transitions | Must be shared by singleplayer and multiplayer. |
 | Command model | Common input contract for all actors | Not fully specified yet; keep canonical when introduced. |
 | Party state | Neutral field group state | Represents caravans, pilgrims, retinues, patrols, bandits, or similar groups; significant parties have manager actors. |
-| Party order state | Manager-issued party directive | Stores assigned travel orders that execute through normal server commands. |
+| Party order state | Authorized actor-issued party directive | Stores assigned travel orders and high-level supply intents issued through normal server commands. |
 | Party knowledge state | Runtime client visibility boundary | Tracks currently known nodes/routes for snapshots and commands; not durable WorldMemory. |
 | Party composition | Data that feeds derived stats | Horses, wagons, foot members, guards, and pack animals affect travel speed. |
 | Party cargo | Physical goods carried by parties | Uses goods catalog ids and composition-derived carrying capacity. |
@@ -51,8 +53,10 @@ LLM execution should live in a separate stateless LLM Service. The simulation or
 | Location economy config | Deterministic location metabolism | Defines daily production, consumption, and storage caps for managed locations. |
 | Deterministic managers | Actor decision code | Submit authoritative commands without directly mutating simulation state. |
 | Runtime event log | Observable in-run simulation history | Used by tests/debug UI; not durable WorldMemory. |
+| WorldSim observation service | Local observation adjudication | Converts local physical observations into owner-specific events that can become WorldMemory entries. |
 | Event sinks | In-process event adapters | Receive authoritative events without owning simulation state. |
-| WorldMemory event mapper | Export contract mapper | Converts selected runtime events to WorldMemory-shaped payloads without HTTP. |
+| WorldMemory event mapper | Export contract mapper | Converts selected runtime events to WorldMemory-shaped payloads without owning transport. |
+| WorldMemory domain event sink | Durable memory adapter boundary | Sends mapped authoritative events through an explicit WorldMemory transport and records visible failures. |
 | Game session factory | New-game bootstrap | Creates the initial local authoritative server state. |
 | Simulation save codec | Save/load boundary | Serializes and validates authoritative simulation snapshots. |
 | Region graph | Source of truth for movement topology | Seeded by `game/data/regions/silesia.json`. |
@@ -82,9 +86,21 @@ Party knowledge in Godot is intentionally small runtime visibility state. Durabl
 
 Physical parties are authoritative simulation entities. Information about them lives separately: visibility snapshots expose physically nearby parties, while rumors and remembered sightings belong in WorldMemory.
 
+AI agents may only make strategic decisions from their own WorldMemory context. A deterministic manager can inspect the physical entity it directly manages to submit legal commands, but it cannot use global `server.state` as omniscient knowledge. The current merchant food manager remains a scenario harness; `MerchantMemoryAI` is the first production-direction slice that chooses trade action from owner memory.
+
 Managers direct entities through commands. A mayor, chief, caravan leader, patrol commander, or future AI role should produce commands such as `AssignPartyOrderCommand`; it should not mutate the managed entity directly.
 
+Some parties can be directed by a superior actor without changing their direct manager. In v0, `wroclaw_supply_party_01` is managed by `quartermaster_wroclaw`, while `mayor_wroclaw` is an authorized issuer for high-level `procure_goods` orders. The later supply AI should execute those intents using its own WorldMemory and normal travel/transfer commands.
+
+Long-term command hierarchy should be a generic authority chain, not a fixed set of city layers. A ruler, mayor, quartermaster, guard commander, and party leader can form different chains depending on polity and institution. Direct superiors should be explicit actor relationships; exceptions should be explicit office/role permissions.
+
+Authority is separate from communication. A superior actor being allowed to issue an order does not mean the order reaches a traveling party instantly. Current v0 only allows direct superior-issued supply orders while the party is physically at the target city node; future remote orders require explicit courier or communication mechanics.
+
 Deterministic manager slices should remain small and testable. The first merchant food manager moves food by submitting `TransferGoodsCommand` and `TravelIntentCommand`, not by editing cargo, resources, or travel state directly.
+
+The first mayor food manager declares location food needs through `DeclareLocationNeedCommand`. It emits observable need events for WorldMemory and future merchant decision logic; it does not directly summon merchants or mutate resources.
+
+Mayor supply planning is separate from need declaration. The planner must check mayor/city WorldMemory for existing active supply intent before issuing a new `procure_goods` order, so repeated re-evaluation does not spam multiple parties for the same shortage.
 
 Locations are also authoritative simulation entities. Their resources and manager ids are physical state; knowledge or rumors about those resources belong in WorldMemory.
 
@@ -114,6 +130,7 @@ Current event specs:
 
 - `docs/specs/events/runtime_event_log.md`
 - `docs/specs/events/world_memory_event_export_v0.md`
+- `docs/specs/worldsim/observation_pipeline_v0.md`
 
 Current save specs:
 
@@ -130,6 +147,9 @@ Current economy specs:
 - `docs/specs/economy/party_cargo_v0.md`
 - `docs/specs/economy/location_economy_v0.md`
 - `docs/specs/economy/merchant_autoplay_scenario_v0.md`
+- `docs/specs/economy/mayor_supply_planner_v0.md`
+- `docs/specs/economy/city_supply_party_v0.md`
+- `docs/specs/economy/quartermaster_ai_v0.md`
 
 Current region specs:
 
@@ -147,7 +167,7 @@ The current debug UI is built in script, not `.tscn`, so it can be tested headle
 
 Runtime events are generated by the authoritative simulation for local observability. They can later feed adapters, but persistence belongs outside Godot.
 
-WorldMemory export is currently a mapper and in-process sink contract only. Godot does not yet own HTTP transport, retries, or durable writes to `services/world_memory`.
+WorldMemory export uses a transport-free mapper plus `WorldMemoryDomainEventSink`. Runtime code should use `WorldMemoryQueuedHttpTransport` to queue POSTs to the local `services/world_memory` sidecar at `/domain-events/ingest` without blocking authoritative simulation ticks. Injected test/debug transports remain available for deterministic checks. Retry policy and service lifecycle management are not defined yet.
 
 ## Observability
 

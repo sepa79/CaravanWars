@@ -4,7 +4,7 @@
 
 `Merchant Autoplay Scenario v0` is the first automated integration scenario for travel, cargo, location resources, transfer commands, and deterministic manager behavior.
 
-It is not full trade AI, pricing, bargaining, or economic planning. It proves that a manager can use existing authoritative commands to move a physical good between locations without direct state mutation.
+It is not full trade AI, pricing, bargaining, or economic planning. It is a technical harness proving that a manager can use existing authoritative commands to move a physical good between locations without direct state mutation. Production-direction merchant decisions should use `Merchant memory AI v0`.
 
 ## Owner / consumers
 

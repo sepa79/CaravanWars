@@ -3,6 +3,7 @@ extends RefCounted
 
 const ORDER_TYPE_IDLE: String = "idle"
 const ORDER_TYPE_TRAVEL_TO: String = "travel_to"
+const ORDER_TYPE_PROCURE_GOODS: String = "procure_goods"
 
 const STATUS_NONE: String = "none"
 const STATUS_ASSIGNED: String = "assigned"
@@ -13,6 +14,9 @@ const STATUS_FAILED: String = "failed"
 var order_type: String = ORDER_TYPE_IDLE
 var status: String = STATUS_NONE
 var target_node_id: String = ""
+var target_location_id: String = ""
+var goods_id: String = ""
+var amount: int = 0
 var route_node_ids: Array[String] = []
 var issued_by_actor_id: String = ""
 var failure_code: String = ""
@@ -27,6 +31,22 @@ func assign_travel_to(new_target_node_id: String, new_issued_by_actor_id: String
     order_type = ORDER_TYPE_TRAVEL_TO
     status = STATUS_ASSIGNED
     target_node_id = new_target_node_id
+    target_location_id = ""
+    goods_id = ""
+    amount = 0
+    route_node_ids.clear()
+    issued_by_actor_id = new_issued_by_actor_id
+    failure_code = ""
+    failure_message = ""
+
+
+func assign_procure_goods(new_target_location_id: String, new_goods_id: String, new_amount: int, new_issued_by_actor_id: String) -> void:
+    order_type = ORDER_TYPE_PROCURE_GOODS
+    status = STATUS_ASSIGNED
+    target_node_id = ""
+    target_location_id = new_target_location_id
+    goods_id = new_goods_id
+    amount = new_amount
     route_node_ids.clear()
     issued_by_actor_id = new_issued_by_actor_id
     failure_code = ""
@@ -54,6 +74,9 @@ func to_dictionary() -> Dictionary:
         "order_type": order_type,
         "status": status,
         "target_node_id": target_node_id,
+        "target_location_id": target_location_id,
+        "goods_id": goods_id,
+        "amount": amount,
         "route_node_ids": route_node_ids.duplicate(),
         "issued_by_actor_id": issued_by_actor_id,
         "failure_code": failure_code,
@@ -66,6 +89,9 @@ static func from_dictionary(order_dictionary: Dictionary) -> RefCounted:
     order.order_type = str(order_dictionary.get("order_type", ORDER_TYPE_IDLE))
     order.status = str(order_dictionary.get("status", STATUS_NONE))
     order.target_node_id = str(order_dictionary.get("target_node_id", ""))
+    order.target_location_id = str(order_dictionary.get("target_location_id", ""))
+    order.goods_id = str(order_dictionary.get("goods_id", ""))
+    order.amount = int(order_dictionary.get("amount", 0))
     order.route_node_ids = _string_array_from_variant(order_dictionary.get("route_node_ids", []))
     order.issued_by_actor_id = str(order_dictionary.get("issued_by_actor_id", ""))
     order.failure_code = str(order_dictionary.get("failure_code", ""))

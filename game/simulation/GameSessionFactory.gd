@@ -15,6 +15,7 @@ const SIMULATION_STATE_SCRIPT: GDScript = preload("res://simulation/SimulationSt
 const PLAYER_PARTY_ID: String = "player_party"
 const BANDIT_PARTY_ID: String = "bandit_party_01"
 const MERCHANT_PARTY_ID: String = "merchant_party_01"
+const WROCLAW_SUPPLY_PARTY_ID: String = "wroclaw_supply_party_01"
 const WROCLAW_LOCATION_ID: String = "wroclaw_city"
 const OPOLE_LOCATION_ID: String = "opole_stronghold"
 const NYSA_LOCATION_ID: String = "nysa_monastery"
@@ -37,6 +38,7 @@ static func create_new_game_server() -> RefCounted:
     server.state.add_party(create_player_party())
     server.state.add_party(create_bandit_party())
     server.state.add_party(create_merchant_party())
+    server.state.add_party(create_wroclaw_supply_party())
     server.state.add_location(create_wroclaw_location())
     server.state.add_location(create_opole_location())
     server.state.add_location(create_nysa_location())
@@ -108,6 +110,29 @@ static func create_merchant_party() -> RefCounted:
     party.knowledge.add_known_node("raciborz")
     party.knowledge.add_known_edge("wroclaw_opole")
     party.knowledge.add_known_edge("opole_raciborz")
+    return party
+
+
+static func create_wroclaw_supply_party() -> RefCounted:
+    var party: RefCounted = PARTY_STATE_SCRIPT.new()
+    party.party_id = WROCLAW_SUPPLY_PARTY_ID
+    party.party_type = "city_supply_party"
+    party.manager_actor_id = "quartermaster_wroclaw"
+    party.authorized_issuer_actor_ids.append("mayor_wroclaw")
+    party.current_node_id = "wroclaw"
+    party.composition = PARTY_COMPOSITION_SCRIPT.from_dictionary({
+        "foot_count": 4,
+        "horse_count": 2,
+        "wagon_count": 2,
+        "pack_animal_count": 1,
+        "guard_count": 2
+    })
+    party.cargo["coin"] = 60
+    party.knowledge.add_known_node("odra_crossing")
+    party.knowledge.add_known_node("wroclaw")
+    party.knowledge.add_known_node("opole")
+    party.knowledge.add_known_edge("odra_crossing_wroclaw")
+    party.knowledge.add_known_edge("wroclaw_opole")
     return party
 
 

@@ -43,12 +43,12 @@ func _test_travel_intent_follows_known_multi_leg_path() -> void:
     _expect(party.destination_node_id == "opole", "Expected first leg destination to be Opole.")
     _expect(party.travel_intent_destination_node_id == "raciborz", "Expected intent destination to remain Raciborz.")
 
-    server.tick(3.0)
+    server.tick(4.0)
     _expect(party.travel_state == PARTY_STATE_SCRIPT.TRAVEL_STATE_TRAVELING, "Expected party to continue onto second leg after Opole.")
     _expect(party.current_node_id == "opole", "Expected party to be at Opole after first leg.")
     _expect(party.destination_node_id == "raciborz", "Expected second leg destination to be Raciborz.")
 
-    server.tick(2.0)
+    server.tick(3.0)
     _expect(party.travel_state == PARTY_STATE_SCRIPT.TRAVEL_STATE_IDLE, "Expected party to become idle after intent completion.")
     _expect(party.current_node_id == "raciborz", "Expected party to arrive at Raciborz.")
     _expect(party.travel_intent_destination_node_id.is_empty(), "Expected completed intent plan to be cleared.")

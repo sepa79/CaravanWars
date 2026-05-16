@@ -1,12 +1,18 @@
 extends MainLoop
 
 const GAME_SESSION_FACTORY_SCRIPT: GDScript = preload("res://simulation/GameSessionFactory.gd")
+const ASSIGN_PARTY_ORDER_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/AssignPartyOrderCommand.gd")
 const INSPECT_LOCAL_ROUTES_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/InspectLocalRoutesCommand.gd")
 const MOVE_PARTY_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/MovePartyCommand.gd")
+const PARTY_ORDER_STATE_SCRIPT: GDScript = preload("res://simulation/PartyOrderState.gd")
 const SIMULATION_EVENT_SCRIPT: GDScript = preload("res://simulation/SimulationEvent.gd")
 const TEST_EVENT_SINK_SCRIPT: GDScript = preload("res://simulation/events/TestSimulationEventSink.gd")
+const TEST_WORLD_MEMORY_DOMAIN_TRANSPORT_SCRIPT: GDScript = preload("res://simulation/events/TestWorldMemoryDomainTransport.gd")
 const TRANSFER_GOODS_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/TransferGoodsCommand.gd")
+const WORLD_MEMORY_DOMAIN_EVENT_SINK_SCRIPT: GDScript = preload("res://simulation/events/WorldMemoryDomainEventSink.gd")
 const WORLD_MEMORY_EVENT_MAPPER_SCRIPT: GDScript = preload("res://simulation/events/WorldMemoryEventMapper.gd")
+const WORLD_MEMORY_HTTP_TRANSPORT_SCRIPT: GDScript = preload("res://simulation/events/WorldMemoryHttpTransport.gd")
+const WORLD_MEMORY_QUEUED_HTTP_TRANSPORT_SCRIPT: GDScript = preload("res://simulation/events/WorldMemoryQueuedHttpTransport.gd")
 
 var _is_finished: bool = false
 var _failed: bool = false
@@ -17,6 +23,12 @@ func _initialize() -> void:
     _test_arrival_event_maps_to_world_event_payload()
     _test_local_route_inspection_exports_bounded_metadata()
     _test_goods_transfer_exports_trade_metadata()
+    _test_party_order_exports_supply_intent_metadata()
+    _test_location_economy_exports_location_subject()
+    _test_domain_event_sink_sends_exported_payload()
+    _test_domain_event_sink_records_transport_failures()
+    _test_http_transport_has_explicit_endpoint_configuration()
+    _test_queued_http_transport_queues_without_blocking()
     _test_unknown_event_type_is_not_exported()
 
     if not _failed:
@@ -52,7 +64,7 @@ func _test_arrival_event_maps_to_world_event_payload() -> void:
     var result: RefCounted = server.submit_move_party(command)
     _expect(result.accepted, "Expected setup move command to be accepted.")
 
-    server.tick(3.0)
+    server.tick(4.0)
     var arrival_event: RefCounted = _event_by_type(server, "party_arrived")
     var export_payload: Dictionary = WORLD_MEMORY_EVENT_MAPPER_SCRIPT.map_event(arrival_event)
     var world_event: Dictionary = export_payload.get("world_event", {})
@@ -63,7 +75,7 @@ func _test_arrival_event_maps_to_world_event_payload() -> void:
     _expect(world_event.get("location_id", "") == "opole", "Expected arrival location to be Opole.")
     _expect(metadata.get("party_id", "") == GAME_SESSION_FACTORY_SCRIPT.PLAYER_PARTY_ID, "Expected party id in metadata.")
     _expect(metadata.get("manager_actor_id", "") == "player_caravan_leader", "Expected manager actor id in metadata.")
-    _expect(is_equal_approx(float(metadata.get("occurred_day", -1.0)), 3.0), "Expected occurred day in metadata.")
+    _expect(is_equal_approx(float(metadata.get("occurred_day", -1.0)), 4.0), "Expected occurred day in metadata.")
 
 
 func _test_local_route_inspection_exports_bounded_metadata() -> void:
@@ -105,6 +117,120 @@ func _test_goods_transfer_exports_trade_metadata() -> void:
     _expect(metadata.get("goods_id", "") == "food", "Expected goods id metadata.")
     _expect(int(metadata.get("amount", 0)) == 1, "Expected transfer amount metadata.")
     _expect(metadata.get("direction", "") == TRANSFER_GOODS_COMMAND_SCRIPT.DIRECTION_WITHDRAW_FROM_LOCATION, "Expected transfer direction metadata.")
+
+
+func _test_party_order_exports_supply_intent_metadata() -> void:
+    var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
+    var command: RefCounted = ASSIGN_PARTY_ORDER_COMMAND_SCRIPT.new()
+    command.party_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID
+    command.issued_by_actor_id = "mayor_wroclaw"
+    command.order_type = PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_PROCURE_GOODS
+    command.target_location_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID
+    command.goods_id = "food"
+    command.amount = 40
+    var result: RefCounted = server.submit_assign_party_order(command)
+    _expect(result.accepted, "Expected supply order assignment to be accepted.")
+
+    var order_event: RefCounted = _event_by_type(server, "party_order_assigned")
+    var export_payload: Dictionary = WORLD_MEMORY_EVENT_MAPPER_SCRIPT.map_event(order_event)
+    var world_event: Dictionary = export_payload.get("world_event", {})
+    var metadata: Dictionary = world_event.get("metadata", {})
+
+    _expect(world_event.get("location_id", "") == GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID, "Expected order target location as export location.")
+    _expect(metadata.get("party_id", "") == GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID, "Expected order recipient party id.")
+    _expect(metadata.get("issued_by_actor_id", "") == "mayor_wroclaw", "Expected order issuer metadata.")
+    _expect(metadata.get("manager_actor_id", "") == "quartermaster_wroclaw", "Expected order manager metadata.")
+    _expect(metadata.get("order_type", "") == PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_PROCURE_GOODS, "Expected order type metadata.")
+    _expect(metadata.get("target_location_id", "") == GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID, "Expected target location metadata.")
+    _expect(metadata.get("target_node_id", "") == "wroclaw", "Expected target node metadata.")
+    _expect(metadata.get("goods_id", "") == "food", "Expected goods id metadata.")
+    _expect(int(metadata.get("amount", 0)) == 40, "Expected amount metadata.")
+
+
+func _test_location_economy_exports_location_subject() -> void:
+    var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
+    server.tick(1.0)
+
+    var economy_event: RefCounted = _event_by_type(server, "location_economy_ticked")
+    var export_payload: Dictionary = WORLD_MEMORY_EVENT_MAPPER_SCRIPT.map_event(economy_event)
+    var world_event: Dictionary = export_payload.get("world_event", {})
+    var metadata: Dictionary = world_event.get("metadata", {})
+
+    _expect(world_event.get("event_type", "") == "location_economy_ticked", "Expected economy tick export event type.")
+    _expect(str(world_event.get("id", "")).contains(str(world_event.get("location_id", ""))), "Expected economy event id to include location subject.")
+    _expect(metadata.has("resource_changes"), "Expected economy event to export resource changes.")
+
+
+func _test_domain_event_sink_sends_exported_payload() -> void:
+    var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
+    var transport: RefCounted = TEST_WORLD_MEMORY_DOMAIN_TRANSPORT_SCRIPT.new()
+    var domain_event_sink: RefCounted = WORLD_MEMORY_DOMAIN_EVENT_SINK_SCRIPT.new()
+    domain_event_sink.configure(transport)
+    server.add_event_sink(domain_event_sink)
+
+    var command: RefCounted = INSPECT_LOCAL_ROUTES_COMMAND_SCRIPT.new()
+    command.party_id = GAME_SESSION_FACTORY_SCRIPT.PLAYER_PARTY_ID
+    var result: RefCounted = server.submit_inspect_local_routes(command)
+    _expect(result.accepted, "Expected local route inspection command to be accepted.")
+
+    _expect(transport.sent_payloads.size() == 1, "Expected WorldMemory transport to receive one payload.")
+    var export_payload: Dictionary = transport.sent_payloads[0]
+    var world_event: Dictionary = export_payload.get("world_event", {})
+    _expect(export_payload.get("export_kind", "") == "world_event", "Expected domain sink to send world event payload.")
+    _expect(world_event.get("event_type", "") == "party_local_routes_inspected", "Expected domain sink to send mapped event type.")
+    _expect(not domain_event_sink.has_failures(), "Expected domain sink to have no failures.")
+
+
+func _test_domain_event_sink_records_transport_failures() -> void:
+    var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
+    var transport: RefCounted = TEST_WORLD_MEMORY_DOMAIN_TRANSPORT_SCRIPT.new()
+    transport.fail_next_send = true
+    var domain_event_sink: RefCounted = WORLD_MEMORY_DOMAIN_EVENT_SINK_SCRIPT.new()
+    domain_event_sink.emit_godot_errors = false
+    domain_event_sink.configure(transport)
+    server.add_event_sink(domain_event_sink)
+
+    var command: RefCounted = INSPECT_LOCAL_ROUTES_COMMAND_SCRIPT.new()
+    command.party_id = GAME_SESSION_FACTORY_SCRIPT.PLAYER_PARTY_ID
+    var result: RefCounted = server.submit_inspect_local_routes(command)
+    _expect(result.accepted, "Expected local route inspection command to be accepted.")
+
+    _expect(domain_event_sink.has_failures(), "Expected domain sink to record transport failure.")
+    _expect(domain_event_sink.failed_exports[0].get("error_code", "") == "test_transport_failed", "Expected explicit transport failure code.")
+
+
+func _test_http_transport_has_explicit_endpoint_configuration() -> void:
+    var transport: RefCounted = WORLD_MEMORY_HTTP_TRANSPORT_SCRIPT.new()
+    _expect(transport.host == "127.0.0.1", "Expected default WorldMemory host.")
+    _expect(transport.port == 8011, "Expected default WorldMemory port.")
+    _expect(transport.path == "/domain-events/ingest", "Expected default WorldMemory ingest path.")
+
+    transport.configure("localhost", 9001, "/custom-ingest", false)
+    _expect(transport.host == "localhost", "Expected configured WorldMemory host.")
+    _expect(transport.port == 9001, "Expected configured WorldMemory port.")
+    _expect(transport.path == "/custom-ingest", "Expected configured WorldMemory ingest path.")
+
+    var empty_result: Dictionary = transport.send_domain_event({})
+    _expect(not bool(empty_result.get("accepted", true)), "Expected empty payload to be rejected before HTTP.")
+    _expect(empty_result.get("error_code", "") == "empty_payload", "Expected explicit empty payload error.")
+
+
+func _test_queued_http_transport_queues_without_blocking() -> void:
+    var transport: RefCounted = WORLD_MEMORY_QUEUED_HTTP_TRANSPORT_SCRIPT.new()
+    transport.configure("localhost", 9001, "/custom-ingest", false)
+    var empty_result: Dictionary = transport.send_domain_event({})
+    _expect(not bool(empty_result.get("accepted", true)), "Expected queued transport to reject empty payload.")
+
+    var payload: Dictionary = {
+        "export_kind": "world_event",
+        "world_event": {
+            "id": "test_event:test:0.000"
+        }
+    }
+    var queued_result: Dictionary = transport.send_domain_event(payload)
+    _expect(bool(queued_result.get("accepted", false)), "Expected queued transport to accept payload without immediate HTTP.")
+    _expect(bool(queued_result.get("queued", false)), "Expected queued transport to report queued payload.")
+    _expect(transport.has_pending_work(), "Expected queued transport to have pending work.")
 
 
 func _test_unknown_event_type_is_not_exported() -> void:

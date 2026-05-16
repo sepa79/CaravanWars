@@ -55,7 +55,7 @@ func _test_client_snapshot_updates_location_after_travel() -> void:
     var result: RefCounted = server.submit_move_party(command)
     _expect(result.accepted, "Expected setup travel to be accepted.")
 
-    server.tick(3.0)
+    server.tick(4.0)
     var client_snapshot: Dictionary = server.get_client_snapshot(GAME_SESSION_FACTORY_SCRIPT.PLAYER_PARTY_ID)
     var location_ids: Array[String] = _location_ids(client_snapshot.get("current_locations", []))
     _expect(location_ids.has(GAME_SESSION_FACTORY_SCRIPT.OPOLE_LOCATION_ID), "Expected Opole location visible after arrival.")

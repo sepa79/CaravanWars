@@ -11,6 +11,7 @@ const TRAVEL_STATE_TRAVELING: String = "traveling"
 var party_id: String = ""
 var party_type: String = ""
 var manager_actor_id: String = ""
+var authorized_issuer_actor_ids: Array[String] = []
 var current_node_id: String = ""
 var travel_state: String = TRAVEL_STATE_IDLE
 var origin_node_id: String = ""
@@ -30,6 +31,10 @@ var order: RefCounted = PARTY_ORDER_STATE_SCRIPT.new()
 
 func is_idle() -> bool:
     return travel_state == TRAVEL_STATE_IDLE
+
+
+func can_receive_order_from(actor_id: String) -> bool:
+    return actor_id == manager_actor_id or authorized_issuer_actor_ids.has(actor_id)
 
 
 func start_travel(origin_id: String, destination_id: String, distance_km: float, speed_km_per_day: float) -> void:
@@ -75,6 +80,7 @@ func to_dictionary() -> Dictionary:
         "party_id": party_id,
         "party_type": party_type,
         "manager_actor_id": manager_actor_id,
+        "authorized_issuer_actor_ids": authorized_issuer_actor_ids.duplicate(),
         "current_node_id": current_node_id,
         "travel_state": travel_state,
         "origin_node_id": origin_node_id,

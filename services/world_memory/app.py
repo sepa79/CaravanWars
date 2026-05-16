@@ -12,6 +12,7 @@ from cw_memory.repository import (
     add_world_event_to_memory,
     build_dialogue_context,
     build_decision_context,
+    ingest_domain_event,
     list_actors,
     list_known_facts,
     list_memory_entries,
@@ -31,6 +32,7 @@ from cw_memory.schemas import (
     ConversationTurnIn,
     DecisionContextRequest,
     DialogueContextRequest,
+    DomainEventIn,
     FactIn,
     KnownFactIn,
     MemoryEventIn,
@@ -120,6 +122,14 @@ async def api_search_memory(query: str, actor_id: str | None = None, limit: int 
 @app.post("/world-events")
 async def api_upsert_world_event(payload: WorldEventIn) -> dict[str, Any]:
     return upsert_world_event(payload)
+
+
+@app.post("/domain-events/ingest")
+async def api_ingest_domain_event(payload: DomainEventIn) -> dict[str, Any]:
+    try:
+        return ingest_domain_event(payload)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/world-events")

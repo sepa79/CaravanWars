@@ -49,13 +49,13 @@ func _test_valid_party_move_arrives_after_ticks() -> void:
     _expect(result.accepted, "Expected valid move command to be accepted.")
     _expect(party.travel_state == PARTY_STATE_SCRIPT.TRAVEL_STATE_TRAVELING, "Expected party to start traveling.")
     _expect(party.destination_node_id == "opole", "Expected destination to be Opole.")
-    _expect(is_equal_approx(party.travel_distance_km, 80.0), "Expected Wroclaw-Opole distance to be 80 km.")
+    _expect(is_equal_approx(party.travel_distance_km, 100.0), "Expected Wroclaw-Opole distance to be 100 km.")
 
     server.tick(1.0)
     _expect(party.travel_state == PARTY_STATE_SCRIPT.TRAVEL_STATE_TRAVELING, "Expected party to still be traveling after 1 day.")
     _expect(party.current_node_id == "wroclaw", "Expected party to stay at origin until arrival.")
 
-    server.tick(2.0)
+    server.tick(3.0)
     _expect(party.travel_state == PARTY_STATE_SCRIPT.TRAVEL_STATE_IDLE, "Expected party to become idle after arrival.")
     _expect(party.current_node_id == "opole", "Expected party to arrive at Opole.")
 
@@ -93,7 +93,7 @@ func _test_move_and_arrival_emit_events() -> void:
     _expect(result.accepted, "Expected event move command to be accepted.")
     _expect(_event_types(server).has("party_travel_started"), "Expected travel start event.")
 
-    server.tick(3.0)
+    server.tick(4.0)
     _expect(_event_types(server).has("party_arrived"), "Expected arrival event.")
 
 

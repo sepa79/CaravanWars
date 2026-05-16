@@ -16,6 +16,7 @@ from .schemas import (
     MemoryEntryIn,
     MemoryTransferIn,
     RelationshipIn,
+    DomainEventIn,
     WorldEventIn,
     WorldEventMemoryIn,
 )
@@ -304,10 +305,10 @@ def search_memory(actor_id: str | None, query: str, limit: int = 10) -> list[dic
             rows = conn.execute(
                 """
                 SELECT me.*
-                FROM memory_search ms
-                JOIN memory_events me ON me.id = ms.rowid
-                WHERE memory_search MATCH ? AND ms.actor_id = ?
-                ORDER BY bm25(memory_search)
+                FROM memory_entries_search ms
+                JOIN memory_entries me ON me.rowid = ms.rowid
+                WHERE memory_entries_search MATCH ? AND ms.owner_id = ?
+                ORDER BY bm25(memory_entries_search)
                 LIMIT ?
                 """,
                 (match_query, actor_id, limit),
@@ -316,15 +317,15 @@ def search_memory(actor_id: str | None, query: str, limit: int = 10) -> list[dic
             rows = conn.execute(
                 """
                 SELECT me.*
-                FROM memory_search ms
-                JOIN memory_events me ON me.id = ms.rowid
-                WHERE memory_search MATCH ?
-                ORDER BY bm25(memory_search)
+                FROM memory_entries_search ms
+                JOIN memory_entries me ON me.rowid = ms.rowid
+                WHERE memory_entries_search MATCH ?
+                ORDER BY bm25(memory_entries_search)
                 LIMIT ?
                 """,
                 (match_query, limit),
             ).fetchall()
-    return rows_to_dicts(rows)
+    return [_decode_memory_entry(row) for row in rows]
 
 
 def upsert_world_event(payload: WorldEventIn) -> dict[str, Any]:
@@ -525,6 +526,295 @@ def add_world_event_to_memory(event_id: str, payload: WorldEventMemoryIn) -> dic
             metadata={"event_type": event["event_type"], "source": "world_event"},
         )
     )
+
+
+def ingest_domain_event(payload: DomainEventIn) -> dict[str, Any]:
+    world_event = upsert_world_event(payload.world_event)
+    created_entries: list[dict[str, Any]] = []
+    if world_event["event_type"] == "goods_transferred":
+        created_entries = _memory_entries_for_goods_transferred(world_event)
+    elif world_event["event_type"] == "location_economy_ticked":
+        created_entries = _memory_entries_for_location_economy_ticked(world_event)
+    elif world_event["event_type"] == "location_need_declared":
+        created_entries = _memory_entries_for_location_need_declared(world_event)
+    elif world_event["event_type"] == "worldsim_location_observed":
+        created_entries = _memory_entries_for_worldsim_observation(world_event, "location_observation")
+    elif world_event["event_type"] == "worldsim_party_observed":
+        created_entries = _memory_entries_for_worldsim_observation(world_event, "party_observation")
+    elif world_event["event_type"] == "party_travel_started":
+        created_entries = _memory_entries_for_party_travel_started(world_event)
+    elif world_event["event_type"] == "party_arrived":
+        created_entries = _memory_entries_for_party_arrived(world_event)
+    elif world_event["event_type"] == "party_order_assigned":
+        created_entries = _memory_entries_for_party_order_assigned(world_event)
+
+    return {
+        "world_event": world_event,
+        "memory_entries": created_entries,
+    }
+
+
+def _memory_entries_for_goods_transferred(world_event: dict[str, Any]) -> list[dict[str, Any]]:
+    metadata = world_event["metadata"]
+    party_id = str(metadata.get("party_id", ""))
+    location_id = str(metadata.get("location_id", world_event.get("location_id", "")))
+    direction = str(metadata.get("direction", ""))
+    if not party_id or not location_id:
+        return []
+
+    party_delta = int(metadata.get("amount", 0))
+    location_delta = -party_delta
+    if direction == "deposit_to_location":
+        party_delta = -party_delta
+        location_delta = -party_delta
+
+    base_metadata = {
+        **metadata,
+        "source": "domain_event",
+        "event_type": world_event["event_type"],
+    }
+    return [
+        upsert_memory_entry(
+            MemoryEntryIn(
+                id=f"mem_{party_id}_{world_event['id']}",
+                owner_id=party_id,
+                owner_kind="party",
+                text=_technical_text(world_event),
+                kind="direct_observation",
+                source_event_id=world_event["id"],
+                heard_at_location_id=location_id,
+                heard_at_time=world_event["occurred_at"],
+                tags=world_event["tags"],
+                credibility=world_event["reliability"],
+                salience=world_event["importance"],
+                freshness=1.0,
+                repeat_chance=0.15,
+                distortion=0.0,
+                hop_count=0,
+                source_chain=[world_event["id"]],
+                metadata={
+                    **base_metadata,
+                    "perspective": "party",
+                    "owner_goods_delta": party_delta,
+                    "counterparty_id": location_id,
+                    "counterparty_kind": "location",
+                },
+            )
+        ),
+        upsert_memory_entry(
+            MemoryEntryIn(
+                id=f"mem_{location_id}_{world_event['id']}",
+                owner_id=location_id,
+                owner_kind="location",
+                text=_technical_text(world_event),
+                kind="direct_observation",
+                source_event_id=world_event["id"],
+                heard_at_location_id=location_id,
+                heard_at_time=world_event["occurred_at"],
+                tags=world_event["tags"],
+                credibility=world_event["reliability"],
+                salience=world_event["importance"],
+                freshness=1.0,
+                repeat_chance=0.1,
+                distortion=0.0,
+                hop_count=0,
+                source_chain=[world_event["id"]],
+                metadata={
+                    **base_metadata,
+                    "perspective": "location",
+                    "owner_goods_delta": location_delta,
+                    "counterparty_id": party_id,
+                    "counterparty_kind": "party",
+                },
+            )
+        ),
+    ]
+
+
+def _memory_entries_for_location_economy_ticked(world_event: dict[str, Any]) -> list[dict[str, Any]]:
+    metadata = world_event["metadata"]
+    location_id = str(metadata.get("location_id", world_event.get("location_id", "")))
+    if not location_id:
+        return []
+    return [
+        upsert_memory_entry(
+            MemoryEntryIn(
+                id=f"mem_{location_id}_{world_event['id']}",
+                owner_id=location_id,
+                owner_kind="location",
+                text=_technical_text(world_event),
+                kind="resource_ledger",
+                source_event_id=world_event["id"],
+                heard_at_location_id=location_id,
+                heard_at_time=world_event["occurred_at"],
+                tags=world_event["tags"],
+                credibility=world_event["reliability"],
+                salience=world_event["importance"],
+                freshness=1.0,
+                repeat_chance=0.05,
+                distortion=0.0,
+                hop_count=0,
+                source_chain=[world_event["id"]],
+                metadata={**metadata, "source": "domain_event", "event_type": world_event["event_type"], "perspective": "location"},
+            )
+        )
+    ]
+
+
+def _memory_entries_for_location_need_declared(world_event: dict[str, Any]) -> list[dict[str, Any]]:
+    metadata = world_event["metadata"]
+    location_id = str(metadata.get("location_id", world_event.get("location_id", "")))
+    if not location_id:
+        return []
+    return [
+        upsert_memory_entry(
+            MemoryEntryIn(
+                id=f"mem_{location_id}_{world_event['id']}",
+                owner_id=location_id,
+                owner_kind="location",
+                text=_technical_text(world_event),
+                kind="need_ledger",
+                source_event_id=world_event["id"],
+                heard_at_location_id=location_id,
+                heard_at_time=world_event["occurred_at"],
+                tags=world_event["tags"],
+                credibility=world_event["reliability"],
+                salience=world_event["importance"],
+                freshness=1.0,
+                repeat_chance=0.2,
+                distortion=0.0,
+                hop_count=0,
+                source_chain=[world_event["id"]],
+                metadata={**metadata, "source": "domain_event", "event_type": world_event["event_type"], "perspective": "location"},
+            )
+        )
+    ]
+
+
+def _memory_entries_for_worldsim_observation(world_event: dict[str, Any], kind: str) -> list[dict[str, Any]]:
+    metadata = world_event["metadata"]
+    owner_id = str(metadata.get("owner_id", metadata.get("observer_party_id", "")))
+    owner_kind = str(metadata.get("owner_kind", "party"))
+    location_id = str(metadata.get("node_id", world_event.get("location_id", "")))
+    if not owner_id:
+        return []
+
+    return [
+        upsert_memory_entry(
+            MemoryEntryIn(
+                id=f"mem_{owner_id}_{world_event['id']}",
+                owner_id=owner_id,
+                owner_kind=owner_kind,
+                text=_technical_text(world_event),
+                kind=kind,
+                source_event_id=world_event["id"],
+                heard_at_location_id=location_id,
+                heard_at_time=world_event["occurred_at"],
+                tags=world_event["tags"],
+                credibility=world_event["reliability"],
+                salience=world_event["importance"],
+                freshness=1.0,
+                repeat_chance=0.1,
+                distortion=0.0,
+                hop_count=0,
+                source_chain=[world_event["id"]],
+                metadata={**metadata, "source": "worldsim_observation", "event_type": world_event["event_type"], "perspective": owner_kind},
+            )
+        )
+    ]
+
+
+def _memory_entries_for_party_travel_started(world_event: dict[str, Any]) -> list[dict[str, Any]]:
+    metadata = world_event["metadata"]
+    party_id = str(metadata.get("party_id", ""))
+    if not party_id:
+        return []
+    return [_party_memory_entry(world_event, party_id, "travel_ledger", metadata)]
+
+
+def _memory_entries_for_party_arrived(world_event: dict[str, Any]) -> list[dict[str, Any]]:
+    metadata = world_event["metadata"]
+    party_id = str(metadata.get("party_id", ""))
+    if not party_id:
+        return []
+    return [_party_memory_entry(world_event, party_id, "travel_ledger", metadata)]
+
+
+def _memory_entries_for_party_order_assigned(world_event: dict[str, Any]) -> list[dict[str, Any]]:
+    metadata = world_event["metadata"]
+    party_id = str(metadata.get("party_id", ""))
+    issued_by_actor_id = str(metadata.get("issued_by_actor_id", ""))
+    manager_actor_id = str(metadata.get("manager_actor_id", ""))
+    target_location_id = str(metadata.get("target_location_id", ""))
+    if not party_id:
+        return []
+
+    owner_specs: list[tuple[str, str, str]] = [(party_id, "party", "order_recipient")]
+    if issued_by_actor_id:
+        owner_specs.append((issued_by_actor_id, "actor", "order_issuer"))
+    if manager_actor_id and manager_actor_id != issued_by_actor_id:
+        owner_specs.append((manager_actor_id, "actor", "order_manager"))
+    if target_location_id:
+        owner_specs.append((target_location_id, "location", "order_target_location"))
+
+    entries: list[dict[str, Any]] = []
+    seen_owner_ids: set[str] = set()
+    for owner_id, owner_kind, perspective in owner_specs:
+        if owner_id in seen_owner_ids:
+            continue
+        seen_owner_ids.add(owner_id)
+        entries.append(
+            upsert_memory_entry(
+                MemoryEntryIn(
+                    id=f"mem_{owner_id}_{world_event['id']}",
+                    owner_id=owner_id,
+                    owner_kind=owner_kind,
+                    text=_technical_text(world_event),
+                    kind="order_ledger",
+                    source_event_id=world_event["id"],
+                    heard_at_location_id=world_event["location_id"],
+                    heard_at_time=world_event["occurred_at"],
+                    tags=world_event["tags"],
+                    credibility=world_event["reliability"],
+                    salience=world_event["importance"],
+                    freshness=1.0,
+                    repeat_chance=0.05,
+                    distortion=0.0,
+                    hop_count=0,
+                    source_chain=[world_event["id"]],
+                    metadata={**metadata, "source": "domain_event", "event_type": world_event["event_type"], "perspective": perspective},
+                )
+            )
+        )
+    return entries
+
+
+def _party_memory_entry(world_event: dict[str, Any], party_id: str, kind: str, metadata: dict[str, Any]) -> dict[str, Any]:
+    return upsert_memory_entry(
+        MemoryEntryIn(
+            id=f"mem_{party_id}_{world_event['id']}",
+            owner_id=party_id,
+            owner_kind="party",
+            text=_technical_text(world_event),
+            kind=kind,
+            source_event_id=world_event["id"],
+            heard_at_location_id=world_event["location_id"],
+            heard_at_time=world_event["occurred_at"],
+            tags=world_event["tags"],
+            credibility=world_event["reliability"],
+            salience=world_event["importance"],
+            freshness=1.0,
+            repeat_chance=0.1,
+            distortion=0.0,
+            hop_count=0,
+            source_chain=[world_event["id"]],
+            metadata={**metadata, "source": "domain_event", "event_type": world_event["event_type"], "perspective": "party"},
+        )
+    )
+
+
+def _technical_text(world_event: dict[str, Any]) -> str:
+    return world_event["text"] or f"{world_event['event_type']}:{world_event['id']}"
 
 
 def list_memory_entries(

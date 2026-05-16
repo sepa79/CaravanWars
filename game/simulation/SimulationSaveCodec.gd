@@ -66,18 +66,6 @@ static func load_from_dictionary(save_dictionary: Dictionary) -> Dictionary:
     server.location_economy_config = LOCATION_ECONOMY_CONFIG_SCRIPT.load_from_file(GAME_SESSION_FACTORY_SCRIPT.DEFAULT_LOCATION_ECONOMY_PATH, server.goods_catalog)
     server.current_day = float(save_dictionary.get("current_day", 0.0))
 
-    var parties_value: Variant = save_dictionary.get("parties", [])
-    for party_value: Variant in parties_value:
-        if typeof(party_value) != TYPE_DICTIONARY:
-            return _rejected(ERROR_INVALID_FIELD, "Party entry must be a dictionary.")
-
-        var party_result: Dictionary = _party_from_dictionary(party_value, server)
-        if not bool(party_result.get("accepted", false)):
-            return party_result
-
-        var loaded_party: RefCounted = party_result.get("party")
-        server.state.add_party(loaded_party)
-
     var locations_value: Variant = save_dictionary.get("locations", [])
     for location_value: Variant in locations_value:
         if typeof(location_value) != TYPE_DICTIONARY:
@@ -89,6 +77,18 @@ static func load_from_dictionary(save_dictionary: Dictionary) -> Dictionary:
 
         var loaded_location: RefCounted = location_result.get("location")
         server.state.add_location(loaded_location)
+
+    var parties_value: Variant = save_dictionary.get("parties", [])
+    for party_value: Variant in parties_value:
+        if typeof(party_value) != TYPE_DICTIONARY:
+            return _rejected(ERROR_INVALID_FIELD, "Party entry must be a dictionary.")
+
+        var party_result: Dictionary = _party_from_dictionary(party_value, server)
+        if not bool(party_result.get("accepted", false)):
+            return party_result
+
+        var loaded_party: RefCounted = party_result.get("party")
+        server.state.add_party(loaded_party)
 
     var events_value: Variant = save_dictionary.get("runtime_event_log", [])
     if typeof(events_value) != TYPE_ARRAY:
@@ -126,7 +126,7 @@ static func _validate_save_root(save_dictionary: Dictionary) -> Dictionary:
 
 
 static func _party_from_dictionary(party_dictionary: Dictionary, server: RefCounted) -> Dictionary:
-    for field_name: String in ["party_id", "party_type", "manager_actor_id", "current_node_id", "travel_state", "composition", "cargo", "knowledge", "order"]:
+    for field_name: String in ["party_id", "party_type", "manager_actor_id", "authorized_issuer_actor_ids", "current_node_id", "travel_state", "composition", "cargo", "knowledge", "order"]:
         if not party_dictionary.has(field_name):
             return _rejected(ERROR_MISSING_FIELD, "Party is missing required field: %s." % field_name)
 
@@ -138,6 +138,7 @@ static func _party_from_dictionary(party_dictionary: Dictionary, server: RefCoun
     party.party_id = str(party_dictionary.get("party_id", ""))
     party.party_type = str(party_dictionary.get("party_type", ""))
     party.manager_actor_id = str(party_dictionary.get("manager_actor_id", ""))
+    party.authorized_issuer_actor_ids = _string_array_from_variant(party_dictionary.get("authorized_issuer_actor_ids", []))
     party.current_node_id = current_node_id
     party.travel_state = str(party_dictionary.get("travel_state", ""))
     party.origin_node_id = str(party_dictionary.get("origin_node_id", ""))
@@ -234,6 +235,12 @@ static func _validate_party_references(party: RefCounted, server: RefCounted) ->
 
     if not party.order.target_node_id.is_empty() and not server.state.region_graph.has_node(party.order.target_node_id):
         return _rejected(ERROR_UNKNOWN_NODE, "Party order target node does not exist: %s." % party.order.target_node_id)
+
+    if not party.order.target_location_id.is_empty() and not server.state.has_location(party.order.target_location_id):
+        return _rejected(ERROR_INVALID_FIELD, "Party order target location does not exist: %s." % party.order.target_location_id)
+
+    if not party.order.goods_id.is_empty() and not server.goods_catalog.has_goods(party.order.goods_id):
+        return _rejected(ERROR_INVALID_FIELD, "Party order goods does not exist: %s." % party.order.goods_id)
 
     return {}
 

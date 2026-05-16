@@ -82,24 +82,23 @@
     }
   ],
   "edges": [
-    { "id": "prague_wroclaw", "from": "prague", "to": "wroclaw", "distance_km": 215.0, "kind": "major_route" },
-    { "id": "prague_olomouc", "from": "prague", "to": "olomouc", "distance_km": 210.0, "kind": "major_route" },
-    { "id": "prague_raciborz", "from": "prague", "to": "raciborz", "distance_km": 290.0, "kind": "major_route" },
-    { "id": "prague_legnica", "from": "prague", "to": "legnica", "distance_km": 230.0, "kind": "military_route" },
-    { "id": "wroclaw_opole", "from": "wroclaw", "to": "opole", "distance_km": 80.0, "kind": "river_trade_route" },
-    { "id": "wroclaw_legnica", "from": "wroclaw", "to": "legnica", "distance_km": 65.0, "kind": "military_route" },
-    { "id": "wroclaw_glogow", "from": "wroclaw", "to": "glogow", "distance_km": 90.0, "kind": "crossing_route" },
-    { "id": "wroclaw_nysa", "from": "wroclaw", "to": "nysa", "distance_km": 85.0, "kind": "regional_route" },
-    { "id": "wroclaw_raciborz", "from": "wroclaw", "to": "raciborz", "distance_km": 150.0, "kind": "regional_route" },
-    { "id": "opole_raciborz", "from": "opole", "to": "raciborz", "distance_km": 60.0, "kind": "river_trade_route" },
-    { "id": "opole_olomouc", "from": "opole", "to": "olomouc", "distance_km": 145.0, "kind": "regional_route" },
-    { "id": "raciborz_olomouc", "from": "raciborz", "to": "olomouc", "distance_km": 100.0, "kind": "regional_route" },
-    { "id": "raciborz_nysa", "from": "raciborz", "to": "nysa", "distance_km": 70.0, "kind": "regional_route" },
-    { "id": "legnica_glogow", "from": "legnica", "to": "glogow", "distance_km": 55.0, "kind": "military_route" },
-    { "id": "nysa_sudety_pass", "from": "nysa", "to": "sudety_pass", "distance_km": 65.0, "kind": "mountain_route" },
-    { "id": "sudety_pass_prague", "from": "sudety_pass", "to": "prague", "distance_km": 140.0, "kind": "mountain_route" },
-    { "id": "odra_crossing_wroclaw", "from": "odra_crossing", "to": "wroclaw", "distance_km": 30.0, "kind": "crossing_route" },
-    { "id": "great_forest_opole", "from": "great_forest", "to": "opole", "distance_km": 130.0, "kind": "wilderness_route" }
+    { "id": "prague_wroclaw", "from": "prague", "to": "wroclaw", "distance_km": 285.0, "kind": "major_route" },
+    { "id": "prague_olomouc", "from": "prague", "to": "olomouc", "distance_km": 280.0, "kind": "major_route" },
+    { "id": "prague_raciborz", "from": "prague", "to": "raciborz", "distance_km": 395.0, "kind": "major_route" },
+    { "id": "prague_legnica", "from": "prague", "to": "legnica", "distance_km": 255.0, "kind": "military_route" },
+    { "id": "wroclaw_opole", "from": "wroclaw", "to": "opole", "distance_km": 100.0, "kind": "river_trade_route" },
+    { "id": "wroclaw_legnica", "from": "wroclaw", "to": "legnica", "distance_km": 80.0, "kind": "military_route" },
+    { "id": "wroclaw_glogow", "from": "wroclaw", "to": "glogow", "distance_km": 140.0, "kind": "crossing_route" },
+    { "id": "wroclaw_nysa", "from": "wroclaw", "to": "nysa", "distance_km": 90.0, "kind": "regional_route" },
+    { "id": "wroclaw_raciborz", "from": "wroclaw", "to": "raciborz", "distance_km": 165.0, "kind": "regional_route" },
+    { "id": "opole_raciborz", "from": "opole", "to": "raciborz", "distance_km": 80.0, "kind": "river_trade_route" },
+    { "id": "opole_olomouc", "from": "opole", "to": "olomouc", "distance_km": 245.0, "kind": "regional_route" },
+    { "id": "raciborz_olomouc", "from": "raciborz", "to": "olomouc", "distance_km": 120.0, "kind": "regional_route" },
+    { "id": "raciborz_nysa", "from": "raciborz", "to": "nysa", "distance_km": 85.0, "kind": "regional_route" },
+    { "id": "legnica_glogow", "from": "legnica", "to": "glogow", "distance_km": 60.0, "kind": "military_route" },
+    { "id": "nysa_sudety_pass", "from": "nysa", "to": "sudety_pass", "distance_km": 55.0, "kind": "mountain_route" },
+    { "id": "sudety_pass_prague", "from": "sudety_pass", "to": "prague", "distance_km": 195.0, "kind": "mountain_route" },
+    { "id": "odra_crossing_wroclaw", "from": "odra_crossing", "to": "wroclaw", "distance_km": 25.0, "kind": "crossing_route" },
+    { "id": "great_forest_opole", "from": "great_forest", "to": "opole", "distance_km": 45.0, "kind": "wilderness_route" }
   ]
 }
-

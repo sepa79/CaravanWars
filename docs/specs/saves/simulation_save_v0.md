@@ -29,6 +29,7 @@ The snapshot exists so `new game`, `load game`, tests, and future WorldMemory se
 
 - party identity and type,
 - manager actor id,
+- authorized issuer actor ids,
 - current node,
 - active travel state,
 - active travel intent destination,
@@ -65,9 +66,11 @@ Singleplayer still uses the same server and command model as future multiplayer.
 - `schema_version` is not exactly `0`,
 - `region_graph_id` does not match the loaded graph,
 - party entries are malformed,
+- party entries are missing `authorized_issuer_actor_ids`,
 - party cargo references unknown goods, negative quantities, or exceeds composition-derived capacity,
 - location entries are malformed,
 - party current/origin/destination/path nodes do not exist,
+- party order target locations or goods ids do not exist,
 - location nodes do not exist,
 - party known/path route ids do not exist.
 

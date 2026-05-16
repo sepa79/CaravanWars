@@ -66,7 +66,22 @@ if errorlevel 1 exit /b 1
 "%GODOT%" --headless --path "%PROJECT_DIR%" --check-only -s tests/MerchantAutoplayScenarioTest.gd
 if errorlevel 1 exit /b 1
 
+"%GODOT%" --headless --path "%PROJECT_DIR%" --check-only -s tests/MerchantMemoryAITest.gd
+if errorlevel 1 exit /b 1
+
+"%GODOT%" --headless --path "%PROJECT_DIR%" --check-only -s tests/MayorFoodManagerTest.gd
+if errorlevel 1 exit /b 1
+
+"%GODOT%" --headless --path "%PROJECT_DIR%" --check-only -s tests/MayorSupplyPlannerTest.gd
+if errorlevel 1 exit /b 1
+
+"%GODOT%" --headless --path "%PROJECT_DIR%" --check-only -s tests/QuartermasterAITest.gd
+if errorlevel 1 exit /b 1
+
 "%GODOT%" --headless --path "%PROJECT_DIR%" --check-only -s tests/WorldMemoryEventExportTest.gd
+if errorlevel 1 exit /b 1
+
+"%GODOT%" --headless --path "%PROJECT_DIR%" --check-only -s tests/WorldSimObservationTest.gd
 if errorlevel 1 exit /b 1
 
 "%GODOT%" --headless --path "%PROJECT_DIR%" --check-only -s tests/PartyKnowledgeSnapshotTest.gd
@@ -111,7 +126,22 @@ if errorlevel 1 exit /b 1
 "%GODOT%" --headless --path "%PROJECT_DIR%" -s tests/MerchantAutoplayScenarioTest.gd
 if errorlevel 1 exit /b 1
 
+"%GODOT%" --headless --path "%PROJECT_DIR%" -s tests/MerchantMemoryAITest.gd
+if errorlevel 1 exit /b 1
+
+"%GODOT%" --headless --path "%PROJECT_DIR%" -s tests/MayorFoodManagerTest.gd
+if errorlevel 1 exit /b 1
+
+"%GODOT%" --headless --path "%PROJECT_DIR%" -s tests/MayorSupplyPlannerTest.gd
+if errorlevel 1 exit /b 1
+
+"%GODOT%" --headless --path "%PROJECT_DIR%" -s tests/QuartermasterAITest.gd
+if errorlevel 1 exit /b 1
+
 "%GODOT%" --headless --path "%PROJECT_DIR%" -s tests/WorldMemoryEventExportTest.gd
+if errorlevel 1 exit /b 1
+
+"%GODOT%" --headless --path "%PROJECT_DIR%" -s tests/WorldSimObservationTest.gd
 if errorlevel 1 exit /b 1
 
 "%GODOT%" --headless --path "%PROJECT_DIR%" -s tests/PartyKnowledgeSnapshotTest.gd

@@ -1,18 +1,23 @@
 from __future__ import annotations
 
 import sqlite3
+import os
 from pathlib import Path
 from typing import Any
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
-DB_PATH = DATA_DIR / "world_memory.sqlite3"
+
+
+def db_path() -> Path:
+    return Path(os.environ.get("WORLD_MEMORY_DB_PATH", DATA_DIR / "world_memory.sqlite3"))
 
 
 def connect() -> sqlite3.Connection:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    path = db_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
@@ -33,6 +38,11 @@ def init_db() -> None:
     with connect() as conn:
         conn.executescript(
             """
+            DROP TRIGGER IF EXISTS memory_entries_ai;
+            DROP TRIGGER IF EXISTS memory_entries_ad;
+            DROP TRIGGER IF EXISTS memory_entries_au;
+            DROP TABLE IF EXISTS memory_entries_search;
+
             CREATE TABLE IF NOT EXISTS actors (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -171,7 +181,28 @@ def init_db() -> None:
 
             CREATE INDEX IF NOT EXISTS idx_memory_entries_owner ON memory_entries(owner_id, salience DESC);
             CREATE INDEX IF NOT EXISTS idx_memory_entries_tags ON memory_entries(tags_json);
+            CREATE INDEX IF NOT EXISTS idx_memory_entries_source_event ON memory_entries(source_event_id);
             CREATE INDEX IF NOT EXISTS idx_world_events_time ON world_events(occurred_at DESC);
+
+            CREATE VIRTUAL TABLE IF NOT EXISTS memory_entries_search
+            USING fts5(owner_id, owner_kind, kind, text, tags_json, metadata_json, content='memory_entries', content_rowid='rowid');
+
+            CREATE TRIGGER IF NOT EXISTS memory_entries_ai AFTER INSERT ON memory_entries BEGIN
+                INSERT INTO memory_entries_search(rowid, owner_id, owner_kind, kind, text, tags_json, metadata_json)
+                VALUES (new.rowid, new.owner_id, new.owner_kind, new.kind, new.text, new.tags_json, new.metadata_json);
+            END;
+
+            CREATE TRIGGER IF NOT EXISTS memory_entries_ad AFTER DELETE ON memory_entries BEGIN
+                INSERT INTO memory_entries_search(memory_entries_search, rowid, owner_id, owner_kind, kind, text, tags_json, metadata_json)
+                VALUES ('delete', old.rowid, old.owner_id, old.owner_kind, old.kind, old.text, old.tags_json, old.metadata_json);
+            END;
+
+            CREATE TRIGGER IF NOT EXISTS memory_entries_au AFTER UPDATE ON memory_entries BEGIN
+                INSERT INTO memory_entries_search(memory_entries_search, rowid, owner_id, owner_kind, kind, text, tags_json, metadata_json)
+                VALUES ('delete', old.rowid, old.owner_id, old.owner_kind, old.kind, old.text, old.tags_json, old.metadata_json);
+                INSERT INTO memory_entries_search(rowid, owner_id, owner_kind, kind, text, tags_json, metadata_json)
+                VALUES (new.rowid, new.owner_id, new.owner_kind, new.kind, new.text, new.tags_json, new.metadata_json);
+            END;
 
             CREATE TABLE IF NOT EXISTS memory_transfer_jobs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -187,3 +218,7 @@ def init_db() -> None:
             );
             """
         )
+        try:
+            conn.execute("INSERT INTO memory_entries_search(memory_entries_search) VALUES ('rebuild')")
+        except sqlite3.OperationalError:
+            pass

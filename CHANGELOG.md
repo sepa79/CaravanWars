@@ -27,6 +27,17 @@ All notable changes to this project will be documented in this file.
 - Transfer goods command v0 for physical party-location goods movement with capacity and inventory validation.
 - Location economy v0 with deterministic daily production, consumption, storage caps, and tests.
 - Merchant autoplay scenario v0 covering deterministic food transport through real commands.
+- WorldMemory domain event ingest v0 with per-entity memory entries and memory-entry search.
+- Godot WorldMemory domain event sink and HTTP transport v0 for explicit local sidecar export.
+- Optional merchant-to-WorldMemory HTTP integration test.
+- Queued WorldMemory HTTP transport so authoritative simulation can export events without blocking on service I/O.
+- Mayor food manager v0 and location need declaration events exported to WorldMemory.
+- AI memory boundary and WorldSim observation pipeline v0 for owner-specific WorldMemory observations.
+- Merchant memory AI v0 that chooses food delivery actions from owner memory entries instead of scanning global state.
+- City supply party v0 with mayor-issued `procure_goods` intent and quartermaster-managed physical party state.
+- Quartermaster AI v0 for executing supply procurement from order ledger and own WorldMemory observations.
+- Physical communication constraint for mayor-issued supply orders; remote orders require future courier delivery instead of implicit telepathy.
+- Mayor supply planner v0 that checks remembered active supply intent before issuing a new procure order.
 - Planned route geometry v0 notes for route segments, waypoints, visibility, and travel time.
 - Local LLM role notes for NPC speech, rumors, navigation text, and player-character intent rendering.
 - Historical world tone notes for singleplayer MUD-like simulation, hierarchy, fear, and social brutality.

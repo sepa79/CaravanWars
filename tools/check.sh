@@ -30,7 +30,12 @@ echo "[check] Project: $PROJECT_DIR"
 "$GODOT" --headless --path "$PROJECT_DIR" --check-only -s tests/GoodsCatalogTest.gd
 "$GODOT" --headless --path "$PROJECT_DIR" --check-only -s tests/LocationEconomyTest.gd
 "$GODOT" --headless --path "$PROJECT_DIR" --check-only -s tests/MerchantAutoplayScenarioTest.gd
+"$GODOT" --headless --path "$PROJECT_DIR" --check-only -s tests/MerchantMemoryAITest.gd
+"$GODOT" --headless --path "$PROJECT_DIR" --check-only -s tests/MayorFoodManagerTest.gd
+"$GODOT" --headless --path "$PROJECT_DIR" --check-only -s tests/MayorSupplyPlannerTest.gd
+"$GODOT" --headless --path "$PROJECT_DIR" --check-only -s tests/QuartermasterAITest.gd
 "$GODOT" --headless --path "$PROJECT_DIR" --check-only -s tests/WorldMemoryEventExportTest.gd
+"$GODOT" --headless --path "$PROJECT_DIR" --check-only -s tests/WorldSimObservationTest.gd
 "$GODOT" --headless --path "$PROJECT_DIR" --check-only -s tests/PartyKnowledgeSnapshotTest.gd
 "$GODOT" --headless --path "$PROJECT_DIR" --check-only -s tests/DebugTravelPanelTest.gd
 "$GODOT" --headless --path "$PROJECT_DIR" -s tests/GraphSmokeTest.gd
@@ -45,7 +50,12 @@ echo "[check] Project: $PROJECT_DIR"
 "$GODOT" --headless --path "$PROJECT_DIR" -s tests/GoodsCatalogTest.gd
 "$GODOT" --headless --path "$PROJECT_DIR" -s tests/LocationEconomyTest.gd
 "$GODOT" --headless --path "$PROJECT_DIR" -s tests/MerchantAutoplayScenarioTest.gd
+"$GODOT" --headless --path "$PROJECT_DIR" -s tests/MerchantMemoryAITest.gd
+"$GODOT" --headless --path "$PROJECT_DIR" -s tests/MayorFoodManagerTest.gd
+"$GODOT" --headless --path "$PROJECT_DIR" -s tests/MayorSupplyPlannerTest.gd
+"$GODOT" --headless --path "$PROJECT_DIR" -s tests/QuartermasterAITest.gd
 "$GODOT" --headless --path "$PROJECT_DIR" -s tests/WorldMemoryEventExportTest.gd
+"$GODOT" --headless --path "$PROJECT_DIR" -s tests/WorldSimObservationTest.gd
 "$GODOT" --headless --path "$PROJECT_DIR" -s tests/PartyKnowledgeSnapshotTest.gd
 "$GODOT" --headless --path "$PROJECT_DIR" -s tests/DebugTravelPanelTest.gd
 

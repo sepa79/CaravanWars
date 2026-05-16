@@ -39,6 +39,12 @@ The world now starts with multiple managed parties. A party is a physical simula
 
 Managed parties can now receive manager-issued orders. `AssignPartyOrderCommand` lets the party's manager assign a deterministic `travel_to` order, which the authoritative simulation executes through the existing travel intent model.
 
+Managed parties can also have authorized issuer actors for hierarchy. The first city supply party is managed by Wroclaw's quartermaster while Wroclaw's mayor can issue a validated `procure_goods` intent through the same party order command.
+
+The first quartermaster AI can execute that supply intent from its own order ledger and WorldMemory observations, using the same travel and goods transfer commands as every other party.
+
+The first mayor supply planner uses city/mayor memory to avoid issuing duplicate supply orders for the same need during repeated re-evaluation.
+
 The world also has first managed locations. Cities, strongholds, and monasteries are physical entities attached to graph nodes, with manager actors and small resource stores. Client snapshots expose only the location at the party's current node.
 
 Trade goods now have a first canonical catalog. Location resource stores reference goods ids from `game/data/simulation/goods_catalog.json`; this is a trade/resource contract, not the future combat equipment system.

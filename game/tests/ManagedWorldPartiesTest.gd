@@ -29,18 +29,25 @@ func _test_new_game_contains_managed_world_parties() -> void:
     _expect(server.state.has_party(GAME_SESSION_FACTORY_SCRIPT.PLAYER_PARTY_ID), "Expected player party.")
     _expect(server.state.has_party(GAME_SESSION_FACTORY_SCRIPT.BANDIT_PARTY_ID), "Expected bandit party.")
     _expect(server.state.has_party(GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID), "Expected merchant party.")
+    _expect(server.state.has_party(GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID), "Expected Wroclaw supply party.")
 
     var bandit_party: RefCounted = server.state.get_party(GAME_SESSION_FACTORY_SCRIPT.BANDIT_PARTY_ID)
     var merchant_party: RefCounted = server.state.get_party(GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID)
+    var supply_party: RefCounted = server.state.get_party(GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID)
     _expect(bandit_party.manager_actor_id == "bandit_chief_boruta", "Expected bandit manager actor.")
     _expect(merchant_party.manager_actor_id == "merchant_miroslaw", "Expected merchant manager actor.")
+    _expect(supply_party.manager_actor_id == "quartermaster_wroclaw", "Expected supply party manager actor.")
+    _expect(supply_party.authorized_issuer_actor_ids.has("mayor_wroclaw"), "Expected mayor to be authorized supply order issuer.")
 
 
 func _test_client_snapshot_hides_distant_parties() -> void:
     var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
     var client_snapshot: Dictionary = server.get_client_snapshot(GAME_SESSION_FACTORY_SCRIPT.PLAYER_PARTY_ID)
     var visible_parties: Array = client_snapshot.get("visible_parties", [])
-    _expect(visible_parties.is_empty(), "Expected no visible distant parties at game start.")
+    var visible_party_ids: Array[String] = _visible_party_ids(visible_parties)
+    _expect(visible_party_ids.has(GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID), "Expected city supply party visible at Wroclaw game start.")
+    _expect(not visible_party_ids.has(GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID), "Expected distant merchant party hidden at game start.")
+    _expect(not visible_party_ids.has(GAME_SESSION_FACTORY_SCRIPT.BANDIT_PARTY_ID), "Expected distant bandit party hidden at game start.")
 
 
 func _test_client_snapshot_shows_party_at_same_node() -> void:
@@ -52,7 +59,7 @@ func _test_client_snapshot_shows_party_at_same_node() -> void:
     var result: RefCounted = server.submit_move_party(command)
     _expect(result.accepted, "Expected player move setup to be accepted.")
 
-    server.tick(3.0)
+    server.tick(4.0)
     var client_snapshot: Dictionary = server.get_client_snapshot(GAME_SESSION_FACTORY_SCRIPT.PLAYER_PARTY_ID)
     var visible_parties: Array = client_snapshot.get("visible_parties", [])
     _expect(_visible_party_ids(visible_parties).has(GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID), "Expected merchant party visible at Opole.")

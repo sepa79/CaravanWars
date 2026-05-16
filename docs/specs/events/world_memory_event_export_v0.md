@@ -2,15 +2,15 @@
 
 ## Purpose
 
-`WorldMemory Event Export v0` defines how selected authoritative runtime events are mapped into payloads that can later be sent to the external WorldMemory service.
+`WorldMemory Event Export v0` defines how selected authoritative runtime events are mapped into payloads that can be sent to the local WorldMemory service.
 
-This is not an HTTP integration. It is a stable export contract and mapper so Godot can stay server-authoritative and testable before transport, retries, queues, and service lifecycle are added.
+The mapper stays transport-free. The domain event sink owns dispatch to an explicit transport so tests can use an in-process fake transport while local runs can use the HTTP transport.
 
 ## Owner / consumers
 
 - Owner: authoritative simulation.
 - Producers: runtime simulation events.
-- Consumers: future WorldMemory HTTP adapter, scheduler, tests, debug tooling.
+- Consumers: WorldMemory domain event sink, WorldMemory HTTP transport, scheduler, tests, debug tooling.
 
 ## Export payload shape
 
@@ -52,6 +52,11 @@ The v0 mapper exports only:
 - `party_order_started`
 - `party_order_completed`
 - `party_order_failed`
+- `goods_transferred`
+- `location_economy_ticked`
+- `location_need_declared`
+- `worldsim_location_observed`
+- `worldsim_party_observed`
 
 Unknown event types return an empty payload. This is intentional: export must be explicit, not a silent dump of all runtime details.
 
@@ -60,6 +65,8 @@ Unknown event types return an empty payload. This is intentional: export must be
 - Include `party_id` and `occurred_day`.
 - Include `manager_actor_id` when present in event details.
 - Include explicit ids from event details such as `node_id`, `from_node_id`, `to_node_id`, `destination_node_id`, and `edge_id`.
+- Include order metadata such as `issued_by_actor_id`, `order_type`, `target_location_id`, `goods_id`, and `amount`.
+- Include `target_node_id` for location-targeted orders when the authoritative simulation resolved it during validation.
 - Include bounded counts such as `discovered_edge_count`.
 - Do not export the full region graph.
 - Do not export full party knowledge.
@@ -72,15 +79,30 @@ Unknown event types return an empty payload. This is intentional: export must be
 Current sinks:
 
 - runtime event log, owned directly by `SimulationServer`,
-- test sink for assertions.
+- test sink for assertions,
+- `WorldMemoryDomainEventSink`, which maps exportable events and submits them to a configured transport.
 
-Future sinks may include:
+Current transports:
 
-- WorldMemory HTTP adapter,
-- file/debug adapter,
-- queued scheduler adapter.
+- `WorldMemoryHttpTransport`: sends `POST /domain-events/ingest` to the local WorldMemory service.
+- `WorldMemoryQueuedHttpTransport`: queues payloads and sends them through non-blocking `HTTPClient` processing.
+- `TestWorldMemoryDomainTransport`: stores payloads in memory for tests.
+- `WorldMemoryJsonlTransport`: writes JSONL payloads for offline/debug harnesses.
 
-Transport failures must be visible and bounded when real adapters are added. Do not add hidden fallback writes.
+`WorldMemoryDomainEventSink` must be configured with a transport. Missing transport, missing transport method, non-2xx HTTP status, connection failure, and test transport failures are recorded in `failed_exports` and pushed as Godot errors by default. Tests may disable Godot error emission while still asserting `failed_exports`. There is no hidden fallback write.
+
+Runtime gameplay should prefer `WorldMemoryQueuedHttpTransport` over direct synchronous HTTP. `send_domain_event()` must return quickly and only queue work; callers then pump `process_queue()` from a scheduler, service node, or test loop. Transport failures remain visible through `failed_results`.
+
+`WorldMemoryHttpTransport` defaults to:
+
+```text
+host: 127.0.0.1
+port: 8011
+path: /domain-events/ingest
+tls: false
+```
+
+The default target matches the local sidecar documented under `services/world_memory/`.
 
 ## Test coverage
 
@@ -89,4 +111,23 @@ Covered by `game/tests/WorldMemoryEventExportTest.gd`:
 - event sink receives authoritative events,
 - arrival maps to a WorldMemory-shaped world event,
 - local route inspection exports bounded metadata and not full graph/knowledge,
+- domain event sink sends mapped payloads through an injected transport,
+- domain event sink records explicit transport failures,
 - unknown event types are ignored explicitly.
+
+Covered by optional `tools/run_merchant_world_memory_integration.ps1`:
+
+- merchant autoplay exports domain event payloads from Godot,
+- queued Godot HTTP transport ingests those payloads through `/domain-events/ingest`,
+- WorldMemory creates merchant and location memory entries for the scenario.
+
+WorldMemory domain ingest currently creates per-owner memory entries for:
+
+- `goods_transferred`
+- `location_economy_ticked`
+- `location_need_declared`
+- `worldsim_location_observed`
+- `worldsim_party_observed`
+- `party_travel_started`
+- `party_arrived`
+- `party_order_assigned`

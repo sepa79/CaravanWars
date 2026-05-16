@@ -65,7 +65,12 @@ godot --headless --path game --check-only -s tests/LocationStateTest.gd
 godot --headless --path game --check-only -s tests/GoodsCatalogTest.gd
 godot --headless --path game --check-only -s tests/LocationEconomyTest.gd
 godot --headless --path game --check-only -s tests/MerchantAutoplayScenarioTest.gd
+godot --headless --path game --check-only -s tests/MerchantMemoryAITest.gd
+godot --headless --path game --check-only -s tests/MayorFoodManagerTest.gd
+godot --headless --path game --check-only -s tests/MayorSupplyPlannerTest.gd
+godot --headless --path game --check-only -s tests/QuartermasterAITest.gd
 godot --headless --path game --check-only -s tests/WorldMemoryEventExportTest.gd
+godot --headless --path game --check-only -s tests/WorldSimObservationTest.gd
 godot --headless --path game --check-only -s tests/PartyKnowledgeSnapshotTest.gd
 godot --headless --path game --check-only -s tests/DebugTravelPanelTest.gd
 godot --headless --path game -s tests/PartyTravelCommandTest.gd
@@ -79,9 +84,26 @@ godot --headless --path game -s tests/LocationStateTest.gd
 godot --headless --path game -s tests/GoodsCatalogTest.gd
 godot --headless --path game -s tests/LocationEconomyTest.gd
 godot --headless --path game -s tests/MerchantAutoplayScenarioTest.gd
+godot --headless --path game -s tests/MerchantMemoryAITest.gd
+godot --headless --path game -s tests/MayorFoodManagerTest.gd
+godot --headless --path game -s tests/MayorSupplyPlannerTest.gd
+godot --headless --path game -s tests/QuartermasterAITest.gd
 godot --headless --path game -s tests/WorldMemoryEventExportTest.gd
+godot --headless --path game -s tests/WorldSimObservationTest.gd
 godot --headless --path game -s tests/PartyKnowledgeSnapshotTest.gd
 godot --headless --path game -s tests/DebugTravelPanelTest.gd
+```
+
+WorldMemory service focused test:
+
+```powershell
+services\world_memory\.venv\Scripts\python.exe -m unittest services.world_memory.test_domain_ingest
+```
+
+Optional merchant-to-WorldMemory integration test. This starts `services/world_memory` on a temporary SQLite database, exports merchant simulation payloads from Godot, ingests them through HTTP, and verifies memory entries:
+
+```powershell
+tools\run_merchant_world_memory_integration.ps1
 ```
 
 ## Lint / format / static checks

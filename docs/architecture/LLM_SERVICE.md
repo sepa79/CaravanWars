@@ -48,9 +48,11 @@ output: rewritten rumor text, used mutations, warnings
 NPC decision:
 
 ```text
-input: actor/party memory, current local state, available actions
+input: actor/party WorldMemory, immediate local affordances, available actions
 output: chosen action proposal, reason, risk, confidence
 ```
+
+Decision prompts must not include objective global state as knowledge. If an actor can know something, it should first appear in that actor's WorldMemory through observation, rumor transfer, or accepted command results.
 
 Player intent:
 

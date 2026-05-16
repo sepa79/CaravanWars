@@ -15,7 +15,11 @@ func _initialize() -> void:
     _test_non_manager_cannot_assign_order()
     _test_order_starts_travel_intent_on_tick()
     _test_order_completes_after_arrival()
+    _test_mayor_can_assign_supply_procurement_intent()
+    _test_non_authorized_actor_cannot_assign_supply_procurement()
+    _test_mayor_cannot_assign_remote_supply_procurement_without_delivery()
     _test_save_load_preserves_party_order()
+    _test_save_load_preserves_supply_procurement_order()
 
     if not _failed:
         print("[PartyOrdersTest] OK")
@@ -85,6 +89,59 @@ func _test_order_completes_after_arrival() -> void:
     _expect(_event_types(server).has("party_order_completed"), "Expected order completed event.")
 
 
+func _test_mayor_can_assign_supply_procurement_intent() -> void:
+    var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
+    var command: RefCounted = ASSIGN_PARTY_ORDER_COMMAND_SCRIPT.new()
+    command.party_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID
+    command.issued_by_actor_id = "mayor_wroclaw"
+    command.order_type = PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_PROCURE_GOODS
+    command.target_location_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID
+    command.goods_id = "food"
+    command.amount = 40
+
+    var result: RefCounted = server.submit_assign_party_order(command)
+    var party: RefCounted = server.state.get_party(GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID)
+    _expect(result.accepted, "Expected mayor to assign supply procurement intent.")
+    _expect(party.order.order_type == PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_PROCURE_GOODS, "Expected procure_goods order type.")
+    _expect(party.order.target_location_id == GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID, "Expected supply order target location.")
+    _expect(party.order.goods_id == "food", "Expected supply order goods id.")
+    _expect(party.order.amount == 40, "Expected supply order amount.")
+    _expect(party.order.issued_by_actor_id == "mayor_wroclaw", "Expected mayor as issuing actor.")
+
+
+func _test_non_authorized_actor_cannot_assign_supply_procurement() -> void:
+    var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
+    var command: RefCounted = ASSIGN_PARTY_ORDER_COMMAND_SCRIPT.new()
+    command.party_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID
+    command.issued_by_actor_id = "merchant_miroslaw"
+    command.order_type = PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_PROCURE_GOODS
+    command.target_location_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID
+    command.goods_id = "food"
+    command.amount = 40
+
+    var result: RefCounted = server.submit_assign_party_order(command)
+    _expect(not result.accepted, "Expected unauthorized supply procurement assignment to be rejected.")
+    _expect(result.error_code == SIMULATION_SERVER_SCRIPT.ERROR_ORDER_NOT_AUTHORIZED, "Expected order_not_authorized.")
+
+
+func _test_mayor_cannot_assign_remote_supply_procurement_without_delivery() -> void:
+    var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
+    var party: RefCounted = server.state.get_party(GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID)
+    party.current_node_id = "odra_crossing"
+
+    var command: RefCounted = ASSIGN_PARTY_ORDER_COMMAND_SCRIPT.new()
+    command.party_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID
+    command.issued_by_actor_id = "mayor_wroclaw"
+    command.order_type = PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_PROCURE_GOODS
+    command.target_location_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID
+    command.goods_id = "food"
+    command.amount = 40
+
+    var result: RefCounted = server.submit_assign_party_order(command)
+    _expect(not result.accepted, "Expected remote mayor supply procurement assignment to be rejected.")
+    _expect(result.error_code == SIMULATION_SERVER_SCRIPT.ERROR_ORDER_ISSUER_NOT_PRESENT, "Expected order_issuer_not_present.")
+
+
 func _test_save_load_preserves_party_order() -> void:
     var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
     var result: RefCounted = server.submit_assign_party_order(_create_order_command(
@@ -106,6 +163,34 @@ func _test_save_load_preserves_party_order() -> void:
     _expect(loaded_party.order.status == PARTY_ORDER_STATE_SCRIPT.STATUS_ASSIGNED, "Expected loaded order status.")
     _expect(loaded_party.order.issued_by_actor_id == "merchant_miroslaw", "Expected loaded issuing actor.")
     _expect(loaded_party.order.target_node_id == "raciborz", "Expected loaded target node.")
+
+
+func _test_save_load_preserves_supply_procurement_order() -> void:
+    var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
+    var command: RefCounted = ASSIGN_PARTY_ORDER_COMMAND_SCRIPT.new()
+    command.party_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID
+    command.issued_by_actor_id = "mayor_wroclaw"
+    command.order_type = PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_PROCURE_GOODS
+    command.target_location_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID
+    command.goods_id = "food"
+    command.amount = 40
+    var result: RefCounted = server.submit_assign_party_order(command)
+    _expect(result.accepted, "Expected setup supply order assignment to be accepted.")
+
+    var saved_dictionary: Dictionary = SIMULATION_SAVE_CODEC_SCRIPT.to_dictionary(server)
+    var load_result: Dictionary = SIMULATION_SAVE_CODEC_SCRIPT.load_from_dictionary(saved_dictionary)
+    _expect(bool(load_result.get("accepted", false)), "Expected save with supply order to load.")
+    if not bool(load_result.get("accepted", false)):
+        return
+
+    var loaded_server: RefCounted = load_result.get("server")
+    var loaded_party: RefCounted = loaded_server.state.get_party(GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID)
+    _expect(loaded_party.order.order_type == PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_PROCURE_GOODS, "Expected loaded supply order type.")
+    _expect(loaded_party.order.status == PARTY_ORDER_STATE_SCRIPT.STATUS_ASSIGNED, "Expected loaded supply order status.")
+    _expect(loaded_party.order.issued_by_actor_id == "mayor_wroclaw", "Expected loaded supply order issuing actor.")
+    _expect(loaded_party.order.target_location_id == GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID, "Expected loaded supply order target location.")
+    _expect(loaded_party.order.goods_id == "food", "Expected loaded supply order goods id.")
+    _expect(loaded_party.order.amount == 40, "Expected loaded supply order amount.")
 
 
 func _create_order_command(party_id: String, issued_by_actor_id: String, target_node_id: String) -> RefCounted:

@@ -16,7 +16,11 @@ const EXPORTABLE_EVENT_TYPES: Array[String] = [
     "party_order_started",
     "party_order_completed",
     "party_order_failed",
-    "goods_transferred"
+    "goods_transferred",
+    "location_economy_ticked",
+    "location_need_declared",
+    "worldsim_location_observed",
+    "worldsim_party_observed"
 ]
 
 
@@ -52,13 +56,20 @@ static func map_events(simulation_events: Array[Dictionary]) -> Array[Dictionary
 
 
 static func _world_event_id_for_event(simulation_event: RefCounted) -> String:
-    return "%s:%s:%0.3f" % [simulation_event.event_type, simulation_event.party_id, simulation_event.day]
+    var subject_id: String = simulation_event.party_id
+    if subject_id.is_empty():
+        subject_id = _location_id_for_event(simulation_event)
+    if subject_id.is_empty():
+        subject_id = simulation_event.event_type
+    return "%s:%s:%0.3f" % [simulation_event.event_type, subject_id, simulation_event.day]
 
 
 static func _location_id_for_event(simulation_event: RefCounted) -> String:
     var details: Dictionary = simulation_event.details
     if details.has("location_id"):
         return str(details.get("location_id", ""))
+    if details.has("target_location_id"):
+        return str(details.get("target_location_id", ""))
     if details.has("node_id"):
         return str(details.get("node_id", ""))
     if details.has("to_node_id"):
@@ -97,9 +108,15 @@ static func _metadata_for_event(simulation_event: RefCounted) -> Dictionary:
     for key: Variant in details.keys():
         if str(key) == "distance_km" or str(key) == "speed_km_per_day":
             metadata[str(key)] = details.get(key)
-        elif str(key).ends_with("_node_id") or str(key) == "node_id" or str(key) == "edge_id" or str(key).ends_with("_actor_id") or str(key) == "order_type" or str(key) == "location_id" or str(key) == "goods_id" or str(key) == "direction":
+        elif str(key).ends_with("_node_id") or str(key).ends_with("_location_id") or str(key) == "node_id" or str(key) == "edge_id" or str(key).ends_with("_actor_id") or str(key) == "order_type" or str(key) == "location_id" or str(key) == "goods_id" or str(key) == "direction" or str(key) == "reason" or str(key).begins_with("owner_") or str(key).begins_with("observer_") or str(key).begins_with("observed_"):
             metadata[str(key)] = str(details.get(key))
         elif str(key).ends_with("_count") or str(key) == "amount" or str(key).ends_with("_amount"):
+            metadata[str(key)] = int(details.get(key))
+        elif str(key) == "resource_changes" and typeof(details.get(key)) == TYPE_DICTIONARY:
+            metadata[str(key)] = details.get(key).duplicate(true)
+        elif str(key) == "observed_resources" and typeof(details.get(key)) == TYPE_DICTIONARY:
+            metadata[str(key)] = details.get(key).duplicate(true)
+        elif str(key) == "observation_score":
             metadata[str(key)] = int(details.get(key))
 
     return metadata
