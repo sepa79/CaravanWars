@@ -309,6 +309,80 @@ class DomainIngestTest(unittest.TestCase):
         self.assertEqual(mayor_memory[0]["metadata"]["query_type"], "goods_source")
         self.assertEqual(mayor_memory[0]["metadata"]["transfer_notes"], "Supply party report back")
 
+    def test_worldsim_memory_reported_transfers_party_memory(self) -> None:
+        from cw_memory.repository import ingest_domain_event, list_memory_entries
+        from cw_memory.schemas import DomainEventIn, WorldEventIn
+
+        ingest_domain_event(
+            DomainEventIn(
+                world_event=WorldEventIn(
+                    id="evt_local_info_report_event_001",
+                    event_type="worldsim_local_information_received",
+                    text="Supply party asked about food.",
+                    location_id="wroclaw_city",
+                    occurred_at="day:7.000",
+                    importance=0.5,
+                    reliability=1.0,
+                    tags=["simulation", "worldsim_local_information_received", "wroclaw_supply_party_01", "food"],
+                    metadata={
+                        "party_id": "wroclaw_supply_party_01",
+                        "actor_id": "quartermaster_wroclaw",
+                        "location_id": "wroclaw_city",
+                        "query_type": "goods_source",
+                        "goods_id": "food",
+                        "known_source_locations": [
+                            {
+                                "location_id": "opole_stronghold",
+                                "node_id": "opole",
+                                "goods_id": "food",
+                                "observed_amount": 90,
+                            }
+                        ],
+                    },
+                )
+            )
+        )
+
+        result = ingest_domain_event(
+            DomainEventIn(
+                world_event=WorldEventIn(
+                    id="evt_memory_reported_001",
+                    event_type="worldsim_memory_reported",
+                    text="Quartermaster reported memory to mayor.",
+                    location_id="wroclaw_city",
+                    occurred_at="day:7.100",
+                    importance=0.5,
+                    reliability=1.0,
+                    tags=["simulation", "worldsim_memory_reported", "wroclaw_supply_party_01", "mayor_wroclaw", "food"],
+                    metadata={
+                        "party_id": "wroclaw_supply_party_01",
+                        "actor_id": "quartermaster_wroclaw",
+                        "from_owner_id": "wroclaw_supply_party_01",
+                        "from_owner_kind": "party",
+                        "to_owner_id": "mayor_wroclaw",
+                        "to_owner_kind": "actor",
+                        "recipient_actor_id": "mayor_wroclaw",
+                        "location_id": "wroclaw_city",
+                        "max_entries": 3,
+                        "trust": 0.9,
+                        "distortion_noise": 0.02,
+                        "listener_interest_tags": ["food", "wroclaw_city"],
+                        "notes": "Supply party report back",
+                    },
+                )
+            )
+        )
+
+        mayor_memory = list_memory_entries("mayor_wroclaw", limit=10)
+
+        self.assertEqual(len(result["memory_entries"]), 1)
+        self.assertEqual(len(mayor_memory), 1)
+        self.assertEqual(mayor_memory[0]["kind"], "heard_report")
+        self.assertEqual(mayor_memory[0]["source_owner_id"], "wroclaw_supply_party_01")
+        self.assertEqual(mayor_memory[0]["metadata"]["delivery_kind"], "report")
+        self.assertEqual(mayor_memory[0]["metadata"]["transfer_notes"], "Supply party report back")
+        self.assertEqual(mayor_memory[0]["metadata"]["known_source_locations"][0]["location_id"], "opole_stronghold")
+
 
 if __name__ == "__main__":
     unittest.main()

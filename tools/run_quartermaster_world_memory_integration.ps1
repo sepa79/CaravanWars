@@ -69,6 +69,7 @@ try {
 
     $LocalInformation = @($SupplyMemory | Where-Object { $_.kind -eq "local_information" })
     $OrderLedgers = @($SupplyMemory | Where-Object { $_.kind -eq "order_ledger" })
+    $MayorReports = @($MayorMemory | Where-Object { $_.kind -eq "heard_report" })
 
     if ($LocalInformation.Count -le 0) {
         throw "Expected supply party local_information memory entry."
@@ -79,6 +80,9 @@ try {
     if ($MayorMemory.Count -le 0) {
         throw "Expected mayor order ledger memory entry."
     }
+    if ($MayorReports.Count -le 0) {
+        throw "Expected mayor heard_report memory entry."
+    }
 
     $KnownSources = ($LocalInformation[0].metadata.known_source_locations | ForEach-Object { $_.location_id }) -join ","
     [pscustomobject]@{
@@ -87,6 +91,7 @@ try {
         mayor_memory = $MayorMemory.Count
         local_information_entries = $LocalInformation.Count
         order_ledger_entries = $OrderLedgers.Count
+        mayor_report_entries = $MayorReports.Count
         known_sources = $KnownSources
         db_path = $DbPath
     }

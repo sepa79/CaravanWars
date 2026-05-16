@@ -16,6 +16,7 @@ const SIMULATION_STATE_SCRIPT: GDScript = preload("res://simulation/SimulationSt
 const TRAVEL_INTENT_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/TravelIntentCommand.gd")
 const TRANSFER_GOODS_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/TransferGoodsCommand.gd")
 const ASK_LOCAL_INFORMATION_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/AskLocalInformationCommand.gd")
+const REPORT_BACK_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/ReportBackCommand.gd")
 
 const ERROR_PARTY_NOT_FOUND: String = "party_not_found"
 const ERROR_PARTY_BUSY: String = "party_busy"
@@ -42,12 +43,14 @@ const ERROR_INFORMATION_QUERY_UNSUPPORTED: String = "information_query_unsupport
 const ERROR_NO_LOCAL_INFORMATION: String = "no_local_information"
 const ERROR_ACTOR_NOT_AUTHORIZED: String = "actor_not_authorized"
 const ERROR_ACTOR_TASK_BUSY: String = "actor_task_busy"
+const ERROR_REPORT_RECIPIENT_NOT_PRESENT: String = "report_recipient_not_present"
 const ERROR_PARTY_TASK_BUSY: String = "party_task_busy"
 const ERROR_TRANSFER_DIRECTION_UNSUPPORTED: String = "transfer_direction_unsupported"
 const ERROR_INSUFFICIENT_LOCATION_GOODS: String = "insufficient_location_goods"
 const ERROR_INSUFFICIENT_PARTY_GOODS: String = "insufficient_party_goods"
 const ERROR_CARGO_CAPACITY_EXCEEDED: String = "cargo_capacity_exceeded"
 const ASK_LOCAL_INFORMATION_DURATION_DAYS: float = 0.25
+const REPORT_BACK_DURATION_DAYS: float = 0.10
 
 var state: RefCounted = SIMULATION_STATE_SCRIPT.new()
 var travel_config: RefCounted = PARTY_TRAVEL_CONFIG_SCRIPT.new()
@@ -350,6 +353,59 @@ func submit_ask_local_information(command: RefCounted) -> RefCounted:
     return result
 
 
+func submit_report_back(command: RefCounted) -> RefCounted:
+    if not state.has_party(command.party_id):
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_PARTY_NOT_FOUND, "Party does not exist: %s." % command.party_id)
+
+    if not state.has_location(command.location_id):
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_LOCATION_NOT_FOUND, "Location does not exist: %s." % command.location_id)
+
+    var party: RefCounted = state.get_party(command.party_id)
+    if not party.is_idle():
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_PARTY_BUSY, "Party is already traveling: %s." % command.party_id)
+
+    if command.actor_id != party.manager_actor_id:
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ACTOR_NOT_AUTHORIZED, "Actor %s cannot report for party %s." % [command.actor_id, party.party_id])
+
+    if party.has_active_actor_task(command.actor_id):
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ACTOR_TASK_BUSY, "Actor %s already has an active task." % command.actor_id)
+
+    if command.max_entries <= 0:
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_INVALID_AMOUNT, "Report max_entries must be greater than zero.")
+
+    var location: RefCounted = state.get_location(command.location_id)
+    if party.current_node_id != location.node_id:
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_LOCATION_MISMATCH, "Party %s is at %s, not location %s node %s." % [party.party_id, party.current_node_id, location.location_id, location.node_id])
+
+    if not _is_actor_present_at_node(command.recipient_actor_id, location.node_id):
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_REPORT_RECIPIENT_NOT_PRESENT, "Recipient actor %s is not present at %s." % [command.recipient_actor_id, location.location_id])
+
+    var actor_task: RefCounted = ACTOR_TASK_STATE_SCRIPT.new()
+    actor_task.start_report_back(command.actor_id, party.party_id, location.location_id, command.recipient_actor_id, command.recipient_owner_kind, command.max_entries, command.trust, command.distortion_noise, command.listener_interest_tags, command.notes, REPORT_BACK_DURATION_DAYS, current_day, command.actor_id, true)
+    party.set_actor_task(actor_task)
+
+    var result: RefCounted = COMMAND_RESULT_SCRIPT.accepted_result()
+    result.message = "Started report back task to %s." % command.recipient_actor_id
+    result.details = {
+        "party_id": party.party_id,
+        "actor_id": command.actor_id,
+        "manager_actor_id": party.manager_actor_id,
+        "location_id": location.location_id,
+        "node_id": location.node_id,
+        "recipient_actor_id": command.recipient_actor_id,
+        "recipient_owner_kind": command.recipient_owner_kind,
+        "max_entries": command.max_entries,
+        "trust": command.trust,
+        "distortion_noise": command.distortion_noise,
+        "listener_interest_tags": command.listener_interest_tags.duplicate(),
+        "notes": command.notes,
+        "duration_days": REPORT_BACK_DURATION_DAYS,
+        "requires_party_lock": actor_task.requires_party_lock
+    }
+    _append_event("party_task_started", party.party_id, "Party %s started task report_back to %s." % [party.party_id, command.recipient_actor_id], result.details)
+    return result
+
+
 func tick(days: float) -> void:
     var previous_full_day: int = floori(current_day)
     current_day += days
@@ -645,6 +701,10 @@ func _process_actor_tasks(party: RefCounted, days: float) -> void:
             _complete_ask_local_information_actor_task(party, actor_task)
             continue
 
+        if actor_task.task_type == ACTOR_TASK_STATE_SCRIPT.TASK_TYPE_REPORT_BACK:
+            _complete_report_back_actor_task(party, actor_task)
+            continue
+
         actor_task.mark_failed("task_type_unsupported", "Unsupported actor task type: %s." % actor_task.task_type)
         _append_event("party_task_failed", party.party_id, "Actor %s failed unsupported task %s." % [actor_task.actor_id, actor_task.task_type], {
             "party_id": party.party_id,
@@ -652,7 +712,41 @@ func _process_actor_tasks(party: RefCounted, days: float) -> void:
             "manager_actor_id": party.manager_actor_id,
             "task_type": actor_task.task_type,
             "failure_code": actor_task.failure_code
-        })
+    })
+
+
+func _complete_report_back_actor_task(party: RefCounted, actor_task: RefCounted) -> void:
+    var location_id: String = actor_task.location_id
+    var location: RefCounted = state.get_location(location_id)
+
+    actor_task.mark_completed()
+    _append_event("party_task_completed", party.party_id, "Actor %s completed task report_back to %s." % [actor_task.actor_id, actor_task.recipient_actor_id], {
+        "party_id": party.party_id,
+        "actor_id": actor_task.actor_id,
+        "manager_actor_id": party.manager_actor_id,
+        "task_type": ACTOR_TASK_STATE_SCRIPT.TASK_TYPE_REPORT_BACK,
+        "location_id": location_id,
+        "recipient_actor_id": actor_task.recipient_actor_id,
+        "duration_days": actor_task.total_days
+    })
+    _append_event("worldsim_memory_reported", party.party_id, "Actor %s reported party memory to %s at %s." % [actor_task.actor_id, actor_task.recipient_actor_id, location_id], {
+        "party_id": party.party_id,
+        "actor_id": actor_task.actor_id,
+        "manager_actor_id": party.manager_actor_id,
+        "from_owner_id": party.party_id,
+        "from_owner_kind": "party",
+        "to_owner_id": actor_task.recipient_actor_id,
+        "to_owner_kind": actor_task.recipient_owner_kind,
+        "recipient_actor_id": actor_task.recipient_actor_id,
+        "location_id": location_id,
+        "node_id": location.node_id,
+        "max_entries": actor_task.max_entries,
+        "trust": actor_task.trust,
+        "distortion_noise": actor_task.distortion_noise,
+        "listener_interest_tags": actor_task.listener_interest_tags.duplicate(),
+        "notes": actor_task.notes,
+        "duration_days": actor_task.total_days
+    })
 
 
 func _complete_ask_local_information_actor_task(party: RefCounted, actor_task: RefCounted) -> void:
@@ -928,6 +1022,21 @@ func _build_path_dictionary(start_node_id: String, destination_node_id: String, 
         "node_ids": reversed_node_ids,
         "edge_ids": reversed_edge_ids
     }
+
+
+func _is_actor_present_at_node(actor_id: String, node_id: String) -> bool:
+    if actor_id.is_empty():
+        return false
+
+    for location: RefCounted in state.get_locations_at_node(node_id):
+        if location.manager_actor_id == actor_id:
+            return true
+
+    for party: RefCounted in state.parties_by_id.values():
+        if party.travel_state == "idle" and party.current_node_id == node_id and party.manager_actor_id == actor_id:
+            return true
+
+    return false
 
 
 func _string_array_from_variant(value: Variant) -> Array[String]:

@@ -2,6 +2,7 @@
 
 Isolated Godot prototype for the player-made parchment map.
 It currently uses the curated `de_fer_player_rough` symbol set from the KM Alexander / No Bad Maps intake.
+The prototype reads the main region graph from `game/data/regions/silesia.json` and falls back to `data/demo_graph.json` only if the main graph is unavailable.
 
 This does not use the main CaravanWars simulation yet. It is a sandbox for proving the UX and renderer:
 
@@ -10,8 +11,10 @@ This does not use the main CaravanWars simulation yet. It is a sandbox for provi
 - separate layers for travelled, seen, and heard information,
 - dotted uncertain routes for rumors,
 - only local river fragments near known crossings,
+- temporary terrain hints derived beside the graph, such as the prototype Odra river,
 - hand-drawn PNG icons with procedural fallbacks,
 - generated bought regional maps with visible quality and their own positional error,
+- additive copy mode: copied marks stay where they were unless redraw is explicitly enabled,
 - pan, zoom, and clickable map marks.
 
 ## Run

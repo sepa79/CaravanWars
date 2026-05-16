@@ -61,6 +61,7 @@ The v0 mapper exports only:
 - `worldsim_location_observed`
 - `worldsim_party_observed`
 - `worldsim_local_information_received`
+- `worldsim_memory_reported`
 
 Unknown event types return an empty payload. This is intentional: export must be explicit, not a silent dump of all runtime details.
 
@@ -72,6 +73,7 @@ Unknown event types return an empty payload. This is intentional: export must be
 - Include order metadata such as `issued_by_actor_id`, `order_type`, `target_location_id`, `goods_id`, and `amount`.
 - Include `target_node_id` for location-targeted orders when the authoritative simulation resolved it during validation.
 - Include task metadata such as `task_type`, `query_type`, `duration_days`, and `failure_code`.
+- Include report metadata such as `from_owner_id`, `to_owner_id`, `to_owner_kind`, `max_entries`, `trust`, `distortion_noise`, `listener_interest_tags`, and `notes`.
 - Include bounded counts such as `discovered_edge_count`.
 - Do not export the full region graph.
 - Do not export full party knowledge.
@@ -134,6 +136,7 @@ WorldMemory domain ingest currently creates per-owner memory entries for:
 - `worldsim_location_observed`
 - `worldsim_party_observed`
 - `worldsim_local_information_received`
+- `worldsim_memory_reported`
 - `party_travel_started`
 - `party_arrived`
 - `party_order_assigned`

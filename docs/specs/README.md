@@ -72,6 +72,7 @@ TODO
 - Party movement command: `docs/specs/commands/move_party.md`
 - Assign party order command: `docs/specs/commands/assign_party_order.md`
 - Ask local information command: `docs/specs/commands/ask_local_information.md`
+- Report back command: `docs/specs/commands/report_back.md`
 - Inspect local routes command: `docs/specs/commands/inspect_local_routes.md`
 - Travel intent command: `docs/specs/commands/travel_intent.md`
 - Transfer goods command: `docs/specs/commands/transfer_goods.md`

@@ -10,6 +10,7 @@ var _failed: bool = false
 
 func _initialize() -> void:
     _test_actor_task_lifecycle()
+    _test_report_back_task_lifecycle()
     _test_party_tracks_actor_task_busy_rules()
     _test_save_load_preserves_actor_tasks()
     _test_load_rejects_bad_actor_task_references()
@@ -46,6 +47,21 @@ func _test_actor_task_lifecycle() -> void:
     var restored_task: RefCounted = ACTOR_TASK_STATE_SCRIPT.from_dictionary(task.to_dictionary())
     _expect(restored_task.actor_id == task.actor_id, "Expected actor task roundtrip to preserve actor id.")
     _expect(restored_task.status == task.status, "Expected actor task roundtrip to preserve status.")
+
+
+func _test_report_back_task_lifecycle() -> void:
+    var task: RefCounted = ACTOR_TASK_STATE_SCRIPT.new()
+    var interest_tags: Array[String] = ["food", "wroclaw_city"]
+    task.start_report_back("quartermaster_wroclaw", "wroclaw_supply_party_01", "wroclaw_city", "mayor_wroclaw", "actor", 3, 0.9, 0.02, interest_tags, "Supply party report back", 0.1, 4.0, "quartermaster_wroclaw", true)
+
+    _expect(not task.is_idle(), "Expected started report back task to be active.")
+    _expect(task.task_type == ACTOR_TASK_STATE_SCRIPT.TASK_TYPE_REPORT_BACK, "Expected report back task type.")
+    _expect(task.recipient_actor_id == "mayor_wroclaw", "Expected report recipient actor.")
+    _expect(task.listener_interest_tags.has("food"), "Expected report interest tags.")
+
+    var restored_task: RefCounted = ACTOR_TASK_STATE_SCRIPT.from_dictionary(task.to_dictionary())
+    _expect(restored_task.recipient_actor_id == task.recipient_actor_id, "Expected report task roundtrip to preserve recipient.")
+    _expect(restored_task.listener_interest_tags.has("wroclaw_city"), "Expected report task roundtrip to preserve tags.")
 
 
 func _test_party_tracks_actor_task_busy_rules() -> void:

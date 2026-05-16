@@ -4,28 +4,22 @@
   "source": "KM Alexander / No Bad Maps, de Fer Settlement Brushes with one Lumbia hill symbol",
   "symbols": {
     "inn": [
-      { "path": "settlement/inn_01.png", "size": [108, 76], "offset": [0, -20] }
+      { "path": "settlement/inn_01.png", "scale": 0.72, "offset": [0, -14] }
     ],
     "village": [
-      { "path": "settlement/village_01.png", "size": [100, 56], "offset": [0, -14] }
+      { "path": "settlement/village_01.png", "scale": 0.78, "offset": [0, -10] }
     ],
     "town": [
-      { "path": "settlement/town_01.png", "size": [124, 102], "offset": [0, -26] }
+      { "path": "settlement/town_01.png", "scale": 0.72, "offset": [0, -18] }
     ],
     "camp": [
-      { "path": "settlement/camp_01.png", "size": [100, 52], "offset": [0, -14] }
-    ],
-    "bridge": [
-      { "path": "poi/bridge_01.png", "size": [76, 80], "offset": [0, 0] }
-    ],
-    "ford": [
-      { "path": "poi/ford_01.png", "size": [64, 64], "offset": [0, 0] }
+      { "path": "settlement/camp_01.png", "scale": 0.78, "offset": [0, -10] }
     ],
     "mill": [
-      { "path": "poi/mill_01.png", "size": [84, 84], "offset": [0, -6] }
+      { "path": "poi/mill_01.png", "scale": 1.65, "offset": [0, -4] }
     ],
     "hill": [
-      { "path": "terrain/hill_01.png", "size": [128, 52], "offset": [0, -6] }
+      { "path": "terrain/hill_01.png", "scale": 0.55, "offset": [0, -4] }
     ]
   }
 }

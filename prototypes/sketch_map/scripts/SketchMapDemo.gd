@@ -57,6 +57,35 @@ func _build_ui() -> void:
     _current_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     sidebar.add_child(_current_label)
 
+    var view_section: Label = Label.new()
+    view_section.text = "Map view"
+    view_section.add_theme_font_size_override("font_size", 15)
+    sidebar.add_child(view_section)
+
+    var view_buttons: HBoxContainer = HBoxContainer.new()
+    view_buttons.add_theme_constant_override("separation", 6)
+    sidebar.add_child(view_buttons)
+
+    var player_view_button: Button = Button.new()
+    player_view_button.text = "Player"
+    player_view_button.pressed.connect(_on_view_pressed.bind("player"))
+    view_buttons.add_child(player_view_button)
+
+    var bought_view_button: Button = Button.new()
+    bought_view_button.text = "Bought"
+    bought_view_button.pressed.connect(_on_view_pressed.bind("bought"))
+    view_buttons.add_child(bought_view_button)
+
+    var compare_view_button: Button = Button.new()
+    compare_view_button.text = "Compare"
+    compare_view_button.pressed.connect(_on_view_pressed.bind("compare"))
+    view_buttons.add_child(compare_view_button)
+
+    var truth_view_button: Button = Button.new()
+    truth_view_button.text = "Truth"
+    truth_view_button.pressed.connect(_on_view_pressed.bind("truth"))
+    view_buttons.add_child(truth_view_button)
+
     var section: Label = Label.new()
     section.text = "Known travel choices"
     section.add_theme_font_size_override("font_size", 15)
@@ -83,6 +112,12 @@ func _build_ui() -> void:
     copy_map_button.pressed.connect(_on_copy_map_pressed)
     sidebar.add_child(copy_map_button)
 
+    var redraw_toggle: CheckBox = CheckBox.new()
+    redraw_toggle.text = "Redraw existing marks"
+    redraw_toggle.button_pressed = model.redraw_existing_marks
+    redraw_toggle.toggled.connect(_on_redraw_toggled)
+    sidebar.add_child(redraw_toggle)
+
     _bought_map_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     sidebar.add_child(_bought_map_label)
 
@@ -104,9 +139,9 @@ func _build_ui() -> void:
 func _refresh() -> void:
     _current_label.text = "Current position: %s" % str(model.nodes_by_id.get(model.current_node_id, {}).get("name", model.current_node_id))
     if model.bought_map_quality >= 0.0:
-        _bought_map_label.text = "Bought map quality: %d%%\nCopied into parchment: %d time(s)" % [int(round(model.bought_map_quality * 100.0)), int(model.copied_map_count)]
+        _bought_map_label.text = "Bought map quality: %d%%\nCopied into parchment: %d time(s)\nRedraw existing: %s" % [int(round(model.bought_map_quality * 100.0)), int(model.copied_map_count), "on" if model.redraw_existing_marks else "off"]
     else:
-        _bought_map_label.text = "No bought map."
+        _bought_map_label.text = "No bought map.\nRedraw existing: %s" % ("on" if model.redraw_existing_marks else "off")
     _rebuild_destination_buttons()
     _refresh_notes()
     canvas.queue_redraw()
@@ -161,11 +196,23 @@ func _on_rumor_pressed() -> void:
 
 func _on_buy_map_pressed() -> void:
     model.buy_regional_map()
+    canvas.set_view_mode("bought")
     _refresh()
 
 
 func _on_copy_map_pressed() -> void:
     model.copy_bought_map_to_player()
+    canvas.set_view_mode("player")
+    _refresh()
+
+
+func _on_view_pressed(view_mode: String) -> void:
+    canvas.set_view_mode(view_mode)
+    _refresh()
+
+
+func _on_redraw_toggled(enabled: bool) -> void:
+    model.redraw_existing_marks = enabled
     _refresh()
 
 

@@ -72,3 +72,17 @@ The renderer picks a deterministic variant from map seed plus object id, so symb
 Map style is presentation, not truth.
 A bought map can be beautifully drawn and still wrong.
 A rough player note can be ugly and still more accurate because it came from direct travel.
+
+## Player Map Editing Rule
+
+The player map should usually be additive: draw new observations, do not redraw old marks.
+If a copied settlement, road, or landmark is wrong but still useful, it stays where the player wrote it.
+Travel can upgrade confidence and medium, but should not casually move the mark.
+
+Redrawing is reserved for explicit correction modes or strong anchors:
+
+- bridges and fords anchoring river fragments,
+- very large placement errors that make the map unreadable,
+- deliberate player action to scrape/wipe and redraw.
+
+This keeps the map human and useful as a route notebook instead of turning it into GPS correction.

@@ -1,7 +1,10 @@
 class_name SketchMapModel
 extends RefCounted
 
-const GRAPH_PATH: String = "res://data/demo_graph.json"
+const MAIN_REGION_GRAPH_PATH: String = "res://../../game/data/regions/silesia.json"
+const FALLBACK_GRAPH_PATH: String = "res://data/demo_graph.json"
+const REGION_MAP_MIN: Vector2 = Vector2(120, 90)
+const REGION_MAP_SIZE: Vector2 = Vector2(980, 560)
 
 var nodes_by_id: Dictionary = {}
 var edges: Array[Dictionary] = []
@@ -9,24 +12,25 @@ var rivers: Array[Dictionary] = []
 var map_nodes: Dictionary = {}
 var map_edges: Dictionary = {}
 var map_rivers: Dictionary = {}
+var erased_nodes: Array[Dictionary] = []
+var erased_edges: Array[Dictionary] = []
+var erased_rivers: Array[Dictionary] = []
 var bought_map_nodes: Dictionary = {}
 var bought_map_edges: Dictionary = {}
 var bought_map_rivers: Dictionary = {}
 var bought_map_quality: float = -1.0
 var copied_map_count: int = 0
+var redraw_existing_marks: bool = false
 var notes: Array[Dictionary] = []
-var current_node_id: String = "wroclaw_gate_inn"
+var current_node_id: String = ""
 
 
 func load_demo_graph() -> void:
-    var file: FileAccess = FileAccess.open(GRAPH_PATH, FileAccess.READ)
-    if file == null:
-        push_error("Could not open sketch map graph: %s" % GRAPH_PATH)
-        return
-
-    var parsed: Variant = JSON.parse_string(file.get_as_text())
-    if typeof(parsed) != TYPE_DICTIONARY:
-        push_error("Sketch map graph is not a dictionary.")
+    var parsed: Dictionary = _load_graph_json(MAIN_REGION_GRAPH_PATH)
+    if parsed.is_empty():
+        parsed = _load_graph_json(FALLBACK_GRAPH_PATH)
+    if parsed.is_empty():
+        push_error("Could not load any sketch map graph.")
         return
 
     nodes_by_id.clear()
@@ -35,13 +39,54 @@ func load_demo_graph() -> void:
     map_nodes.clear()
     map_edges.clear()
     map_rivers.clear()
+    erased_nodes.clear()
+    erased_edges.clear()
+    erased_rivers.clear()
     bought_map_nodes.clear()
     bought_map_edges.clear()
     bought_map_rivers.clear()
     bought_map_quality = -1.0
     copied_map_count = 0
+    redraw_existing_marks = false
     notes.clear()
 
+    if _is_region_graph(parsed):
+        _load_region_graph(parsed)
+    else:
+        _load_legacy_demo_graph(parsed)
+
+    if nodes_by_id.has("wroclaw"):
+        current_node_id = "wroclaw"
+    elif nodes_by_id.has("wroclaw_gate_inn"):
+        current_node_id = "wroclaw_gate_inn"
+    elif not nodes_by_id.is_empty():
+        current_node_id = str(nodes_by_id.keys()[0])
+
+    discover_node(current_node_id, "visited")
+    discover_nearby(current_node_id, "seen")
+    reveal_rivers_near(current_node_id)
+
+
+func _load_graph_json(path: String) -> Dictionary:
+    var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+    if file == null:
+        file = FileAccess.open(ProjectSettings.globalize_path(path), FileAccess.READ)
+    if file == null:
+        push_warning("Could not open graph path: %s" % path)
+        return {}
+
+    var parsed: Variant = JSON.parse_string(file.get_as_text())
+    if typeof(parsed) != TYPE_DICTIONARY:
+        push_warning("Graph is not a dictionary: %s" % path)
+        return {}
+    return parsed
+
+
+func _is_region_graph(parsed: Dictionary) -> bool:
+    return parsed.has("display_name") and str(parsed.get("id", "")) != "demo_sketch_map"
+
+
+func _load_legacy_demo_graph(parsed: Dictionary) -> void:
     for node_value: Variant in parsed.get("nodes", []):
         if typeof(node_value) == TYPE_DICTIONARY:
             var node: Dictionary = node_value
@@ -55,8 +100,121 @@ func load_demo_graph() -> void:
         if typeof(river_value) == TYPE_DICTIONARY:
             rivers.append(river_value)
 
-    discover_node("wroclaw_gate_inn", "visited")
-    discover_nearby("wroclaw_gate_inn", "seen")
+
+func _load_region_graph(parsed: Dictionary) -> void:
+    var node_values: Array = parsed.get("nodes", [])
+    var bounds: Rect2 = _region_graph_bounds(node_values)
+
+    for node_value: Variant in node_values:
+        if typeof(node_value) != TYPE_DICTIONARY:
+            continue
+
+        var source_node: Dictionary = node_value
+        var node_id: String = str(source_node.get("id", ""))
+        if node_id.is_empty():
+            continue
+
+        var raw_kind: String = str(source_node.get("kind", "unknown"))
+        var node: Dictionary = {
+            "id": node_id,
+            "name": str(source_node.get("display_name", node_id)),
+            "kind": _map_region_kind(raw_kind),
+            "raw_kind": raw_kind,
+            "notes": str(source_node.get("notes", "")),
+            "position": _region_map_position(_array_to_vec2(source_node.get("position", [0, 0])), bounds)
+        }
+        nodes_by_id[node_id] = node
+
+    for edge_value: Variant in parsed.get("edges", []):
+        if typeof(edge_value) != TYPE_DICTIONARY:
+            continue
+
+        var source_edge: Dictionary = edge_value
+        var from_id: String = str(source_edge.get("from", ""))
+        var to_id: String = str(source_edge.get("to", ""))
+        if not nodes_by_id.has(from_id) or not nodes_by_id.has(to_id):
+            continue
+
+        var edge_id: String = str(source_edge.get("id", "%s_%s" % [from_id, to_id]))
+        edges.append({
+            "id": edge_id,
+            "from": from_id,
+            "to": to_id,
+            "kind": str(source_edge.get("kind", "road")),
+            "distance_km": float(source_edge.get("distance_km", 0.0))
+        })
+
+    _add_region_terrain(parsed)
+
+
+func _region_graph_bounds(node_values: Array) -> Rect2:
+    var has_position: bool = false
+    var min_pos: Vector2 = Vector2.ZERO
+    var max_pos: Vector2 = Vector2.ZERO
+    for node_value: Variant in node_values:
+        if typeof(node_value) != TYPE_DICTIONARY:
+            continue
+        var node: Dictionary = node_value
+        var pos: Vector2 = _array_to_vec2(node.get("position", [0, 0]))
+        if not has_position:
+            min_pos = pos
+            max_pos = pos
+            has_position = true
+        else:
+            min_pos = min_pos.min(pos)
+            max_pos = max_pos.max(pos)
+
+    if not has_position:
+        return Rect2(Vector2.ZERO, Vector2.ONE)
+    var size: Vector2 = max_pos - min_pos
+    if size.x < 1.0:
+        size.x = 1.0
+    if size.y < 1.0:
+        size.y = 1.0
+    return Rect2(min_pos, size)
+
+
+func _region_map_position(raw_pos: Vector2, bounds: Rect2) -> Vector2:
+    var normalized: Vector2 = Vector2(
+        (raw_pos.x - bounds.position.x) / bounds.size.x,
+        (raw_pos.y - bounds.position.y) / bounds.size.y
+    )
+    return REGION_MAP_MIN + normalized * REGION_MAP_SIZE
+
+
+func _map_region_kind(raw_kind: String) -> String:
+    match raw_kind:
+        "major_city", "regional_stronghold":
+            return "town"
+        "monastery":
+            return "town"
+        "mountain_pass":
+            return "hill"
+        "river_crossing":
+            return "ford"
+        "wilderness":
+            return "camp"
+        _:
+            return "village"
+
+
+func _add_region_terrain(parsed: Dictionary) -> void:
+    if str(parsed.get("id", "")) != "silesia":
+        return
+
+    var river_node_ids: Array[String] = ["glogow", "wroclaw", "odra_crossing", "opole", "raciborz"]
+    var points: Array = []
+    for node_id: String in river_node_ids:
+        if nodes_by_id.has(node_id):
+            points.append(nodes_by_id[node_id].get("position", [0, 0]))
+
+    if points.size() >= 2:
+        rivers.append({
+            "id": "odra_hint",
+            "name": "Odra",
+            "points": points,
+            "visible_near": river_node_ids
+        })
 
 
 func travel_to(node_id: String) -> bool:
@@ -65,9 +223,9 @@ func travel_to(node_id: String) -> bool:
     if not _has_known_or_true_edge(current_node_id, node_id):
         return false
 
+    discover_node(node_id, "visited")
     discover_edge_between(current_node_id, node_id, "visited")
     current_node_id = node_id
-    discover_node(node_id, "visited")
     discover_nearby(node_id, "seen")
     reveal_rivers_near(node_id)
     notes.append({
@@ -79,7 +237,10 @@ func travel_to(node_id: String) -> bool:
 
 
 func reveal_from_hill() -> void:
-    if current_node_id != "low_hill":
+    var current_node: Dictionary = nodes_by_id.get(current_node_id, {})
+    var current_kind: String = str(current_node.get("kind", "unknown"))
+    var current_raw_kind: String = str(current_node.get("raw_kind", current_kind))
+    if current_kind != "hill" and current_raw_kind != "mountain_pass" and current_raw_kind != "wilderness":
         notes.append({
             "text": "Need a high place to draw beyond the road.",
             "node_id": current_node_id,
@@ -87,21 +248,32 @@ func reveal_from_hill() -> void:
         })
         return
 
-    discover_node("opole_road_camp", "seen")
-    discover_node("opole_market", "heard")
+    var revealed: Array[String] = _nearest_undiscovered_nodes(current_node_id, 3)
+    for node_id: String in revealed:
+        discover_node(node_id, "seen")
     notes.append({
-        "text": "From the hill: smoke and roofs lie somewhere toward Opole.",
-        "node_id": "low_hill",
+        "text": "From high ground: rough marks added for %d distant place(s)." % revealed.size(),
+        "node_id": current_node_id,
         "source": "seen"
     })
 
 
 func add_tavern_rumor() -> void:
-    discover_node("opole_market", "heard")
-    discover_edge_between("opole_road_camp", "opole_market", "heard")
+    var target_id: String = "opole" if nodes_by_id.has("opole") else _first_undiscovered_node()
+    if target_id.is_empty():
+        notes.append({
+            "text": "Tavern rumor: nothing new worth adding.",
+            "node_id": current_node_id,
+            "source": "heard"
+        })
+        return
+
+    discover_node(target_id, "heard")
+    if _has_known_or_true_edge(current_node_id, target_id):
+        discover_edge_between(current_node_id, target_id, "heard")
     notes.append({
-        "text": "Tavern rumor: the Opole road runs on, but folk argue about distance.",
-        "node_id": "opole_market",
+        "text": "Tavern rumor: someone argues the road toward %s is worth marking." % str(nodes_by_id[target_id].get("name", target_id)),
+        "node_id": target_id,
         "source": "heard"
     })
 
@@ -136,6 +308,8 @@ func buy_regional_map() -> void:
             "to": to_id,
             "kind": str(edge.get("kind", "road")),
             "source": "bought",
+            "medium": "charcoal",
+            "status": "unverified",
             "path": _bought_edge_path(from_id, to_id, edge_id)
         }
 
@@ -148,7 +322,9 @@ func buy_regional_map() -> void:
             bought_map_rivers[river_id] = {
                 "id": river_id,
                 "points": points,
-                "source": "bought"
+                "source": "bought",
+                "medium": "charcoal",
+                "status": "unverified"
             }
 
     notes.append({
@@ -173,7 +349,7 @@ func copy_bought_map_to_player() -> void:
     var copied_rivers: int = 0
 
     for node_id: String in bought_map_nodes.keys():
-        if _should_skip_copy_node(node_id):
+        if map_nodes.has(node_id):
             continue
 
         var bought_node: Dictionary = bought_map_nodes[node_id]
@@ -185,6 +361,8 @@ func copy_bought_map_to_player() -> void:
             "true_pos": bought_node.get("true_pos", copied_pos),
             "map_pos": copied_pos,
             "source": "copied",
+            "medium": "charcoal",
+            "status": "unverified",
             "accuracy": _copied_accuracy(),
             "label": "%s*" % str(bought_node.get("label", node_id)),
             "variant": abs(hash("%s:copied:%d" % [node_id, copied_map_count])) % 4
@@ -192,7 +370,7 @@ func copy_bought_map_to_player() -> void:
         copied_nodes += 1
 
     for edge_id: String in bought_map_edges.keys():
-        if map_edges.has(edge_id) and _source_rank(str(map_edges[edge_id].get("source", ""))) >= _source_rank("seen"):
+        if map_edges.has(edge_id):
             continue
 
         var bought_edge: Dictionary = bought_map_edges[edge_id]
@@ -207,6 +385,8 @@ func copy_bought_map_to_player() -> void:
             "to": to_id,
             "kind": str(bought_edge.get("kind", "road")),
             "source": "copied",
+            "medium": "charcoal",
+            "status": "unverified",
             "accuracy": _copied_accuracy(),
             "path": _copied_edge_path(from_id, to_id, edge_id)
         }
@@ -218,14 +398,17 @@ func copy_bought_map_to_player() -> void:
 
         var bought_river: Dictionary = bought_map_rivers[river_id]
         var points: Array[Vector2] = []
-        for point: Vector2 in bought_river.get("points", []):
-            points.append(point + _copy_offset("%s:river" % river_id) * 0.35)
+        for i: int in range(0, bought_river.get("points", []).size()):
+            var point: Vector2 = bought_river.get("points", [])[i]
+            points.append(_copied_river_point(point, river_id, i))
 
         if points.size() >= 2:
             map_rivers[river_id] = {
                 "id": river_id,
                 "points": points,
-                "source": "copied"
+                "source": "copied",
+                "medium": "charcoal",
+                "status": "unverified"
             }
             copied_rivers += 1
 
@@ -255,9 +438,19 @@ func discover_node(node_id: String, source: String) -> void:
     if map_nodes.has(node_id):
         var existing: Dictionary = map_nodes[node_id]
         if _source_rank(source) > _source_rank(str(existing.get("source", ""))):
+            var true_pos: Vector2 = _array_to_vec2(nodes_by_id[node_id].get("position", [0, 0]))
+            var improved_pos: Vector2 = true_pos + _stable_offset(node_id, source)
+            var should_reposition: bool = redraw_existing_marks and _should_reposition_node(existing, nodes_by_id[node_id], improved_pos)
+            if should_reposition:
+                _erase_node_mark(existing)
             existing["source"] = source
+            existing["medium"] = _medium_for_source(source)
+            existing["status"] = _status_for_source(source)
             existing["accuracy"] = _accuracy_for_source(source)
             existing["label"] = _label_for_node(nodes_by_id[node_id], source)
+            if should_reposition:
+                existing["map_pos"] = improved_pos
+            existing["variant"] = abs(hash("%s:%s" % [node_id, source])) % 4
             map_nodes[node_id] = existing
         return
 
@@ -270,6 +463,8 @@ func discover_node(node_id: String, source: String) -> void:
         "true_pos": true_pos,
         "map_pos": true_pos + _stable_offset(node_id, source),
         "source": source,
+        "medium": _medium_for_source(source),
+        "status": _status_for_source(source),
         "accuracy": _accuracy_for_source(source),
         "label": _label_for_node(node, source),
         "variant": abs(hash("%s:%s" % [node_id, source])) % 4
@@ -285,9 +480,14 @@ func discover_edge_between(a_id: String, b_id: String, source: String) -> void:
             if map_edges.has(edge_id):
                 var existing: Dictionary = map_edges[edge_id]
                 if _source_rank(source) > _source_rank(str(existing.get("source", ""))):
+                    if redraw_existing_marks:
+                        _erase_edge_mark(existing)
                     existing["source"] = source
+                    existing["medium"] = _medium_for_source(source)
+                    existing["status"] = _status_for_source(source)
                     existing["accuracy"] = _accuracy_for_source(source)
-                    existing["path"] = _edge_path(from_id, to_id, edge_id, source)
+                    if redraw_existing_marks:
+                        existing["path"] = _edge_path(from_id, to_id, edge_id, source)
                     map_edges[edge_id] = existing
                 return
 
@@ -299,6 +499,8 @@ func discover_edge_between(a_id: String, b_id: String, source: String) -> void:
                 "to": to_id,
                 "kind": str(edge.get("kind", "road")),
                 "source": source,
+                "medium": _medium_for_source(source),
+                "status": _status_for_source(source),
                 "accuracy": _accuracy_for_source(source),
                 "path": _edge_path(from_id, to_id, edge_id, source)
             }
@@ -310,14 +512,27 @@ func reveal_rivers_near(node_id: String) -> void:
         var visible_near: Array = river.get("visible_near", [])
         if visible_near.has(node_id):
             var river_id: String = str(river.get("id", "river"))
-            if not map_rivers.has(river_id):
+            if not map_rivers.has(river_id) or _source_rank(str(map_rivers[river_id].get("source", ""))) < _source_rank("seen"):
+                var should_redraw_river: bool = redraw_existing_marks or _river_has_player_anchor(river)
+                if map_rivers.has(river_id) and should_redraw_river:
+                    _erase_river_mark(map_rivers[river_id])
+                elif map_rivers.has(river_id) and not should_redraw_river:
+                    var existing: Dictionary = map_rivers[river_id]
+                    existing["source"] = "seen"
+                    existing["medium"] = _medium_for_source("seen")
+                    existing["status"] = _status_for_source("seen")
+                    map_rivers[river_id] = existing
+                    continue
+
                 var points: Array[Vector2] = []
                 for point_value: Variant in river.get("points", []):
                     points.append(_river_map_point(_array_to_vec2(point_value), river, river_id))
                 map_rivers[river_id] = {
                     "id": river_id,
                     "points": points,
-                    "source": "seen"
+                    "source": "seen",
+                    "medium": _medium_for_source("seen"),
+                    "status": _status_for_source("seen")
                 }
 
 
@@ -342,6 +557,42 @@ func _has_known_or_true_edge(a_id: String, b_id: String) -> bool:
         if (from_id == a_id and to_id == b_id) or (from_id == b_id and to_id == a_id):
             return true
     return false
+
+
+func _nearest_undiscovered_nodes(from_id: String, limit: int) -> Array[String]:
+    var result: Array[String] = []
+    if not nodes_by_id.has(from_id):
+        return result
+
+    var from_pos: Vector2 = _array_to_vec2(nodes_by_id[from_id].get("position", Vector2.ZERO))
+    var candidates: Array[Dictionary] = []
+    for node_id_value: Variant in nodes_by_id.keys():
+        var node_id: String = str(node_id_value)
+        if node_id == from_id or map_nodes.has(node_id):
+            continue
+        var node_pos: Vector2 = _array_to_vec2(nodes_by_id[node_id].get("position", Vector2.ZERO))
+        candidates.append({
+            "id": node_id,
+            "distance": from_pos.distance_to(node_pos)
+        })
+
+    candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+        return float(a.get("distance", 0.0)) < float(b.get("distance", 0.0))
+    )
+
+    for candidate: Dictionary in candidates:
+        if result.size() >= limit:
+            break
+        result.append(str(candidate.get("id", "")))
+    return result
+
+
+func _first_undiscovered_node() -> String:
+    for node_id_value: Variant in nodes_by_id.keys():
+        var node_id: String = str(node_id_value)
+        if not map_nodes.has(node_id):
+            return node_id
+    return ""
 
 
 func _edge_path(from_id: String, to_id: String, edge_id: String, source: String) -> PackedVector2Array:
@@ -369,6 +620,8 @@ func _add_bought_node(node_id: String) -> void:
         "true_pos": true_pos,
         "map_pos": true_pos + _bought_offset(node_id),
         "source": "bought",
+        "medium": "charcoal",
+        "status": "unverified",
         "accuracy": bought_map_quality,
         "label": _bought_label_for_node(node),
         "variant": abs(hash("%s:bought:%d" % [node_id, int(bought_map_quality * 100.0)])) % 4
@@ -411,6 +664,36 @@ func _bought_river_map_point(true_point: Vector2, river: Dictionary, river_id: S
     return true_point + _bought_offset("%s:river" % river_id) * 0.45
 
 
+func _copied_river_point(source_point: Vector2, river_id: String, point_index: int) -> Vector2:
+    var river: Dictionary = _river_by_id(river_id)
+    if river.is_empty():
+        return source_point + _copy_offset("%s:river:%d" % [river_id, point_index]) * 0.35
+
+    var true_points: Array = river.get("points", [])
+    if point_index >= true_points.size():
+        return source_point + _copy_offset("%s:river:%d" % [river_id, point_index]) * 0.35
+
+    var true_point: Vector2 = _array_to_vec2(true_points[point_index])
+    var visible_near: Array = river.get("visible_near", [])
+    for visible_node_id_value: Variant in visible_near:
+        var visible_node_id: String = str(visible_node_id_value)
+        if not nodes_by_id.has(visible_node_id) or not map_nodes.has(visible_node_id):
+            continue
+
+        var node_true_pos: Vector2 = _array_to_vec2(nodes_by_id[visible_node_id].get("position", [0, 0]))
+        if true_point.distance_to(node_true_pos) <= 2.0:
+            return map_nodes[visible_node_id].get("map_pos", source_point)
+
+    return source_point + _copy_offset("%s:river:%d" % [river_id, point_index]) * 0.35
+
+
+func _river_by_id(river_id: String) -> Dictionary:
+    for river: Dictionary in rivers:
+        if str(river.get("id", "")) == river_id:
+            return river
+    return {}
+
+
 func _river_map_point(true_point: Vector2, river: Dictionary, river_id: String) -> Vector2:
     var visible_near: Array = river.get("visible_near", [])
     for visible_node_id_value: Variant in visible_near:
@@ -446,19 +729,59 @@ func _copied_accuracy() -> float:
     return clamp(bought_map_quality * 0.72 + character_copy_skill * 0.28, 0.18, 0.9)
 
 
-func _should_skip_copy_node(node_id: String) -> bool:
-    if not map_nodes.has(node_id):
-        return false
-
-    var existing: Dictionary = map_nodes[node_id]
-    return _source_rank(str(existing.get("source", ""))) >= _source_rank("seen")
-
-
 func _bought_label_for_node(node: Dictionary) -> String:
     var name: String = str(node.get("name", "unknown"))
     if bought_map_quality < 0.45:
         return "%s?" % name
     return name
+
+
+func _erase_node_mark(node: Dictionary) -> void:
+    if str(node.get("source", "")) == "visited":
+        return
+    var erased: Dictionary = node.duplicate(true)
+    erased["status"] = "erased"
+    erased["medium"] = "charcoal"
+    erased_nodes.append(erased)
+
+
+func _erase_edge_mark(edge: Dictionary) -> void:
+    if str(edge.get("source", "")) == "visited":
+        return
+    var erased: Dictionary = edge.duplicate(true)
+    erased["status"] = "erased"
+    erased["medium"] = "charcoal"
+    erased_edges.append(erased)
+
+
+func _erase_river_mark(river: Dictionary) -> void:
+    var erased: Dictionary = river.duplicate(true)
+    erased["status"] = "erased"
+    erased["medium"] = "charcoal"
+    erased_rivers.append(erased)
+
+
+func _should_reposition_node(existing: Dictionary, node: Dictionary, improved_pos: Vector2) -> bool:
+    var kind: String = str(node.get("kind", "unknown"))
+    if kind == "bridge" or kind == "ford":
+        return true
+
+    var current_pos: Vector2 = existing.get("map_pos", improved_pos)
+    return current_pos.distance_to(improved_pos) > 160.0
+
+
+func _river_has_player_anchor(river: Dictionary) -> bool:
+    var visible_near: Array = river.get("visible_near", [])
+    for visible_node_id_value: Variant in visible_near:
+        var visible_node_id: String = str(visible_node_id_value)
+        if not map_nodes.has(visible_node_id):
+            continue
+
+        var kind: String = str(map_nodes[visible_node_id].get("kind", "unknown"))
+        var source: String = str(map_nodes[visible_node_id].get("source", ""))
+        if (kind == "bridge" or kind == "ford") and _source_rank(source) >= _source_rank("seen"):
+            return true
+    return false
 
 
 func _stable_offset(id: String, source: String) -> Vector2:
@@ -511,7 +834,31 @@ func _label_for_node(node: Dictionary, source: String) -> String:
     return name
 
 
+func _medium_for_source(source: String) -> String:
+    match source:
+        "visited":
+            return "ink"
+        "seen":
+            return "thin_ink"
+        "heard", "copied", "bought":
+            return "charcoal"
+        _:
+            return "charcoal"
+
+
+func _status_for_source(source: String) -> String:
+    match source:
+        "visited":
+            return "verified"
+        "seen":
+            return "observed"
+        _:
+            return "unverified"
+
+
 func _array_to_vec2(value: Variant) -> Vector2:
+    if typeof(value) == TYPE_VECTOR2:
+        return value
     if typeof(value) == TYPE_ARRAY and value.size() >= 2:
         return Vector2(float(value[0]), float(value[1]))
     return Vector2.ZERO

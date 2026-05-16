@@ -128,6 +128,7 @@ class MemoryTransferIn(BaseModel):
     trust: float = 0.5
     listener_interest_tags: list[str] = Field(default_factory=list)
     distortion_noise: float = 0.08
+    delivery_kind: str = "rumor"
     notes: str = ""
 
 

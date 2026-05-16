@@ -28,5 +28,11 @@ func _run() -> void:
         quit(1)
         return
 
+    var model: RefCounted = scene.get("model")
+    if model == null or not model.get("nodes_by_id").has("wroclaw") or not model.get("nodes_by_id").has("opole"):
+        push_error("Sketch map did not load the main Silesia region graph.")
+        quit(1)
+        return
+
     print("Sketch map smoke OK")
     quit(0)

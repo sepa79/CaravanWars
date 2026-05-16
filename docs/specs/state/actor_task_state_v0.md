@@ -38,11 +38,26 @@ Future actor task state should include:
 }
 ```
 
+`report_back` tasks additionally use:
+
+```json
+{
+  "recipient_actor_id": "mayor_wroclaw",
+  "recipient_owner_kind": "actor",
+  "max_entries": 3,
+  "trust": 0.9,
+  "distortion_noise": 0.02,
+  "listener_interest_tags": ["food", "wroclaw_city"],
+  "notes": "Supply party report back"
+}
+```
+
 ## Party-level vs actor-level
 
 Actor-level examples:
 
 - asking city offices for information,
+- reporting to a superior,
 - visiting market stalls,
 - arranging lodging,
 - hiring workers or guards,

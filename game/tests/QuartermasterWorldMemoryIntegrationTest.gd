@@ -4,6 +4,7 @@ const ASSIGN_PARTY_ORDER_COMMAND_SCRIPT: GDScript = preload("res://simulation/co
 const GAME_SESSION_FACTORY_SCRIPT: GDScript = preload("res://simulation/GameSessionFactory.gd")
 const PARTY_ORDER_STATE_SCRIPT: GDScript = preload("res://simulation/PartyOrderState.gd")
 const QUARTERMASTER_AI_SCRIPT: GDScript = preload("res://simulation/managers/QuartermasterAI.gd")
+const REPORT_BACK_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/ReportBackCommand.gd")
 const WORLD_MEMORY_DOMAIN_EVENT_SINK_SCRIPT: GDScript = preload("res://simulation/events/WorldMemoryDomainEventSink.gd")
 const WORLD_MEMORY_QUEUED_HTTP_TRANSPORT_SCRIPT: GDScript = preload("res://simulation/events/WorldMemoryQueuedHttpTransport.gd")
 
@@ -54,10 +55,14 @@ func _start_quartermaster_world_memory_export() -> void:
     _expect(bool(ai_result.get("accepted", false)), "Expected QuartermasterAI to ask local information.")
     _expect(ai_result.get("action", "") == "ask_local_information", "Expected ask local information action.")
     server.tick(0.25)
+    var report_result: RefCounted = server.submit_report_back(_report_back_command())
+    _expect(report_result.accepted, "Expected report back task to be accepted.")
+    server.tick(0.10)
     _expect(_has_exported_event(_domain_event_sink, "party_order_assigned"), "Expected order assignment to be exported.")
     _expect(_has_exported_event(_domain_event_sink, "party_task_started"), "Expected local information task start to be exported.")
     _expect(_has_exported_event(_domain_event_sink, "party_task_completed"), "Expected local information task completion to be exported.")
     _expect(_has_exported_event(_domain_event_sink, "worldsim_local_information_received"), "Expected local information event to be exported.")
+    _expect(_has_exported_event(_domain_event_sink, "worldsim_memory_reported"), "Expected report back event to be exported.")
     _expect(not _domain_event_sink.has_failures(), "Expected WorldMemory sink to queue all quartermaster events.")
 
 
@@ -77,6 +82,22 @@ func _supply_order_command() -> RefCounted:
     command.target_location_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID
     command.goods_id = "food"
     command.amount = 40
+    return command
+
+
+func _report_back_command() -> RefCounted:
+    var command: RefCounted = REPORT_BACK_COMMAND_SCRIPT.new()
+    command.party_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID
+    command.actor_id = "quartermaster_wroclaw"
+    command.recipient_actor_id = "mayor_wroclaw"
+    command.recipient_owner_kind = "actor"
+    command.location_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID
+    command.max_entries = 3
+    command.trust = 0.9
+    command.distortion_noise = 0.02
+    command.listener_interest_tags.append("food")
+    command.listener_interest_tags.append(GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID)
+    command.notes = "Supply party report back"
     return command
 
 

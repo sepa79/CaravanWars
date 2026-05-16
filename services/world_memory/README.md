@@ -162,6 +162,7 @@ Current v0 mappings:
 - `worldsim_location_observed`: creates one observer owner memory entry.
 - `worldsim_party_observed`: creates one observer owner memory entry.
 - `worldsim_local_information_received`: creates one asking party memory entry.
+- `worldsim_memory_reported`: transfers entries from the reporting party owner to the recipient owner as `heard_report`.
 - `party_travel_started`: creates one party memory entry.
 - `party_arrived`: creates one party memory entry.
 - `party_order_assigned`: creates order ledger entries for the recipient party, issuer actor, direct manager actor, and target location when present.
@@ -222,7 +223,9 @@ The transfer does not call an LLM. It copies memory text and updates metadata su
 
 ## Report Back Example
 
-Supply parties can report back to a superior through the same memory transfer path:
+Supply parties report back through the Godot `ReportBackCommand`, which emits `worldsim_memory_reported`. WorldMemory ingests that event and uses the same memory transfer path internally.
+
+The direct HTTP transfer endpoint is still useful for service tests and debugging:
 
 ```powershell
 $body = @{
@@ -239,7 +242,7 @@ $body = @{
 Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8011/memory-transfer" -ContentType "application/json" -Body $body
 ```
 
-This is still a memory copy. Physical presence, messenger delivery, loyalty filters, and report-writing time belong to future simulation tasks.
+`worldsim_memory_reported` creates `heard_report` entries and preserves structured metadata from the source memory. Messenger delivery, loyalty filters, and written report rules are later layers.
 
 ## Dialogue Test Flow
 

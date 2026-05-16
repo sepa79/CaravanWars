@@ -105,6 +105,8 @@ Mayor supply planning is separate from need declaration. The planner must check 
 
 Darklands-like local actions should be modeled as timed tasks, not instant time jumps. `AskLocalInformationCommand` starts an `ask_local_information` actor task for the party manager in v0; `SimulationServer.tick()` completes it later and emits the information event.
 
+Subordinate reporting uses the same shape. `ReportBackCommand` validates physical presence, starts a `report_back` actor task, and emits `worldsim_memory_reported`; WorldMemory ingests that event as an explicit report transfer instead of giving managers hidden shared memory.
+
 Task ownership should eventually be actor-based: one actor can run one task, and a party with several available companions can run several actor tasks in parallel. `PartyTaskState` is the current v0 party-lock approximation for actions where the whole party is effectively waiting on the executor.
 
 Report-back is currently a WorldMemory transfer pattern: a subordinate party copies selected private memory to a superior actor or city owner. Later this should become a timed actor task or courier-mediated command.

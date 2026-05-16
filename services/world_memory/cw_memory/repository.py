@@ -543,6 +543,8 @@ def ingest_domain_event(payload: DomainEventIn) -> dict[str, Any]:
         created_entries = _memory_entries_for_worldsim_observation(world_event, "party_observation")
     elif world_event["event_type"] == "worldsim_local_information_received":
         created_entries = _memory_entries_for_worldsim_local_information(world_event)
+    elif world_event["event_type"] == "worldsim_memory_reported":
+        created_entries = _memory_entries_for_worldsim_memory_reported(world_event)
     elif world_event["event_type"] == "party_travel_started":
         created_entries = _memory_entries_for_party_travel_started(world_event)
     elif world_event["event_type"] == "party_arrived":
@@ -757,6 +759,35 @@ def _memory_entries_for_worldsim_local_information(world_event: dict[str, Any]) 
     ]
 
 
+def _memory_entries_for_worldsim_memory_reported(world_event: dict[str, Any]) -> list[dict[str, Any]]:
+    metadata = world_event["metadata"]
+    from_owner_id = str(metadata.get("from_owner_id", metadata.get("party_id", "")))
+    to_owner_id = str(metadata.get("to_owner_id", metadata.get("recipient_actor_id", "")))
+    if not from_owner_id or not to_owner_id:
+        return []
+
+    listener_interest_tags = metadata.get("listener_interest_tags", [])
+    if not isinstance(listener_interest_tags, list):
+        listener_interest_tags = []
+
+    transfer_result = transfer_memory(
+        MemoryTransferIn(
+            from_owner_id=from_owner_id,
+            to_owner_id=to_owner_id,
+            to_owner_kind=str(metadata.get("to_owner_kind", "actor")),
+            location_id=str(metadata.get("location_id", world_event.get("location_id", ""))),
+            occurred_at=world_event.get("occurred_at"),
+            max_entries=int(metadata.get("max_entries", 3)),
+            trust=float(metadata.get("trust", 0.8)),
+            listener_interest_tags=[str(tag) for tag in listener_interest_tags],
+            distortion_noise=float(metadata.get("distortion_noise", 0.02)),
+            delivery_kind="report",
+            notes=str(metadata.get("notes", "WorldSim report back")),
+        )
+    )
+    return transfer_result["created_entries"]
+
+
 def _memory_entries_for_party_travel_started(world_event: dict[str, Any]) -> list[dict[str, Any]]:
     metadata = world_event["metadata"]
     party_id = str(metadata.get("party_id", ""))
@@ -928,7 +959,7 @@ def transfer_memory(payload: MemoryTransferIn) -> dict[str, Any]:
                     owner_id=payload.to_owner_id,
                     owner_kind=payload.to_owner_kind,
                     text=source["text"],
-                    kind="heard_rumor" if source["kind"] != "direct_knowledge" else "heard_report",
+                    kind="heard_report" if payload.delivery_kind == "report" or source["kind"] == "direct_knowledge" else "heard_rumor",
                     source_owner_id=payload.from_owner_id,
                     source_event_id=source.get("source_event_id"),
                     heard_at_location_id=payload.location_id or source["heard_at_location_id"],
@@ -944,6 +975,7 @@ def transfer_memory(payload: MemoryTransferIn) -> dict[str, Any]:
                     metadata={
                         **source["metadata"],
                         "transfer_notes": payload.notes,
+                        "delivery_kind": payload.delivery_kind,
                         "needs_rerender": distortion >= 0.35,
                     },
                 )
