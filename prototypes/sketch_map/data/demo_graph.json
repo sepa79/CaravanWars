@@ -1,0 +1,34 @@
+{
+  "nodes": [
+    { "id": "wroclaw_gate_inn", "name": "Wroclaw Gate Inn", "kind": "inn", "position": [120, 330] },
+    { "id": "willow_ford", "name": "Willow Ford", "kind": "ford", "position": [300, 365] },
+    { "id": "old_bridge", "name": "Old Bridge", "kind": "bridge", "position": [500, 285] },
+    { "id": "ostrow_village", "name": "Ostrow", "kind": "village", "position": [610, 420] },
+    { "id": "low_hill", "name": "Low Hill", "kind": "hill", "position": [710, 215] },
+    { "id": "opole_road_camp", "name": "Opole Road Camp", "kind": "camp", "position": [850, 360] },
+    { "id": "opole_market", "name": "Opole Market", "kind": "town", "position": [1030, 300] },
+    { "id": "mill_river", "name": "Mill On The River", "kind": "mill", "position": [410, 510] }
+  ],
+  "edges": [
+    { "id": "road_inn_ford", "from": "wroclaw_gate_inn", "to": "willow_ford", "kind": "road" },
+    { "id": "road_ford_bridge", "from": "willow_ford", "to": "old_bridge", "kind": "muddy_road" },
+    { "id": "track_bridge_ostrow", "from": "old_bridge", "to": "ostrow_village", "kind": "track" },
+    { "id": "track_ostrow_camp", "from": "ostrow_village", "to": "opole_road_camp", "kind": "road" },
+    { "id": "road_camp_opole", "from": "opole_road_camp", "to": "opole_market", "kind": "road" },
+    { "id": "path_bridge_hill", "from": "old_bridge", "to": "low_hill", "kind": "footpath" },
+    { "id": "lane_ford_mill", "from": "willow_ford", "to": "mill_river", "kind": "lane" },
+    { "id": "mill_ostrow_path", "from": "mill_river", "to": "ostrow_village", "kind": "river_path" }
+  ],
+  "rivers": [
+    {
+      "id": "river_fragment_willow",
+      "points": [[245, 220], [290, 310], [300, 365], [350, 445], [410, 510]],
+      "visible_near": ["willow_ford", "mill_river"]
+    },
+    {
+      "id": "river_fragment_old_bridge",
+      "points": [[430, 210], [500, 285], [575, 360]],
+      "visible_near": ["old_bridge"]
+    }
+  ]
+}

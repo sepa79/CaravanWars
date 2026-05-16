@@ -1,0 +1,135 @@
+# Commands - CaravanWars Reboot
+
+This file contains canonical commands for humans and AI agents.
+
+Agents must prefer these commands over ad-hoc guesses.
+
+## Requirements
+
+- Godot 4.x.
+- PowerShell on Windows for `tools/check.bat`.
+- Bash on Unix-like shells for `tools/check.sh`.
+
+## Install / bootstrap
+
+```bash
+git status --short
+```
+
+No package install step is currently defined.
+
+## Build
+
+```bash
+godot --headless --path game --quit
+```
+
+No export preset is currently defined.
+
+## Test
+
+Windows:
+
+```powershell
+tools\check.bat
+```
+
+Unix-like shells:
+
+```bash
+tools/check.sh
+```
+
+## Focused test
+
+For each modified GDScript file when Godot is available:
+
+```bash
+godot --headless --path game --check game/world/RegionGraph.gd
+```
+
+Replace the path with the modified `.gd` file.
+
+Current focused test scripts:
+
+```bash
+godot --headless --path game --check-only -s tests/GraphSmokeTest.gd
+godot --headless --path game --check-only -s tests/PartyTravelCommandTest.gd
+godot --headless --path game --check-only -s tests/TravelIntentCommandTest.gd
+godot --headless --path game --check-only -s tests/PartyCargoTest.gd
+godot --headless --path game --check-only -s tests/TransferGoodsCommandTest.gd
+godot --headless --path game --check-only -s tests/SimulationSaveCodecTest.gd
+godot --headless --path game --check-only -s tests/ManagedWorldPartiesTest.gd
+godot --headless --path game --check-only -s tests/PartyOrdersTest.gd
+godot --headless --path game --check-only -s tests/LocationStateTest.gd
+godot --headless --path game --check-only -s tests/GoodsCatalogTest.gd
+godot --headless --path game --check-only -s tests/LocationEconomyTest.gd
+godot --headless --path game --check-only -s tests/MerchantAutoplayScenarioTest.gd
+godot --headless --path game --check-only -s tests/WorldMemoryEventExportTest.gd
+godot --headless --path game --check-only -s tests/PartyKnowledgeSnapshotTest.gd
+godot --headless --path game --check-only -s tests/DebugTravelPanelTest.gd
+godot --headless --path game -s tests/PartyTravelCommandTest.gd
+godot --headless --path game -s tests/TravelIntentCommandTest.gd
+godot --headless --path game -s tests/PartyCargoTest.gd
+godot --headless --path game -s tests/TransferGoodsCommandTest.gd
+godot --headless --path game -s tests/SimulationSaveCodecTest.gd
+godot --headless --path game -s tests/ManagedWorldPartiesTest.gd
+godot --headless --path game -s tests/PartyOrdersTest.gd
+godot --headless --path game -s tests/LocationStateTest.gd
+godot --headless --path game -s tests/GoodsCatalogTest.gd
+godot --headless --path game -s tests/LocationEconomyTest.gd
+godot --headless --path game -s tests/MerchantAutoplayScenarioTest.gd
+godot --headless --path game -s tests/WorldMemoryEventExportTest.gd
+godot --headless --path game -s tests/PartyKnowledgeSnapshotTest.gd
+godot --headless --path game -s tests/DebugTravelPanelTest.gd
+```
+
+## Lint / format / static checks
+
+Windows:
+
+```powershell
+tools\check.bat
+```
+
+Unix-like shells:
+
+```bash
+tools/check.sh
+```
+
+## Run locally
+
+```bash
+godot --path game
+```
+
+## Debug / inspect
+
+```bash
+godot --headless --path game --check game/tests/GraphSmokeTest.gd
+```
+
+## Package / release
+
+```bash
+# No package/release command is defined yet.
+```
+
+## Deployment
+
+```bash
+# No deployment command is defined yet.
+```
+
+## Known command caveats
+
+- `godot` must be on `PATH` for headless checks.
+- `tools/check.bat` and `tools/check.sh` are the repo-level check entry points.
+- Do not invent export or deployment commands until export presets are added.
+
+## Agent command rules
+
+- Do not invent commands when this file is incomplete.
+- If a command is missing, inspect the repo and add a `TODO:` with likely location.
+- Capture command output in evidence when preparing PRs or reviews.

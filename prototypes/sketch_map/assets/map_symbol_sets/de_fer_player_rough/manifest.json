@@ -1,0 +1,31 @@
+{
+  "id": "de_fer_player_rough",
+  "label": "de Fer player rough",
+  "source": "KM Alexander / No Bad Maps, de Fer Settlement Brushes with one Lumbia hill symbol",
+  "symbols": {
+    "inn": [
+      { "path": "settlement/inn_01.png", "size": [108, 76], "offset": [0, -20] }
+    ],
+    "village": [
+      { "path": "settlement/village_01.png", "size": [100, 56], "offset": [0, -14] }
+    ],
+    "town": [
+      { "path": "settlement/town_01.png", "size": [124, 102], "offset": [0, -26] }
+    ],
+    "camp": [
+      { "path": "settlement/camp_01.png", "size": [100, 52], "offset": [0, -14] }
+    ],
+    "bridge": [
+      { "path": "poi/bridge_01.png", "size": [76, 80], "offset": [0, 0] }
+    ],
+    "ford": [
+      { "path": "poi/ford_01.png", "size": [64, 64], "offset": [0, 0] }
+    ],
+    "mill": [
+      { "path": "poi/mill_01.png", "size": [84, 84], "offset": [0, -6] }
+    ],
+    "hill": [
+      { "path": "terrain/hill_01.png", "size": [128, 52], "offset": [0, -6] }
+    ]
+  }
+}

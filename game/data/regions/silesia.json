@@ -1,0 +1,105 @@
+{
+  "id": "silesia",
+  "display_name": "Silesia",
+  "description": "Initial strategic graph for the first reboot region.",
+  "nodes": [
+    {
+      "id": "prague",
+      "display_name": "Prague",
+      "kind": "major_city",
+      "notes": "Main southern trade hub.",
+      "position": [30.0, 78.0]
+    },
+    {
+      "id": "wroclaw",
+      "display_name": "Wroclaw",
+      "kind": "major_city",
+      "notes": "Main northern trade hub.",
+      "position": [48.0, 28.0]
+    },
+    {
+      "id": "olomouc",
+      "display_name": "Olomouc",
+      "kind": "major_city",
+      "notes": "Moravian trade center.",
+      "position": [62.0, 82.0]
+    },
+    {
+      "id": "opole",
+      "display_name": "Opole",
+      "kind": "regional_stronghold",
+      "notes": "River trade.",
+      "position": [66.0, 43.0]
+    },
+    {
+      "id": "raciborz",
+      "display_name": "Raciborz",
+      "kind": "regional_stronghold",
+      "notes": "Southern route.",
+      "position": [70.0, 62.0]
+    },
+    {
+      "id": "legnica",
+      "display_name": "Legnica",
+      "kind": "regional_stronghold",
+      "notes": "Western military route.",
+      "position": [28.0, 34.0]
+    },
+    {
+      "id": "glogow",
+      "display_name": "Glogow",
+      "kind": "regional_stronghold",
+      "notes": "Northern crossing.",
+      "position": [31.0, 18.0]
+    },
+    {
+      "id": "nysa",
+      "display_name": "Nysa",
+      "kind": "monastery",
+      "notes": "Religious and trade location.",
+      "position": [49.0, 59.0]
+    },
+    {
+      "id": "sudety_pass",
+      "display_name": "Sudety Pass",
+      "kind": "mountain_pass",
+      "notes": "Strategic mountain crossing.",
+      "position": [38.0, 72.0]
+    },
+    {
+      "id": "odra_crossing",
+      "display_name": "Odra Crossing",
+      "kind": "river_crossing",
+      "notes": "Major river crossing.",
+      "position": [52.0, 34.0]
+    },
+    {
+      "id": "great_forest",
+      "display_name": "Great Forest",
+      "kind": "wilderness",
+      "notes": "Dangerous forest region.",
+      "position": [83.0, 36.0]
+    }
+  ],
+  "edges": [
+    { "id": "prague_wroclaw", "from": "prague", "to": "wroclaw", "distance_km": 215.0, "kind": "major_route" },
+    { "id": "prague_olomouc", "from": "prague", "to": "olomouc", "distance_km": 210.0, "kind": "major_route" },
+    { "id": "prague_raciborz", "from": "prague", "to": "raciborz", "distance_km": 290.0, "kind": "major_route" },
+    { "id": "prague_legnica", "from": "prague", "to": "legnica", "distance_km": 230.0, "kind": "military_route" },
+    { "id": "wroclaw_opole", "from": "wroclaw", "to": "opole", "distance_km": 80.0, "kind": "river_trade_route" },
+    { "id": "wroclaw_legnica", "from": "wroclaw", "to": "legnica", "distance_km": 65.0, "kind": "military_route" },
+    { "id": "wroclaw_glogow", "from": "wroclaw", "to": "glogow", "distance_km": 90.0, "kind": "crossing_route" },
+    { "id": "wroclaw_nysa", "from": "wroclaw", "to": "nysa", "distance_km": 85.0, "kind": "regional_route" },
+    { "id": "wroclaw_raciborz", "from": "wroclaw", "to": "raciborz", "distance_km": 150.0, "kind": "regional_route" },
+    { "id": "opole_raciborz", "from": "opole", "to": "raciborz", "distance_km": 60.0, "kind": "river_trade_route" },
+    { "id": "opole_olomouc", "from": "opole", "to": "olomouc", "distance_km": 145.0, "kind": "regional_route" },
+    { "id": "raciborz_olomouc", "from": "raciborz", "to": "olomouc", "distance_km": 100.0, "kind": "regional_route" },
+    { "id": "raciborz_nysa", "from": "raciborz", "to": "nysa", "distance_km": 70.0, "kind": "regional_route" },
+    { "id": "legnica_glogow", "from": "legnica", "to": "glogow", "distance_km": 55.0, "kind": "military_route" },
+    { "id": "nysa_sudety_pass", "from": "nysa", "to": "sudety_pass", "distance_km": 65.0, "kind": "mountain_route" },
+    { "id": "sudety_pass_prague", "from": "sudety_pass", "to": "prague", "distance_km": 140.0, "kind": "mountain_route" },
+    { "id": "odra_crossing_wroclaw", "from": "odra_crossing", "to": "wroclaw", "distance_km": 30.0, "kind": "crossing_route" },
+    { "id": "great_forest_opole", "from": "great_forest", "to": "opole", "distance_km": 130.0, "kind": "wilderness_route" }
+  ]
+}
+

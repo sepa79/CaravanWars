@@ -1,0 +1,72 @@
+{
+  "project_id": "caravanwarsreboot",
+  "profile_ref": "base@v1",
+  "catalog_source_url": null,
+  "applied_at": "2026-05-15T19:37:40.014Z",
+  "files": [
+    {
+      "target": "AGENTS.md",
+      "sha256": "7f457c4bdad77f7e42619d0f377d4eccf3f073be5dc8e30b27f466f9a49568ea"
+    },
+    {
+      "target": "BOOTSTRAP_PROMPT.md",
+      "sha256": "abf1d6f39499e7cf0e74520ad554cfd2415985852b36caf754176fdfb90f3b96"
+    },
+    {
+      "target": "BOOTSTRAP_PROMPT_SIMPLE.md",
+      "sha256": "bd9e24b363ddc4de4c45e02ac09175c00a53ed31b394faec9b15a4e62ce323c3"
+    },
+    {
+      "target": "docs/ARCHITECTURE.md",
+      "sha256": "2e2563e27d2e72d8bfba2601ef3d86292f0408d15392be72d7f5a9a0b2efde97"
+    },
+    {
+      "target": "docs/adr/README.md",
+      "sha256": "a0c31f1e78249a918c7d5adc9913783186aa6588f84565a54d7e1d40937c79f4"
+    },
+    {
+      "target": "docs/ai/AI_HATS.md",
+      "sha256": "6ab6176b25895c6922f487c9be6ffe8cd8bbf3ea75ec75a153825542ba043914"
+    },
+    {
+      "target": "docs/ai/COMMANDS.md",
+      "sha256": "1d91092866a351acf919cf48e18381721167b7deeb6209a2232818d8b0dcedaa"
+    },
+    {
+      "target": "docs/ai/EVIDENCE_TEMPLATE.md",
+      "sha256": "8385996b2f18ba150fc784d1e116a336707e921af48b1fdfa5a4b65d203d86bd"
+    },
+    {
+      "target": "docs/ai/HIVEMIND_RULES.md",
+      "sha256": "03f621d3a2bd8715172a884b5f42bfba5a34cab262132e578ba853606d182753"
+    },
+    {
+      "target": "docs/ai/JESTER_CHECKS.md",
+      "sha256": "fa64d5c827574e457c5659e761634edc6c858c6a5d802094f632253bc44f6ea7"
+    },
+    {
+      "target": "docs/ai/LESSONS_LEARNED.md",
+      "sha256": "948b806b50544fa0f76102b0052c56da2f779e23e27f9cd97d5d3d25c635099f"
+    },
+    {
+      "target": "docs/ai/PROJECT_CONTEXT.md",
+      "sha256": "5fafb6046ccd70e76f45c8f03d7e1e3cf8d24d38b28e04cbfbfdabb1b25736e0"
+    },
+    {
+      "target": "docs/ai/PR_PREPARATION.md",
+      "sha256": "aab83ebee5c258fd8802a1b54b848804cebdffdcfb5ca1b6863a3bce373c986f"
+    },
+    {
+      "target": "docs/ai/REVIEW_CHECKS.md",
+      "sha256": "ceb426d768d9cc1c57e3dda0d352eed96e68f4aab8c8f0c333b009714bf9317a"
+    },
+    {
+      "target": "docs/ai/TASK_TEMPLATE.md",
+      "sha256": "36d824ea127c1563783d12d98cf7c93dd37adde131a4a7ee4789430d6c4b7d77"
+    },
+    {
+      "target": "docs/specs/README.md",
+      "sha256": "da1e3fe937519222f2d72885a25c75141a39b72d7fccc128d768004c419f07e2"
+    }
+  ]
+}

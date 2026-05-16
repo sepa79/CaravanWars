@@ -1,0 +1,93 @@
+class_name PartyState
+extends RefCounted
+
+const PARTY_COMPOSITION_SCRIPT: GDScript = preload("res://simulation/PartyComposition.gd")
+const PARTY_KNOWLEDGE_STATE_SCRIPT: GDScript = preload("res://simulation/PartyKnowledgeState.gd")
+const PARTY_ORDER_STATE_SCRIPT: GDScript = preload("res://simulation/PartyOrderState.gd")
+
+const TRAVEL_STATE_IDLE: String = "idle"
+const TRAVEL_STATE_TRAVELING: String = "traveling"
+
+var party_id: String = ""
+var party_type: String = ""
+var manager_actor_id: String = ""
+var current_node_id: String = ""
+var travel_state: String = TRAVEL_STATE_IDLE
+var origin_node_id: String = ""
+var destination_node_id: String = ""
+var travel_progress_km: float = 0.0
+var travel_distance_km: float = 0.0
+var travel_speed_km_per_day: float = 0.0
+var travel_intent_destination_node_id: String = ""
+var travel_path_node_ids: Array[String] = []
+var travel_path_edge_ids: Array[String] = []
+var travel_path_index: int = 0
+var composition: RefCounted = PARTY_COMPOSITION_SCRIPT.new()
+var cargo: Dictionary[String, int] = {}
+var knowledge: RefCounted = PARTY_KNOWLEDGE_STATE_SCRIPT.new()
+var order: RefCounted = PARTY_ORDER_STATE_SCRIPT.new()
+
+
+func is_idle() -> bool:
+    return travel_state == TRAVEL_STATE_IDLE
+
+
+func start_travel(origin_id: String, destination_id: String, distance_km: float, speed_km_per_day: float) -> void:
+    travel_state = TRAVEL_STATE_TRAVELING
+    origin_node_id = origin_id
+    destination_node_id = destination_id
+    travel_distance_km = distance_km
+    travel_speed_km_per_day = speed_km_per_day
+    travel_progress_km = 0.0
+
+
+func set_travel_plan(intent_destination_node_id: String, path_node_ids: Array[String], path_edge_ids: Array[String]) -> void:
+    travel_intent_destination_node_id = intent_destination_node_id
+    travel_path_node_ids = path_node_ids.duplicate()
+    travel_path_edge_ids = path_edge_ids.duplicate()
+    travel_path_index = 0
+
+
+func clear_travel_plan() -> void:
+    travel_intent_destination_node_id = ""
+    travel_path_node_ids.clear()
+    travel_path_edge_ids.clear()
+    travel_path_index = 0
+
+
+func tick_travel(days: float) -> void:
+    if travel_state != TRAVEL_STATE_TRAVELING:
+        return
+
+    travel_progress_km += travel_speed_km_per_day * days
+    if travel_progress_km >= travel_distance_km:
+        current_node_id = destination_node_id
+        travel_state = TRAVEL_STATE_IDLE
+        origin_node_id = ""
+        destination_node_id = ""
+        travel_progress_km = 0.0
+        travel_distance_km = 0.0
+        travel_speed_km_per_day = 0.0
+
+
+func to_dictionary() -> Dictionary:
+    return {
+        "party_id": party_id,
+        "party_type": party_type,
+        "manager_actor_id": manager_actor_id,
+        "current_node_id": current_node_id,
+        "travel_state": travel_state,
+        "origin_node_id": origin_node_id,
+        "destination_node_id": destination_node_id,
+        "travel_progress_km": travel_progress_km,
+        "travel_distance_km": travel_distance_km,
+        "travel_speed_km_per_day": travel_speed_km_per_day,
+        "travel_intent_destination_node_id": travel_intent_destination_node_id,
+        "travel_path_node_ids": travel_path_node_ids,
+        "travel_path_edge_ids": travel_path_edge_ids,
+        "travel_path_index": travel_path_index,
+        "composition": composition.to_dictionary(),
+        "cargo": cargo.duplicate(),
+        "knowledge": knowledge.to_dictionary(),
+        "order": order.to_dictionary()
+    }
