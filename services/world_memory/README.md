@@ -161,6 +161,7 @@ Current v0 mappings:
 - `location_need_declared`: creates one location memory entry.
 - `worldsim_location_observed`: creates one observer owner memory entry.
 - `worldsim_party_observed`: creates one observer owner memory entry.
+- `worldsim_local_information_received`: creates one asking party memory entry.
 - `party_travel_started`: creates one party memory entry.
 - `party_arrived`: creates one party memory entry.
 - `party_order_assigned`: creates order ledger entries for the recipient party, issuer actor, direct manager actor, and target location when present.
@@ -218,6 +219,27 @@ Invoke-RestMethod "http://127.0.0.1:8011/owners/innkeeper_wroclaw_gate/memory?li
 ```
 
 The transfer does not call an LLM. It copies memory text and updates metadata such as credibility, salience, distortion, hop count, and source chain. LLM re-render can be added later for entries where `metadata.needs_rerender` is true.
+
+## Report Back Example
+
+Supply parties can report back to a superior through the same memory transfer path:
+
+```powershell
+$body = @{
+  from_owner_id = "wroclaw_supply_party_01"
+  to_owner_id = "mayor_wroclaw"
+  to_owner_kind = "actor"
+  location_id = "wroclaw_city"
+  trust = 0.9
+  listener_interest_tags = @("food", "wroclaw_city")
+  max_entries = 3
+  notes = "Supply party report back"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8011/memory-transfer" -ContentType "application/json" -Body $body
+```
+
+This is still a memory copy. Physical presence, messenger delivery, loyalty filters, and report-writing time belong to future simulation tasks.
 
 ## Dialogue Test Flow
 

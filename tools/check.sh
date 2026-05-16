@@ -23,6 +23,7 @@ echo "[check] Project: $PROJECT_DIR"
 "$GODOT" --headless --path "$PROJECT_DIR" --check-only -s tests/TravelIntentCommandTest.gd
 "$GODOT" --headless --path "$PROJECT_DIR" --check-only -s tests/PartyCargoTest.gd
 "$GODOT" --headless --path "$PROJECT_DIR" --check-only -s tests/TransferGoodsCommandTest.gd
+"$GODOT" --headless --path "$PROJECT_DIR" --check-only -s tests/AskLocalInformationCommandTest.gd
 "$GODOT" --headless --path "$PROJECT_DIR" --check-only -s tests/SimulationSaveCodecTest.gd
 "$GODOT" --headless --path "$PROJECT_DIR" --check-only -s tests/ManagedWorldPartiesTest.gd
 "$GODOT" --headless --path "$PROJECT_DIR" --check-only -s tests/PartyOrdersTest.gd
@@ -43,6 +44,7 @@ echo "[check] Project: $PROJECT_DIR"
 "$GODOT" --headless --path "$PROJECT_DIR" -s tests/TravelIntentCommandTest.gd
 "$GODOT" --headless --path "$PROJECT_DIR" -s tests/PartyCargoTest.gd
 "$GODOT" --headless --path "$PROJECT_DIR" -s tests/TransferGoodsCommandTest.gd
+"$GODOT" --headless --path "$PROJECT_DIR" -s tests/AskLocalInformationCommandTest.gd
 "$GODOT" --headless --path "$PROJECT_DIR" -s tests/SimulationSaveCodecTest.gd
 "$GODOT" --headless --path "$PROJECT_DIR" -s tests/ManagedWorldPartiesTest.gd
 "$GODOT" --headless --path "$PROJECT_DIR" -s tests/PartyOrdersTest.gd

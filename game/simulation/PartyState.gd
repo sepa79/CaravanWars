@@ -4,6 +4,7 @@ extends RefCounted
 const PARTY_COMPOSITION_SCRIPT: GDScript = preload("res://simulation/PartyComposition.gd")
 const PARTY_KNOWLEDGE_STATE_SCRIPT: GDScript = preload("res://simulation/PartyKnowledgeState.gd")
 const PARTY_ORDER_STATE_SCRIPT: GDScript = preload("res://simulation/PartyOrderState.gd")
+const PARTY_TASK_STATE_SCRIPT: GDScript = preload("res://simulation/PartyTaskState.gd")
 
 const TRAVEL_STATE_IDLE: String = "idle"
 const TRAVEL_STATE_TRAVELING: String = "traveling"
@@ -27,10 +28,11 @@ var composition: RefCounted = PARTY_COMPOSITION_SCRIPT.new()
 var cargo: Dictionary[String, int] = {}
 var knowledge: RefCounted = PARTY_KNOWLEDGE_STATE_SCRIPT.new()
 var order: RefCounted = PARTY_ORDER_STATE_SCRIPT.new()
+var task: RefCounted = PARTY_TASK_STATE_SCRIPT.new()
 
 
 func is_idle() -> bool:
-    return travel_state == TRAVEL_STATE_IDLE
+    return travel_state == TRAVEL_STATE_IDLE and task.is_idle()
 
 
 func can_receive_order_from(actor_id: String) -> bool:
@@ -95,5 +97,6 @@ func to_dictionary() -> Dictionary:
         "composition": composition.to_dictionary(),
         "cargo": cargo.duplicate(),
         "knowledge": knowledge.to_dictionary(),
-        "order": order.to_dictionary()
+        "order": order.to_dictionary(),
+        "task": task.to_dictionary()
     }

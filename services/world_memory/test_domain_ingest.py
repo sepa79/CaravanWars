@@ -213,6 +213,102 @@ class DomainIngestTest(unittest.TestCase):
         self.assertEqual(supply_memory[0]["metadata"]["order_type"], "procure_goods")
         self.assertEqual(supply_memory[0]["metadata"]["amount"], 40)
 
+    def test_local_information_creates_party_memory(self) -> None:
+        from cw_memory.repository import ingest_domain_event, list_memory_entries
+        from cw_memory.schemas import DomainEventIn, WorldEventIn
+
+        ingest_domain_event(
+            DomainEventIn(
+                world_event=WorldEventIn(
+                    id="evt_local_info_001",
+                    event_type="worldsim_local_information_received",
+                    text="Supply party asked about food.",
+                    location_id="wroclaw_city",
+                    occurred_at="day:5.000",
+                    importance=0.5,
+                    reliability=1.0,
+                    tags=["simulation", "worldsim_local_information_received", "wroclaw_supply_party_01", "food"],
+                    metadata={
+                        "party_id": "wroclaw_supply_party_01",
+                        "location_id": "wroclaw_city",
+                        "query_type": "goods_source",
+                        "goods_id": "food",
+                        "known_source_locations": [
+                            {
+                                "location_id": "opole_stronghold",
+                                "node_id": "opole",
+                                "goods_id": "food",
+                                "observed_amount": 90,
+                            }
+                        ],
+                    },
+                )
+            )
+        )
+
+        supply_memory = list_memory_entries("wroclaw_supply_party_01", limit=10)
+
+        self.assertEqual(len(supply_memory), 1)
+        self.assertEqual(supply_memory[0]["kind"], "local_information")
+        self.assertEqual(supply_memory[0]["metadata"]["source"], "worldsim_local_information")
+        self.assertEqual(supply_memory[0]["metadata"]["known_source_locations"][0]["location_id"], "opole_stronghold")
+
+    def test_report_back_transfers_supply_memory_to_mayor(self) -> None:
+        from cw_memory.repository import ingest_domain_event, list_memory_entries, transfer_memory
+        from cw_memory.schemas import DomainEventIn, MemoryTransferIn, WorldEventIn
+
+        ingest_domain_event(
+            DomainEventIn(
+                world_event=WorldEventIn(
+                    id="evt_local_info_report_001",
+                    event_type="worldsim_local_information_received",
+                    text="Supply party asked about food.",
+                    location_id="wroclaw_city",
+                    occurred_at="day:6.000",
+                    importance=0.5,
+                    reliability=1.0,
+                    tags=["simulation", "worldsim_local_information_received", "wroclaw_supply_party_01", "food"],
+                    metadata={
+                        "party_id": "wroclaw_supply_party_01",
+                        "location_id": "wroclaw_city",
+                        "query_type": "goods_source",
+                        "goods_id": "food",
+                        "known_source_locations": [
+                            {
+                                "location_id": "opole_stronghold",
+                                "node_id": "opole",
+                                "goods_id": "food",
+                                "observed_amount": 90,
+                            }
+                        ],
+                    },
+                )
+            )
+        )
+
+        transfer_result = transfer_memory(
+            MemoryTransferIn(
+                from_owner_id="wroclaw_supply_party_01",
+                to_owner_id="mayor_wroclaw",
+                to_owner_kind="actor",
+                location_id="wroclaw_city",
+                occurred_at="day:6.250",
+                max_entries=3,
+                trust=0.9,
+                listener_interest_tags=["food", "wroclaw_city"],
+                distortion_noise=0.02,
+                notes="Supply party report back",
+            )
+        )
+
+        mayor_memory = list_memory_entries("mayor_wroclaw", limit=10)
+
+        self.assertEqual(len(transfer_result["created_entries"]), 1)
+        self.assertEqual(len(mayor_memory), 1)
+        self.assertEqual(mayor_memory[0]["source_owner_id"], "wroclaw_supply_party_01")
+        self.assertEqual(mayor_memory[0]["metadata"]["query_type"], "goods_source")
+        self.assertEqual(mayor_memory[0]["metadata"]["transfer_notes"], "Supply party report back")
+
 
 if __name__ == "__main__":
     unittest.main()

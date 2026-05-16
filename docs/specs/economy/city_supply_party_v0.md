@@ -61,7 +61,9 @@ The hierarchy should stay generic. Most important actors can have a superior act
 ruler -> mayor -> quartermaster -> supply party leader
 ```
 
-The exact number of layers can vary by polity, city, faction, household, or military unit. The simulation should not hard-code one fixed city hierarchy. For v0, `authorized_issuer_actor_ids` is enough to express that a mayor may issue high-level orders to a quartermaster-managed party.
+The exact number of layers can vary by polity, city, faction, household, or military unit. A village headman can be the quartermaster and caravan leader at once. A bigger village may have one supply helper. A city such as Wroclaw may have several authority levels and several supply parties. The simulation should not hard-code one fixed city hierarchy.
+
+For v0, `authorized_issuer_actor_ids` is enough to express one concrete seed chain: Wroclaw mayor can issue high-level orders to a quartermaster-managed party. This is one valid chain, not the only valid chain.
 
 Future authority checks should use role, office, loyalty, trust, distance, and communication state rather than assuming direct access to every subordinate at all times.
 

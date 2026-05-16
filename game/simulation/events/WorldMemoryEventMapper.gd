@@ -16,11 +16,15 @@ const EXPORTABLE_EVENT_TYPES: Array[String] = [
     "party_order_started",
     "party_order_completed",
     "party_order_failed",
+    "party_task_started",
+    "party_task_completed",
+    "party_task_failed",
     "goods_transferred",
     "location_economy_ticked",
     "location_need_declared",
     "worldsim_location_observed",
-    "worldsim_party_observed"
+    "worldsim_party_observed",
+    "worldsim_local_information_received"
 ]
 
 
@@ -106,15 +110,17 @@ static func _metadata_for_event(simulation_event: RefCounted) -> Dictionary:
 
     var details: Dictionary = simulation_event.details
     for key: Variant in details.keys():
-        if str(key) == "distance_km" or str(key) == "speed_km_per_day":
+        if str(key) == "distance_km" or str(key) == "speed_km_per_day" or str(key) == "duration_days":
             metadata[str(key)] = details.get(key)
-        elif str(key).ends_with("_node_id") or str(key).ends_with("_location_id") or str(key) == "node_id" or str(key) == "edge_id" or str(key).ends_with("_actor_id") or str(key) == "order_type" or str(key) == "location_id" or str(key) == "goods_id" or str(key) == "direction" or str(key) == "reason" or str(key).begins_with("owner_") or str(key).begins_with("observer_") or str(key).begins_with("observed_"):
+        elif str(key).ends_with("_node_id") or str(key).ends_with("_location_id") or str(key) == "node_id" or str(key) == "edge_id" or str(key).ends_with("_actor_id") or str(key) == "order_type" or str(key) == "task_type" or str(key) == "query_type" or str(key) == "location_id" or str(key) == "goods_id" or str(key) == "direction" or str(key) == "reason" or str(key) == "failure_code" or str(key).begins_with("owner_") or str(key).begins_with("observer_") or str(key).begins_with("observed_"):
             metadata[str(key)] = str(details.get(key))
         elif str(key).ends_with("_count") or str(key) == "amount" or str(key).ends_with("_amount"):
             metadata[str(key)] = int(details.get(key))
         elif str(key) == "resource_changes" and typeof(details.get(key)) == TYPE_DICTIONARY:
             metadata[str(key)] = details.get(key).duplicate(true)
         elif str(key) == "observed_resources" and typeof(details.get(key)) == TYPE_DICTIONARY:
+            metadata[str(key)] = details.get(key).duplicate(true)
+        elif str(key) == "known_source_locations" and typeof(details.get(key)) == TYPE_ARRAY:
             metadata[str(key)] = details.get(key).duplicate(true)
         elif str(key) == "observation_score":
             metadata[str(key)] = int(details.get(key))

@@ -541,6 +541,8 @@ def ingest_domain_event(payload: DomainEventIn) -> dict[str, Any]:
         created_entries = _memory_entries_for_worldsim_observation(world_event, "location_observation")
     elif world_event["event_type"] == "worldsim_party_observed":
         created_entries = _memory_entries_for_worldsim_observation(world_event, "party_observation")
+    elif world_event["event_type"] == "worldsim_local_information_received":
+        created_entries = _memory_entries_for_worldsim_local_information(world_event)
     elif world_event["event_type"] == "party_travel_started":
         created_entries = _memory_entries_for_party_travel_started(world_event)
     elif world_event["event_type"] == "party_arrived":
@@ -719,6 +721,37 @@ def _memory_entries_for_worldsim_observation(world_event: dict[str, Any], kind: 
                 hop_count=0,
                 source_chain=[world_event["id"]],
                 metadata={**metadata, "source": "worldsim_observation", "event_type": world_event["event_type"], "perspective": owner_kind},
+            )
+        )
+    ]
+
+
+def _memory_entries_for_worldsim_local_information(world_event: dict[str, Any]) -> list[dict[str, Any]]:
+    metadata = world_event["metadata"]
+    party_id = str(metadata.get("party_id", ""))
+    location_id = str(metadata.get("location_id", world_event.get("location_id", "")))
+    if not party_id:
+        return []
+    return [
+        upsert_memory_entry(
+            MemoryEntryIn(
+                id=f"mem_{party_id}_{world_event['id']}",
+                owner_id=party_id,
+                owner_kind="party",
+                text=_technical_text(world_event),
+                kind="local_information",
+                source_event_id=world_event["id"],
+                heard_at_location_id=location_id,
+                heard_at_time=world_event["occurred_at"],
+                tags=world_event["tags"],
+                credibility=world_event["reliability"],
+                salience=world_event["importance"],
+                freshness=1.0,
+                repeat_chance=0.2,
+                distortion=0.05,
+                hop_count=0,
+                source_chain=[world_event["id"]],
+                metadata={**metadata, "source": "worldsim_local_information", "event_type": world_event["event_type"], "perspective": "party"},
             )
         )
     ]

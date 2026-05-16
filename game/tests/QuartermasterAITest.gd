@@ -11,6 +11,8 @@ var _failed: bool = false
 
 func _initialize() -> void:
     _test_quartermaster_travels_to_remembered_source()
+    _test_quartermaster_asks_local_information_without_source_memory()
+    _test_quartermaster_uses_local_information_memory_as_source()
     _test_quartermaster_withdraws_and_returns_to_target()
     _test_quartermaster_deposits_and_completes_order()
     _test_quartermaster_does_nothing_without_order_memory()
@@ -38,6 +40,32 @@ func _test_quartermaster_travels_to_remembered_source() -> void:
     _expect(party.travel_state == "traveling", "Expected supply party to start travel.")
     _expect(party.travel_intent_destination_node_id == "opole", "Expected supply party to set Opole source as travel intent.")
     _expect(party.destination_node_id == "opole", "Expected supply party first leg to go to Opole.")
+
+
+func _test_quartermaster_asks_local_information_without_source_memory() -> void:
+    var server: RefCounted = _server_with_supply_order()
+    var ai: RefCounted = QUARTERMASTER_AI_SCRIPT.new()
+
+    var result: Dictionary = ai.process(server, GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID, [_order_memory()])
+
+    _expect(bool(result.get("accepted", false)), "Expected local information action to be accepted.")
+    _expect(result.get("action", "") == "ask_local_information", "Expected quartermaster to ask local information.")
+    _expect(_event_types(server).has("party_task_started"), "Expected local information task to start.")
+    _expect(not _event_types(server).has("worldsim_local_information_received"), "Expected no local information before task completes.")
+    server.tick(0.25)
+    _expect(_event_types(server).has("worldsim_local_information_received"), "Expected local information event after task duration.")
+
+
+func _test_quartermaster_uses_local_information_memory_as_source() -> void:
+    var server: RefCounted = _server_with_supply_order()
+    var party: RefCounted = server.state.get_party(GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID)
+    var ai: RefCounted = QUARTERMASTER_AI_SCRIPT.new()
+
+    var result: Dictionary = ai.process(server, GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID, [_order_memory(), _local_food_source_memory()])
+
+    _expect(bool(result.get("accepted", false)), "Expected local information source action to be accepted.")
+    _expect(result.get("action", "") == "travel_to_remembered_supply_source", "Expected travel to source from local information memory.")
+    _expect(party.travel_intent_destination_node_id == "opole", "Expected Opole as source travel intent.")
 
 
 func _test_quartermaster_withdraws_and_returns_to_target() -> void:
@@ -146,6 +174,35 @@ func _opole_source_memory() -> Dictionary:
             }
         }
     }
+
+
+func _local_food_source_memory() -> Dictionary:
+    return {
+        "id": "mem_wroclaw_supply_party_local_food_info",
+        "kind": "local_information",
+        "metadata": {
+            "party_id": GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID,
+            "location_id": GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID,
+            "node_id": "wroclaw",
+            "query_type": "goods_source",
+            "goods_id": "food",
+            "known_source_locations": [
+                {
+                    "location_id": GAME_SESSION_FACTORY_SCRIPT.OPOLE_LOCATION_ID,
+                    "node_id": "opole",
+                    "goods_id": "food",
+                    "observed_amount": 90
+                }
+            ]
+        }
+    }
+
+
+func _event_types(server: RefCounted) -> Array[String]:
+    var event_types: Array[String] = []
+    for event_dictionary: Dictionary in server.get_recent_events(20):
+        event_types.append(str(event_dictionary.get("event_type", "")))
+    return event_types
 
 
 func _expect(condition: bool, failure_message: String) -> void:

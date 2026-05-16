@@ -35,6 +35,7 @@ For `procure_goods`, the AI needs:
 
 When idle and assigned/active on `procure_goods`, v0 can:
 
+- ask the current local location for goods-source information when no source memory exists,
 - travel to the best remembered source,
 - withdraw ordered goods from that source when physically present,
 - return to the target node,
@@ -42,6 +43,8 @@ When idle and assigned/active on `procure_goods`, v0 can:
 - mark the order completed after deposit.
 
 All movement and transfer actions use existing authoritative commands. The AI does not mutate cargo, resources, travel state, or location resources directly.
+
+`ask_local_information` is not instant. QuartermasterAI starts the task, then later re-evaluates after simulation time advances and WorldMemory contains a resulting `local_information` entry.
 
 ## Not in v0
 

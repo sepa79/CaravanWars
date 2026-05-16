@@ -52,11 +52,15 @@ The v0 mapper exports only:
 - `party_order_started`
 - `party_order_completed`
 - `party_order_failed`
+- `party_task_started`
+- `party_task_completed`
+- `party_task_failed`
 - `goods_transferred`
 - `location_economy_ticked`
 - `location_need_declared`
 - `worldsim_location_observed`
 - `worldsim_party_observed`
+- `worldsim_local_information_received`
 
 Unknown event types return an empty payload. This is intentional: export must be explicit, not a silent dump of all runtime details.
 
@@ -67,6 +71,7 @@ Unknown event types return an empty payload. This is intentional: export must be
 - Include explicit ids from event details such as `node_id`, `from_node_id`, `to_node_id`, `destination_node_id`, and `edge_id`.
 - Include order metadata such as `issued_by_actor_id`, `order_type`, `target_location_id`, `goods_id`, and `amount`.
 - Include `target_node_id` for location-targeted orders when the authoritative simulation resolved it during validation.
+- Include task metadata such as `task_type`, `query_type`, `duration_days`, and `failure_code`.
 - Include bounded counts such as `discovered_edge_count`.
 - Do not export the full region graph.
 - Do not export full party knowledge.
@@ -128,6 +133,7 @@ WorldMemory domain ingest currently creates per-owner memory entries for:
 - `location_need_declared`
 - `worldsim_location_observed`
 - `worldsim_party_observed`
+- `worldsim_local_information_received`
 - `party_travel_started`
 - `party_arrived`
 - `party_order_assigned`

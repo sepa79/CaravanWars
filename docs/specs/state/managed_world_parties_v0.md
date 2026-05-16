@@ -18,6 +18,7 @@ Physical simulation state:
 - party has a current node or active travel state,
 - party has a manager actor id,
 - party may have authorized issuer actor ids,
+- party may have an active timed task,
 - party can receive the same commands as every other party.
 
 Runtime visibility:
@@ -48,6 +49,9 @@ WorldMemory:
 ```
 
 The full party shape also includes composition, knowledge, active travel state, active travel intent/path fields, and party order state.
+It also includes party task state for timed local actions such as asking for information.
+
+`PartyTaskState` is a v0 party-lock approximation. The long-term rule is one task per actor, with party-level tasks only when the whole group is committed or cannot act without the executor.
 
 The full party shape also includes `cargo`, a dictionary of carried goods keyed by `goods_id`. Capacity is derived from composition through `Party Cargo v0`.
 
@@ -97,7 +101,14 @@ The city supply party model keeps hierarchy explicit:
 - both actors should use WorldMemory for what they know,
 - observation and memory transfer must pass through WorldSim/WorldMemory rather than direct global state reads.
 
-Long-term authority should be modeled as a generic chain of actors, not as one fixed city org chart. A ruler may command several mayors; a mayor may command a quartermaster and guard commander; a quartermaster may command several party leaders. Most actors should be able to have one direct superior, with exceptions handled explicitly by role/office rather than hidden fallback.
+Long-term authority should be modeled as a generic chain of actors, not as one fixed city org chart. The number of layers depends on settlement scale and local institution:
+
+- in a small village, the headman may also be quartermaster, negotiator, and caravan leader,
+- in a larger village, the headman may have a dedicated supply helper,
+- in a city such as Wroclaw, authority can have several levels: mayor, quartermaster, guard commander, party leaders, clerks, messengers, and contracted outsiders,
+- above cities, rulers can command several mayors or offices through their own chain.
+
+Most actors should be able to have one direct superior, with exceptions handled explicitly by role/office rather than hidden fallback.
 
 Authority does not imply instant communication. A superior can only issue direct orders when communication is physically plausible. In v0, mayor-issued `procure_goods` requires the supply party at the target city node; future remote orders need messenger/courier delivery or another explicit communication path.
 

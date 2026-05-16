@@ -38,6 +38,12 @@ All notable changes to this project will be documented in this file.
 - Quartermaster AI v0 for executing supply procurement from order ledger and own WorldMemory observations.
 - Physical communication constraint for mayor-issued supply orders; remote orders require future courier delivery instead of implicit telepathy.
 - Mayor supply planner v0 that checks remembered active supply intent before issuing a new procure order.
+- Ask local information command v0 for reusable physically local goods-source inquiries.
+- Party task state v0 so local information inquiries take simulation time before producing memory.
+- Documented future actor-owned task direction: one actor runs one task, while party-level tasks lock the group.
+- Actor task state v0 target contract for future companion and city action parallelism.
+- Report back intent v0 documented and covered through WorldMemory memory-transfer.
+- Quartermaster-to-WorldMemory integration test for local information memory ingestion.
 - Planned route geometry v0 notes for route segments, waypoints, visibility, and travel time.
 - Local LLM role notes for NPC speech, rumors, navigation text, and player-character intent rendering.
 - Historical world tone notes for singleplayer MUD-like simulation, hierarchy, fear, and social brutality.

@@ -58,6 +58,7 @@ godot --headless --path game --check-only -s tests/PartyTravelCommandTest.gd
 godot --headless --path game --check-only -s tests/TravelIntentCommandTest.gd
 godot --headless --path game --check-only -s tests/PartyCargoTest.gd
 godot --headless --path game --check-only -s tests/TransferGoodsCommandTest.gd
+godot --headless --path game --check-only -s tests/AskLocalInformationCommandTest.gd
 godot --headless --path game --check-only -s tests/SimulationSaveCodecTest.gd
 godot --headless --path game --check-only -s tests/ManagedWorldPartiesTest.gd
 godot --headless --path game --check-only -s tests/PartyOrdersTest.gd
@@ -77,6 +78,7 @@ godot --headless --path game -s tests/PartyTravelCommandTest.gd
 godot --headless --path game -s tests/TravelIntentCommandTest.gd
 godot --headless --path game -s tests/PartyCargoTest.gd
 godot --headless --path game -s tests/TransferGoodsCommandTest.gd
+godot --headless --path game -s tests/AskLocalInformationCommandTest.gd
 godot --headless --path game -s tests/SimulationSaveCodecTest.gd
 godot --headless --path game -s tests/ManagedWorldPartiesTest.gd
 godot --headless --path game -s tests/PartyOrdersTest.gd
@@ -104,6 +106,12 @@ Optional merchant-to-WorldMemory integration test. This starts `services/world_m
 
 ```powershell
 tools\run_merchant_world_memory_integration.ps1
+```
+
+Optional quartermaster-to-WorldMemory integration test. This starts `services/world_memory` on a temporary SQLite database, exports a local information query from Godot, ingests it through HTTP, and verifies the supply party can receive `local_information` memory:
+
+```powershell
+tools\run_quartermaster_world_memory_integration.ps1
 ```
 
 ## Lint / format / static checks

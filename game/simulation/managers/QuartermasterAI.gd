@@ -3,6 +3,7 @@ extends RefCounted
 
 const PARTY_ORDER_STATE_SCRIPT: GDScript = preload("res://simulation/PartyOrderState.gd")
 const PARTY_STATS_CALCULATOR_SCRIPT: GDScript = preload("res://simulation/PartyStatsCalculator.gd")
+const ASK_LOCAL_INFORMATION_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/AskLocalInformationCommand.gd")
 const TRANSFER_GOODS_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/TransferGoodsCommand.gd")
 const TRAVEL_INTENT_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/TravelIntentCommand.gd")
 
@@ -38,18 +39,18 @@ func process(server: RefCounted, party_id: String, memory_entries: Array) -> Dic
 
     var source_memory: Dictionary = _best_source_memory(memory_entries, party.order.goods_id, party.order.target_location_id)
     if source_memory.is_empty():
-        return _no_action("no_source_memory")
+        return _ask_local_information(server, party, party.order.goods_id)
 
     var source_metadata: Dictionary = _metadata(source_memory)
-    var source_node_id: String = str(source_metadata.get("node_id", ""))
-    var source_location_id: String = str(source_metadata.get("observed_location_id", source_metadata.get("location_id", "")))
+    var source_node_id: String = _source_node_id(source_metadata)
+    var source_location_id: String = _source_location_id(source_metadata)
     if source_node_id.is_empty() or source_location_id.is_empty():
         return _no_action("source_memory_incomplete")
 
     if party.current_node_id != source_node_id:
         return _travel_to_node(server, party.party_id, source_node_id, "travel_to_remembered_supply_source")
 
-    var source_amount: int = _observed_goods_amount(source_metadata, party.order.goods_id)
+    var source_amount: int = _source_goods_amount(source_metadata, party.order.goods_id)
     var transfer_amount: int = mini(party.order.amount, source_amount)
     transfer_amount = mini(transfer_amount, _available_capacity_units(server, party, party.order.goods_id))
     if transfer_amount <= 0:
@@ -104,6 +105,29 @@ func _deposit_order_goods(server: RefCounted, party: RefCounted, carried_amount:
     }
 
 
+func _ask_local_information(server: RefCounted, party: RefCounted, goods_id: String) -> Dictionary:
+    var current_locations: Array[RefCounted] = server.state.get_locations_at_node(party.current_node_id)
+    if current_locations.is_empty():
+        return _no_action("no_local_location_to_ask")
+
+    var location: RefCounted = current_locations[0]
+    var command: RefCounted = ASK_LOCAL_INFORMATION_COMMAND_SCRIPT.new()
+    command.party_id = party.party_id
+    command.location_id = location.location_id
+    command.query_type = ASK_LOCAL_INFORMATION_COMMAND_SCRIPT.QUERY_GOODS_SOURCE
+    command.goods_id = goods_id
+    var information_result: RefCounted = server.submit_ask_local_information(command)
+    if not information_result.accepted:
+        return _command_rejected("ask_local_information_rejected", information_result)
+
+    return {
+        "action": "ask_local_information",
+        "accepted": true,
+        "location_id": location.location_id,
+        "goods_id": goods_id
+    }
+
+
 func _travel_to_node(server: RefCounted, party_id: String, destination_node_id: String, action: String) -> Dictionary:
     var command: RefCounted = TRAVEL_INTENT_COMMAND_SCRIPT.new()
     command.party_id = party_id
@@ -150,13 +174,14 @@ func _best_source_memory(memory_entries: Array, goods_id: String, target_locatio
     var best_entry: Dictionary = {}
     var best_amount: int = 0
     for entry: Dictionary in memory_entries:
-        if str(entry.get("kind", "")) != "location_observation":
+        var kind: String = str(entry.get("kind", ""))
+        if kind != "location_observation" and kind != "local_information":
             continue
         var metadata: Dictionary = _metadata(entry)
-        var observed_location_id: String = str(metadata.get("observed_location_id", metadata.get("location_id", "")))
+        var observed_location_id: String = _source_location_id(metadata)
         if observed_location_id == target_location_id:
             continue
-        var amount: int = _observed_goods_amount(metadata, goods_id)
+        var amount: int = _source_goods_amount(metadata, goods_id)
         if amount <= 0:
             continue
         if best_entry.is_empty() or amount > best_amount:
@@ -179,6 +204,30 @@ func _observed_goods_amount(metadata: Dictionary, goods_id: String) -> int:
     if typeof(observed_resources) != TYPE_DICTIONARY:
         return 0
     return int(observed_resources.get(goods_id, 0))
+
+
+func _source_location_id(metadata: Dictionary) -> String:
+    if metadata.has("known_source_locations"):
+        var known_sources: Variant = metadata.get("known_source_locations", [])
+        if typeof(known_sources) == TYPE_ARRAY and not known_sources.is_empty() and typeof(known_sources[0]) == TYPE_DICTIONARY:
+            return str(known_sources[0].get("location_id", ""))
+    return str(metadata.get("observed_location_id", metadata.get("location_id", "")))
+
+
+func _source_node_id(metadata: Dictionary) -> String:
+    if metadata.has("known_source_locations"):
+        var known_sources: Variant = metadata.get("known_source_locations", [])
+        if typeof(known_sources) == TYPE_ARRAY and not known_sources.is_empty() and typeof(known_sources[0]) == TYPE_DICTIONARY:
+            return str(known_sources[0].get("node_id", ""))
+    return str(metadata.get("node_id", ""))
+
+
+func _source_goods_amount(metadata: Dictionary, goods_id: String) -> int:
+    if metadata.has("known_source_locations"):
+        var known_sources: Variant = metadata.get("known_source_locations", [])
+        if typeof(known_sources) == TYPE_ARRAY and not known_sources.is_empty() and typeof(known_sources[0]) == TYPE_DICTIONARY:
+            return int(known_sources[0].get("observed_amount", 0))
+    return _observed_goods_amount(metadata, goods_id)
 
 
 func _metadata(entry: Dictionary) -> Dictionary:

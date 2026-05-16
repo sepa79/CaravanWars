@@ -11,6 +11,7 @@ const PARTY_KNOWLEDGE_STATE_SCRIPT: GDScript = preload("res://simulation/PartyKn
 const PARTY_ORDER_STATE_SCRIPT: GDScript = preload("res://simulation/PartyOrderState.gd")
 const PARTY_STATE_SCRIPT: GDScript = preload("res://simulation/PartyState.gd")
 const PARTY_STATS_CALCULATOR_SCRIPT: GDScript = preload("res://simulation/PartyStatsCalculator.gd")
+const PARTY_TASK_STATE_SCRIPT: GDScript = preload("res://simulation/PartyTaskState.gd")
 const PARTY_TRAVEL_CONFIG_SCRIPT: GDScript = preload("res://simulation/PartyTravelConfig.gd")
 const REGION_GRAPH_LOADER_SCRIPT: GDScript = preload("res://world/RegionGraphLoader.gd")
 const SIMULATION_EVENT_LOG_SCRIPT: GDScript = preload("res://simulation/SimulationEventLog.gd")
@@ -126,7 +127,7 @@ static func _validate_save_root(save_dictionary: Dictionary) -> Dictionary:
 
 
 static func _party_from_dictionary(party_dictionary: Dictionary, server: RefCounted) -> Dictionary:
-    for field_name: String in ["party_id", "party_type", "manager_actor_id", "authorized_issuer_actor_ids", "current_node_id", "travel_state", "composition", "cargo", "knowledge", "order"]:
+    for field_name: String in ["party_id", "party_type", "manager_actor_id", "authorized_issuer_actor_ids", "current_node_id", "travel_state", "composition", "cargo", "knowledge", "order", "task"]:
         if not party_dictionary.has(field_name):
             return _rejected(ERROR_MISSING_FIELD, "Party is missing required field: %s." % field_name)
 
@@ -177,6 +178,11 @@ static func _party_from_dictionary(party_dictionary: Dictionary, server: RefCoun
     if typeof(order_value) != TYPE_DICTIONARY:
         return _rejected(ERROR_INVALID_FIELD, "Party order must be a dictionary.")
     party.order = PARTY_ORDER_STATE_SCRIPT.from_dictionary(order_value)
+
+    var task_value: Variant = party_dictionary.get("task", {})
+    if typeof(task_value) != TYPE_DICTIONARY:
+        return _rejected(ERROR_INVALID_FIELD, "Party task must be a dictionary.")
+    party.task = PARTY_TASK_STATE_SCRIPT.from_dictionary(task_value)
 
     var validation_error: Dictionary = _validate_party_references(party, server)
     if not validation_error.is_empty():
@@ -241,6 +247,12 @@ static func _validate_party_references(party: RefCounted, server: RefCounted) ->
 
     if not party.order.goods_id.is_empty() and not server.goods_catalog.has_goods(party.order.goods_id):
         return _rejected(ERROR_INVALID_FIELD, "Party order goods does not exist: %s." % party.order.goods_id)
+
+    if not party.task.location_id.is_empty() and not server.state.has_location(party.task.location_id):
+        return _rejected(ERROR_INVALID_FIELD, "Party task location does not exist: %s." % party.task.location_id)
+
+    if not party.task.goods_id.is_empty() and not server.goods_catalog.has_goods(party.task.goods_id):
+        return _rejected(ERROR_INVALID_FIELD, "Party task goods does not exist: %s." % party.task.goods_id)
 
     return {}
 

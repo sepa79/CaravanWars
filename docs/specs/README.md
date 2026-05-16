@@ -71,12 +71,14 @@ TODO
 
 - Party movement command: `docs/specs/commands/move_party.md`
 - Assign party order command: `docs/specs/commands/assign_party_order.md`
+- Ask local information command: `docs/specs/commands/ask_local_information.md`
 - Inspect local routes command: `docs/specs/commands/inspect_local_routes.md`
 - Travel intent command: `docs/specs/commands/travel_intent.md`
 - Transfer goods command: `docs/specs/commands/transfer_goods.md`
 - Runtime event log: `docs/specs/events/runtime_event_log.md`
 - WorldMemory event export v0: `docs/specs/events/world_memory_event_export_v0.md`
 - Simulation save v0: `docs/specs/saves/simulation_save_v0.md`
+- Actor task state v0: `docs/specs/state/actor_task_state_v0.md`
 - Managed world parties v0: `docs/specs/state/managed_world_parties_v0.md`
 - Location state v0: `docs/specs/state/location_state_v0.md`
 - Goods catalog v0: `docs/specs/economy/goods_catalog_v0.md`
@@ -88,6 +90,7 @@ TODO
 - Mayor supply planner v0: `docs/specs/economy/mayor_supply_planner_v0.md`
 - City supply party v0: `docs/specs/economy/city_supply_party_v0.md`
 - Quartermaster AI v0: `docs/specs/economy/quartermaster_ai_v0.md`
+- Report back intent v0: `docs/specs/economy/report_back_intent_v0.md`
 - Planned route geometry v0: `docs/specs/regions/route_geometry_v0.md`
 - WorldSim observation pipeline v0: `docs/specs/worldsim/observation_pipeline_v0.md`
 - Region graph seed data: `game/data/regions/silesia.json`

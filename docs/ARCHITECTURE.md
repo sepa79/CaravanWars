@@ -45,6 +45,7 @@ LLM execution should live in a separate stateless LLM Service. The simulation or
 | Command model | Common input contract for all actors | Not fully specified yet; keep canonical when introduced. |
 | Party state | Neutral field group state | Represents caravans, pilgrims, retinues, patrols, bandits, or similar groups; significant parties have manager actors. |
 | Party order state | Authorized actor-issued party directive | Stores assigned travel orders and high-level supply intents issued through normal server commands. |
+| Party task state | Timed local party action | Stores active city/local tasks such as asking for information. |
 | Party knowledge state | Runtime client visibility boundary | Tracks currently known nodes/routes for snapshots and commands; not durable WorldMemory. |
 | Party composition | Data that feeds derived stats | Horses, wagons, foot members, guards, and pack animals affect travel speed. |
 | Party cargo | Physical goods carried by parties | Uses goods catalog ids and composition-derived carrying capacity. |
@@ -92,7 +93,7 @@ Managers direct entities through commands. A mayor, chief, caravan leader, patro
 
 Some parties can be directed by a superior actor without changing their direct manager. In v0, `wroclaw_supply_party_01` is managed by `quartermaster_wroclaw`, while `mayor_wroclaw` is an authorized issuer for high-level `procure_goods` orders. The later supply AI should execute those intents using its own WorldMemory and normal travel/transfer commands.
 
-Long-term command hierarchy should be a generic authority chain, not a fixed set of city layers. A ruler, mayor, quartermaster, guard commander, and party leader can form different chains depending on polity and institution. Direct superiors should be explicit actor relationships; exceptions should be explicit office/role permissions.
+Long-term command hierarchy should be a generic authority chain, not a fixed set of city layers. A small village may collapse several responsibilities into one actor; a larger village may split supply work to a helper; a city such as Wroclaw may have several levels of authority and several supply parties; a ruler may sit above several cities. Direct superiors should be explicit actor relationships; exceptions should be explicit office/role permissions.
 
 Authority is separate from communication. A superior actor being allowed to issue an order does not mean the order reaches a traveling party instantly. Current v0 only allows direct superior-issued supply orders while the party is physically at the target city node; future remote orders require explicit courier or communication mechanics.
 
@@ -101,6 +102,12 @@ Deterministic manager slices should remain small and testable. The first merchan
 The first mayor food manager declares location food needs through `DeclareLocationNeedCommand`. It emits observable need events for WorldMemory and future merchant decision logic; it does not directly summon merchants or mutate resources.
 
 Mayor supply planning is separate from need declaration. The planner must check mayor/city WorldMemory for existing active supply intent before issuing a new `procure_goods` order, so repeated re-evaluation does not spam multiple parties for the same shortage.
+
+Darklands-like local actions should be modeled as timed tasks, not instant time jumps. `AskLocalInformationCommand` starts an `ask_local_information` party task; `SimulationServer.tick()` completes it later and emits the information event.
+
+Task ownership should eventually be actor-based: one actor can run one task, and a party with several available companions can run several actor tasks in parallel. `PartyTaskState` is the current v0 party-lock approximation for actions where the whole party is effectively waiting on the executor.
+
+Report-back is currently a WorldMemory transfer pattern: a subordinate party copies selected private memory to a superior actor or city owner. Later this should become a timed actor task or courier-mediated command.
 
 Locations are also authoritative simulation entities. Their resources and manager ids are physical state; knowledge or rumors about those resources belong in WorldMemory.
 
@@ -122,6 +129,7 @@ Current command specs:
 
 - `docs/specs/commands/move_party.md`
 - `docs/specs/commands/assign_party_order.md`
+- `docs/specs/commands/ask_local_information.md`
 - `docs/specs/commands/inspect_local_routes.md`
 - `docs/specs/commands/travel_intent.md`
 - `docs/specs/commands/transfer_goods.md`
@@ -138,6 +146,7 @@ Current save specs:
 
 Current state specs:
 
+- `docs/specs/state/actor_task_state_v0.md`
 - `docs/specs/state/managed_world_parties_v0.md`
 - `docs/specs/state/location_state_v0.md`
 
@@ -150,6 +159,7 @@ Current economy specs:
 - `docs/specs/economy/mayor_supply_planner_v0.md`
 - `docs/specs/economy/city_supply_party_v0.md`
 - `docs/specs/economy/quartermaster_ai_v0.md`
+- `docs/specs/economy/report_back_intent_v0.md`
 
 Current region specs:
 
