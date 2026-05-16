@@ -29,14 +29,52 @@ var cargo: Dictionary[String, int] = {}
 var knowledge: RefCounted = PARTY_KNOWLEDGE_STATE_SCRIPT.new()
 var order: RefCounted = PARTY_ORDER_STATE_SCRIPT.new()
 var task: RefCounted = PARTY_TASK_STATE_SCRIPT.new()
+var actor_tasks_by_actor_id: Dictionary[String, RefCounted] = {}
 
 
 func is_idle() -> bool:
-    return travel_state == TRAVEL_STATE_IDLE and task.is_idle()
+    return travel_state == TRAVEL_STATE_IDLE and task.is_idle() and not has_active_party_lock_actor_task()
 
 
 func can_receive_order_from(actor_id: String) -> bool:
     return actor_id == manager_actor_id or authorized_issuer_actor_ids.has(actor_id)
+
+
+func set_actor_task(actor_task: RefCounted) -> void:
+    actor_tasks_by_actor_id[actor_task.actor_id] = actor_task
+
+
+func has_actor_task(actor_id: String) -> bool:
+    return actor_tasks_by_actor_id.has(actor_id)
+
+
+func get_actor_task(actor_id: String) -> RefCounted:
+    return actor_tasks_by_actor_id.get(actor_id)
+
+
+func has_active_actor_task(actor_id: String) -> bool:
+    if not actor_tasks_by_actor_id.has(actor_id):
+        return false
+    var actor_task: RefCounted = actor_tasks_by_actor_id.get(actor_id)
+    return not actor_task.is_idle()
+
+
+func has_active_party_lock_actor_task() -> bool:
+    for actor_task: RefCounted in actor_tasks_by_actor_id.values():
+        if actor_task.requires_party_lock and not actor_task.is_idle():
+            return true
+    return false
+
+
+func to_actor_task_dictionaries() -> Array[Dictionary]:
+    var actor_ids: Array[String] = actor_tasks_by_actor_id.keys()
+    actor_ids.sort()
+
+    var actor_tasks: Array[Dictionary] = []
+    for actor_id: String in actor_ids:
+        var actor_task: RefCounted = actor_tasks_by_actor_id.get(actor_id)
+        actor_tasks.append(actor_task.to_dictionary())
+    return actor_tasks
 
 
 func start_travel(origin_id: String, destination_id: String, distance_km: float, speed_km_per_day: float) -> void:
@@ -98,5 +136,6 @@ func to_dictionary() -> Dictionary:
         "cargo": cargo.duplicate(),
         "knowledge": knowledge.to_dictionary(),
         "order": order.to_dictionary(),
-        "task": task.to_dictionary()
+        "task": task.to_dictionary(),
+        "actor_tasks": to_actor_task_dictionaries()
     }

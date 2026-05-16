@@ -2,6 +2,7 @@ class_name SimulationSaveCodec
 extends RefCounted
 
 const GAME_SESSION_FACTORY_SCRIPT: GDScript = preload("res://simulation/GameSessionFactory.gd")
+const ACTOR_TASK_STATE_SCRIPT: GDScript = preload("res://simulation/ActorTaskState.gd")
 const GOODS_CATALOG_SCRIPT: GDScript = preload("res://simulation/GoodsCatalog.gd")
 const LOCATION_STATE_SCRIPT: GDScript = preload("res://simulation/LocationState.gd")
 const LOCATION_ECONOMY_CONFIG_SCRIPT: GDScript = preload("res://simulation/LocationEconomyConfig.gd")
@@ -127,7 +128,7 @@ static func _validate_save_root(save_dictionary: Dictionary) -> Dictionary:
 
 
 static func _party_from_dictionary(party_dictionary: Dictionary, server: RefCounted) -> Dictionary:
-    for field_name: String in ["party_id", "party_type", "manager_actor_id", "authorized_issuer_actor_ids", "current_node_id", "travel_state", "composition", "cargo", "knowledge", "order", "task"]:
+    for field_name: String in ["party_id", "party_type", "manager_actor_id", "authorized_issuer_actor_ids", "current_node_id", "travel_state", "composition", "cargo", "knowledge", "order", "task", "actor_tasks"]:
         if not party_dictionary.has(field_name):
             return _rejected(ERROR_MISSING_FIELD, "Party is missing required field: %s." % field_name)
 
@@ -183,6 +184,21 @@ static func _party_from_dictionary(party_dictionary: Dictionary, server: RefCoun
     if typeof(task_value) != TYPE_DICTIONARY:
         return _rejected(ERROR_INVALID_FIELD, "Party task must be a dictionary.")
     party.task = PARTY_TASK_STATE_SCRIPT.from_dictionary(task_value)
+
+    var actor_tasks_value: Variant = party_dictionary.get("actor_tasks", [])
+    if typeof(actor_tasks_value) != TYPE_ARRAY:
+        return _rejected(ERROR_INVALID_FIELD, "Party actor_tasks must be an array.")
+    for actor_task_value: Variant in actor_tasks_value:
+        if typeof(actor_task_value) != TYPE_DICTIONARY:
+            return _rejected(ERROR_INVALID_FIELD, "Party actor task must be a dictionary.")
+        var actor_task: RefCounted = ACTOR_TASK_STATE_SCRIPT.from_dictionary(actor_task_value)
+        if actor_task.actor_id.is_empty():
+            return _rejected(ERROR_INVALID_FIELD, "Party actor task is missing actor_id.")
+        if party.actor_tasks_by_actor_id.has(actor_task.actor_id):
+            return _rejected(ERROR_INVALID_FIELD, "Party actor task actor_id is duplicated: %s." % actor_task.actor_id)
+        if actor_task.party_id != party.party_id:
+            return _rejected(ERROR_INVALID_FIELD, "Party actor task party_id does not match party: %s." % actor_task.actor_id)
+        party.set_actor_task(actor_task)
 
     var validation_error: Dictionary = _validate_party_references(party, server)
     if not validation_error.is_empty():
@@ -253,6 +269,12 @@ static func _validate_party_references(party: RefCounted, server: RefCounted) ->
 
     if not party.task.goods_id.is_empty() and not server.goods_catalog.has_goods(party.task.goods_id):
         return _rejected(ERROR_INVALID_FIELD, "Party task goods does not exist: %s." % party.task.goods_id)
+
+    for actor_task: RefCounted in party.actor_tasks_by_actor_id.values():
+        if not actor_task.location_id.is_empty() and not server.state.has_location(actor_task.location_id):
+            return _rejected(ERROR_INVALID_FIELD, "Actor task location does not exist: %s." % actor_task.location_id)
+        if not actor_task.goods_id.is_empty() and not server.goods_catalog.has_goods(actor_task.goods_id):
+            return _rejected(ERROR_INVALID_FIELD, "Actor task goods does not exist: %s." % actor_task.goods_id)
 
     return {}
 

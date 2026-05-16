@@ -49,9 +49,9 @@ WorldMemory:
 ```
 
 The full party shape also includes composition, knowledge, active travel state, active travel intent/path fields, and party order state.
-It also includes party task state for timed local actions such as asking for information.
+It also includes party task state for current party-lock actions and actor task state for individual actor actions.
 
-`PartyTaskState` is a v0 party-lock approximation. The long-term rule is one task per actor, with party-level tasks only when the whole group is committed or cannot act without the executor.
+`PartyTaskState` is a v0 party-lock approximation. `ActorTaskState` is now present as durable state so future Darklands-like actions can use one task per actor, with party-level tasks only when the whole group is committed or cannot act without the executor.
 
 The full party shape also includes `cargo`, a dictionary of carried goods keyed by `goods_id`. Capacity is derived from composition through `Party Cargo v0`.
 

@@ -78,4 +78,6 @@ The event metadata is the durable source of truth. Text is presentation/debug ou
 
 ## Current implementation note
 
-`PartyTaskState` is the v0 implementation. It is acceptable for supply-party local inquiry because the party waits on its required executor. Player companion actions should use this actor-task model before city UX grows.
+`ActorTaskState` now exists as durable save/load state on `PartyState.actor_tasks`.
+
+The current `AskLocalInformationCommand` still uses `PartyTaskState`; that remains acceptable for supply-party local inquiry because the party waits on its required executor. The next implementation step is to move player-facing and city-internal tasks to `ActorTaskState` before city UX grows.

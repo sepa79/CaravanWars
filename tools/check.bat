@@ -45,6 +45,9 @@ if errorlevel 1 exit /b 1
 "%GODOT%" --headless --path "%PROJECT_DIR%" --check-only -s tests/TransferGoodsCommandTest.gd
 if errorlevel 1 exit /b 1
 
+"%GODOT%" --headless --path "%PROJECT_DIR%" --check-only -s tests/ActorTaskStateTest.gd
+if errorlevel 1 exit /b 1
+
 "%GODOT%" --headless --path "%PROJECT_DIR%" --check-only -s tests/AskLocalInformationCommandTest.gd
 if errorlevel 1 exit /b 1
 
@@ -106,6 +109,9 @@ if errorlevel 1 exit /b 1
 if errorlevel 1 exit /b 1
 
 "%GODOT%" --headless --path "%PROJECT_DIR%" -s tests/TransferGoodsCommandTest.gd
+if errorlevel 1 exit /b 1
+
+"%GODOT%" --headless --path "%PROJECT_DIR%" -s tests/ActorTaskStateTest.gd
 if errorlevel 1 exit /b 1
 
 "%GODOT%" --headless --path "%PROJECT_DIR%" -s tests/AskLocalInformationCommandTest.gd

@@ -58,6 +58,7 @@ godot --headless --path game --check-only -s tests/PartyTravelCommandTest.gd
 godot --headless --path game --check-only -s tests/TravelIntentCommandTest.gd
 godot --headless --path game --check-only -s tests/PartyCargoTest.gd
 godot --headless --path game --check-only -s tests/TransferGoodsCommandTest.gd
+godot --headless --path game --check-only -s tests/ActorTaskStateTest.gd
 godot --headless --path game --check-only -s tests/AskLocalInformationCommandTest.gd
 godot --headless --path game --check-only -s tests/SimulationSaveCodecTest.gd
 godot --headless --path game --check-only -s tests/ManagedWorldPartiesTest.gd
@@ -78,6 +79,7 @@ godot --headless --path game -s tests/PartyTravelCommandTest.gd
 godot --headless --path game -s tests/TravelIntentCommandTest.gd
 godot --headless --path game -s tests/PartyCargoTest.gd
 godot --headless --path game -s tests/TransferGoodsCommandTest.gd
+godot --headless --path game -s tests/ActorTaskStateTest.gd
 godot --headless --path game -s tests/AskLocalInformationCommandTest.gd
 godot --headless --path game -s tests/SimulationSaveCodecTest.gd
 godot --headless --path game -s tests/ManagedWorldPartiesTest.gd

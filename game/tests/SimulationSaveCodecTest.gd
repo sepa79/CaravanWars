@@ -1,6 +1,7 @@
 extends MainLoop
 
 const GAME_SESSION_FACTORY_SCRIPT: GDScript = preload("res://simulation/GameSessionFactory.gd")
+const ACTOR_TASK_STATE_SCRIPT: GDScript = preload("res://simulation/ActorTaskState.gd")
 const INSPECT_LOCAL_ROUTES_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/InspectLocalRoutesCommand.gd")
 const SIMULATION_SAVE_CODEC_SCRIPT: GDScript = preload("res://simulation/SimulationSaveCodec.gd")
 const TRAVEL_INTENT_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/TravelIntentCommand.gd")
@@ -42,6 +43,11 @@ func _test_new_game_factory_creates_start_state() -> void:
 
 func _test_save_load_preserves_travel_intent_state() -> void:
     var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
+    var player_party: RefCounted = server.state.get_party(GAME_SESSION_FACTORY_SCRIPT.PLAYER_PARTY_ID)
+    var actor_task: RefCounted = ACTOR_TASK_STATE_SCRIPT.new()
+    actor_task.start_ask_local_information("player_companion_01", player_party.party_id, GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID, "goods_source", "food", 0.25, server.current_day, player_party.manager_actor_id, false)
+    player_party.set_actor_task(actor_task)
+
     var inspect_command: RefCounted = INSPECT_LOCAL_ROUTES_COMMAND_SCRIPT.new()
     inspect_command.party_id = GAME_SESSION_FACTORY_SCRIPT.PLAYER_PARTY_ID
     var inspect_result: RefCounted = server.submit_inspect_local_routes(inspect_command)
@@ -71,6 +77,7 @@ func _test_save_load_preserves_travel_intent_state() -> void:
     _expect(loaded_party.travel_intent_destination_node_id == "raciborz", "Expected loaded travel intent destination.")
     _expect(loaded_party.travel_path_edge_ids == original_party.travel_path_edge_ids, "Expected loaded travel path edges to match.")
     _expect(loaded_party.knowledge.knows_edge("wroclaw_raciborz"), "Expected loaded knowledge to preserve inspected local route.")
+    _expect(loaded_party.has_active_actor_task("player_companion_01"), "Expected loaded actor task to preserve active actor task.")
     _expect(loaded_server.state.has_party(GAME_SESSION_FACTORY_SCRIPT.BANDIT_PARTY_ID), "Expected loaded save to keep bandit party.")
     _expect(loaded_server.state.get_party(GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID).manager_actor_id == "merchant_miroslaw", "Expected loaded save to keep merchant manager.")
     _expect(loaded_server.get_recent_events(20).size() == server.get_recent_events(20).size(), "Expected runtime event log to load.")
