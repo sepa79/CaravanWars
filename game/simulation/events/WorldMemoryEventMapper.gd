@@ -112,7 +112,7 @@ static func _metadata_for_event(simulation_event: RefCounted) -> Dictionary:
     for key: Variant in details.keys():
         if str(key) == "distance_km" or str(key) == "speed_km_per_day" or str(key) == "duration_days":
             metadata[str(key)] = details.get(key)
-        elif str(key).ends_with("_node_id") or str(key).ends_with("_location_id") or str(key) == "node_id" or str(key) == "edge_id" or str(key).ends_with("_actor_id") or str(key) == "order_type" or str(key) == "task_type" or str(key) == "query_type" or str(key) == "location_id" or str(key) == "goods_id" or str(key) == "direction" or str(key) == "reason" or str(key) == "failure_code" or str(key).begins_with("owner_") or str(key).begins_with("observer_") or str(key).begins_with("observed_"):
+        elif str(key).ends_with("_node_id") or str(key).ends_with("_location_id") or str(key) == "node_id" or str(key) == "edge_id" or str(key) == "actor_id" or str(key).ends_with("_actor_id") or str(key) == "order_type" or str(key) == "task_type" or str(key) == "query_type" or str(key) == "location_id" or str(key) == "goods_id" or str(key) == "direction" or str(key) == "reason" or str(key) == "failure_code" or str(key).begins_with("owner_") or str(key).begins_with("observer_") or str(key).begins_with("observed_"):
             metadata[str(key)] = str(details.get(key))
         elif str(key).ends_with("_count") or str(key) == "amount" or str(key).ends_with("_amount"):
             metadata[str(key)] = int(details.get(key))

@@ -113,6 +113,7 @@ func _ask_local_information(server: RefCounted, party: RefCounted, goods_id: Str
     var location: RefCounted = current_locations[0]
     var command: RefCounted = ASK_LOCAL_INFORMATION_COMMAND_SCRIPT.new()
     command.party_id = party.party_id
+    command.actor_id = party.manager_actor_id
     command.location_id = location.location_id
     command.query_type = ASK_LOCAL_INFORMATION_COMMAND_SCRIPT.QUERY_GOODS_SOURCE
     command.goods_id = goods_id

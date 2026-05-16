@@ -35,7 +35,7 @@ For `procure_goods`, the AI needs:
 
 When idle and assigned/active on `procure_goods`, v0 can:
 
-- ask the current local location for goods-source information when no source memory exists,
+- ask the current local location for goods-source information as the quartermaster actor when no source memory exists,
 - travel to the best remembered source,
 - withdraw ordered goods from that source when physically present,
 - return to the target node,

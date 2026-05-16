@@ -45,7 +45,7 @@ func _test_save_load_preserves_travel_intent_state() -> void:
     var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
     var player_party: RefCounted = server.state.get_party(GAME_SESSION_FACTORY_SCRIPT.PLAYER_PARTY_ID)
     var actor_task: RefCounted = ACTOR_TASK_STATE_SCRIPT.new()
-    actor_task.start_ask_local_information("player_companion_01", player_party.party_id, GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID, "goods_source", "food", 0.25, server.current_day, player_party.manager_actor_id, false)
+    actor_task.start_ask_local_information("player_companion_01", player_party.party_id, GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID, "goods_source", "food", 10.0, server.current_day, player_party.manager_actor_id, false)
     player_party.set_actor_task(actor_task)
 
     var inspect_command: RefCounted = INSPECT_LOCAL_ROUTES_COMMAND_SCRIPT.new()
@@ -107,5 +107,6 @@ func _test_load_rejects_unknown_region_graph() -> void:
 func _expect(condition: bool, failure_message: String) -> void:
     if condition:
         return
+    print("[SimulationSaveCodecTest] FAIL: %s" % failure_message)
     push_error(failure_message)
     _failed = true

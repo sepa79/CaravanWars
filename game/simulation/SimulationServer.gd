@@ -2,6 +2,7 @@ class_name SimulationServer
 extends RefCounted
 
 const COMMAND_RESULT_SCRIPT: GDScript = preload("res://simulation/CommandResult.gd")
+const ACTOR_TASK_STATE_SCRIPT: GDScript = preload("res://simulation/ActorTaskState.gd")
 const GOODS_CATALOG_SCRIPT: GDScript = preload("res://simulation/GoodsCatalog.gd")
 const LOCATION_ECONOMY_CONFIG_SCRIPT: GDScript = preload("res://simulation/LocationEconomyConfig.gd")
 const PARTY_CARGO_CONFIG_SCRIPT: GDScript = preload("res://simulation/PartyCargoConfig.gd")
@@ -39,6 +40,8 @@ const ERROR_INVALID_AMOUNT: String = "invalid_amount"
 const ERROR_INVALID_LOCATION_NEED: String = "invalid_location_need"
 const ERROR_INFORMATION_QUERY_UNSUPPORTED: String = "information_query_unsupported"
 const ERROR_NO_LOCAL_INFORMATION: String = "no_local_information"
+const ERROR_ACTOR_NOT_AUTHORIZED: String = "actor_not_authorized"
+const ERROR_ACTOR_TASK_BUSY: String = "actor_task_busy"
 const ERROR_PARTY_TASK_BUSY: String = "party_task_busy"
 const ERROR_TRANSFER_DIRECTION_UNSUPPORTED: String = "transfer_direction_unsupported"
 const ERROR_INSUFFICIENT_LOCATION_GOODS: String = "insufficient_location_goods"
@@ -312,6 +315,12 @@ func submit_ask_local_information(command: RefCounted) -> RefCounted:
     if not party.is_idle():
         return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_PARTY_BUSY, "Party is already traveling: %s." % command.party_id)
 
+    if command.actor_id != party.manager_actor_id:
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ACTOR_NOT_AUTHORIZED, "Actor %s cannot act for party %s." % [command.actor_id, party.party_id])
+
+    if party.has_active_actor_task(command.actor_id):
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ACTOR_TASK_BUSY, "Actor %s already has an active task." % command.actor_id)
+
     var location: RefCounted = state.get_location(command.location_id)
     if party.current_node_id != location.node_id:
         return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_LOCATION_MISMATCH, "Party %s is at %s, not location %s node %s." % [party.party_id, party.current_node_id, location.location_id, location.node_id])
@@ -319,19 +328,23 @@ func submit_ask_local_information(command: RefCounted) -> RefCounted:
     if not party.task.is_idle():
         return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_PARTY_TASK_BUSY, "Party %s is already busy with task %s." % [party.party_id, party.task.task_type])
 
-    party.task.start_ask_local_information(location.location_id, command.query_type, command.goods_id, ASK_LOCAL_INFORMATION_DURATION_DAYS)
+    var actor_task: RefCounted = ACTOR_TASK_STATE_SCRIPT.new()
+    actor_task.start_ask_local_information(command.actor_id, party.party_id, location.location_id, command.query_type, command.goods_id, ASK_LOCAL_INFORMATION_DURATION_DAYS, current_day, command.actor_id, true)
+    party.set_actor_task(actor_task)
 
     var result: RefCounted = COMMAND_RESULT_SCRIPT.accepted_result()
     result.message = "Started local information task about %s." % command.goods_id
     result.details = {
         "party_id": party.party_id,
+        "actor_id": command.actor_id,
         "manager_actor_id": party.manager_actor_id,
         "location_id": location.location_id,
         "location_manager_actor_id": location.manager_actor_id,
         "node_id": location.node_id,
         "query_type": command.query_type,
         "goods_id": command.goods_id,
-        "duration_days": ASK_LOCAL_INFORMATION_DURATION_DAYS
+        "duration_days": ASK_LOCAL_INFORMATION_DURATION_DAYS,
+        "requires_party_lock": actor_task.requires_party_lock
     }
     _append_event("party_task_started", party.party_id, "Party %s started task ask_local_information at %s." % [party.party_id, location.location_id], result.details)
     return result
@@ -344,6 +357,7 @@ func tick(days: float) -> void:
     _process_location_economy(elapsed_full_days)
 
     for party: RefCounted in state.parties_by_id.values():
+        _process_actor_tasks(party, days)
         _process_party_task(party, days)
         _process_party_order(party)
         var previous_travel_state: String = party.travel_state
@@ -615,6 +629,74 @@ func _process_party_task(party: RefCounted, days: float) -> void:
         "manager_actor_id": party.manager_actor_id,
         "task_type": party.task.task_type,
         "failure_code": party.task.failure_code
+    })
+
+
+func _process_actor_tasks(party: RefCounted, days: float) -> void:
+    for actor_task: RefCounted in party.actor_tasks_by_actor_id.values():
+        if actor_task.status != ACTOR_TASK_STATE_SCRIPT.STATUS_ACTIVE:
+            continue
+
+        actor_task.tick(days)
+        if actor_task.remaining_days > 0.0:
+            continue
+
+        if actor_task.task_type == ACTOR_TASK_STATE_SCRIPT.TASK_TYPE_ASK_LOCAL_INFORMATION:
+            _complete_ask_local_information_actor_task(party, actor_task)
+            continue
+
+        actor_task.mark_failed("task_type_unsupported", "Unsupported actor task type: %s." % actor_task.task_type)
+        _append_event("party_task_failed", party.party_id, "Actor %s failed unsupported task %s." % [actor_task.actor_id, actor_task.task_type], {
+            "party_id": party.party_id,
+            "actor_id": actor_task.actor_id,
+            "manager_actor_id": party.manager_actor_id,
+            "task_type": actor_task.task_type,
+            "failure_code": actor_task.failure_code
+        })
+
+
+func _complete_ask_local_information_actor_task(party: RefCounted, actor_task: RefCounted) -> void:
+    var location_id: String = actor_task.location_id
+    var query_type: String = actor_task.query_type
+    var goods_id: String = actor_task.goods_id
+    var location: RefCounted = state.get_location(location_id)
+    var known_source_locations: Array[Dictionary] = _known_local_goods_sources(goods_id, location_id)
+    if known_source_locations.is_empty():
+        actor_task.mark_failed(ERROR_NO_LOCAL_INFORMATION, "Location %s has no local information about %s." % [location_id, goods_id])
+        _append_event("party_task_failed", party.party_id, "Actor %s found no local information at %s about %s." % [actor_task.actor_id, location_id, goods_id], {
+            "party_id": party.party_id,
+            "actor_id": actor_task.actor_id,
+            "manager_actor_id": party.manager_actor_id,
+            "task_type": actor_task.task_type,
+            "location_id": location_id,
+            "query_type": query_type,
+            "goods_id": goods_id,
+            "failure_code": actor_task.failure_code
+        })
+        return
+
+    actor_task.mark_completed()
+    _append_event("party_task_completed", party.party_id, "Actor %s completed task ask_local_information at %s." % [actor_task.actor_id, location_id], {
+        "party_id": party.party_id,
+        "actor_id": actor_task.actor_id,
+        "manager_actor_id": party.manager_actor_id,
+        "task_type": ACTOR_TASK_STATE_SCRIPT.TASK_TYPE_ASK_LOCAL_INFORMATION,
+        "location_id": location_id,
+        "query_type": query_type,
+        "goods_id": goods_id,
+        "duration_days": actor_task.total_days
+    })
+    _append_event("worldsim_local_information_received", party.party_id, "Actor %s received local information at %s about %s." % [actor_task.actor_id, location_id, goods_id], {
+        "party_id": party.party_id,
+        "actor_id": actor_task.actor_id,
+        "manager_actor_id": party.manager_actor_id,
+        "location_id": location_id,
+        "location_manager_actor_id": location.manager_actor_id,
+        "node_id": location.node_id,
+        "query_type": query_type,
+        "goods_id": goods_id,
+        "duration_days": actor_task.total_days,
+        "known_source_locations": known_source_locations
     })
 
 

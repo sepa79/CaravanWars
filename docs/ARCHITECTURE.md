@@ -103,7 +103,7 @@ The first mayor food manager declares location food needs through `DeclareLocati
 
 Mayor supply planning is separate from need declaration. The planner must check mayor/city WorldMemory for existing active supply intent before issuing a new `procure_goods` order, so repeated re-evaluation does not spam multiple parties for the same shortage.
 
-Darklands-like local actions should be modeled as timed tasks, not instant time jumps. `AskLocalInformationCommand` starts an `ask_local_information` party task; `SimulationServer.tick()` completes it later and emits the information event.
+Darklands-like local actions should be modeled as timed tasks, not instant time jumps. `AskLocalInformationCommand` starts an `ask_local_information` actor task for the party manager in v0; `SimulationServer.tick()` completes it later and emits the information event.
 
 Task ownership should eventually be actor-based: one actor can run one task, and a party with several available companions can run several actor tasks in parallel. `PartyTaskState` is the current v0 party-lock approximation for actions where the whole party is effectively waiting on the executor.
 

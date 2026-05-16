@@ -16,6 +16,7 @@ It exists so role AI, player intent, and future LLM/voice flows can use the same
 ```json
 {
   "party_id": "wroclaw_supply_party_01",
+  "actor_id": "quartermaster_wroclaw",
   "location_id": "wroclaw_city",
   "query_type": "goods_source",
   "goods_id": "food"
@@ -27,8 +28,10 @@ It exists so role AI, player intent, and future LLM/voice flows can use the same
 The server rejects the command when:
 
 - `party_id` does not exist,
+- `actor_id` is not the party manager in v0,
 - `location_id` does not exist,
 - party is not idle,
+- the actor already has an active actor task,
 - party is not physically at the location node,
 - `query_type` is unsupported,
 - `goods_id` does not exist for `goods_source`,
@@ -36,12 +39,14 @@ The server rejects the command when:
 
 ## Behavior v0
 
-`goods_source` starts a party task with a duration. The command does not return information immediately.
+`goods_source` starts an actor task with a duration. The command does not return information immediately.
+
+In v0 the only supported executor is the party manager and the task sets `requires_party_lock = true`. This preserves supply-party behavior while moving ownership toward the one-actor-one-task model.
 
 Flow:
 
 1. Command validates that the party is idle and physically at the location.
-2. Server starts `PartyTaskState` with `task_type = ask_local_information`.
+2. Server starts `ActorTaskState` with `task_type = ask_local_information`.
 3. Server emits `party_task_started`.
 4. `SimulationServer.tick(days)` advances task time.
 5. When the task completes, the server emits `party_task_completed`.
@@ -52,7 +57,7 @@ The command does not mutate cargo, resources, travel state, or durable party kno
 
 ## Task ownership direction
 
-Current v0 stores the task on `PartyState` and treats it as a party-level lock. This is a deliberate approximation.
+Current v0 stores the task in `PartyState.actor_tasks` and treats it as a party-level lock. This is a deliberate approximation for party managers.
 
 Long-term, most city actions should be actor-owned:
 

@@ -33,6 +33,7 @@ func _test_party_asks_local_location_for_goods_source() -> void:
     var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
     var command: RefCounted = ASK_LOCAL_INFORMATION_COMMAND_SCRIPT.new()
     command.party_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID
+    command.actor_id = "quartermaster_wroclaw"
     command.location_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID
     command.query_type = ASK_LOCAL_INFORMATION_COMMAND_SCRIPT.QUERY_GOODS_SOURCE
     command.goods_id = "food"
@@ -40,6 +41,7 @@ func _test_party_asks_local_location_for_goods_source() -> void:
     var result: RefCounted = server.submit_ask_local_information(command)
     _expect(result.accepted, "Expected local information query to be accepted.")
     _expect(result.details.has("duration_days"), "Expected task duration in result details.")
+    _expect(result.details.get("actor_id", "") == "quartermaster_wroclaw", "Expected actor id in task start details.")
     _expect(_event_by_type(server, "party_task_started").event_type == "party_task_started", "Expected party task started event.")
     _expect(_event_count_by_type(server, "worldsim_local_information_received") == 0, "Expected no information before task completes.")
 
@@ -56,6 +58,7 @@ func _test_party_asks_local_location_for_goods_source() -> void:
 
     _expect(world_event.get("event_type", "") == "worldsim_local_information_received", "Expected local information export event.")
     _expect(metadata.get("party_id", "") == GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID, "Expected party id metadata.")
+    _expect(metadata.get("actor_id", "") == "quartermaster_wroclaw", "Expected actor id metadata.")
     _expect(metadata.get("query_type", "") == ASK_LOCAL_INFORMATION_COMMAND_SCRIPT.QUERY_GOODS_SOURCE, "Expected query type metadata.")
     _expect(metadata.has("known_source_locations"), "Expected known sources metadata.")
     _expect(float(metadata.get("duration_days", 0.0)) > 0.0, "Expected duration metadata.")
@@ -68,6 +71,7 @@ func _test_party_must_be_at_location_to_ask() -> void:
 
     var command: RefCounted = ASK_LOCAL_INFORMATION_COMMAND_SCRIPT.new()
     command.party_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID
+    command.actor_id = "quartermaster_wroclaw"
     command.location_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID
     command.query_type = ASK_LOCAL_INFORMATION_COMMAND_SCRIPT.QUERY_GOODS_SOURCE
     command.goods_id = "food"
@@ -107,6 +111,7 @@ func _test_party_task_blocks_travel_and_transfer_until_complete() -> void:
 func _ask_food_command() -> RefCounted:
     var command: RefCounted = ASK_LOCAL_INFORMATION_COMMAND_SCRIPT.new()
     command.party_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID
+    command.actor_id = "quartermaster_wroclaw"
     command.location_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID
     command.query_type = ASK_LOCAL_INFORMATION_COMMAND_SCRIPT.QUERY_GOODS_SOURCE
     command.goods_id = "food"

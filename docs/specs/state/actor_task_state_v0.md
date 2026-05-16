@@ -80,4 +80,4 @@ The event metadata is the durable source of truth. Text is presentation/debug ou
 
 `ActorTaskState` now exists as durable save/load state on `PartyState.actor_tasks`.
 
-The current `AskLocalInformationCommand` still uses `PartyTaskState`; that remains acceptable for supply-party local inquiry because the party waits on its required executor. The next implementation step is to move player-facing and city-internal tasks to `ActorTaskState` before city UX grows.
+`AskLocalInformationCommand` now uses `ActorTaskState` for the party manager and sets `requires_party_lock = true` in v0. Player-facing and city-internal tasks can later relax the party lock when the executor is a companion, clerk, messenger, or other subordinate actor rather than the whole traveling group.

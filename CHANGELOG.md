@@ -43,6 +43,7 @@ All notable changes to this project will be documented in this file.
 - Documented future actor-owned task direction: one actor runs one task, while party-level tasks lock the group.
 - Actor task state v0 target contract for future companion and city action parallelism.
 - Durable actor task state on parties, including save/load validation and party-lock busy checks.
+- Ask local information now runs as an actor-owned task for the party manager.
 - Report back intent v0 documented and covered through WorldMemory memory-transfer.
 - Quartermaster-to-WorldMemory integration test for local information memory ingestion.
 - Planned route geometry v0 notes for route segments, waypoints, visibility, and travel time.
