@@ -71,6 +71,10 @@ TODO
 
 - Party movement command: `docs/specs/commands/move_party.md`
 - Assign party order command: `docs/specs/commands/assign_party_order.md`
+- Cancel party order command: `docs/specs/commands/cancel_party_order.md`
+- Replace party order command: `docs/specs/commands/replace_party_order.md`
+- Interrupt travel command: `docs/specs/commands/interrupt_travel.md`
+- Declare supply intent command: `docs/specs/commands/declare_supply_intent.md`
 - Ask local information command: `docs/specs/commands/ask_local_information.md`
 - Report back command: `docs/specs/commands/report_back.md`
 - Inspect local routes command: `docs/specs/commands/inspect_local_routes.md`
@@ -92,6 +96,7 @@ TODO
 - City supply party v0: `docs/specs/economy/city_supply_party_v0.md`
 - Quartermaster AI v0: `docs/specs/economy/quartermaster_ai_v0.md`
 - Report back intent v0: `docs/specs/economy/report_back_intent_v0.md`
+- Opportunity policy v0: `docs/specs/economy/opportunity_policy_v0.md`
 - Planned route geometry v0: `docs/specs/regions/route_geometry_v0.md`
 - WorldSim observation pipeline v0: `docs/specs/worldsim/observation_pipeline_v0.md`
 - Region graph seed data: `game/data/regions/silesia.json`

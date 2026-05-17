@@ -159,6 +159,7 @@ Current v0 mappings:
 - `goods_transferred`: creates one party memory entry and one location memory entry.
 - `location_economy_ticked`: creates one location memory entry.
 - `location_need_declared`: creates one location memory entry.
+- `mayor_supply_intent_declared`: creates one mayor actor memory entry and one location memory entry.
 - `worldsim_location_observed`: creates one observer owner memory entry.
 - `worldsim_party_observed`: creates one observer owner memory entry.
 - `worldsim_local_information_received`: creates one asking party memory entry.
@@ -166,6 +167,7 @@ Current v0 mappings:
 - `party_travel_started`: creates one party memory entry.
 - `party_arrived`: creates one party memory entry.
 - `party_order_assigned`: creates order ledger entries for the recipient party, issuer actor, direct manager actor, and target location when present.
+- `party_order_completed`: creates terminal order ledger entries for the recipient party, issuer actor, direct manager actor, and target location when present.
 
 Example:
 

@@ -75,6 +75,8 @@ Current statuses:
 - `active`
 - `completed`
 - `failed`
+- `cancelled`
+- `interrupted`
 
 ## Execution
 
@@ -97,15 +99,19 @@ For `procure_goods` in v0:
 4. The order must not let the mayor or supply chief scan global server state as knowledge.
 5. A superior issuer does not have remote command telepathy. If the party is away, a future messenger/courier party must physically deliver the order.
 
-## Future interruption model
+When a supply executor fulfills a `procure_goods` order, it asks the authoritative server to complete the order. Completion emits `party_order_completed` with terminal metadata, including `status = completed` and `delivered_amount`.
 
-Current v0 processing ignores active travel when processing stored orders. This is intentional until emergency order semantics exist.
+## Cancellation and future interruption model
+
+`CancelPartyOrderCommand` can cancel an assigned order and records terminal `cancelled` state. A cancelled order is terminal audit state and allows a later explicit assignment.
+
+`ReplacePartyOrderCommand` can replace an assigned or active order only while the party is at a local decision point. It rejects active travel.
+
+`InterruptTravelCommand` can stop active travel and records terminal `interrupted` order state when the interrupted travel belonged to an order. Interrupted travel is not idle: follow-up recovery commands still need route-position semantics.
 
 Future order changes should be explicit commands:
 
-- `cancel_order`
 - `suspend_order`
-- `replace_order`
 - high-priority emergency orders such as `flee`, `defend`, `evade`, `pursue`, `regroup`, or `protect_cargo`
 
 Every interruption should record issuer, reason, priority, previous order, and whether the previous order may resume. This matters for ambushes, pursuit, panic, loyalty, and chain-of-command disputes.
@@ -116,6 +122,9 @@ Every interruption should record issuer, reason, priority, previous order, and w
 - `party_order_started`
 - `party_order_completed`
 - `party_order_failed`
+- `party_order_cancelled`
+- `party_order_replaced`
+- `party_order_interrupted`
 
 ## Test coverage
 
@@ -125,6 +134,8 @@ Covered by `game/tests/PartyOrdersTest.gd`:
 - non-authorized assignment is rejected,
 - order starts travel intent on tick,
 - order completes after arrival,
+- manager can cancel an assigned order,
+- active travel cancellation is rejected until interruption semantics exist,
 - mayor can assign Wroclaw supply procurement intent,
 - unrelated actor cannot assign Wroclaw supply procurement intent,
 - save/load preserves assigned order state.

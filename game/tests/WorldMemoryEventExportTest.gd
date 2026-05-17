@@ -2,6 +2,9 @@ extends MainLoop
 
 const GAME_SESSION_FACTORY_SCRIPT: GDScript = preload("res://simulation/GameSessionFactory.gd")
 const ASSIGN_PARTY_ORDER_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/AssignPartyOrderCommand.gd")
+const CANCEL_PARTY_ORDER_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/CancelPartyOrderCommand.gd")
+const DECLARE_SUPPLY_INTENT_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/DeclareSupplyIntentCommand.gd")
+const INTERRUPT_TRAVEL_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/InterruptTravelCommand.gd")
 const INSPECT_LOCAL_ROUTES_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/InspectLocalRoutesCommand.gd")
 const MOVE_PARTY_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/MovePartyCommand.gd")
 const PARTY_ORDER_STATE_SCRIPT: GDScript = preload("res://simulation/PartyOrderState.gd")
@@ -24,6 +27,10 @@ func _initialize() -> void:
     _test_local_route_inspection_exports_bounded_metadata()
     _test_goods_transfer_exports_trade_metadata()
     _test_party_order_exports_supply_intent_metadata()
+    _test_completed_procure_order_exports_terminal_metadata()
+    _test_cancelled_order_exports_terminal_metadata()
+    _test_interrupted_order_exports_terminal_metadata()
+    _test_mayor_supply_intent_exports_operational_metadata()
     _test_location_economy_exports_location_subject()
     _test_domain_event_sink_sends_exported_payload()
     _test_domain_event_sink_records_transport_failures()
@@ -31,14 +38,14 @@ func _initialize() -> void:
     _test_queued_http_transport_queues_without_blocking()
     _test_unknown_event_type_is_not_exported()
 
-    if not _failed:
+    if _failed:
+        assert(false, "WorldMemory event export test failed.")
+    else:
         print("[WorldMemoryEventExportTest] OK")
     _is_finished = true
 
 
 func _process(_delta: float) -> bool:
-    if _failed:
-        assert(false, "WorldMemory event export test failed.")
     return _is_finished
 
 
@@ -145,6 +152,129 @@ func _test_party_order_exports_supply_intent_metadata() -> void:
     _expect(metadata.get("target_node_id", "") == "wroclaw", "Expected target node metadata.")
     _expect(metadata.get("goods_id", "") == "food", "Expected goods id metadata.")
     _expect(int(metadata.get("amount", 0)) == 40, "Expected amount metadata.")
+
+
+func _test_completed_procure_order_exports_terminal_metadata() -> void:
+    var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
+    var command: RefCounted = ASSIGN_PARTY_ORDER_COMMAND_SCRIPT.new()
+    command.party_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID
+    command.issued_by_actor_id = "mayor_wroclaw"
+    command.order_type = PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_PROCURE_GOODS
+    command.target_location_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID
+    command.goods_id = "food"
+    command.amount = 40
+    var result: RefCounted = server.submit_assign_party_order(command)
+    _expect(result.accepted, "Expected supply order assignment to be accepted.")
+
+    var completion_result: RefCounted = server.complete_procure_goods_order(GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID, 40)
+    _expect(completion_result.accepted, "Expected procure order completion to be accepted.")
+
+    var completion_event: RefCounted = _event_by_type(server, "party_order_completed")
+    var export_payload: Dictionary = WORLD_MEMORY_EVENT_MAPPER_SCRIPT.map_event(completion_event)
+    var world_event: Dictionary = export_payload.get("world_event", {})
+    var metadata: Dictionary = world_event.get("metadata", {})
+
+    _expect(world_event.get("event_type", "") == "party_order_completed", "Expected completed order export event type.")
+    _expect(metadata.get("order_type", "") == PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_PROCURE_GOODS, "Expected completed order type metadata.")
+    _expect(metadata.get("target_location_id", "") == GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID, "Expected completed order target metadata.")
+    _expect(metadata.get("goods_id", "") == "food", "Expected completed order goods metadata.")
+    _expect(int(metadata.get("delivered_amount", 0)) == 40, "Expected delivered amount metadata.")
+    _expect(metadata.get("status", "") == PARTY_ORDER_STATE_SCRIPT.STATUS_COMPLETED, "Expected completed order status metadata.")
+
+
+func _test_cancelled_order_exports_terminal_metadata() -> void:
+    var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
+    var command: RefCounted = ASSIGN_PARTY_ORDER_COMMAND_SCRIPT.new()
+    command.party_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID
+    command.issued_by_actor_id = "mayor_wroclaw"
+    command.order_type = PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_PROCURE_GOODS
+    command.target_location_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID
+    command.goods_id = "food"
+    command.amount = 40
+    var result: RefCounted = server.submit_assign_party_order(command)
+    _expect(result.accepted, "Expected supply order assignment to be accepted.")
+
+    var cancel_command: RefCounted = CANCEL_PARTY_ORDER_COMMAND_SCRIPT.new()
+    cancel_command.party_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID
+    cancel_command.issued_by_actor_id = "mayor_wroclaw"
+    cancel_command.reason = "city_stock_recovered"
+    var cancel_result: RefCounted = server.submit_cancel_party_order(cancel_command)
+    _expect(cancel_result.accepted, "Expected supply order cancellation to be accepted.")
+
+    var cancel_event: RefCounted = _event_by_type(server, "party_order_cancelled")
+    var export_payload: Dictionary = WORLD_MEMORY_EVENT_MAPPER_SCRIPT.map_event(cancel_event)
+    var world_event: Dictionary = export_payload.get("world_event", {})
+    var metadata: Dictionary = world_event.get("metadata", {})
+
+    _expect(world_event.get("event_type", "") == "party_order_cancelled", "Expected cancelled order export event type.")
+    _expect(metadata.get("order_type", "") == PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_PROCURE_GOODS, "Expected cancelled order type metadata.")
+    _expect(metadata.get("target_location_id", "") == GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID, "Expected cancelled order target metadata.")
+    _expect(metadata.get("goods_id", "") == "food", "Expected cancelled order goods metadata.")
+    _expect(metadata.get("status", "") == PARTY_ORDER_STATE_SCRIPT.STATUS_CANCELLED, "Expected cancelled order status metadata.")
+    _expect(metadata.get("cancel_reason", "") == "city_stock_recovered", "Expected cancel reason metadata.")
+
+
+func _test_interrupted_order_exports_terminal_metadata() -> void:
+    var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
+    var command: RefCounted = ASSIGN_PARTY_ORDER_COMMAND_SCRIPT.new()
+    command.party_id = GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID
+    command.issued_by_actor_id = "merchant_miroslaw"
+    command.order_type = PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_TRAVEL_TO
+    command.target_node_id = "raciborz"
+    var result: RefCounted = server.submit_assign_party_order(command)
+    _expect(result.accepted, "Expected travel order assignment to be accepted.")
+
+    server.tick(0.0)
+    var interrupt_command: RefCounted = INTERRUPT_TRAVEL_COMMAND_SCRIPT.new()
+    interrupt_command.party_id = GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID
+    interrupt_command.issued_by_actor_id = "merchant_miroslaw"
+    interrupt_command.reason = "ambush_spotted"
+    var interrupt_result: RefCounted = server.submit_interrupt_travel(interrupt_command)
+    _expect(interrupt_result.accepted, "Expected travel interruption to be accepted.")
+
+    var order_event: RefCounted = _event_by_type(server, "party_order_interrupted")
+    var order_payload: Dictionary = WORLD_MEMORY_EVENT_MAPPER_SCRIPT.map_event(order_event)
+    var order_world_event: Dictionary = order_payload.get("world_event", {})
+    var order_metadata: Dictionary = order_world_event.get("metadata", {})
+    _expect(order_world_event.get("event_type", "") == "party_order_interrupted", "Expected interrupted order export event type.")
+    _expect(order_metadata.get("status", "") == PARTY_ORDER_STATE_SCRIPT.STATUS_INTERRUPTED, "Expected interrupted order status metadata.")
+    _expect(order_metadata.get("interrupt_reason", "") == "ambush_spotted", "Expected interrupt reason metadata.")
+
+    var travel_event: RefCounted = _event_by_type(server, "party_travel_interrupted")
+    var travel_payload: Dictionary = WORLD_MEMORY_EVENT_MAPPER_SCRIPT.map_event(travel_event)
+    var travel_world_event: Dictionary = travel_payload.get("world_event", {})
+    var travel_metadata: Dictionary = travel_world_event.get("metadata", {})
+    _expect(travel_world_event.get("event_type", "") == "party_travel_interrupted", "Expected interrupted travel export event type.")
+    _expect(travel_metadata.get("travel_state", "") == "interrupted", "Expected interrupted travel state metadata.")
+    _expect(travel_metadata.has("progress_km"), "Expected interrupted travel progress metadata.")
+
+
+func _test_mayor_supply_intent_exports_operational_metadata() -> void:
+    var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
+    var command: RefCounted = DECLARE_SUPPLY_INTENT_COMMAND_SCRIPT.new()
+    command.location_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID
+    command.issued_by_actor_id = "mayor_wroclaw"
+    command.supply_party_id = GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID
+    command.goods_id = "food"
+    command.amount = 40
+    command.reason = "food_below_floor"
+    var result: RefCounted = server.submit_declare_supply_intent(command)
+    _expect(result.accepted, "Expected mayor supply intent declaration to be accepted.")
+
+    var intent_event: RefCounted = _event_by_type(server, "mayor_supply_intent_declared")
+    var export_payload: Dictionary = WORLD_MEMORY_EVENT_MAPPER_SCRIPT.map_event(intent_event)
+    var world_event: Dictionary = export_payload.get("world_event", {})
+    var metadata: Dictionary = world_event.get("metadata", {})
+
+    _expect(world_event.get("event_type", "") == "mayor_supply_intent_declared", "Expected mayor supply intent export event type.")
+    _expect(world_event.get("location_id", "") == GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID, "Expected mayor supply intent location.")
+    _expect(metadata.get("party_id", "") == GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID, "Expected event subject party id.")
+    _expect(metadata.get("supply_party_id", "") == GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID, "Expected supply party id metadata.")
+    _expect(metadata.get("issued_by_actor_id", "") == "mayor_wroclaw", "Expected issuer actor metadata.")
+    _expect(metadata.get("supply_party_manager_actor_id", "") == "quartermaster_wroclaw", "Expected supply party manager metadata.")
+    _expect(metadata.get("goods_id", "") == "food", "Expected goods id metadata.")
+    _expect(int(metadata.get("amount", 0)) == 40, "Expected supply intent amount metadata.")
+    _expect(metadata.get("status", "") == "active", "Expected active supply intent status metadata.")
 
 
 func _test_location_economy_exports_location_subject() -> void:

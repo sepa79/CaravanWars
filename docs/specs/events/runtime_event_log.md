@@ -25,6 +25,7 @@ This is not durable WorldMemory. Persistence, long-term memory, and historical w
 
 - `party_travel_started`
 - `party_arrived`
+- `party_travel_interrupted`
 - `party_local_routes_inspected`
 - `party_travel_intent_started`
 - `party_travel_intent_completed`
@@ -33,8 +34,18 @@ This is not durable WorldMemory. Persistence, long-term memory, and historical w
 - `party_order_started`
 - `party_order_completed`
 - `party_order_failed`
+- `party_order_cancelled`
+- `party_order_replaced`
+- `party_order_interrupted`
 - `location_economy_ticked`
+- `location_need_declared`
+- `mayor_supply_intent_declared`
+- `party_task_started`
+- `party_task_completed`
+- `party_task_failed`
 - `goods_transferred`
+- `worldsim_local_information_received`
+- `worldsim_memory_reported`
 
 ## Rules
 

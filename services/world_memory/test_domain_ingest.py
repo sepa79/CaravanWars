@@ -134,6 +134,51 @@ class DomainIngestTest(unittest.TestCase):
         self.assertEqual(wroclaw_memory[0]["source_event_id"], "evt_need_001")
         self.assertEqual(wroclaw_memory[0]["metadata"]["needed_amount"], 75)
 
+    def test_mayor_supply_intent_creates_mayor_and_location_memory(self) -> None:
+        from cw_memory.repository import ingest_domain_event, list_memory_entries
+        from cw_memory.schemas import DomainEventIn, WorldEventIn
+
+        result = ingest_domain_event(
+            DomainEventIn(
+                world_event=WorldEventIn(
+                    id="evt_supply_intent_001",
+                    event_type="mayor_supply_intent_declared",
+                    text="Mayor declared supply intent.",
+                    location_id="wroclaw_city",
+                    occurred_at="day:2.500",
+                    importance=0.6,
+                    reliability=1.0,
+                    tags=["simulation", "mayor_supply_intent_declared", "wroclaw_supply_party_01", "wroclaw_city", "food"],
+                    metadata={
+                        "party_id": "wroclaw_supply_party_01",
+                        "location_id": "wroclaw_city",
+                        "issued_by_actor_id": "mayor_wroclaw",
+                        "manager_actor_id": "mayor_wroclaw",
+                        "supply_party_id": "wroclaw_supply_party_01",
+                        "supply_party_manager_actor_id": "quartermaster_wroclaw",
+                        "goods_id": "food",
+                        "amount": 40,
+                        "status": "active",
+                        "reason": "food_below_floor",
+                        "occurred_day": 2.5,
+                    },
+                )
+            )
+        )
+
+        self.assertEqual(len(result["memory_entries"]), 2)
+
+        mayor_memory = list_memory_entries("mayor_wroclaw", limit=10)
+        city_memory = list_memory_entries("wroclaw_city", limit=10)
+
+        self.assertEqual(mayor_memory[0]["kind"], "mayor_supply_intent")
+        self.assertEqual(city_memory[0]["kind"], "mayor_supply_intent")
+        self.assertEqual(mayor_memory[0]["metadata"]["perspective"], "intent_owner")
+        self.assertEqual(city_memory[0]["metadata"]["perspective"], "location")
+        self.assertEqual(mayor_memory[0]["metadata"]["supply_party_id"], "wroclaw_supply_party_01")
+        self.assertEqual(mayor_memory[0]["metadata"]["goods_id"], "food")
+        self.assertEqual(mayor_memory[0]["metadata"]["status"], "active")
+
     def test_worldsim_observation_creates_owner_memory(self) -> None:
         from cw_memory.repository import ingest_domain_event, list_memory_entries
         from cw_memory.schemas import DomainEventIn, WorldEventIn
@@ -212,6 +257,160 @@ class DomainIngestTest(unittest.TestCase):
         self.assertEqual(city_memory[0]["metadata"]["perspective"], "order_target_location")
         self.assertEqual(supply_memory[0]["metadata"]["order_type"], "procure_goods")
         self.assertEqual(supply_memory[0]["metadata"]["amount"], 40)
+        self.assertEqual(supply_memory[0]["metadata"]["status"], "active")
+
+    def test_party_order_completed_creates_completed_order_ledgers(self) -> None:
+        from cw_memory.repository import ingest_domain_event, list_memory_entries
+        from cw_memory.schemas import DomainEventIn, WorldEventIn
+
+        result = ingest_domain_event(
+            DomainEventIn(
+                world_event=WorldEventIn(
+                    id="evt_order_completed_001",
+                    event_type="party_order_completed",
+                    text="Supply party completed procure_goods order.",
+                    location_id="wroclaw_city",
+                    occurred_at="day:8.000",
+                    importance=0.6,
+                    reliability=1.0,
+                    tags=["simulation", "party_order_completed", "wroclaw_supply_party_01", "wroclaw_city", "food"],
+                    metadata={
+                        "party_id": "wroclaw_supply_party_01",
+                        "manager_actor_id": "quartermaster_wroclaw",
+                        "issued_by_actor_id": "mayor_wroclaw",
+                        "order_type": "procure_goods",
+                        "target_location_id": "wroclaw_city",
+                        "goods_id": "food",
+                        "amount": 40,
+                        "delivered_amount": 40,
+                        "status": "completed",
+                    },
+                )
+            )
+        )
+
+        self.assertEqual(len(result["memory_entries"]), 4)
+
+        mayor_memory = list_memory_entries("mayor_wroclaw", limit=10)
+        city_memory = list_memory_entries("wroclaw_city", limit=10)
+
+        self.assertEqual(mayor_memory[0]["kind"], "order_ledger")
+        self.assertEqual(mayor_memory[0]["metadata"]["status"], "completed")
+        self.assertEqual(mayor_memory[0]["metadata"]["delivered_amount"], 40)
+        self.assertEqual(city_memory[0]["metadata"]["status"], "completed")
+
+    def test_party_order_cancelled_creates_cancelled_order_ledgers(self) -> None:
+        from cw_memory.repository import ingest_domain_event, list_memory_entries
+        from cw_memory.schemas import DomainEventIn, WorldEventIn
+
+        result = ingest_domain_event(
+            DomainEventIn(
+                world_event=WorldEventIn(
+                    id="evt_order_cancelled_001",
+                    event_type="party_order_cancelled",
+                    text="Supply party order was cancelled.",
+                    location_id="wroclaw_city",
+                    occurred_at="day:6.000",
+                    importance=0.6,
+                    reliability=1.0,
+                    tags=["simulation", "party_order_cancelled", "wroclaw_supply_party_01", "wroclaw_city", "food"],
+                    metadata={
+                        "party_id": "wroclaw_supply_party_01",
+                        "manager_actor_id": "quartermaster_wroclaw",
+                        "issued_by_actor_id": "mayor_wroclaw",
+                        "order_type": "procure_goods",
+                        "target_location_id": "wroclaw_city",
+                        "goods_id": "food",
+                        "amount": 40,
+                        "status": "cancelled",
+                        "cancel_reason": "city_stock_recovered",
+                    },
+                )
+            )
+        )
+
+        self.assertEqual(len(result["memory_entries"]), 4)
+
+        mayor_memory = list_memory_entries("mayor_wroclaw", limit=10)
+        supply_memory = list_memory_entries("wroclaw_supply_party_01", limit=10)
+
+        self.assertEqual(mayor_memory[0]["kind"], "order_ledger")
+        self.assertEqual(mayor_memory[0]["metadata"]["status"], "cancelled")
+        self.assertEqual(supply_memory[0]["metadata"]["cancel_reason"], "city_stock_recovered")
+
+    def test_party_order_interrupted_creates_interrupted_order_ledgers(self) -> None:
+        from cw_memory.repository import ingest_domain_event, list_memory_entries
+        from cw_memory.schemas import DomainEventIn, WorldEventIn
+
+        result = ingest_domain_event(
+            DomainEventIn(
+                world_event=WorldEventIn(
+                    id="evt_order_interrupted_001",
+                    event_type="party_order_interrupted",
+                    text="Merchant party order was interrupted.",
+                    location_id="raciborz",
+                    occurred_at="day:6.000",
+                    importance=0.7,
+                    reliability=1.0,
+                    tags=["simulation", "party_order_interrupted", "merchant_party_01", "raciborz"],
+                    metadata={
+                        "party_id": "merchant_party_01",
+                        "manager_actor_id": "merchant_miroslaw",
+                        "issued_by_actor_id": "merchant_miroslaw",
+                        "order_type": "travel_to",
+                        "target_node_id": "raciborz",
+                        "status": "interrupted",
+                        "interrupt_reason": "ambush_spotted",
+                    },
+                )
+            )
+        )
+
+        self.assertEqual(len(result["memory_entries"]), 2)
+
+        merchant_memory = list_memory_entries("merchant_party_01", limit=10)
+
+        self.assertEqual(merchant_memory[0]["kind"], "order_ledger")
+        self.assertEqual(merchant_memory[0]["metadata"]["status"], "interrupted")
+        self.assertEqual(merchant_memory[0]["metadata"]["interrupt_reason"], "ambush_spotted")
+
+    def test_party_travel_interrupted_creates_travel_ledger(self) -> None:
+        from cw_memory.repository import ingest_domain_event, list_memory_entries
+        from cw_memory.schemas import DomainEventIn, WorldEventIn
+
+        result = ingest_domain_event(
+            DomainEventIn(
+                world_event=WorldEventIn(
+                    id="evt_travel_interrupted_001",
+                    event_type="party_travel_interrupted",
+                    text="Merchant party travel was interrupted.",
+                    location_id="raciborz",
+                    occurred_at="day:6.000",
+                    importance=0.7,
+                    reliability=1.0,
+                    tags=["simulation", "party_travel_interrupted", "merchant_party_01", "raciborz"],
+                    metadata={
+                        "party_id": "merchant_party_01",
+                        "manager_actor_id": "merchant_miroslaw",
+                        "issued_by_actor_id": "merchant_miroslaw",
+                        "travel_state": "interrupted",
+                        "from_node_id": "wroclaw",
+                        "to_node_id": "raciborz",
+                        "progress_km": 12.5,
+                        "distance_km": 80.0,
+                        "reason": "ambush_spotted",
+                    },
+                )
+            )
+        )
+
+        self.assertEqual(len(result["memory_entries"]), 1)
+
+        merchant_memory = list_memory_entries("merchant_party_01", limit=10)
+
+        self.assertEqual(merchant_memory[0]["kind"], "travel_ledger")
+        self.assertEqual(merchant_memory[0]["metadata"]["travel_state"], "interrupted")
+        self.assertEqual(merchant_memory[0]["metadata"]["progress_km"], 12.5)
 
     def test_local_information_creates_party_memory(self) -> None:
         from cw_memory.repository import ingest_domain_event, list_memory_entries

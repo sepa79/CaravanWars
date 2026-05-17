@@ -10,6 +10,8 @@ const STATUS_ASSIGNED: String = "assigned"
 const STATUS_ACTIVE: String = "active"
 const STATUS_COMPLETED: String = "completed"
 const STATUS_FAILED: String = "failed"
+const STATUS_CANCELLED: String = "cancelled"
+const STATUS_INTERRUPTED: String = "interrupted"
 
 var order_type: String = ORDER_TYPE_IDLE
 var status: String = STATUS_NONE
@@ -21,10 +23,12 @@ var route_node_ids: Array[String] = []
 var issued_by_actor_id: String = ""
 var failure_code: String = ""
 var failure_message: String = ""
+var cancel_reason: String = ""
+var interrupt_reason: String = ""
 
 
 func is_idle() -> bool:
-    return order_type == ORDER_TYPE_IDLE or status == STATUS_NONE or status == STATUS_COMPLETED or status == STATUS_FAILED
+    return order_type == ORDER_TYPE_IDLE or status == STATUS_NONE or status == STATUS_COMPLETED or status == STATUS_FAILED or status == STATUS_CANCELLED or status == STATUS_INTERRUPTED
 
 
 func assign_travel_to(new_target_node_id: String, new_issued_by_actor_id: String) -> void:
@@ -38,6 +42,8 @@ func assign_travel_to(new_target_node_id: String, new_issued_by_actor_id: String
     issued_by_actor_id = new_issued_by_actor_id
     failure_code = ""
     failure_message = ""
+    cancel_reason = ""
+    interrupt_reason = ""
 
 
 func assign_procure_goods(new_target_location_id: String, new_goods_id: String, new_amount: int, new_issued_by_actor_id: String) -> void:
@@ -51,6 +57,8 @@ func assign_procure_goods(new_target_location_id: String, new_goods_id: String, 
     issued_by_actor_id = new_issued_by_actor_id
     failure_code = ""
     failure_message = ""
+    cancel_reason = ""
+    interrupt_reason = ""
 
 
 func mark_active() -> void:
@@ -67,6 +75,24 @@ func mark_failed(new_failure_code: String, new_failure_message: String) -> void:
     status = STATUS_FAILED
     failure_code = new_failure_code
     failure_message = new_failure_message
+    cancel_reason = ""
+    interrupt_reason = ""
+
+
+func mark_cancelled(new_cancel_reason: String) -> void:
+    status = STATUS_CANCELLED
+    failure_code = ""
+    failure_message = ""
+    cancel_reason = new_cancel_reason
+    interrupt_reason = ""
+
+
+func mark_interrupted(new_interrupt_reason: String) -> void:
+    status = STATUS_INTERRUPTED
+    failure_code = ""
+    failure_message = ""
+    cancel_reason = ""
+    interrupt_reason = new_interrupt_reason
 
 
 func to_dictionary() -> Dictionary:
@@ -80,7 +106,9 @@ func to_dictionary() -> Dictionary:
         "route_node_ids": route_node_ids.duplicate(),
         "issued_by_actor_id": issued_by_actor_id,
         "failure_code": failure_code,
-        "failure_message": failure_message
+        "failure_message": failure_message,
+        "cancel_reason": cancel_reason,
+        "interrupt_reason": interrupt_reason
     }
 
 
@@ -96,6 +124,8 @@ static func from_dictionary(order_dictionary: Dictionary) -> RefCounted:
     order.issued_by_actor_id = str(order_dictionary.get("issued_by_actor_id", ""))
     order.failure_code = str(order_dictionary.get("failure_code", ""))
     order.failure_message = str(order_dictionary.get("failure_message", ""))
+    order.cancel_reason = str(order_dictionary.get("cancel_reason", ""))
+    order.interrupt_reason = str(order_dictionary.get("interrupt_reason", ""))
     return order
 
 

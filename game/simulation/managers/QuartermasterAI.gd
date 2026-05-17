@@ -3,6 +3,7 @@ extends RefCounted
 
 const PARTY_ORDER_STATE_SCRIPT: GDScript = preload("res://simulation/PartyOrderState.gd")
 const PARTY_STATS_CALCULATOR_SCRIPT: GDScript = preload("res://simulation/PartyStatsCalculator.gd")
+const MEMORY_FRESHNESS_POLICY_SCRIPT: GDScript = preload("res://simulation/managers/MemoryFreshnessPolicy.gd")
 const ASK_LOCAL_INFORMATION_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/AskLocalInformationCommand.gd")
 const TRANSFER_GOODS_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/TransferGoodsCommand.gd")
 const TRAVEL_INTENT_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/TravelIntentCommand.gd")
@@ -37,7 +38,7 @@ func process(server: RefCounted, party_id: String, memory_entries: Array) -> Dic
             return _deposit_order_goods(server, party, carried_amount)
         return _travel_to_node(server, party.party_id, target_node_id, "return_to_supply_target")
 
-    var source_memory: Dictionary = _best_source_memory(memory_entries, party.order.goods_id, party.order.target_location_id)
+    var source_memory: Dictionary = _best_source_memory(memory_entries, party.order.goods_id, party.order.target_location_id, server.current_day)
     if source_memory.is_empty():
         return _ask_local_information(server, party, party.order.goods_id)
 
@@ -93,7 +94,9 @@ func _deposit_order_goods(server: RefCounted, party: RefCounted, carried_amount:
         return _command_rejected("deposit_rejected", deposit_result)
 
     if deposit_amount >= party.order.amount:
-        party.order.mark_completed()
+        var completion_result: RefCounted = server.complete_procure_goods_order(party.party_id, deposit_amount)
+        if not completion_result.accepted:
+            return _command_rejected("completion_rejected", completion_result)
     else:
         party.order.mark_active()
     return {
@@ -171,12 +174,14 @@ func _matching_order_memory(party: RefCounted, memory_entries: Array) -> Diction
     return {}
 
 
-func _best_source_memory(memory_entries: Array, goods_id: String, target_location_id: String) -> Dictionary:
+func _best_source_memory(memory_entries: Array, goods_id: String, target_location_id: String, current_day: float) -> Dictionary:
     var best_entry: Dictionary = {}
     var best_amount: int = 0
     for entry: Dictionary in memory_entries:
         var kind: String = str(entry.get("kind", ""))
         if kind != "location_observation" and kind != "local_information":
+            continue
+        if not MEMORY_FRESHNESS_POLICY_SCRIPT.is_goods_source_actionable(entry, current_day):
             continue
         var metadata: Dictionary = _metadata(entry)
         var observed_location_id: String = _source_location_id(metadata)

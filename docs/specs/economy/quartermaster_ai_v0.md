@@ -23,6 +23,10 @@ The mayor's direct order is not remote telepathy. In v0, superior-issued supply 
 
 The AI may inspect the physical state of its own managed party and its current order. Strategic knowledge must come from `memory_entries`, not from scanning global server state.
 
+Goods-source memory must be fresh enough to be actionable. In v0, `MemoryFreshnessPolicy` treats source information as actionable for 14 simulation days. Older information can still be a lead for asking locally, but it is not enough to travel and buy from that source.
+
+The same policy is shared with `MayorSupplyPlanner`, so stale source reports do not become permanent city knowledge.
+
 ## Required memory
 
 For `procure_goods`, the AI needs:
@@ -40,9 +44,11 @@ When idle and assigned/active on `procure_goods`, v0 can:
 - withdraw ordered goods from that source when physically present,
 - return to the target node,
 - deposit carried goods at the target location,
-- mark the order completed after deposit.
+- ask the server to mark the order completed after a full deposit.
 
 All movement and transfer actions use existing authoritative commands. The AI does not mutate cargo, resources, travel state, or location resources directly.
+
+Completed procurement emits `party_order_completed` with `status = completed`, `target_location_id`, `goods_id`, `amount`, and `delivered_amount`. WorldMemory ingests this as a terminal `order_ledger` entry so mayor planning can close older active supply memory without deleting history.
 
 `ask_local_information` is not instant. QuartermasterAI starts the task, then later re-evaluates after simulation time advances and WorldMemory contains a resulting `local_information` entry.
 
@@ -57,4 +63,7 @@ All movement and transfer actions use existing authoritative commands. The AI do
 
 ## Test coverage
 
-Covered by `game/tests/QuartermasterAITest.gd`.
+Covered by:
+
+- `game/tests/QuartermasterAITest.gd`
+- `tools/run_supply_loop_world_memory_integration.ps1`

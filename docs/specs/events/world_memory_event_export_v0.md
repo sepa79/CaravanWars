@@ -44,6 +44,7 @@ The v0 mapper exports only:
 
 - `party_travel_started`
 - `party_arrived`
+- `party_travel_interrupted`
 - `party_local_routes_inspected`
 - `party_travel_intent_started`
 - `party_travel_intent_completed`
@@ -52,12 +53,16 @@ The v0 mapper exports only:
 - `party_order_started`
 - `party_order_completed`
 - `party_order_failed`
+- `party_order_cancelled`
+- `party_order_replaced`
+- `party_order_interrupted`
 - `party_task_started`
 - `party_task_completed`
 - `party_task_failed`
 - `goods_transferred`
 - `location_economy_ticked`
 - `location_need_declared`
+- `mayor_supply_intent_declared`
 - `worldsim_location_observed`
 - `worldsim_party_observed`
 - `worldsim_local_information_received`
@@ -68,9 +73,14 @@ Unknown event types return an empty payload. This is intentional: export must be
 ## Metadata rules
 
 - Include `party_id` and `occurred_day`.
+- Tags include the event type, event subject ids, location id when known, and `goods_id` when present.
 - Include `manager_actor_id` when present in event details.
 - Include explicit ids from event details such as `node_id`, `from_node_id`, `to_node_id`, `destination_node_id`, and `edge_id`.
 - Include order metadata such as `issued_by_actor_id`, `order_type`, `target_location_id`, `goods_id`, and `amount`.
+- Include terminal order metadata such as `status` and `delivered_amount` when an order completes.
+- Include terminal cancellation metadata such as `status` and `cancel_reason` when an order is cancelled.
+- Include interruption metadata such as `status`, `travel_state`, `progress_km`, and `interrupt_reason` when travel/order execution is interrupted.
+- Include supply intent metadata such as `supply_party_id`, `supply_party_manager_actor_id`, `status`, `goods_id`, and `amount`.
 - Include `target_node_id` for location-targeted orders when the authoritative simulation resolved it during validation.
 - Include task metadata such as `task_type`, `query_type`, `duration_days`, and `failure_code`.
 - Include report metadata such as `from_owner_id`, `to_owner_id`, `to_owner_kind`, `max_entries`, `trust`, `distortion_noise`, `listener_interest_tags`, and `notes`.
@@ -133,10 +143,17 @@ WorldMemory domain ingest currently creates per-owner memory entries for:
 - `goods_transferred`
 - `location_economy_ticked`
 - `location_need_declared`
+- `mayor_supply_intent_declared`
 - `worldsim_location_observed`
 - `worldsim_party_observed`
 - `worldsim_local_information_received`
 - `worldsim_memory_reported`
 - `party_travel_started`
 - `party_arrived`
+- `party_travel_interrupted`
 - `party_order_assigned`
+- `party_order_completed`
+- `party_order_failed`
+- `party_order_cancelled`
+- `party_order_replaced`
+- `party_order_interrupted`

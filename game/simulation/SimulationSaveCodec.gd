@@ -152,7 +152,7 @@ static func _party_from_dictionary(party_dictionary: Dictionary, server: RefCoun
     party.travel_path_node_ids = _string_array_from_variant(party_dictionary.get("travel_path_node_ids", []))
     party.travel_path_edge_ids = _string_array_from_variant(party_dictionary.get("travel_path_edge_ids", []))
     party.travel_path_index = int(party_dictionary.get("travel_path_index", 0))
-    if party.travel_state != PARTY_STATE_SCRIPT.TRAVEL_STATE_IDLE and party.travel_state != PARTY_STATE_SCRIPT.TRAVEL_STATE_TRAVELING:
+    if party.travel_state != PARTY_STATE_SCRIPT.TRAVEL_STATE_IDLE and party.travel_state != PARTY_STATE_SCRIPT.TRAVEL_STATE_TRAVELING and party.travel_state != PARTY_STATE_SCRIPT.TRAVEL_STATE_INTERRUPTED:
         return _rejected(ERROR_INVALID_FIELD, "Party travel_state is invalid: %s." % party.travel_state)
 
     var composition_value: Variant = party_dictionary.get("composition", {})

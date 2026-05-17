@@ -17,6 +17,10 @@ const TRAVEL_INTENT_COMMAND_SCRIPT: GDScript = preload("res://simulation/command
 const TRANSFER_GOODS_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/TransferGoodsCommand.gd")
 const ASK_LOCAL_INFORMATION_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/AskLocalInformationCommand.gd")
 const REPORT_BACK_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/ReportBackCommand.gd")
+const DECLARE_SUPPLY_INTENT_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/DeclareSupplyIntentCommand.gd")
+const CANCEL_PARTY_ORDER_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/CancelPartyOrderCommand.gd")
+const REPLACE_PARTY_ORDER_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/ReplacePartyOrderCommand.gd")
+const INTERRUPT_TRAVEL_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/InterruptTravelCommand.gd")
 
 const ERROR_PARTY_NOT_FOUND: String = "party_not_found"
 const ERROR_PARTY_BUSY: String = "party_busy"
@@ -33,12 +37,19 @@ const ERROR_ORDER_TARGET_LOCATION_NOT_FOUND: String = "order_target_location_not
 const ERROR_ORDER_GOODS_NOT_FOUND: String = "order_goods_not_found"
 const ERROR_ORDER_INVALID_AMOUNT: String = "order_invalid_amount"
 const ERROR_ORDER_ISSUER_NOT_PRESENT: String = "order_issuer_not_present"
+const ERROR_ORDER_NOT_ACTIVE: String = "order_not_active"
+const ERROR_ORDER_CANCEL_REASON_REQUIRED: String = "order_cancel_reason_required"
+const ERROR_ORDER_REPLACE_REASON_REQUIRED: String = "order_replace_reason_required"
+const ERROR_ORDER_INTERRUPT_UNSUPPORTED: String = "order_interrupt_unsupported"
+const ERROR_TRAVEL_NOT_ACTIVE: String = "travel_not_active"
+const ERROR_TRAVEL_INTERRUPT_REASON_REQUIRED: String = "travel_interrupt_reason_required"
 const ERROR_LOCATION_NOT_FOUND: String = "location_not_found"
 const ERROR_LOCATION_MANAGER_NOT_AUTHORIZED: String = "location_manager_not_authorized"
 const ERROR_LOCATION_MISMATCH: String = "location_mismatch"
 const ERROR_GOODS_NOT_FOUND: String = "goods_not_found"
 const ERROR_INVALID_AMOUNT: String = "invalid_amount"
 const ERROR_INVALID_LOCATION_NEED: String = "invalid_location_need"
+const ERROR_INVALID_SUPPLY_INTENT: String = "invalid_supply_intent"
 const ERROR_INFORMATION_QUERY_UNSUPPORTED: String = "information_query_unsupported"
 const ERROR_NO_LOCAL_INFORMATION: String = "no_local_information"
 const ERROR_ACTOR_NOT_AUTHORIZED: String = "actor_not_authorized"
@@ -194,12 +205,157 @@ func submit_assign_party_order(command: RefCounted) -> RefCounted:
     return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_TYPE_UNSUPPORTED, "Unsupported party order type: %s." % command.order_type)
 
 
+func submit_replace_party_order(command: RefCounted) -> RefCounted:
+    if not state.has_party(command.party_id):
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_PARTY_NOT_FOUND, "Party does not exist: %s." % command.party_id)
+
+    var party: RefCounted = state.get_party(command.party_id)
+    if not party.can_receive_order_from(command.issued_by_actor_id):
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_NOT_AUTHORIZED, "Actor %s does not manage party %s." % [command.issued_by_actor_id, party.party_id])
+
+    if command.reason.strip_edges().is_empty():
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_REPLACE_REASON_REQUIRED, "Order replacement requires an explicit reason.")
+
+    if party.order.is_idle():
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_NOT_ACTIVE, "Party %s has no active or assigned order to replace." % party.party_id)
+
+    if party.travel_state != "idle":
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_INTERRUPT_UNSUPPORTED, "Party %s is not at a local decision point; interrupt travel before replacement." % party.party_id)
+
+    var validation_result: RefCounted = _validate_order_payload(command, party)
+    if not validation_result.accepted:
+        return validation_result
+
+    var previous_order: Dictionary = party.order.to_dictionary()
+    _apply_order_payload(command, party)
+
+    var result: RefCounted = COMMAND_RESULT_SCRIPT.accepted_result()
+    result.message = "Replaced party order for %s." % party.party_id
+    result.details = {
+        "previous_order": previous_order,
+        "new_order": party.order.to_dictionary(),
+        "reason": command.reason
+    }
+    _append_event("party_order_replaced", party.party_id, "Actor %s replaced order for party %s." % [command.issued_by_actor_id, party.party_id], {
+        "manager_actor_id": party.manager_actor_id,
+        "issued_by_actor_id": command.issued_by_actor_id,
+        "reason": command.reason,
+        "previous_order_type": str(previous_order.get("order_type", "")),
+        "previous_status": str(previous_order.get("status", "")),
+        "previous_target_node_id": str(previous_order.get("target_node_id", "")),
+        "previous_target_location_id": str(previous_order.get("target_location_id", "")),
+        "previous_goods_id": str(previous_order.get("goods_id", "")),
+        "previous_amount": int(previous_order.get("amount", 0)),
+        "order_type": party.order.order_type,
+        "status": party.order.status,
+        "target_node_id": party.order.target_node_id,
+        "target_location_id": party.order.target_location_id,
+        "goods_id": party.order.goods_id,
+        "amount": party.order.amount
+    })
+    return result
+
+
+func submit_cancel_party_order(command: RefCounted) -> RefCounted:
+    if not state.has_party(command.party_id):
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_PARTY_NOT_FOUND, "Party does not exist: %s." % command.party_id)
+
+    var party: RefCounted = state.get_party(command.party_id)
+    if not party.can_receive_order_from(command.issued_by_actor_id):
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_NOT_AUTHORIZED, "Actor %s does not manage party %s." % [command.issued_by_actor_id, party.party_id])
+
+    if command.reason.strip_edges().is_empty():
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_CANCEL_REASON_REQUIRED, "Order cancellation requires an explicit reason.")
+
+    if party.order.is_idle():
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_NOT_ACTIVE, "Party %s has no active or assigned order." % party.party_id)
+
+    if party.travel_state != "idle":
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_INTERRUPT_UNSUPPORTED, "Party %s is already traveling; travel interruption is not defined yet." % party.party_id)
+
+    party.order.mark_cancelled(command.reason)
+    var result: RefCounted = COMMAND_RESULT_SCRIPT.accepted_result()
+    result.message = "Cancelled party order for %s." % party.party_id
+    result.details = party.order.to_dictionary()
+    var event_details: Dictionary = {
+        "manager_actor_id": party.manager_actor_id,
+        "issued_by_actor_id": command.issued_by_actor_id,
+        "order_type": party.order.order_type,
+        "status": party.order.status,
+        "reason": command.reason,
+        "cancel_reason": party.order.cancel_reason
+    }
+    if not party.order.target_node_id.is_empty():
+        event_details["target_node_id"] = party.order.target_node_id
+    if not party.order.target_location_id.is_empty():
+        event_details["target_location_id"] = party.order.target_location_id
+    if not party.order.goods_id.is_empty():
+        event_details["goods_id"] = party.order.goods_id
+    if party.order.amount > 0:
+        event_details["amount"] = party.order.amount
+    _append_event("party_order_cancelled", party.party_id, "Actor %s cancelled order %s for party %s." % [command.issued_by_actor_id, party.order.order_type, party.party_id], event_details)
+    return result
+
+
+func submit_interrupt_travel(command: RefCounted) -> RefCounted:
+    if not state.has_party(command.party_id):
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_PARTY_NOT_FOUND, "Party does not exist: %s." % command.party_id)
+
+    var party: RefCounted = state.get_party(command.party_id)
+    if not party.can_receive_order_from(command.issued_by_actor_id):
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_NOT_AUTHORIZED, "Actor %s does not manage party %s." % [command.issued_by_actor_id, party.party_id])
+
+    if command.reason.strip_edges().is_empty():
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_TRAVEL_INTERRUPT_REASON_REQUIRED, "Travel interruption requires an explicit reason.")
+
+    if party.travel_state != "traveling":
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_TRAVEL_NOT_ACTIVE, "Party %s is not traveling." % party.party_id)
+
+    var interrupted_from_node_id: String = party.origin_node_id
+    var interrupted_to_node_id: String = party.destination_node_id
+    var interrupted_progress_km: float = party.travel_progress_km
+    var interrupted_distance_km: float = party.travel_distance_km
+    party.interrupt_travel()
+
+    if not party.order.is_idle():
+        party.order.mark_interrupted(command.reason)
+        _append_event("party_order_interrupted", party.party_id, "Actor %s interrupted order %s for party %s." % [command.issued_by_actor_id, party.order.order_type, party.party_id], {
+            "manager_actor_id": party.manager_actor_id,
+            "issued_by_actor_id": command.issued_by_actor_id,
+            "order_type": party.order.order_type,
+            "status": party.order.status,
+            "reason": command.reason,
+            "interrupt_reason": party.order.interrupt_reason,
+            "target_node_id": party.order.target_node_id,
+            "target_location_id": party.order.target_location_id,
+            "goods_id": party.order.goods_id,
+            "amount": party.order.amount
+        })
+
+    var result: RefCounted = COMMAND_RESULT_SCRIPT.accepted_result()
+    result.message = "Interrupted travel for %s." % party.party_id
+    result.details = {
+        "party_id": party.party_id,
+        "manager_actor_id": party.manager_actor_id,
+        "issued_by_actor_id": command.issued_by_actor_id,
+        "travel_state": party.travel_state,
+        "from_node_id": interrupted_from_node_id,
+        "to_node_id": interrupted_to_node_id,
+        "progress_km": interrupted_progress_km,
+        "distance_km": interrupted_distance_km,
+        "reason": command.reason
+    }
+    _append_event("party_travel_interrupted", party.party_id, "Actor %s interrupted travel for party %s." % [command.issued_by_actor_id, party.party_id], result.details)
+    return result
+
+
 func _assign_travel_to_order(command: RefCounted, party: RefCounted) -> RefCounted:
 
-    if not state.region_graph.has_node(command.target_node_id):
-        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_NODE_NOT_FOUND, "Order target node does not exist: %s." % command.target_node_id)
+    var validation_result: RefCounted = _validate_order_payload(command, party)
+    if not validation_result.accepted:
+        return validation_result
 
-    party.order.assign_travel_to(command.target_node_id, command.issued_by_actor_id)
+    _apply_order_payload(command, party)
     var result: RefCounted = COMMAND_RESULT_SCRIPT.accepted_result()
     result.message = "Assigned travel order to %s." % command.target_node_id
     result.details = party.order.to_dictionary()
@@ -213,20 +369,12 @@ func _assign_travel_to_order(command: RefCounted, party: RefCounted) -> RefCount
 
 
 func _assign_procure_goods_order(command: RefCounted, party: RefCounted) -> RefCounted:
-    if not state.has_location(command.target_location_id):
-        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_TARGET_LOCATION_NOT_FOUND, "Order target location does not exist: %s." % command.target_location_id)
+    var validation_result: RefCounted = _validate_order_payload(command, party)
+    if not validation_result.accepted:
+        return validation_result
 
     var target_location: RefCounted = state.get_location(command.target_location_id)
-    if command.issued_by_actor_id != party.manager_actor_id and party.current_node_id != target_location.node_id:
-        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_ISSUER_NOT_PRESENT, "Actor %s cannot issue remote order to party %s without physical delivery." % [command.issued_by_actor_id, party.party_id])
-
-    if not goods_catalog.has_goods(command.goods_id):
-        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_GOODS_NOT_FOUND, "Order goods does not exist: %s." % command.goods_id)
-
-    if command.amount <= 0:
-        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_INVALID_AMOUNT, "Order amount must be greater than zero.")
-
-    party.order.assign_procure_goods(command.target_location_id, command.goods_id, command.amount, command.issued_by_actor_id)
+    _apply_order_payload(command, party)
     var result: RefCounted = COMMAND_RESULT_SCRIPT.accepted_result()
     result.message = "Assigned procure goods order for %s." % command.goods_id
     result.details = party.order.to_dictionary()
@@ -240,6 +388,40 @@ func _assign_procure_goods_order(command: RefCounted, party: RefCounted) -> RefC
         "amount": command.amount
     })
     return result
+
+
+func _validate_order_payload(command: RefCounted, party: RefCounted) -> RefCounted:
+    if command.order_type == PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_TRAVEL_TO:
+        if not state.region_graph.has_node(command.target_node_id):
+            return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_NODE_NOT_FOUND, "Order target node does not exist: %s." % command.target_node_id)
+        return COMMAND_RESULT_SCRIPT.accepted_result()
+
+    if command.order_type == PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_PROCURE_GOODS:
+        if not state.has_location(command.target_location_id):
+            return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_TARGET_LOCATION_NOT_FOUND, "Order target location does not exist: %s." % command.target_location_id)
+
+        var target_location: RefCounted = state.get_location(command.target_location_id)
+        if command.issued_by_actor_id != party.manager_actor_id and party.current_node_id != target_location.node_id:
+            return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_ISSUER_NOT_PRESENT, "Actor %s cannot issue remote order to party %s without physical delivery." % [command.issued_by_actor_id, party.party_id])
+
+        if not goods_catalog.has_goods(command.goods_id):
+            return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_GOODS_NOT_FOUND, "Order goods does not exist: %s." % command.goods_id)
+
+        if command.amount <= 0:
+            return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_INVALID_AMOUNT, "Order amount must be greater than zero.")
+        return COMMAND_RESULT_SCRIPT.accepted_result()
+
+    return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_TYPE_UNSUPPORTED, "Unsupported party order type: %s." % command.order_type)
+
+
+func _apply_order_payload(command: RefCounted, party: RefCounted) -> void:
+    if command.order_type == PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_TRAVEL_TO:
+        party.order.assign_travel_to(command.target_node_id, command.issued_by_actor_id)
+        return
+
+    if command.order_type == PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_PROCURE_GOODS:
+        party.order.assign_procure_goods(command.target_location_id, command.goods_id, command.amount, command.issued_by_actor_id)
+        return
 
 
 func submit_transfer_goods(command: RefCounted) -> RefCounted:
@@ -271,6 +453,34 @@ func submit_transfer_goods(command: RefCounted) -> RefCounted:
     return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_TRANSFER_DIRECTION_UNSUPPORTED, "Unsupported transfer direction: %s." % command.direction)
 
 
+func complete_procure_goods_order(party_id: String, delivered_amount: int) -> RefCounted:
+    if not state.has_party(party_id):
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_PARTY_NOT_FOUND, "Party does not exist: %s." % party_id)
+
+    var party: RefCounted = state.get_party(party_id)
+    if party.order.order_type != PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_PROCURE_GOODS:
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_TYPE_UNSUPPORTED, "Party %s does not have a procure_goods order." % party.party_id)
+
+    if party.order.status != PARTY_ORDER_STATE_SCRIPT.STATUS_ASSIGNED and party.order.status != PARTY_ORDER_STATE_SCRIPT.STATUS_ACTIVE:
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_TYPE_UNSUPPORTED, "Party %s procure_goods order is not actionable." % party.party_id)
+
+    party.order.mark_completed()
+    var result: RefCounted = COMMAND_RESULT_SCRIPT.accepted_result()
+    result.message = "Completed procure goods order for %s." % party.order.goods_id
+    result.details = {
+        "manager_actor_id": party.manager_actor_id,
+        "issued_by_actor_id": party.order.issued_by_actor_id,
+        "order_type": party.order.order_type,
+        "target_location_id": party.order.target_location_id,
+        "goods_id": party.order.goods_id,
+        "amount": party.order.amount,
+        "delivered_amount": delivered_amount,
+        "status": party.order.status
+    }
+    _append_event("party_order_completed", party.party_id, "Party %s completed order procure_goods %s for %s." % [party.party_id, party.order.goods_id, party.order.target_location_id], result.details)
+    return result
+
+
 func submit_declare_location_need(command: RefCounted) -> RefCounted:
     if not state.has_location(command.location_id):
         return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_LOCATION_NOT_FOUND, "Location does not exist: %s." % command.location_id)
@@ -290,6 +500,7 @@ func submit_declare_location_need(command: RefCounted) -> RefCounted:
     result.details = {
         "location_id": location.location_id,
         "manager_actor_id": location.manager_actor_id,
+        "issued_by_actor_id": command.issued_by_actor_id,
         "node_id": location.node_id,
         "goods_id": command.goods_id,
         "current_amount": command.current_amount,
@@ -298,6 +509,45 @@ func submit_declare_location_need(command: RefCounted) -> RefCounted:
         "reason": command.reason
     }
     _append_event("location_need_declared", "", "Location %s needs %s %s." % [location.location_id, command.desired_amount - command.current_amount, command.goods_id], result.details)
+    return result
+
+
+func submit_declare_supply_intent(command: RefCounted) -> RefCounted:
+    if not state.has_location(command.location_id):
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_LOCATION_NOT_FOUND, "Location does not exist: %s." % command.location_id)
+
+    if not state.has_party(command.supply_party_id):
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_PARTY_NOT_FOUND, "Supply party does not exist: %s." % command.supply_party_id)
+
+    if not goods_catalog.has_goods(command.goods_id):
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_GOODS_NOT_FOUND, "Goods does not exist: %s." % command.goods_id)
+
+    if command.amount <= 0:
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_INVALID_SUPPLY_INTENT, "Supply intent amount must be greater than zero.")
+
+    var location: RefCounted = state.get_location(command.location_id)
+    if command.issued_by_actor_id != location.manager_actor_id:
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_LOCATION_MANAGER_NOT_AUTHORIZED, "Actor %s does not manage location %s." % [command.issued_by_actor_id, location.location_id])
+
+    var supply_party: RefCounted = state.get_party(command.supply_party_id)
+    if not supply_party.can_receive_order_from(command.issued_by_actor_id):
+        return COMMAND_RESULT_SCRIPT.rejected_result(ERROR_ORDER_NOT_AUTHORIZED, "Actor %s cannot direct supply party %s." % [command.issued_by_actor_id, supply_party.party_id])
+
+    var result: RefCounted = COMMAND_RESULT_SCRIPT.accepted_result()
+    result.message = "Declared supply intent for %s." % command.goods_id
+    result.details = {
+        "location_id": location.location_id,
+        "manager_actor_id": location.manager_actor_id,
+        "issued_by_actor_id": command.issued_by_actor_id,
+        "node_id": location.node_id,
+        "supply_party_id": supply_party.party_id,
+        "supply_party_manager_actor_id": supply_party.manager_actor_id,
+        "goods_id": command.goods_id,
+        "amount": command.amount,
+        "status": "active",
+        "reason": command.reason
+    }
+    _append_event("mayor_supply_intent_declared", supply_party.party_id, "Mayor %s declared supply intent for %s %s to %s." % [command.issued_by_actor_id, command.amount, command.goods_id, location.location_id], result.details)
     return result
 
 
@@ -561,6 +811,9 @@ func get_visible_locations_for_party(party_id: String) -> Array[Dictionary]:
         return visible_locations
 
     var party: RefCounted = state.get_party(party_id)
+    if party.travel_state != "idle":
+        return visible_locations
+
     for location: RefCounted in state.get_locations_at_node(party.current_node_id):
         visible_locations.append(location.to_dictionary())
 

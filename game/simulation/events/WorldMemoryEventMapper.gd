@@ -8,6 +8,7 @@ const EXPORT_KIND_WORLD_EVENT: String = "world_event"
 const EXPORTABLE_EVENT_TYPES: Array[String] = [
     "party_travel_started",
     "party_arrived",
+    "party_travel_interrupted",
     "party_local_routes_inspected",
     "party_travel_intent_started",
     "party_travel_intent_completed",
@@ -16,12 +17,16 @@ const EXPORTABLE_EVENT_TYPES: Array[String] = [
     "party_order_started",
     "party_order_completed",
     "party_order_failed",
+    "party_order_cancelled",
+    "party_order_replaced",
+    "party_order_interrupted",
     "party_task_started",
     "party_task_completed",
     "party_task_failed",
     "goods_transferred",
     "location_economy_ticked",
     "location_need_declared",
+    "mayor_supply_intent_declared",
     "worldsim_location_observed",
     "worldsim_party_observed",
     "worldsim_local_information_received",
@@ -100,6 +105,10 @@ static func _tags_for_event(simulation_event: RefCounted) -> Array[String]:
     var location_id: String = _location_id_for_event(simulation_event)
     if not location_id.is_empty():
         tags.append(location_id)
+    if simulation_event.details.has("goods_id"):
+        var goods_id: String = str(simulation_event.details.get("goods_id", ""))
+        if not goods_id.is_empty() and not tags.has(goods_id):
+            tags.append(goods_id)
     return tags
 
 
@@ -111,9 +120,9 @@ static func _metadata_for_event(simulation_event: RefCounted) -> Dictionary:
 
     var details: Dictionary = simulation_event.details
     for key: Variant in details.keys():
-        if str(key) == "distance_km" or str(key) == "speed_km_per_day" or str(key) == "duration_days" or str(key) == "trust" or str(key) == "distortion_noise":
+        if str(key).ends_with("_km") or str(key) == "speed_km_per_day" or str(key) == "duration_days" or str(key) == "trust" or str(key) == "distortion_noise":
             metadata[str(key)] = details.get(key)
-        elif str(key).ends_with("_node_id") or str(key).ends_with("_location_id") or str(key).ends_with("_owner_id") or str(key).ends_with("_owner_kind") or str(key) == "node_id" or str(key) == "edge_id" or str(key) == "actor_id" or str(key).ends_with("_actor_id") or str(key) == "order_type" or str(key) == "task_type" or str(key) == "query_type" or str(key) == "location_id" or str(key) == "goods_id" or str(key) == "direction" or str(key) == "reason" or str(key) == "notes" or str(key) == "failure_code" or str(key).begins_with("owner_") or str(key).begins_with("observer_") or str(key).begins_with("observed_"):
+        elif str(key).ends_with("_node_id") or str(key).ends_with("_location_id") or str(key).ends_with("_owner_id") or str(key).ends_with("_owner_kind") or str(key).ends_with("_party_id") or str(key) == "node_id" or str(key) == "edge_id" or str(key) == "actor_id" or str(key).ends_with("_actor_id") or str(key) == "order_type" or str(key) == "task_type" or str(key) == "query_type" or str(key) == "location_id" or str(key) == "goods_id" or str(key) == "direction" or str(key) == "reason" or str(key) == "notes" or str(key) == "failure_code" or str(key) == "failure_message" or str(key) == "cancel_reason" or str(key) == "interrupt_reason" or str(key) == "status" or str(key) == "travel_state" or str(key).begins_with("previous_") or str(key).begins_with("owner_") or str(key).begins_with("observer_") or str(key).begins_with("observed_"):
             metadata[str(key)] = str(details.get(key))
         elif str(key).ends_with("_count") or str(key) == "amount" or str(key).ends_with("_amount") or str(key) == "max_entries":
             metadata[str(key)] = int(details.get(key))

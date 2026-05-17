@@ -1,8 +1,11 @@
 extends MainLoop
 
 const ASSIGN_PARTY_ORDER_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/AssignPartyOrderCommand.gd")
+const CANCEL_PARTY_ORDER_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/CancelPartyOrderCommand.gd")
+const INTERRUPT_TRAVEL_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/InterruptTravelCommand.gd")
 const GAME_SESSION_FACTORY_SCRIPT: GDScript = preload("res://simulation/GameSessionFactory.gd")
 const PARTY_ORDER_STATE_SCRIPT: GDScript = preload("res://simulation/PartyOrderState.gd")
+const REPLACE_PARTY_ORDER_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/ReplacePartyOrderCommand.gd")
 const SIMULATION_SAVE_CODEC_SCRIPT: GDScript = preload("res://simulation/SimulationSaveCodec.gd")
 const SIMULATION_SERVER_SCRIPT: GDScript = preload("res://simulation/SimulationServer.gd")
 
@@ -15,6 +18,12 @@ func _initialize() -> void:
     _test_non_manager_cannot_assign_order()
     _test_order_starts_travel_intent_on_tick()
     _test_order_completes_after_arrival()
+    _test_manager_can_cancel_assigned_order()
+    _test_cancelled_order_allows_new_order()
+    _test_cannot_cancel_traveling_order_without_interrupt_model()
+    _test_manager_can_replace_assigned_order()
+    _test_cannot_replace_traveling_order_without_interrupt()
+    _test_manager_can_interrupt_traveling_order()
     _test_mayor_can_assign_supply_procurement_intent()
     _test_non_authorized_actor_cannot_assign_supply_procurement()
     _test_mayor_cannot_assign_remote_supply_procurement_without_delivery()
@@ -87,6 +96,145 @@ func _test_order_completes_after_arrival() -> void:
     _expect(party.current_node_id == "raciborz", "Expected merchant party to arrive at Raciborz.")
     _expect(party.order.status == PARTY_ORDER_STATE_SCRIPT.STATUS_COMPLETED, "Expected order to be completed after arrival.")
     _expect(_event_types(server).has("party_order_completed"), "Expected order completed event.")
+
+
+func _test_manager_can_cancel_assigned_order() -> void:
+    var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
+    var assign_result: RefCounted = server.submit_assign_party_order(_create_order_command(
+        GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID,
+        "merchant_miroslaw",
+        "raciborz"
+    ))
+    _expect(assign_result.accepted, "Expected setup order assignment to be accepted.")
+
+    var cancel_result: RefCounted = server.submit_cancel_party_order(_create_cancel_order_command(
+        GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID,
+        "merchant_miroslaw",
+        "changed_trade_plan"
+    ))
+    var party: RefCounted = server.state.get_party(GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID)
+    _expect(cancel_result.accepted, "Expected manager to cancel assigned order.")
+    _expect(party.order.status == PARTY_ORDER_STATE_SCRIPT.STATUS_CANCELLED, "Expected cancelled order status.")
+    _expect(party.order.cancel_reason == "changed_trade_plan", "Expected explicit cancel reason.")
+    _expect(_event_types(server).has("party_order_cancelled"), "Expected order cancelled event.")
+
+
+func _test_cancelled_order_allows_new_order() -> void:
+    var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
+    var assign_result: RefCounted = server.submit_assign_party_order(_create_order_command(
+        GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID,
+        "merchant_miroslaw",
+        "raciborz"
+    ))
+    _expect(assign_result.accepted, "Expected setup order assignment to be accepted.")
+
+    var cancel_result: RefCounted = server.submit_cancel_party_order(_create_cancel_order_command(
+        GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID,
+        "merchant_miroslaw",
+        "manager_changed_destination"
+    ))
+    _expect(cancel_result.accepted, "Expected setup cancellation to be accepted.")
+
+    var new_order_result: RefCounted = server.submit_assign_party_order(_create_order_command(
+        GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID,
+        "merchant_miroslaw",
+        "opole"
+    ))
+    var party: RefCounted = server.state.get_party(GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID)
+    _expect(new_order_result.accepted, "Expected cancelled order to allow new assignment.")
+    _expect(party.order.status == PARTY_ORDER_STATE_SCRIPT.STATUS_ASSIGNED, "Expected new order assigned status.")
+    _expect(party.order.target_node_id == "opole", "Expected new order target.")
+
+
+func _test_cannot_cancel_traveling_order_without_interrupt_model() -> void:
+    var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
+    var assign_result: RefCounted = server.submit_assign_party_order(_create_order_command(
+        GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID,
+        "merchant_miroslaw",
+        "raciborz"
+    ))
+    _expect(assign_result.accepted, "Expected setup order assignment to be accepted.")
+
+    server.tick(0.0)
+    var cancel_result: RefCounted = server.submit_cancel_party_order(_create_cancel_order_command(
+        GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID,
+        "merchant_miroslaw",
+        "changed_trade_plan"
+    ))
+    _expect(not cancel_result.accepted, "Expected active travel cancellation to be rejected until interrupt semantics exist.")
+    _expect(cancel_result.error_code == SIMULATION_SERVER_SCRIPT.ERROR_ORDER_INTERRUPT_UNSUPPORTED, "Expected order_interrupt_unsupported.")
+
+
+func _test_manager_can_replace_assigned_order() -> void:
+    var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
+    var assign_result: RefCounted = server.submit_assign_party_order(_create_order_command(
+        GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID,
+        "merchant_miroslaw",
+        "raciborz"
+    ))
+    _expect(assign_result.accepted, "Expected setup order assignment to be accepted.")
+
+    var replace_command: RefCounted = REPLACE_PARTY_ORDER_COMMAND_SCRIPT.new()
+    replace_command.party_id = GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID
+    replace_command.issued_by_actor_id = "merchant_miroslaw"
+    replace_command.reason = "better_market_information"
+    replace_command.order_type = PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_TRAVEL_TO
+    replace_command.target_node_id = "opole"
+    var replace_result: RefCounted = server.submit_replace_party_order(replace_command)
+    var party: RefCounted = server.state.get_party(GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID)
+    _expect(replace_result.accepted, "Expected manager to replace assigned order.")
+    _expect(party.order.status == PARTY_ORDER_STATE_SCRIPT.STATUS_ASSIGNED, "Expected replacement order to be assigned.")
+    _expect(party.order.target_node_id == "opole", "Expected replacement target.")
+    _expect(_event_types(server).has("party_order_replaced"), "Expected order replaced event.")
+
+
+func _test_cannot_replace_traveling_order_without_interrupt() -> void:
+    var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
+    var assign_result: RefCounted = server.submit_assign_party_order(_create_order_command(
+        GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID,
+        "merchant_miroslaw",
+        "raciborz"
+    ))
+    _expect(assign_result.accepted, "Expected setup order assignment to be accepted.")
+
+    server.tick(0.0)
+    var replace_command: RefCounted = REPLACE_PARTY_ORDER_COMMAND_SCRIPT.new()
+    replace_command.party_id = GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID
+    replace_command.issued_by_actor_id = "merchant_miroslaw"
+    replace_command.reason = "better_market_information"
+    replace_command.order_type = PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_TRAVEL_TO
+    replace_command.target_node_id = "opole"
+    var replace_result: RefCounted = server.submit_replace_party_order(replace_command)
+    _expect(not replace_result.accepted, "Expected traveling order replacement to be rejected.")
+    _expect(replace_result.error_code == SIMULATION_SERVER_SCRIPT.ERROR_ORDER_INTERRUPT_UNSUPPORTED, "Expected order_interrupt_unsupported.")
+
+
+func _test_manager_can_interrupt_traveling_order() -> void:
+    var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
+    var assign_result: RefCounted = server.submit_assign_party_order(_create_order_command(
+        GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID,
+        "merchant_miroslaw",
+        "raciborz"
+    ))
+    _expect(assign_result.accepted, "Expected setup order assignment to be accepted.")
+
+    server.tick(0.0)
+    var interrupt_command: RefCounted = INTERRUPT_TRAVEL_COMMAND_SCRIPT.new()
+    interrupt_command.party_id = GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID
+    interrupt_command.issued_by_actor_id = "merchant_miroslaw"
+    interrupt_command.reason = "ambush_spotted"
+    var interrupt_result: RefCounted = server.submit_interrupt_travel(interrupt_command)
+    var party: RefCounted = server.state.get_party(GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID)
+    _expect(interrupt_result.accepted, "Expected manager to interrupt active travel.")
+    _expect(party.travel_state == "interrupted", "Expected interrupted travel state.")
+    _expect(party.order.status == PARTY_ORDER_STATE_SCRIPT.STATUS_INTERRUPTED, "Expected order interrupted status.")
+    _expect(_event_types(server).has("party_travel_interrupted"), "Expected travel interrupted event.")
+    _expect(_event_types(server).has("party_order_interrupted"), "Expected order interrupted event.")
+
+    var interrupted_node_id: String = party.current_node_id
+    server.tick(10.0)
+    _expect(party.travel_state == "interrupted", "Expected interrupted party not to keep traveling.")
+    _expect(party.current_node_id == interrupted_node_id, "Expected interrupted party not to arrive through tick.")
 
 
 func _test_mayor_can_assign_supply_procurement_intent() -> void:
@@ -199,6 +347,14 @@ func _create_order_command(party_id: String, issued_by_actor_id: String, target_
     command.issued_by_actor_id = issued_by_actor_id
     command.order_type = PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_TRAVEL_TO
     command.target_node_id = target_node_id
+    return command
+
+
+func _create_cancel_order_command(party_id: String, issued_by_actor_id: String, reason: String) -> RefCounted:
+    var command: RefCounted = CANCEL_PARTY_ORDER_COMMAND_SCRIPT.new()
+    command.party_id = party_id
+    command.issued_by_actor_id = issued_by_actor_id
+    command.reason = reason
     return command
 
 

@@ -41,6 +41,8 @@ Managed parties can now receive manager-issued orders. `AssignPartyOrderCommand`
 
 Managed parties can also have authorized issuer actors for hierarchy. The first city supply party is managed by Wroclaw's quartermaster while Wroclaw's mayor can issue a validated `procure_goods` intent through the same party order command.
 
+Party orders now have explicit lifecycle commands for cancellation, local replacement, and active travel interruption. Interrupted travel is durable state, not an automatic return to a city; future route-segment work should resolve how an interrupted party resumes, returns, camps, flees, or continues.
+
 The first quartermaster AI can execute that supply intent from its own order ledger and WorldMemory observations, using the same travel and goods transfer commands as every other party.
 
 The first mayor supply planner uses city/mayor memory to avoid issuing duplicate supply orders for the same need during repeated re-evaluation.

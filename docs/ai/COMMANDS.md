@@ -58,6 +58,7 @@ godot --headless --path game --check-only -s tests/PartyTravelCommandTest.gd
 godot --headless --path game --check-only -s tests/TravelIntentCommandTest.gd
 godot --headless --path game --check-only -s tests/PartyCargoTest.gd
 godot --headless --path game --check-only -s tests/TransferGoodsCommandTest.gd
+godot --headless --path game --check-only -s tests/MemoryFreshnessPolicyTest.gd
 godot --headless --path game --check-only -s tests/ActorTaskStateTest.gd
 godot --headless --path game --check-only -s tests/ReportBackCommandTest.gd
 godot --headless --path game --check-only -s tests/AskLocalInformationCommandTest.gd
@@ -80,6 +81,7 @@ godot --headless --path game -s tests/PartyTravelCommandTest.gd
 godot --headless --path game -s tests/TravelIntentCommandTest.gd
 godot --headless --path game -s tests/PartyCargoTest.gd
 godot --headless --path game -s tests/TransferGoodsCommandTest.gd
+godot --headless --path game -s tests/MemoryFreshnessPolicyTest.gd
 godot --headless --path game -s tests/ActorTaskStateTest.gd
 godot --headless --path game -s tests/ReportBackCommandTest.gd
 godot --headless --path game -s tests/AskLocalInformationCommandTest.gd
@@ -116,6 +118,18 @@ Optional quartermaster-to-WorldMemory integration test. This starts `services/wo
 
 ```powershell
 tools\run_quartermaster_world_memory_integration.ps1
+```
+
+Optional mayor supply planner-to-WorldMemory integration test. This starts `services/world_memory`, ingests a mayor need, runs the quartermaster report-back flow, writes mayor memory to a temporary JSON file, and verifies `MayorSupplyPlanner` uses that memory without duplicating fresh active orders:
+
+```powershell
+tools\run_mayor_supply_planner_world_memory_integration.ps1
+```
+
+Optional full supply-loop WorldMemory integration test. This starts `services/world_memory`, runs mayor need declaration, mayor supply planning, quartermaster procurement travel, withdraw, return, deposit, and verifies WorldMemory contains need, intent, active order, completed order, and deposit memory:
+
+```powershell
+tools\run_supply_loop_world_memory_integration.ps1
 ```
 
 ## Lint / format / static checks

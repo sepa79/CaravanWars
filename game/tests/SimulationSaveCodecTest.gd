@@ -2,7 +2,10 @@ extends MainLoop
 
 const GAME_SESSION_FACTORY_SCRIPT: GDScript = preload("res://simulation/GameSessionFactory.gd")
 const ACTOR_TASK_STATE_SCRIPT: GDScript = preload("res://simulation/ActorTaskState.gd")
+const ASSIGN_PARTY_ORDER_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/AssignPartyOrderCommand.gd")
 const INSPECT_LOCAL_ROUTES_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/InspectLocalRoutesCommand.gd")
+const INTERRUPT_TRAVEL_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/InterruptTravelCommand.gd")
+const PARTY_ORDER_STATE_SCRIPT: GDScript = preload("res://simulation/PartyOrderState.gd")
 const SIMULATION_SAVE_CODEC_SCRIPT: GDScript = preload("res://simulation/SimulationSaveCodec.gd")
 const TRAVEL_INTENT_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/TravelIntentCommand.gd")
 
@@ -13,6 +16,7 @@ var _failed: bool = false
 func _initialize() -> void:
     _test_new_game_factory_creates_start_state()
     _test_save_load_preserves_travel_intent_state()
+    _test_save_load_preserves_interrupted_travel_state()
     _test_load_rejects_wrong_schema_version()
     _test_load_rejects_unknown_region_graph()
 
@@ -82,6 +86,38 @@ func _test_save_load_preserves_travel_intent_state() -> void:
     _expect(loaded_server.state.get_party(GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID).manager_actor_id == "merchant_miroslaw", "Expected loaded save to keep merchant manager.")
     _expect(loaded_server.get_recent_events(20).size() == server.get_recent_events(20).size(), "Expected runtime event log to load.")
     _expect(saved_dictionary.has("player_map_state"), "Expected save snapshot to reserve player map state field.")
+
+
+func _test_save_load_preserves_interrupted_travel_state() -> void:
+    var server: RefCounted = GAME_SESSION_FACTORY_SCRIPT.create_new_game_server()
+    var order_command: RefCounted = ASSIGN_PARTY_ORDER_COMMAND_SCRIPT.new()
+    order_command.party_id = GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID
+    order_command.issued_by_actor_id = "merchant_miroslaw"
+    order_command.order_type = PARTY_ORDER_STATE_SCRIPT.ORDER_TYPE_TRAVEL_TO
+    order_command.target_node_id = "raciborz"
+    var assign_result: RefCounted = server.submit_assign_party_order(order_command)
+    _expect(assign_result.accepted, "Expected setup order assignment to be accepted.")
+
+    server.tick(0.0)
+    var interrupt_command: RefCounted = INTERRUPT_TRAVEL_COMMAND_SCRIPT.new()
+    interrupt_command.party_id = GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID
+    interrupt_command.issued_by_actor_id = "merchant_miroslaw"
+    interrupt_command.reason = "ambush_spotted"
+    var interrupt_result: RefCounted = server.submit_interrupt_travel(interrupt_command)
+    _expect(interrupt_result.accepted, "Expected travel interruption setup to be accepted.")
+
+    var saved_dictionary: Dictionary = SIMULATION_SAVE_CODEC_SCRIPT.to_dictionary(server)
+    var load_result: Dictionary = SIMULATION_SAVE_CODEC_SCRIPT.load_from_dictionary(saved_dictionary)
+    _expect(bool(load_result.get("accepted", false)), "Expected save with interrupted travel to load.")
+    if not bool(load_result.get("accepted", false)):
+        return
+
+    var loaded_server: RefCounted = load_result.get("server")
+    var loaded_party: RefCounted = loaded_server.state.get_party(GAME_SESSION_FACTORY_SCRIPT.MERCHANT_PARTY_ID)
+    _expect(loaded_party.travel_state == "interrupted", "Expected interrupted travel state to load.")
+    _expect(loaded_party.order.status == PARTY_ORDER_STATE_SCRIPT.STATUS_INTERRUPTED, "Expected interrupted order status to load.")
+    _expect(loaded_party.order.interrupt_reason == "ambush_spotted", "Expected interrupted order reason to load.")
+    _expect(loaded_party.travel_distance_km > 0.0, "Expected interrupted travel distance to load.")
 
 
 func _test_load_rejects_wrong_schema_version() -> void:

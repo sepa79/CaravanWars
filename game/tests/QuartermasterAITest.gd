@@ -11,6 +11,7 @@ var _failed: bool = false
 
 func _initialize() -> void:
     _test_quartermaster_travels_to_remembered_source()
+    _test_quartermaster_ignores_stale_source_memory()
     _test_quartermaster_asks_local_information_without_source_memory()
     _test_quartermaster_uses_local_information_memory_as_source()
     _test_quartermaster_withdraws_and_returns_to_target()
@@ -40,6 +41,19 @@ func _test_quartermaster_travels_to_remembered_source() -> void:
     _expect(party.travel_state == "traveling", "Expected supply party to start travel.")
     _expect(party.travel_intent_destination_node_id == "opole", "Expected supply party to set Opole source as travel intent.")
     _expect(party.destination_node_id == "opole", "Expected supply party first leg to go to Opole.")
+
+
+func _test_quartermaster_ignores_stale_source_memory() -> void:
+    var server: RefCounted = _server_with_supply_order()
+    server.current_day = 200.0
+    var party: RefCounted = server.state.get_party(GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID)
+    var ai: RefCounted = QUARTERMASTER_AI_SCRIPT.new()
+
+    var result: Dictionary = ai.process(server, GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID, [_order_memory(), _opole_source_memory_at_day(1.0)])
+
+    _expect(bool(result.get("accepted", false)), "Expected stale source fallback action to be accepted.")
+    _expect(result.get("action", "") == "ask_local_information", "Expected stale source memory to trigger fresh local information.")
+    _expect(party.travel_state == "idle", "Expected stale source not to start travel.")
 
 
 func _test_quartermaster_asks_local_information_without_source_memory() -> void:
@@ -108,6 +122,7 @@ func _test_quartermaster_deposits_and_completes_order() -> void:
     _expect(int(party.cargo.get("food", 0)) == 0, "Expected supply party food cargo to be deposited.")
     _expect(int(wroclaw.resources.get("food", 0)) == 50, "Expected Wroclaw food to increase through command.")
     _expect(party.order.status == PARTY_ORDER_STATE_SCRIPT.STATUS_COMPLETED, "Expected supply order to complete.")
+    _expect(_event_types(server).has("party_order_completed"), "Expected completed procure order event.")
 
 
 func _test_quartermaster_does_nothing_without_order_memory() -> void:
@@ -162,11 +177,17 @@ func _order_memory() -> Dictionary:
 
 
 func _opole_source_memory() -> Dictionary:
+    return _opole_source_memory_at_day(0.0)
+
+
+func _opole_source_memory_at_day(observed_day: float) -> Dictionary:
     return {
         "id": "mem_wroclaw_supply_party_observed_opole",
         "kind": "location_observation",
+        "heard_at_time": "day:%0.3f" % observed_day,
         "metadata": {
             "owner_id": GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID,
+            "occurred_day": observed_day,
             "node_id": "opole",
             "observed_location_id": GAME_SESSION_FACTORY_SCRIPT.OPOLE_LOCATION_ID,
             "observed_resources": {
@@ -180,8 +201,10 @@ func _local_food_source_memory() -> Dictionary:
     return {
         "id": "mem_wroclaw_supply_party_local_food_info",
         "kind": "local_information",
+        "heard_at_time": "day:0.000",
         "metadata": {
             "party_id": GAME_SESSION_FACTORY_SCRIPT.WROCLAW_SUPPLY_PARTY_ID,
+            "occurred_day": 0.0,
             "location_id": GAME_SESSION_FACTORY_SCRIPT.WROCLAW_LOCATION_ID,
             "node_id": "wroclaw",
             "query_type": "goods_source",

@@ -8,6 +8,7 @@ const PARTY_TASK_STATE_SCRIPT: GDScript = preload("res://simulation/PartyTaskSta
 
 const TRAVEL_STATE_IDLE: String = "idle"
 const TRAVEL_STATE_TRAVELING: String = "traveling"
+const TRAVEL_STATE_INTERRUPTED: String = "interrupted"
 
 var party_id: String = ""
 var party_type: String = ""
@@ -98,6 +99,12 @@ func clear_travel_plan() -> void:
     travel_path_node_ids.clear()
     travel_path_edge_ids.clear()
     travel_path_index = 0
+
+
+func interrupt_travel() -> void:
+    if travel_state != TRAVEL_STATE_TRAVELING:
+        return
+    travel_state = TRAVEL_STATE_INTERRUPTED
 
 
 func tick_travel(days: float) -> void:

@@ -537,6 +537,8 @@ def ingest_domain_event(payload: DomainEventIn) -> dict[str, Any]:
         created_entries = _memory_entries_for_location_economy_ticked(world_event)
     elif world_event["event_type"] == "location_need_declared":
         created_entries = _memory_entries_for_location_need_declared(world_event)
+    elif world_event["event_type"] == "mayor_supply_intent_declared":
+        created_entries = _memory_entries_for_mayor_supply_intent_declared(world_event)
     elif world_event["event_type"] == "worldsim_location_observed":
         created_entries = _memory_entries_for_worldsim_observation(world_event, "location_observation")
     elif world_event["event_type"] == "worldsim_party_observed":
@@ -549,8 +551,20 @@ def ingest_domain_event(payload: DomainEventIn) -> dict[str, Any]:
         created_entries = _memory_entries_for_party_travel_started(world_event)
     elif world_event["event_type"] == "party_arrived":
         created_entries = _memory_entries_for_party_arrived(world_event)
+    elif world_event["event_type"] == "party_travel_interrupted":
+        created_entries = _memory_entries_for_party_travel_interrupted(world_event)
     elif world_event["event_type"] == "party_order_assigned":
         created_entries = _memory_entries_for_party_order_assigned(world_event)
+    elif world_event["event_type"] == "party_order_replaced":
+        created_entries = _memory_entries_for_party_order_lifecycle(world_event, "active")
+    elif world_event["event_type"] == "party_order_completed":
+        created_entries = _memory_entries_for_party_order_lifecycle(world_event, "completed")
+    elif world_event["event_type"] == "party_order_failed":
+        created_entries = _memory_entries_for_party_order_lifecycle(world_event, "failed")
+    elif world_event["event_type"] == "party_order_cancelled":
+        created_entries = _memory_entries_for_party_order_lifecycle(world_event, "cancelled")
+    elif world_event["event_type"] == "party_order_interrupted":
+        created_entries = _memory_entries_for_party_order_lifecycle(world_event, "interrupted")
 
     return {
         "world_event": world_event,
@@ -695,6 +709,60 @@ def _memory_entries_for_location_need_declared(world_event: dict[str, Any]) -> l
     ]
 
 
+def _memory_entries_for_mayor_supply_intent_declared(world_event: dict[str, Any]) -> list[dict[str, Any]]:
+    metadata = world_event["metadata"]
+    location_id = str(metadata.get("location_id", world_event.get("location_id", "")))
+    issued_by_actor_id = str(metadata.get("issued_by_actor_id", metadata.get("manager_actor_id", "")))
+    if not location_id or not issued_by_actor_id:
+        return []
+
+    base_metadata = {**metadata, "source": "domain_event", "event_type": world_event["event_type"]}
+    return [
+        upsert_memory_entry(
+            MemoryEntryIn(
+                id=f"mem_{issued_by_actor_id}_{world_event['id']}",
+                owner_id=issued_by_actor_id,
+                owner_kind="actor",
+                text=_technical_text(world_event),
+                kind="mayor_supply_intent",
+                source_event_id=world_event["id"],
+                heard_at_location_id=location_id,
+                heard_at_time=world_event["occurred_at"],
+                tags=world_event["tags"],
+                credibility=world_event["reliability"],
+                salience=world_event["importance"],
+                freshness=1.0,
+                repeat_chance=0.1,
+                distortion=0.0,
+                hop_count=0,
+                source_chain=[world_event["id"]],
+                metadata={**base_metadata, "perspective": "intent_owner"},
+            )
+        ),
+        upsert_memory_entry(
+            MemoryEntryIn(
+                id=f"mem_{location_id}_{world_event['id']}",
+                owner_id=location_id,
+                owner_kind="location",
+                text=_technical_text(world_event),
+                kind="mayor_supply_intent",
+                source_event_id=world_event["id"],
+                heard_at_location_id=location_id,
+                heard_at_time=world_event["occurred_at"],
+                tags=world_event["tags"],
+                credibility=world_event["reliability"],
+                salience=world_event["importance"],
+                freshness=1.0,
+                repeat_chance=0.1,
+                distortion=0.0,
+                hop_count=0,
+                source_chain=[world_event["id"]],
+                metadata={**base_metadata, "perspective": "location"},
+            )
+        ),
+    ]
+
+
 def _memory_entries_for_worldsim_observation(world_event: dict[str, Any], kind: str) -> list[dict[str, Any]]:
     metadata = world_event["metadata"]
     owner_id = str(metadata.get("owner_id", metadata.get("observer_party_id", "")))
@@ -804,7 +872,19 @@ def _memory_entries_for_party_arrived(world_event: dict[str, Any]) -> list[dict[
     return [_party_memory_entry(world_event, party_id, "travel_ledger", metadata)]
 
 
+def _memory_entries_for_party_travel_interrupted(world_event: dict[str, Any]) -> list[dict[str, Any]]:
+    metadata = world_event["metadata"]
+    party_id = str(metadata.get("party_id", ""))
+    if not party_id:
+        return []
+    return [_party_memory_entry(world_event, party_id, "travel_ledger", metadata)]
+
+
 def _memory_entries_for_party_order_assigned(world_event: dict[str, Any]) -> list[dict[str, Any]]:
+    return _memory_entries_for_party_order_lifecycle(world_event, "active")
+
+
+def _memory_entries_for_party_order_lifecycle(world_event: dict[str, Any], status: str) -> list[dict[str, Any]]:
     metadata = world_event["metadata"]
     party_id = str(metadata.get("party_id", ""))
     issued_by_actor_id = str(metadata.get("issued_by_actor_id", ""))
@@ -846,7 +926,7 @@ def _memory_entries_for_party_order_assigned(world_event: dict[str, Any]) -> lis
                     distortion=0.0,
                     hop_count=0,
                     source_chain=[world_event["id"]],
-                    metadata={**metadata, "source": "domain_event", "event_type": world_event["event_type"], "perspective": perspective},
+                    metadata={**metadata, "status": str(metadata.get("status", status)), "source": "domain_event", "event_type": world_event["event_type"], "perspective": perspective},
                 )
             )
         )

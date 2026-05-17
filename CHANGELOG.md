@@ -45,6 +45,16 @@ All notable changes to this project will be documented in this file.
 - Durable actor task state on parties, including save/load validation and party-lock busy checks.
 - Ask local information now runs as an actor-owned task for the party manager.
 - Report back command v0 for physically local actor reports from party memory to a superior's WorldMemory.
+- Memory freshness policy for goods-source AI decisions, preventing quartermasters from acting on stale source reports.
+- Mayor supply planner now uses memory freshness for source reports and stale active supply intents.
+- Mayor supply planner WorldMemory integration test for re-evaluating real mayor memory after report-back.
+- Mayor supply intent declaration command and WorldMemory ingest mapping for explicit mayor/location operational memory.
+- Mayor supply planner candidate-party selection test coverage for settlements with more than one supply party.
+- Procure order completion events and WorldMemory terminal order ledgers so mayor supply planning can close older active intents.
+- Cancel party order command and terminal `cancelled` order ledgers for explicit order lifecycle control.
+- Replace party order and interrupt travel commands, including durable interrupted travel state and WorldMemory ledgers.
+- Opportunity policy v0 notes for bounded secondary trade/courier actions under a single primary order.
+- Full mayor-to-quartermaster supply loop WorldMemory integration test covering need, intent, active order, deposit, and completed order memory.
 - Report back intent v0 documented and covered through WorldMemory memory-transfer.
 - Quartermaster-to-WorldMemory integration test for local information memory ingestion.
 - Planned route geometry v0 notes for route segments, waypoints, visibility, and travel time.

@@ -101,11 +101,21 @@ Deterministic manager slices should remain small and testable. The first merchan
 
 The first mayor food manager declares location food needs through `DeclareLocationNeedCommand`. It emits observable need events for WorldMemory and future merchant decision logic; it does not directly summon merchants or mutate resources.
 
-Mayor supply planning is separate from need declaration. The planner must check mayor/city WorldMemory for existing active supply intent before issuing a new `procure_goods` order, so repeated re-evaluation does not spam multiple parties for the same shortage.
+Mayor supply planning is separate from need declaration. The planner must check mayor/city WorldMemory for existing active supply intent before issuing a new `procure_goods` order, so repeated re-evaluation does not spam multiple parties for the same shortage. When it does act, it first declares a `mayor_supply_intent_declared` event through `DeclareSupplyIntentCommand`, then issues the physical supply party order. This gives the mayor/location an explicit operational memory entry instead of relying only on the subordinate party's order ledger. Larger settlements can pass an ordered list of candidate supply parties; the planner may skip unavailable parties, but it must still issue at most one supply intent/order per need pass.
 
 Darklands-like local actions should be modeled as timed tasks, not instant time jumps. `AskLocalInformationCommand` starts an `ask_local_information` actor task for the party manager in v0; `SimulationServer.tick()` completes it later and emits the information event.
 
 Subordinate reporting uses the same shape. `ReportBackCommand` validates physical presence, starts a `report_back` actor task, and emits `worldsim_memory_reported`; WorldMemory ingests that event as an explicit report transfer instead of giving managers hidden shared memory.
+
+AI decisions must account for information age. Goods-source memory is not permanent truth: `MemoryFreshnessPolicy` marks source information actionable only while it is recent enough. Stale entries can guide inquiry, but not confident procurement.
+
+Supply intent memory also ages. A months-old active order ledger is not allowed to block a mayor forever; after the configured active-intent window, the planner may issue a new order if the city still has a need.
+
+Supply intent and order memory is append-only. Newer terminal entries such as completed procure orders close older active entries during planning, rather than mutating or deleting old WorldMemory rows.
+
+Order lifecycle changes are explicit, not replacement by implication. `CancelPartyOrderCommand` can cancel an assigned or locally actionable order and emits `party_order_cancelled`. `ReplacePartyOrderCommand` replaces an order only at a local decision point. `InterruptTravelCommand` can stop active travel, but it leaves the party in explicit `interrupted` travel state until a future route-position recovery command resolves where the party goes next.
+
+Parties may later evaluate secondary opportunity policies while pursuing a primary order. Example: a supply party leaving Wroclaw for Opole could carry surplus goods to sell there if cargo, budget, timing, and reserved primary goods allow it. These are not second active orders: they are bounded local checks at safe decision points and must not override the primary order without an explicit lifecycle command.
 
 Task ownership should eventually be actor-based: one actor can run one task, and a party with several available companions can run several actor tasks in parallel. `PartyTaskState` is the current v0 party-lock approximation for actions where the whole party is effectively waiting on the executor.
 
@@ -131,6 +141,10 @@ Current command specs:
 
 - `docs/specs/commands/move_party.md`
 - `docs/specs/commands/assign_party_order.md`
+- `docs/specs/commands/cancel_party_order.md`
+- `docs/specs/commands/replace_party_order.md`
+- `docs/specs/commands/interrupt_travel.md`
+- `docs/specs/commands/declare_supply_intent.md`
 - `docs/specs/commands/ask_local_information.md`
 - `docs/specs/commands/inspect_local_routes.md`
 - `docs/specs/commands/travel_intent.md`
@@ -162,6 +176,7 @@ Current economy specs:
 - `docs/specs/economy/city_supply_party_v0.md`
 - `docs/specs/economy/quartermaster_ai_v0.md`
 - `docs/specs/economy/report_back_intent_v0.md`
+- `docs/specs/economy/opportunity_policy_v0.md`
 
 Current region specs:
 
