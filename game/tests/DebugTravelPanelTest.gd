@@ -16,6 +16,7 @@ func _initialize() -> void:
 
 func _run_tests() -> void:
     _test_initial_panel_state()
+    _test_debug_map_modes_separate_truth_from_party_knowledge()
     _test_check_button_reveals_local_routes()
     _test_travel_button_submits_authoritative_command()
     _test_advance_day_button_ticks_simulation()
@@ -33,6 +34,28 @@ func _test_initial_panel_state() -> void:
     _expect(_panel.travel_buttons_by_node_id.has("opole"), "Expected Opole travel button from Wroclaw.")
     _expect(_panel.travel_buttons_by_node_id.has("legnica"), "Expected Legnica travel button from Wroclaw.")
     _expect(not _panel.travel_buttons_by_node_id.has("nysa"), "Expected unknown Nysa route to be hidden from debug panel.")
+    _expect(_panel.get_node("party_selector").item_count >= 3, "Expected debug party selector to list managed parties.")
+    _expect(_panel.get_node("map_mode_selector").item_count == 2, "Expected debug map mode selector to expose Party and Truth modes.")
+
+
+func _test_debug_map_modes_separate_truth_from_party_knowledge() -> void:
+    var canvas: Control = _panel.get_node("debug_map_canvas")
+    var model: RefCounted = canvas.model
+    _expect(model.map_mode == "party", "Expected initial debug map to use party mode.")
+    _expect(model.map_nodes.has("wroclaw"), "Expected party map to show known Wroclaw.")
+    _expect(model.map_nodes.has("opole"), "Expected party map to show known Opole.")
+    _expect(not model.map_nodes.has("raciborz"), "Expected party map to hide unknown Raciborz.")
+
+    var map_mode_selector: OptionButton = _panel.get_node("map_mode_selector")
+    map_mode_selector.item_selected.emit(1)
+    model = canvas.model
+    _expect(model.map_mode == "truth", "Expected debug map to switch to truth mode.")
+    _expect(model.map_nodes.has("raciborz"), "Expected truth map to show Raciborz.")
+    _expect(model.map_edges.has("wroclaw_opole"), "Expected truth map to show route edges.")
+
+    map_mode_selector.item_selected.emit(0)
+    model = canvas.model
+    _expect(model.map_mode == "party", "Expected debug map to switch back to party mode.")
 
 
 func _test_check_button_reveals_local_routes() -> void:
@@ -56,6 +79,10 @@ func _test_travel_button_submits_authoritative_command() -> void:
     _expect(_panel.get_node("last_result_label").text == "Last result: accepted travel intent to opole", "Expected accepted command label.")
     _expect(_panel.get_node("events_label").text.contains("started travel"), "Expected travel start event label.")
     _expect(_panel.travel_buttons_by_node_id.is_empty(), "Expected no route buttons while party is traveling.")
+    var canvas: Control = _panel.get_node("debug_map_canvas")
+    var model: RefCounted = canvas.model
+    _expect(model.map_landmarks.has("old_willow_ford"), "Expected party map to include observed Old Willow Ford after starting Wroclaw-Opole travel.")
+    _expect(model.map_terrain_areas.has("odra_valley"), "Expected party map to include observed Odra valley after starting Wroclaw-Opole travel.")
 
 
 func _test_advance_day_button_ticks_simulation() -> void:

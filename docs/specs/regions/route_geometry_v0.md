@@ -34,17 +34,23 @@ graph node B
     {
       "id": "wroclaw_opole_odra_bend",
       "kind": "river_bend",
+      "position": [56.0, 37.0],
       "distance_from_start_km": 24.0,
       "elevation_m": 118,
       "travel_time_modifier": 1.0,
+      "terrain_area_ids": ["odra_valley"],
+      "landmark_ids": ["odra_bend_01"],
       "landmark_tags": ["odra", "river"]
     },
     {
       "id": "wroclaw_opole_old_bridge",
       "kind": "bridge",
+      "position": [60.0, 39.0],
       "distance_from_start_km": 43.0,
       "elevation_m": 120,
       "travel_time_modifier": 1.15,
+      "terrain_area_ids": ["odra_valley"],
+      "landmark_ids": ["old_bridge_01"],
       "landmark_tags": ["bridge", "crossing"]
     }
   ]

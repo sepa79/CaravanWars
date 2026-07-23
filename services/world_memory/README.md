@@ -162,6 +162,7 @@ Current v0 mappings:
 - `mayor_supply_intent_declared`: creates one mayor actor memory entry and one location memory entry.
 - `worldsim_location_observed`: creates one observer owner memory entry.
 - `worldsim_party_observed`: creates one observer owner memory entry.
+- `worldsim_route_waypoint_observed`: creates one observer owner route memory entry.
 - `worldsim_local_information_received`: creates one asking party memory entry.
 - `worldsim_memory_reported`: transfers entries from the reporting party owner to the recipient owner as `heard_report`.
 - `party_travel_started`: creates one party memory entry.

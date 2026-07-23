@@ -214,6 +214,47 @@ class DomainIngestTest(unittest.TestCase):
         self.assertEqual(player_memory[0]["metadata"]["source"], "worldsim_observation")
         self.assertEqual(player_memory[0]["metadata"]["observed_location_id"], "wroclaw_city")
 
+    def test_worldsim_route_waypoint_observation_creates_route_memory(self) -> None:
+        from cw_memory.repository import ingest_domain_event, list_memory_entries
+        from cw_memory.schemas import DomainEventIn, WorldEventIn
+
+        ingest_domain_event(
+            DomainEventIn(
+                world_event=WorldEventIn(
+                    id="evt_route_observation_001",
+                    event_type="worldsim_route_waypoint_observed",
+                    text="Party observed route waypoint old_willow_ford.",
+                    location_id="opole",
+                    occurred_at="day:1.000",
+                    importance=0.5,
+                    reliability=1.0,
+                    tags=["simulation", "worldsim_route_waypoint_observed", "player_party", "opole"],
+                    metadata={
+                        "owner_id": "player_party",
+                        "owner_kind": "party",
+                        "observer_party_id": "player_party",
+                        "edge_id": "wroclaw_opole",
+                        "from_node_id": "wroclaw",
+                        "to_node_id": "opole",
+                        "waypoint_id": "wroclaw_opole_old_willow_ford",
+                        "waypoint_kind": "ford",
+                        "terrain_area_ids": ["odra_valley"],
+                        "landmark_ids": ["old_willow_ford"],
+                        "landmark_tags": ["odra", "ford", "crossing"],
+                        "observation_score": 4,
+                    },
+                )
+            )
+        )
+
+        player_memory = list_memory_entries("player_party", limit=10)
+
+        self.assertEqual(len(player_memory), 1)
+        self.assertEqual(player_memory[0]["kind"], "route_observation")
+        self.assertEqual(player_memory[0]["metadata"]["source"], "worldsim_observation")
+        self.assertEqual(player_memory[0]["metadata"]["waypoint_id"], "wroclaw_opole_old_willow_ford")
+        self.assertEqual(player_memory[0]["metadata"]["terrain_area_ids"], ["odra_valley"])
+
     def test_party_order_assigned_creates_order_ledgers(self) -> None:
         from cw_memory.repository import ingest_domain_event, list_memory_entries
         from cw_memory.schemas import DomainEventIn, WorldEventIn

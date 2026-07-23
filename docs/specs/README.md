@@ -97,7 +97,10 @@ TODO
 - Quartermaster AI v0: `docs/specs/economy/quartermaster_ai_v0.md`
 - Report back intent v0: `docs/specs/economy/report_back_intent_v0.md`
 - Opportunity policy v0: `docs/specs/economy/opportunity_policy_v0.md`
+- Debug party map harness v0: `docs/specs/debug/debug_party_map_harness_v0.md`
+- World physical layers v0: `docs/specs/regions/world_physical_layers_v0.md`
 - Planned route geometry v0: `docs/specs/regions/route_geometry_v0.md`
+- Route observation integration v0: `docs/specs/worldsim/route_observation_integration_v0.md`
 - WorldSim observation pipeline v0: `docs/specs/worldsim/observation_pipeline_v0.md`
 - Region graph seed data: `game/data/regions/silesia.json`
 - Region graph loader/model code: `game/world/`

@@ -63,6 +63,7 @@ WorldMemory ingest creates entries owned by `owner_id`:
 
 - `worldsim_location_observed` -> `location_observation`
 - `worldsim_party_observed` -> `party_observation`
+- `worldsim_route_waypoint_observed` -> `route_observation`
 
 The entry metadata source is `worldsim_observation`.
 

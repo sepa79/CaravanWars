@@ -2,14 +2,19 @@ class_name DebugTravelPanel
 extends VBoxContainer
 
 const LOCAL_GAME_BOOTSTRAP_SCRIPT: GDScript = preload("res://simulation/LocalGameBootstrap.gd")
+const DEBUG_MAP_CANVAS_SCRIPT: GDScript = preload("res://debug/DebugMapCanvas.gd")
+const DEBUG_MAP_MODEL_SCRIPT: GDScript = preload("res://debug/DebugMapModel.gd")
 const INSPECT_LOCAL_ROUTES_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/InspectLocalRoutesCommand.gd")
 const TRAVEL_INTENT_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/TravelIntentCommand.gd")
 
 var server: RefCounted = null
 var party_id: String = LOCAL_GAME_BOOTSTRAP_SCRIPT.PLAYER_PARTY_ID
+var map_mode: String = DEBUG_MAP_MODEL_SCRIPT.MODE_PARTY
 var last_command_text: String = "No command submitted."
 var travel_buttons_by_node_id: Dictionary[String, Button] = {}
 
+var _party_selector: OptionButton = OptionButton.new()
+var _map_mode_selector: OptionButton = OptionButton.new()
 var _party_label: Label = Label.new()
 var _location_label: Label = Label.new()
 var _travel_label: Label = Label.new()
@@ -20,6 +25,8 @@ var _events_label: Label = Label.new()
 var _route_buttons_box: VBoxContainer = VBoxContainer.new()
 var _inspect_local_routes_button: Button = Button.new()
 var _advance_day_button: Button = Button.new()
+var _debug_map_model: RefCounted = DEBUG_MAP_MODEL_SCRIPT.new()
+var _debug_map_canvas: Control = DEBUG_MAP_CANVAS_SCRIPT.new()
 
 
 func _ready() -> void:
@@ -40,6 +47,8 @@ func refresh_from_snapshot() -> void:
     if server == null:
         return
 
+    _refresh_party_selector()
+    _refresh_map_mode_selector()
     var party_snapshot: Dictionary = _get_party_snapshot()
     if party_snapshot.is_empty():
         _party_label.text = "Party: missing"
@@ -50,6 +59,7 @@ func refresh_from_snapshot() -> void:
         _last_result_label.text = "Last result: %s" % last_command_text
         _events_label.text = "Events: none"
         _clear_route_buttons()
+        _refresh_debug_map()
         return
 
     _party_label.text = "Party: %s (%s)" % [str(party_snapshot.get("party_id", "")), str(party_snapshot.get("party_type", ""))]
@@ -60,12 +70,17 @@ func refresh_from_snapshot() -> void:
     _last_result_label.text = "Last result: %s" % last_command_text
     _events_label.text = _format_events_text()
     _rebuild_route_buttons(party_snapshot)
+    _refresh_debug_map()
 
 
 func _build_controls() -> void:
     if _party_label.get_parent() != null:
         return
 
+    _party_selector.name = "party_selector"
+    _party_selector.item_selected.connect(_on_party_selected)
+    _map_mode_selector.name = "map_mode_selector"
+    _map_mode_selector.item_selected.connect(_on_map_mode_selected)
     _party_label.name = "party_label"
     _location_label.name = "location_label"
     _travel_label.name = "travel_label"
@@ -80,7 +95,11 @@ func _build_controls() -> void:
     _advance_day_button.name = "advance_day_button"
     _advance_day_button.text = "Advance 1 day"
     _advance_day_button.pressed.connect(_on_advance_day_pressed)
+    _debug_map_canvas.name = "debug_map_canvas"
+    _debug_map_canvas.custom_minimum_size = Vector2(720, 430)
 
+    add_child(_party_selector)
+    add_child(_map_mode_selector)
     add_child(_party_label)
     add_child(_location_label)
     add_child(_travel_label)
@@ -91,6 +110,69 @@ func _build_controls() -> void:
     add_child(_inspect_local_routes_button)
     add_child(_route_buttons_box)
     add_child(_advance_day_button)
+    add_child(_debug_map_canvas)
+    _debug_map_canvas.bind_model(_debug_map_model)
+
+
+func _refresh_party_selector() -> void:
+    var party_ids: Array[String] = _all_party_ids()
+    var current_items: Array[String] = []
+    for item_index: int in range(0, _party_selector.item_count):
+        current_items.append(str(_party_selector.get_item_metadata(item_index)))
+
+    if current_items == party_ids:
+        _select_party_item()
+        return
+
+    _party_selector.clear()
+    for available_party_id: String in party_ids:
+        _party_selector.add_item(available_party_id)
+        _party_selector.set_item_metadata(_party_selector.item_count - 1, available_party_id)
+    _select_party_item()
+
+
+func _refresh_map_mode_selector() -> void:
+    if _map_mode_selector.item_count == 0:
+        _map_mode_selector.add_item("Party Map")
+        _map_mode_selector.set_item_metadata(0, DEBUG_MAP_MODEL_SCRIPT.MODE_PARTY)
+        _map_mode_selector.add_item("Truth Map")
+        _map_mode_selector.set_item_metadata(1, DEBUG_MAP_MODEL_SCRIPT.MODE_TRUTH)
+
+    for item_index: int in range(0, _map_mode_selector.item_count):
+        if str(_map_mode_selector.get_item_metadata(item_index)) == map_mode:
+            _map_mode_selector.select(item_index)
+            return
+
+
+func _select_party_item() -> void:
+    for item_index: int in range(0, _party_selector.item_count):
+        if str(_party_selector.get_item_metadata(item_index)) == party_id:
+            _party_selector.select(item_index)
+            return
+
+
+func _all_party_ids() -> Array[String]:
+    var party_ids: Array[String] = []
+    var snapshot: Dictionary = server.get_snapshot()
+    var parties: Variant = snapshot.get("parties", [])
+    if typeof(parties) != TYPE_ARRAY:
+        return party_ids
+
+    for party_value: Variant in parties:
+        if typeof(party_value) == TYPE_DICTIONARY:
+            var available_party_id: String = str(party_value.get("party_id", ""))
+            if not available_party_id.is_empty():
+                party_ids.append(available_party_id)
+    party_ids.sort()
+    return party_ids
+
+
+func _refresh_debug_map() -> void:
+    if server == null:
+        return
+
+    _debug_map_model.rebuild_from_server(server, party_id, map_mode)
+    _debug_map_canvas.queue_redraw()
 
 
 func _get_party_snapshot() -> Dictionary:
@@ -210,4 +292,16 @@ func _on_inspect_local_routes_pressed() -> void:
 func _on_advance_day_pressed() -> void:
     server.tick(1.0)
     last_command_text = "advanced 1 day"
+    refresh_from_snapshot()
+
+
+func _on_party_selected(item_index: int) -> void:
+    party_id = str(_party_selector.get_item_metadata(item_index))
+    last_command_text = "selected party %s" % party_id
+    refresh_from_snapshot()
+
+
+func _on_map_mode_selected(item_index: int) -> void:
+    map_mode = str(_map_mode_selector.get_item_metadata(item_index))
+    last_command_text = "selected map mode %s" % map_mode
     refresh_from_snapshot()

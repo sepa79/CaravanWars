@@ -4,6 +4,10 @@ Use this directory for durable architecture decisions.
 
 Keep ADRs short.
 
+## Current ADRs
+
+- `ADR-001-project-direction.md` - accepted project direction ledger for simulation, memory, hierarchy, maps, routes, orders, economy, and LLM boundaries.
+
 ## ADR template
 
 ```markdown

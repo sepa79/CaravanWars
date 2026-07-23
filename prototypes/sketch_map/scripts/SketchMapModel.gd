@@ -9,9 +9,13 @@ const REGION_MAP_SIZE: Vector2 = Vector2(980, 560)
 var nodes_by_id: Dictionary = {}
 var edges: Array[Dictionary] = []
 var rivers: Array[Dictionary] = []
+var terrain_areas_by_id: Dictionary = {}
+var landmarks_by_id: Dictionary = {}
 var map_nodes: Dictionary = {}
 var map_edges: Dictionary = {}
 var map_rivers: Dictionary = {}
+var map_terrain_areas: Dictionary = {}
+var map_landmarks: Dictionary = {}
 var erased_nodes: Array[Dictionary] = []
 var erased_edges: Array[Dictionary] = []
 var erased_rivers: Array[Dictionary] = []
@@ -36,9 +40,13 @@ func load_demo_graph() -> void:
     nodes_by_id.clear()
     edges.clear()
     rivers.clear()
+    terrain_areas_by_id.clear()
+    landmarks_by_id.clear()
     map_nodes.clear()
     map_edges.clear()
     map_rivers.clear()
+    map_terrain_areas.clear()
+    map_landmarks.clear()
     erased_nodes.clear()
     erased_edges.clear()
     erased_rivers.clear()
@@ -65,6 +73,7 @@ func load_demo_graph() -> void:
     discover_node(current_node_id, "visited")
     discover_nearby(current_node_id, "seen")
     reveal_rivers_near(current_node_id)
+    reveal_physical_layers_near(current_node_id, "seen")
 
 
 func _load_graph_json(path: String) -> Dictionary:
@@ -141,10 +150,83 @@ func _load_region_graph(parsed: Dictionary) -> void:
             "from": from_id,
             "to": to_id,
             "kind": str(source_edge.get("kind", "road")),
-            "distance_km": float(source_edge.get("distance_km", 0.0))
+            "distance_km": float(source_edge.get("distance_km", 0.0)),
+            "route_points": _region_route_points(source_edge, bounds)
         })
 
+    for area_value: Variant in parsed.get("terrain_areas", []):
+        if typeof(area_value) == TYPE_DICTIONARY:
+            _load_region_terrain_area(area_value, bounds)
+
+    for landmark_value: Variant in parsed.get("landmarks", []):
+        if typeof(landmark_value) == TYPE_DICTIONARY:
+            _load_region_landmark(landmark_value, bounds)
+
     _add_region_terrain(parsed)
+
+
+func _load_region_terrain_area(source_area: Dictionary, bounds: Rect2) -> void:
+    var area_id: String = str(source_area.get("id", ""))
+    if area_id.is_empty():
+        return
+
+    var shape: String = str(source_area.get("shape", "polygon"))
+    var area: Dictionary = {
+        "id": area_id,
+        "name": str(source_area.get("display_name", area_id)),
+        "kind": str(source_area.get("kind", "unknown")),
+        "shape": shape,
+        "notes": str(source_area.get("notes", ""))
+    }
+
+    if shape == "ellipse":
+        var center: Vector2 = _region_map_position(_array_to_vec2(source_area.get("center", [0, 0])), bounds)
+        var raw_radius: Vector2 = _array_to_vec2(source_area.get("radius", [1, 1]))
+        var radius: Vector2 = Vector2(
+            raw_radius.x / bounds.size.x * REGION_MAP_SIZE.x,
+            raw_radius.y / bounds.size.y * REGION_MAP_SIZE.y
+        )
+        area["center"] = center
+        area["radius"] = radius
+    else:
+        var points: Array[Vector2] = []
+        for point_value: Variant in source_area.get("polygon", []):
+            points.append(_region_map_position(_array_to_vec2(point_value), bounds))
+        area["points"] = points
+
+    terrain_areas_by_id[area_id] = area
+
+
+func _load_region_landmark(source_landmark: Dictionary, bounds: Rect2) -> void:
+    var landmark_id: String = str(source_landmark.get("id", ""))
+    if landmark_id.is_empty():
+        return
+
+    landmarks_by_id[landmark_id] = {
+        "id": landmark_id,
+        "name": str(source_landmark.get("display_name", landmark_id)),
+        "kind": _map_landmark_kind(str(source_landmark.get("kind", "unknown"))),
+        "raw_kind": str(source_landmark.get("kind", "unknown")),
+        "position": _region_map_position(_array_to_vec2(source_landmark.get("position", [0, 0])), bounds),
+        "elevation_m": float(source_landmark.get("elevation_m", 0.0)),
+        "visibility_class": str(source_landmark.get("visibility_class", "local")),
+        "notes": str(source_landmark.get("notes", ""))
+    }
+
+
+func _region_route_points(source_edge: Dictionary, bounds: Rect2) -> Array[Vector2]:
+    var route_points: Array[Vector2] = []
+    var geometry: Variant = source_edge.get("geometry", [])
+    if typeof(geometry) != TYPE_ARRAY:
+        return route_points
+
+    for waypoint_value: Variant in geometry:
+        if typeof(waypoint_value) != TYPE_DICTIONARY:
+            continue
+
+        var waypoint: Dictionary = waypoint_value
+        route_points.append(_region_map_position(_array_to_vec2(waypoint.get("position", [0, 0])), bounds))
+    return route_points
 
 
 func _region_graph_bounds(node_values: Array) -> Rect2:
@@ -198,6 +280,16 @@ func _map_region_kind(raw_kind: String) -> String:
             return "village"
 
 
+func _map_landmark_kind(raw_kind: String) -> String:
+    match raw_kind:
+        "river_bend":
+            return "ford"
+        "ford", "bridge", "hill", "tree", "shrine", "ruin", "stone":
+            return raw_kind
+        _:
+            return "landmark"
+
+
 func _add_region_terrain(parsed: Dictionary) -> void:
     if str(parsed.get("id", "")) != "silesia":
         return
@@ -228,6 +320,7 @@ func travel_to(node_id: String) -> bool:
     current_node_id = node_id
     discover_nearby(node_id, "seen")
     reveal_rivers_near(node_id)
+    reveal_physical_layers_near(node_id, "seen")
     notes.append({
         "text": "Road note: travelled to %s." % str(nodes_by_id[node_id].get("name", node_id)),
         "node_id": node_id,
@@ -251,6 +344,7 @@ func reveal_from_hill() -> void:
     var revealed: Array[String] = _nearest_undiscovered_nodes(current_node_id, 3)
     for node_id: String in revealed:
         discover_node(node_id, "seen")
+    reveal_distant_landmarks(current_node_id)
     notes.append({
         "text": "From high ground: rough marks added for %d distant place(s)." % revealed.size(),
         "node_id": current_node_id,
@@ -431,6 +525,118 @@ func discover_nearby(node_id: String, source: String) -> void:
             discover_edge_between(from_id, to_id, source)
 
 
+func reveal_physical_layers_near(node_id: String, source: String) -> void:
+    if not nodes_by_id.has(node_id):
+        return
+
+    var node_pos: Vector2 = _array_to_vec2(nodes_by_id[node_id].get("position", [0, 0]))
+    for landmark_id: String in landmarks_by_id.keys():
+        var landmark: Dictionary = landmarks_by_id[landmark_id]
+        var landmark_pos: Vector2 = _array_to_vec2(landmark.get("position", [0, 0]))
+        var reveal_distance: float = 190.0 if str(landmark.get("visibility_class", "")) == "major" else 105.0
+        if landmark_pos.distance_to(node_pos) <= reveal_distance:
+            discover_landmark(landmark_id, source)
+
+    for area_id: String in terrain_areas_by_id.keys():
+        var area: Dictionary = terrain_areas_by_id[area_id]
+        if _terrain_area_near(area, node_pos, 130.0):
+            discover_terrain_area(area_id, source)
+
+
+func reveal_distant_landmarks(node_id: String) -> void:
+    if not nodes_by_id.has(node_id):
+        return
+
+    var node_pos: Vector2 = _array_to_vec2(nodes_by_id[node_id].get("position", [0, 0]))
+    for landmark_id: String in landmarks_by_id.keys():
+        var landmark: Dictionary = landmarks_by_id[landmark_id]
+        if str(landmark.get("visibility_class", "")) != "major":
+            continue
+
+        var landmark_pos: Vector2 = _array_to_vec2(landmark.get("position", [0, 0]))
+        if landmark_pos.distance_to(node_pos) <= 430.0:
+            discover_landmark(landmark_id, "seen")
+
+
+func discover_landmark(landmark_id: String, source: String) -> void:
+    if not landmarks_by_id.has(landmark_id):
+        return
+
+    if map_landmarks.has(landmark_id):
+        var existing: Dictionary = map_landmarks[landmark_id]
+        if _source_rank(source) > _source_rank(str(existing.get("source", ""))):
+            existing["source"] = source
+            existing["medium"] = _medium_for_source(source)
+            existing["status"] = _status_for_source(source)
+            existing["accuracy"] = _accuracy_for_source(source)
+            existing["label"] = _label_for_landmark(landmarks_by_id[landmark_id], source)
+            map_landmarks[landmark_id] = existing
+        return
+
+    var landmark: Dictionary = landmarks_by_id[landmark_id]
+    var true_pos: Vector2 = _array_to_vec2(landmark.get("position", [0, 0]))
+    map_landmarks[landmark_id] = {
+        "id": landmark_id,
+        "name": str(landmark.get("name", landmark_id)),
+        "kind": str(landmark.get("kind", "landmark")),
+        "true_pos": true_pos,
+        "map_pos": true_pos + _stable_offset(landmark_id, source),
+        "source": source,
+        "medium": _medium_for_source(source),
+        "status": _status_for_source(source),
+        "accuracy": _accuracy_for_source(source),
+        "label": _label_for_landmark(landmark, source),
+        "variant": abs(hash("%s:%s:landmark" % [landmark_id, source])) % 4
+    }
+
+
+func discover_terrain_area(area_id: String, source: String) -> void:
+    if not terrain_areas_by_id.has(area_id):
+        return
+
+    if map_terrain_areas.has(area_id):
+        var existing: Dictionary = map_terrain_areas[area_id]
+        if _source_rank(source) > _source_rank(str(existing.get("source", ""))):
+            existing["source"] = source
+            existing["medium"] = _medium_for_source(source)
+            existing["status"] = _status_for_source(source)
+            map_terrain_areas[area_id] = existing
+        return
+
+    var area: Dictionary = terrain_areas_by_id[area_id]
+    var map_area: Dictionary = {
+        "id": area_id,
+        "name": str(area.get("name", area_id)),
+        "kind": str(area.get("kind", "unknown")),
+        "shape": str(area.get("shape", "polygon")),
+        "source": source,
+        "medium": _medium_for_source(source),
+        "status": _status_for_source(source)
+    }
+    if str(area.get("shape", "polygon")) == "ellipse":
+        map_area["center"] = _array_to_vec2(area.get("center", [0, 0])) + _stable_offset(area_id, source) * 0.45
+        map_area["radius"] = _array_to_vec2(area.get("radius", [1, 1]))
+    else:
+        var points: Array[Vector2] = []
+        for i: int in range(0, area.get("points", []).size()):
+            var point: Vector2 = area.get("points", [])[i]
+            points.append(point + _stable_offset("%s:%d" % [area_id, i], source) * 0.35)
+        map_area["points"] = points
+    map_terrain_areas[area_id] = map_area
+
+
+func _terrain_area_near(area: Dictionary, node_pos: Vector2, max_distance: float) -> bool:
+    if str(area.get("shape", "polygon")) == "ellipse":
+        var center: Vector2 = _array_to_vec2(area.get("center", [0, 0]))
+        var radius: Vector2 = _array_to_vec2(area.get("radius", [0, 0]))
+        return center.distance_to(node_pos) <= max_distance + max(radius.x, radius.y)
+
+    for point: Vector2 in area.get("points", []):
+        if point.distance_to(node_pos) <= max_distance:
+            return true
+    return false
+
+
 func discover_node(node_id: String, source: String) -> void:
     if not nodes_by_id.has(node_id):
         return
@@ -598,6 +804,17 @@ func _first_undiscovered_node() -> String:
 func _edge_path(from_id: String, to_id: String, edge_id: String, source: String) -> PackedVector2Array:
     var from_pos: Vector2 = map_nodes[from_id]["map_pos"]
     var to_pos: Vector2 = map_nodes[to_id]["map_pos"]
+    var edge: Dictionary = _edge_by_id(edge_id)
+    var route_points: Array = edge.get("route_points", [])
+    if not route_points.is_empty():
+        var path: PackedVector2Array = PackedVector2Array()
+        path.append(from_pos)
+        for i: int in range(0, route_points.size()):
+            var route_point: Vector2 = route_points[i]
+            path.append(route_point + _stable_offset("%s:route:%d" % [edge_id, i], source) * 0.45)
+        path.append(to_pos)
+        return path
+
     var midpoint: Vector2 = (from_pos + to_pos) * 0.5
     var direction: Vector2 = (to_pos - from_pos).normalized()
     var normal: Vector2 = Vector2(-direction.y, direction.x)
@@ -605,6 +822,13 @@ func _edge_path(from_id: String, to_id: String, edge_id: String, source: String)
     if source == "heard":
         bend *= 1.8
     return PackedVector2Array([from_pos, midpoint + normal * bend, to_pos])
+
+
+func _edge_by_id(edge_id: String) -> Dictionary:
+    for edge: Dictionary in edges:
+        if str(edge.get("id", "")) == edge_id:
+            return edge
+    return {}
 
 
 func _add_bought_node(node_id: String) -> void:
@@ -829,6 +1053,13 @@ func _source_rank(source: String) -> float:
 
 func _label_for_node(node: Dictionary, source: String) -> String:
     var name: String = str(node.get("name", "unknown"))
+    if source == "heard":
+        return "%s?" % name
+    return name
+
+
+func _label_for_landmark(landmark: Dictionary, source: String) -> String:
+    var name: String = str(landmark.get("name", "unknown"))
     if source == "heard":
         return "%s?" % name
     return name

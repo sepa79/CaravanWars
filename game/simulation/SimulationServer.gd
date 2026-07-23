@@ -13,6 +13,7 @@ const PARTY_STATS_CALCULATOR_SCRIPT: GDScript = preload("res://simulation/PartyS
 const SIMULATION_EVENT_LOG_SCRIPT: GDScript = preload("res://simulation/SimulationEventLog.gd")
 const SIMULATION_EVENT_SCRIPT: GDScript = preload("res://simulation/SimulationEvent.gd")
 const SIMULATION_STATE_SCRIPT: GDScript = preload("res://simulation/SimulationState.gd")
+const WORLD_SIM_OBSERVATION_SERVICE_SCRIPT: GDScript = preload("res://simulation/WorldSimObservationService.gd")
 const TRAVEL_INTENT_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/TravelIntentCommand.gd")
 const TRANSFER_GOODS_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/TransferGoodsCommand.gd")
 const ASK_LOCAL_INFORMATION_COMMAND_SCRIPT: GDScript = preload("res://simulation/commands/AskLocalInformationCommand.gd")
@@ -108,6 +109,7 @@ func submit_move_party(command: RefCounted) -> RefCounted:
         "distance_km": route_edge.distance_km,
         "speed_km_per_day": speed_km_per_day
     })
+    _observe_route_waypoints_for_started_leg(party, route_edge, command.from_node_id, command.to_node_id)
     return COMMAND_RESULT_SCRIPT.accepted_result()
 
 
@@ -1118,6 +1120,12 @@ func _start_next_planned_leg(party: RefCounted) -> void:
         "speed_km_per_day": speed_km_per_day,
         "travel_intent_destination_node_id": party.travel_intent_destination_node_id
     })
+    _observe_route_waypoints_for_started_leg(party, route_edge, party.origin_node_id, party.destination_node_id)
+
+
+func _observe_route_waypoints_for_started_leg(party: RefCounted, route_edge: RefCounted, from_node_id: String, to_node_id: String) -> void:
+    var observation_service: RefCounted = WORLD_SIM_OBSERVATION_SERVICE_SCRIPT.new()
+    observation_service.observe_route_waypoints_for_edge(self, party.party_id, route_edge, from_node_id, to_node_id)
 
 
 func _fail_travel_plan(party: RefCounted, failure_message: String) -> void:

@@ -58,6 +58,10 @@ All notable changes to this project will be documented in this file.
 - Report back intent v0 documented and covered through WorldMemory memory-transfer.
 - Quartermaster-to-WorldMemory integration test for local information memory ingestion.
 - Planned route geometry v0 notes for route segments, waypoints, visibility, and travel time.
+- World physical layers v0 notes plus authored Silesia terrain/landmark seed data, typed graph loading, and sketch-map observation rendering.
+- Route geometry v0 seed data and typed route waypoint loading for authored Silesia route details, with sketch-map road shaping from route geometry.
+- Route observation integration v0 notes for moving route/terrain/landmark discovery into server-authoritative WorldSim events and WorldMemory export.
+- Debug party map harness v0 with selected-party and truth map modes in the script-built debug travel panel.
 - Local LLM role notes for NPC speech, rumors, navigation text, and player-character intent rendering.
 - Historical world tone notes for singleplayer MUD-like simulation, hierarchy, fear, and social brutality.
 - Intent adjudication notes for preserving historically loaded player meaning before LLM dialogue rendering.

@@ -543,6 +543,8 @@ def ingest_domain_event(payload: DomainEventIn) -> dict[str, Any]:
         created_entries = _memory_entries_for_worldsim_observation(world_event, "location_observation")
     elif world_event["event_type"] == "worldsim_party_observed":
         created_entries = _memory_entries_for_worldsim_observation(world_event, "party_observation")
+    elif world_event["event_type"] == "worldsim_route_waypoint_observed":
+        created_entries = _memory_entries_for_worldsim_observation(world_event, "route_observation")
     elif world_event["event_type"] == "worldsim_local_information_received":
         created_entries = _memory_entries_for_worldsim_local_information(world_event)
     elif world_event["event_type"] == "worldsim_memory_reported":

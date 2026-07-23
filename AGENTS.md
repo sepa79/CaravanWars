@@ -25,14 +25,15 @@ Read in this order:
 2. `README.md`
 3. `docs/ai/PROJECT_CONTEXT.md`
 4. `docs/ARCHITECTURE.md`
-5. `docs/architecture/SERVER_AUTHORITATIVE_MODEL.md`
-6. `docs/reboot/WORLD_NAVIGATION_REBOOT.md`
-7. `docs/specs/README.md`
-8. `docs/ai/COMMANDS.md`
-9. `docs/ai/AI_HATS.md`
-10. `docs/ai/REVIEW_CHECKS.md`
-11. `docs/ai/JESTER_CHECKS.md`
-12. `docs/ai/HIVEMIND_RULES.md`
+5. `docs/adr/ADR-001-project-direction.md`
+6. `docs/architecture/SERVER_AUTHORITATIVE_MODEL.md`
+7. `docs/reboot/WORLD_NAVIGATION_REBOOT.md`
+8. `docs/specs/README.md`
+9. `docs/ai/COMMANDS.md`
+10. `docs/ai/AI_HATS.md`
+11. `docs/ai/REVIEW_CHECKS.md`
+12. `docs/ai/JESTER_CHECKS.md`
+13. `docs/ai/HIVEMIND_RULES.md`
 
 If sources conflict, hard rules in `RULES_ALWAYS_READ.md` and this file win, then project architecture/specs, then implementation evidence. If the conflict still matters, stop and ask.
 

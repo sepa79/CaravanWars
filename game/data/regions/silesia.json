@@ -2,6 +2,71 @@
   "id": "silesia",
   "display_name": "Silesia",
   "description": "Initial strategic graph for the first reboot region.",
+  "terrain_areas": [
+    {
+      "id": "odra_valley",
+      "display_name": "Odra Valley",
+      "kind": "river_valley",
+      "shape": "polygon",
+      "polygon": [[28.0, 16.0], [34.0, 13.0], [55.0, 29.0], [69.0, 39.0], [73.0, 46.0], [66.0, 49.0], [48.0, 34.0], [30.0, 22.0]],
+      "notes": "Low river valley used as the first authored terrain band."
+    },
+    {
+      "id": "great_forest_area",
+      "display_name": "Great Forest",
+      "kind": "forest",
+      "shape": "ellipse",
+      "center": [83.0, 36.0],
+      "radius": [10.0, 8.0],
+      "notes": "Dense woodland around the Great Forest graph node."
+    },
+    {
+      "id": "sudety_foothills",
+      "display_name": "Sudety Foothills",
+      "kind": "hills",
+      "shape": "polygon",
+      "polygon": [[30.0, 68.0], [40.0, 62.0], [55.0, 70.0], [65.0, 85.0], [35.0, 87.0]],
+      "notes": "High southern terrain around the pass toward Prague."
+    }
+  ],
+  "landmarks": [
+    {
+      "id": "sleza_massif",
+      "display_name": "Sleza Massif",
+      "kind": "hill",
+      "position": [42.0, 49.0],
+      "elevation_m": 718.0,
+      "visibility_class": "major",
+      "notes": "Large regional landmark visible from open country near Wroclaw and Nysa."
+    },
+    {
+      "id": "odra_bend_north",
+      "display_name": "Northern Odra Bend",
+      "kind": "river_bend",
+      "position": [34.0, 19.0],
+      "elevation_m": 80.0,
+      "visibility_class": "local",
+      "notes": "Distinctive river bend near the northern crossing."
+    },
+    {
+      "id": "old_willow_ford",
+      "display_name": "Old Willow Ford",
+      "kind": "ford",
+      "position": [52.0, 34.0],
+      "elevation_m": 92.0,
+      "visibility_class": "local",
+      "notes": "Route landmark at the major Odra crossing."
+    },
+    {
+      "id": "black_pine_edge",
+      "display_name": "Black Pine Edge",
+      "kind": "tree",
+      "position": [78.0, 39.0],
+      "elevation_m": 126.0,
+      "visibility_class": "local",
+      "notes": "Recognizable forest-edge landmark west of the Great Forest."
+    }
+  ],
   "nodes": [
     {
       "id": "prague",
@@ -86,7 +151,47 @@
     { "id": "prague_olomouc", "from": "prague", "to": "olomouc", "distance_km": 280.0, "kind": "major_route" },
     { "id": "prague_raciborz", "from": "prague", "to": "raciborz", "distance_km": 395.0, "kind": "major_route" },
     { "id": "prague_legnica", "from": "prague", "to": "legnica", "distance_km": 255.0, "kind": "military_route" },
-    { "id": "wroclaw_opole", "from": "wroclaw", "to": "opole", "distance_km": 100.0, "kind": "river_trade_route" },
+    {
+      "id": "wroclaw_opole",
+      "from": "wroclaw",
+      "to": "opole",
+      "distance_km": 100.0,
+      "kind": "river_trade_route",
+      "geometry": [
+        {
+          "id": "wroclaw_opole_old_willow_ford",
+          "kind": "ford",
+          "position": [52.0, 34.0],
+          "distance_from_start_km": 25.0,
+          "elevation_m": 92.0,
+          "travel_time_modifier": 1.10,
+          "terrain_area_ids": ["odra_valley"],
+          "landmark_ids": ["old_willow_ford"],
+          "landmark_tags": ["odra", "ford", "crossing"]
+        },
+        {
+          "id": "wroclaw_opole_sleza_view",
+          "kind": "visible_landmark",
+          "position": [57.0, 38.0],
+          "distance_from_start_km": 54.0,
+          "elevation_m": 120.0,
+          "travel_time_modifier": 1.0,
+          "terrain_area_ids": ["odra_valley"],
+          "landmark_ids": ["sleza_massif"],
+          "landmark_tags": ["sleza", "hill", "southwest"]
+        },
+        {
+          "id": "wroclaw_opole_odra_bend",
+          "kind": "river_bend",
+          "position": [63.0, 41.0],
+          "distance_from_start_km": 82.0,
+          "elevation_m": 90.0,
+          "travel_time_modifier": 1.0,
+          "terrain_area_ids": ["odra_valley"],
+          "landmark_tags": ["odra", "river"]
+        }
+      ]
+    },
     { "id": "wroclaw_legnica", "from": "wroclaw", "to": "legnica", "distance_km": 80.0, "kind": "military_route" },
     { "id": "wroclaw_glogow", "from": "wroclaw", "to": "glogow", "distance_km": 140.0, "kind": "crossing_route" },
     { "id": "wroclaw_nysa", "from": "wroclaw", "to": "nysa", "distance_km": 90.0, "kind": "regional_route" },
@@ -96,9 +201,66 @@
     { "id": "raciborz_olomouc", "from": "raciborz", "to": "olomouc", "distance_km": 120.0, "kind": "regional_route" },
     { "id": "raciborz_nysa", "from": "raciborz", "to": "nysa", "distance_km": 85.0, "kind": "regional_route" },
     { "id": "legnica_glogow", "from": "legnica", "to": "glogow", "distance_km": 60.0, "kind": "military_route" },
-    { "id": "nysa_sudety_pass", "from": "nysa", "to": "sudety_pass", "distance_km": 55.0, "kind": "mountain_route" },
+    {
+      "id": "nysa_sudety_pass",
+      "from": "nysa",
+      "to": "sudety_pass",
+      "distance_km": 55.0,
+      "kind": "mountain_route",
+      "geometry": [
+        {
+          "id": "nysa_sudety_foothill_rise",
+          "kind": "slope",
+          "position": [45.0, 64.0],
+          "distance_from_start_km": 20.0,
+          "elevation_m": 310.0,
+          "travel_time_modifier": 1.20,
+          "terrain_area_ids": ["sudety_foothills"],
+          "landmark_tags": ["foothills", "slope"]
+        },
+        {
+          "id": "nysa_sudety_sleza_rear_view",
+          "kind": "visible_landmark",
+          "position": [41.0, 69.0],
+          "distance_from_start_km": 42.0,
+          "elevation_m": 520.0,
+          "travel_time_modifier": 1.35,
+          "terrain_area_ids": ["sudety_foothills"],
+          "landmark_ids": ["sleza_massif"],
+          "landmark_tags": ["sleza", "high_ground"]
+        }
+      ]
+    },
     { "id": "sudety_pass_prague", "from": "sudety_pass", "to": "prague", "distance_km": 195.0, "kind": "mountain_route" },
     { "id": "odra_crossing_wroclaw", "from": "odra_crossing", "to": "wroclaw", "distance_km": 25.0, "kind": "crossing_route" },
-    { "id": "great_forest_opole", "from": "great_forest", "to": "opole", "distance_km": 45.0, "kind": "wilderness_route" }
+    {
+      "id": "great_forest_opole",
+      "from": "great_forest",
+      "to": "opole",
+      "distance_km": 45.0,
+      "kind": "wilderness_route",
+      "geometry": [
+        {
+          "id": "great_forest_black_pine_edge",
+          "kind": "forest_edge",
+          "position": [78.0, 39.0],
+          "distance_from_start_km": 12.0,
+          "elevation_m": 126.0,
+          "travel_time_modifier": 1.25,
+          "terrain_area_ids": ["great_forest_area"],
+          "landmark_ids": ["black_pine_edge"],
+          "landmark_tags": ["forest", "tree", "edge"]
+        },
+        {
+          "id": "great_forest_opole_open_fields",
+          "kind": "open_ground",
+          "position": [72.0, 41.0],
+          "distance_from_start_km": 31.0,
+          "elevation_m": 105.0,
+          "travel_time_modifier": 1.0,
+          "landmark_tags": ["fields", "opole_approach"]
+        }
+      ]
+    }
   ]
 }

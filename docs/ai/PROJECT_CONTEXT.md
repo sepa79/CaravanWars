@@ -4,6 +4,8 @@
 
 CaravanWars Reboot is a Godot 4 restart of CaravanWars focused on a server-authoritative caravan, trade, travel, rumor, and conflict simulation.
 
+Durable direction decisions are recorded in `docs/adr/ADR-001-project-direction.md`. AI agents should read it when a task touches simulation architecture, memory, hierarchy, route geometry, maps, economy, orders, or LLM/voice boundaries.
+
 ## What this project does
 
 The project models a world as region graphs connected by passages and known routes. The region graph is the simulation source of truth; parchment-style maps are presentation artifacts. Current code seeds a Silesia high-level region graph and typed GDScript loader/smoke test. The gameplay architecture must allow singleplayer and multiplayer to use the same command and state model.

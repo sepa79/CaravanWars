@@ -67,16 +67,20 @@ func _draw() -> void:
         "compare":
             _draw_bought_map(true)
             _draw_erased_marks()
+            _draw_terrain_areas()
             _draw_rivers()
             _draw_edges()
             _draw_nodes()
+            _draw_landmarks()
         "truth":
             _draw_truth_map()
         _:
             _draw_erased_marks()
+            _draw_terrain_areas()
             _draw_rivers()
             _draw_edges()
             _draw_nodes()
+            _draw_landmarks()
     _draw_legend()
 
 
@@ -98,6 +102,12 @@ func _draw_rivers() -> void:
             screen_points.append(_to_screen(point))
         if screen_points.size() >= 2:
             _draw_verified_river(screen_points)
+
+
+func _draw_terrain_areas() -> void:
+    for area_id: String in model.map_terrain_areas.keys():
+        var area: Dictionary = model.map_terrain_areas[area_id]
+        _draw_terrain_area(area, false)
 
 
 func _draw_erased_marks() -> void:
@@ -172,6 +182,9 @@ func _draw_bought_map(skip_player_known_nodes: bool) -> void:
 
 
 func _draw_truth_map() -> void:
+    for area_id: String in model.terrain_areas_by_id.keys():
+        _draw_terrain_area(model.terrain_areas_by_id[area_id], true)
+
     for river: Dictionary in model.rivers:
         var river_points: PackedVector2Array = PackedVector2Array()
         for point_value: Variant in river.get("points", []):
@@ -187,7 +200,15 @@ func _draw_truth_map() -> void:
 
         var from_pos: Vector2 = _array_to_vec2(model.nodes_by_id[from_id].get("position", [0, 0]))
         var to_pos: Vector2 = _array_to_vec2(model.nodes_by_id[to_id].get("position", [0, 0]))
-        var points: PackedVector2Array = _smooth_polyline(PackedVector2Array([from_pos, (from_pos + to_pos) * 0.5, to_pos]))
+        var truth_route_points: PackedVector2Array = PackedVector2Array()
+        truth_route_points.append(from_pos)
+        for route_point: Vector2 in edge.get("route_points", []):
+            truth_route_points.append(route_point)
+        if truth_route_points.size() == 1:
+            truth_route_points.append((from_pos + to_pos) * 0.5)
+        truth_route_points.append(to_pos)
+
+        var points: PackedVector2Array = _smooth_polyline(truth_route_points)
         for i: int in range(0, points.size()):
             points[i] = _to_screen(points[i])
         draw_polyline(points, Color(0.10, 0.07, 0.04, 0.38), 1.4, true)
@@ -199,6 +220,13 @@ func _draw_truth_map() -> void:
         var color: Color = Color(0.08, 0.05, 0.03, 0.78)
         _draw_icon(pos, str(node.get("kind", "unknown")), color, int(abs(hash("%s:truth" % node_id)) % 4), false)
         _draw_node_label(font, pos, node, str(node.get("name", node_id)), color, false)
+
+    for landmark_id: String in model.landmarks_by_id.keys():
+        var landmark: Dictionary = model.landmarks_by_id[landmark_id]
+        var landmark_pos: Vector2 = _to_screen(_array_to_vec2(landmark.get("position", [0, 0])))
+        var landmark_color: Color = Color(0.08, 0.05, 0.03, 0.62)
+        _draw_icon(landmark_pos, str(landmark.get("kind", "landmark")), landmark_color, int(abs(hash("%s:truth" % landmark_id)) % 4), false)
+        _draw_node_label(font, landmark_pos, landmark, str(landmark.get("name", landmark_id)), landmark_color, false)
 
 
 func _draw_edges() -> void:
@@ -240,6 +268,40 @@ func _draw_nodes() -> void:
 
         var label: String = str(node.get("label", node_id))
         _draw_node_label(font, pos, node, label, color, true)
+
+
+func _draw_landmarks() -> void:
+    var font: Font = get_theme_default_font()
+    for landmark_id: String in model.map_landmarks.keys():
+        var landmark: Dictionary = model.map_landmarks[landmark_id]
+        var pos: Vector2 = _to_screen(landmark.get("map_pos", Vector2.ZERO))
+        var color: Color = _ink_for_observation(landmark)
+        _draw_icon(pos, str(landmark.get("kind", "landmark")), color, int(landmark.get("variant", 0)), false)
+        _draw_node_label(font, pos, landmark, str(landmark.get("label", landmark_id)), color, true)
+
+
+func _draw_terrain_area(area: Dictionary, truth: bool) -> void:
+    var kind: String = str(area.get("kind", "unknown"))
+    var color: Color = _terrain_color(kind, truth)
+    if str(area.get("shape", "polygon")) == "ellipse":
+        var center: Vector2 = _to_screen(_array_to_vec2(area.get("center", [0, 0])))
+        var radius: Vector2 = _array_to_vec2(area.get("radius", [0, 0])) * zoom
+        if radius.x <= 0.0 or radius.y <= 0.0:
+            return
+        _draw_filled_ellipse(center, radius, color)
+        _draw_ellipse_outline(center, radius, Color(color.r, color.g, color.b, min(color.a + 0.14, 0.50)))
+        return
+
+    var points: PackedVector2Array = PackedVector2Array()
+    for point: Vector2 in area.get("points", []):
+        points.append(_to_screen(point))
+    if points.size() < 3:
+        return
+
+    draw_colored_polygon(points, color)
+    var outline: PackedVector2Array = points.duplicate()
+    outline.append(points[0])
+    draw_polyline(outline, Color(color.r * 0.65, color.g * 0.65, color.b * 0.65, min(color.a + 0.16, 0.48)), 0.8, true)
 
 
 func _draw_icon(pos: Vector2, kind: String, color: Color, variant: int, selected: bool) -> void:
@@ -287,6 +349,24 @@ func _draw_icon(pos: Vector2, kind: String, color: Color, variant: int, selected
             for i: int in range(0, 4):
                 var angle: float = float(i) * PI * 0.5 + float(variant) * 0.12
                 draw_line(pos, pos + Vector2(cos(angle), sin(angle)) * 15.0, color, 1.8)
+        "tree":
+            draw_line(pos + Vector2(0, 9), pos + Vector2(0, -10 - variant), color, 1.7)
+            draw_arc(pos + Vector2(-5, -4), 8.0, PI * 0.15, PI * 1.35, 12, color, 1.6)
+            draw_arc(pos + Vector2(5, -4), 8.0, -PI * 0.35, PI * 0.85, 12, color, 1.6)
+        "stone":
+            draw_arc(pos + Vector2(0, 8), 12.0, PI, TAU, 14, color, 1.8)
+            draw_line(pos + Vector2(-12, 8), pos + Vector2(12, 8), color, 1.4)
+        "shrine":
+            draw_line(pos + Vector2(0, -14), pos + Vector2(0, 12), color, 1.7)
+            draw_line(pos + Vector2(-8, -5), pos + Vector2(8, -5), color, 1.7)
+            draw_arc(pos + Vector2(0, 12), 9.0, PI, TAU, 12, color, 1.4)
+        "ruin":
+            draw_rect(Rect2(pos + Vector2(-11, -8), Vector2(22, 16)), color, false, 1.5)
+            draw_line(pos + Vector2(-11, -2), pos + Vector2(-3, -8), color, 1.3)
+            draw_line(pos + Vector2(2, -8), pos + Vector2(11, -1), color, 1.3)
+        "landmark":
+            draw_circle(pos, 6.0, color, false, 1.8)
+            draw_line(pos + Vector2(-9, 8), pos + Vector2(9, -8), color, 1.2)
         _:
             draw_circle(pos, 6.0, color)
 
@@ -415,6 +495,14 @@ func _draw_filled_ellipse(pos: Vector2, radius: Vector2, color: Color) -> void:
         var angle: float = TAU * float(i) / 32.0
         points.append(pos + Vector2(cos(angle) * radius.x, sin(angle) * radius.y))
     draw_colored_polygon(points, color)
+
+
+func _draw_ellipse_outline(pos: Vector2, radius: Vector2, color: Color) -> void:
+    var points: PackedVector2Array = PackedVector2Array()
+    for i: int in range(0, 34):
+        var angle: float = TAU * float(i) / 33.0
+        points.append(pos + Vector2(cos(angle) * radius.x, sin(angle) * radius.y))
+    draw_polyline(points, color, 0.8, true)
 
 
 func _draw_node_label(font: Font, pos: Vector2, node: Dictionary, label: String, color: Color, shadow: bool) -> void:
@@ -585,7 +673,7 @@ func _fallback_icon_radius(kind: String) -> float:
     match kind:
         "bridge", "ford":
             return 18.0 * scale
-        "hill":
+        "hill", "tree", "stone", "shrine", "ruin", "landmark":
             return 20.0 * scale
         "mill":
             return 18.0 * scale
@@ -696,7 +784,26 @@ func _ink_for_observation(observation: Dictionary) -> Color:
             return _ink_for_source(str(observation.get("source", "")))
 
 
+func _terrain_color(kind: String, truth: bool) -> Color:
+    var alpha: float = 0.18 if truth else 0.11
+    match kind:
+        "forest":
+            return Color(0.17, 0.26, 0.14, alpha)
+        "river_valley":
+            return Color(0.18, 0.24, 0.20, alpha)
+        "hills":
+            return Color(0.36, 0.29, 0.18, alpha)
+        "marsh":
+            return Color(0.16, 0.25, 0.22, alpha)
+        "field", "cultivated":
+            return Color(0.38, 0.32, 0.18, alpha)
+        _:
+            return Color(0.24, 0.20, 0.14, alpha)
+
+
 func _array_to_vec2(value: Variant) -> Vector2:
+    if typeof(value) == TYPE_VECTOR2:
+        return value
     if typeof(value) == TYPE_ARRAY and value.size() >= 2:
         return Vector2(float(value[0]), float(value[1]))
     return Vector2.ZERO

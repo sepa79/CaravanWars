@@ -2,6 +2,8 @@
 
 This file is the starting SSOT for architecture. Deeper notes live in `docs/architecture/` and `docs/reboot/`.
 
+Durable project direction decisions are summarized in `docs/adr/ADR-001-project-direction.md`.
+
 ## Purpose
 
 CaravanWars Reboot is a Godot 4 game architecture centered on a server-authoritative party simulation. A party is a neutral field group such as a caravan, pilgrim group, retinue, patrol, or bandit band. The main architectural constraint is that singleplayer and multiplayer share one command and state model.

@@ -4,6 +4,8 @@ CaravanWars is a server-authoritative caravan, trade, travel, rumor, and conflic
 
 The design target is closer to a singleplayer MUD-like world simulation than to a conventional party RPG. Multiplayer-compatible architecture remains useful, but multiplayer is optional and secondary to a trustworthy local simulation.
 
+Durable project direction decisions are summarized in `docs/adr/ADR-001-project-direction.md`.
+
 The reboot keeps the game premise intact:
 - players control a caravan, company, patrol, bandit band, or similar field group,
 - cities, caravans, patrols, authorities, AI, and future human-controlled roles interact through the same multiplayer-style command layer,
