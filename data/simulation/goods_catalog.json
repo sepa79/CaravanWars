@@ -1,0 +1,174 @@
+{
+  "schema_version": 0,
+  "goods": [
+    {
+      "goods_id": "coin",
+      "display_name": "Coin",
+      "category": "money",
+      "bulk_per_unit": 0.01,
+      "base_value": 1,
+      "perishable": false,
+      "tags": [
+        "currency"
+      ]
+    },
+    {
+      "goods_id": "food",
+      "display_name": "Food",
+      "category": "staple",
+      "bulk_per_unit": 1.0,
+      "base_value": 2,
+      "perishable": true,
+      "tags": [
+        "consumable",
+        "ration"
+      ]
+    },
+    {
+      "goods_id": "grain",
+      "display_name": "Grain",
+      "category": "staple",
+      "bulk_per_unit": 1.2,
+      "base_value": 2,
+      "perishable": false,
+      "tags": [
+        "food_source"
+      ]
+    },
+    {
+      "goods_id": "fodder",
+      "display_name": "Fodder",
+      "category": "staple",
+      "bulk_per_unit": 1.0,
+      "base_value": 1,
+      "perishable": true,
+      "tags": [
+        "animal_feed"
+      ]
+    },
+    {
+      "goods_id": "horses",
+      "display_name": "Horses",
+      "category": "animal",
+      "bulk_per_unit": 4.0,
+      "base_value": 80,
+      "perishable": false,
+      "tags": [
+        "transport",
+        "livestock"
+      ]
+    },
+    {
+      "goods_id": "livestock",
+      "display_name": "Livestock",
+      "category": "animal",
+      "bulk_per_unit": 3.0,
+      "base_value": 20,
+      "perishable": false,
+      "tags": [
+        "food_source"
+      ]
+    },
+    {
+      "goods_id": "salt",
+      "display_name": "Salt",
+      "category": "preservative",
+      "bulk_per_unit": 0.5,
+      "base_value": 8,
+      "perishable": false,
+      "tags": [
+        "preservation"
+      ]
+    },
+    {
+      "goods_id": "iron",
+      "display_name": "Iron",
+      "category": "raw_material",
+      "bulk_per_unit": 2.0,
+      "base_value": 12,
+      "perishable": false,
+      "tags": [
+        "crafting"
+      ]
+    },
+    {
+      "goods_id": "tools",
+      "display_name": "Tools",
+      "category": "finished_good",
+      "bulk_per_unit": 1.0,
+      "base_value": 18,
+      "perishable": false,
+      "tags": [
+        "crafting",
+        "settlement_use"
+      ]
+    },
+    {
+      "goods_id": "timber",
+      "display_name": "Timber",
+      "category": "raw_material",
+      "bulk_per_unit": 3.0,
+      "base_value": 5,
+      "perishable": false,
+      "tags": [
+        "construction"
+      ]
+    },
+    {
+      "goods_id": "cloth",
+      "display_name": "Cloth",
+      "category": "finished_good",
+      "bulk_per_unit": 0.8,
+      "base_value": 10,
+      "perishable": false,
+      "tags": [
+        "domestic"
+      ]
+    },
+    {
+      "goods_id": "beer",
+      "display_name": "Beer",
+      "category": "drink",
+      "bulk_per_unit": 1.5,
+      "base_value": 4,
+      "perishable": true,
+      "tags": [
+        "morale"
+      ]
+    },
+    {
+      "goods_id": "wine",
+      "display_name": "Wine",
+      "category": "drink",
+      "bulk_per_unit": 1.2,
+      "base_value": 10,
+      "perishable": false,
+      "tags": [
+        "luxury",
+        "morale"
+      ]
+    },
+    {
+      "goods_id": "wax",
+      "display_name": "Wax",
+      "category": "raw_material",
+      "bulk_per_unit": 0.6,
+      "base_value": 14,
+      "perishable": false,
+      "tags": [
+        "church_use"
+      ]
+    },
+    {
+      "goods_id": "hides",
+      "display_name": "Hides",
+      "category": "raw_material",
+      "bulk_per_unit": 1.0,
+      "base_value": 7,
+      "perishable": false,
+      "tags": [
+        "crafting"
+      ]
+    }
+  ]
+}
