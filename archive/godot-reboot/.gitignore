@@ -1,0 +1,12 @@
+.godot/
+export/
+*.tmp
+*.log
+*.zip
+__pycache__/
+.venv/
+services/*/data/
+services/*/*.log
+prototypes/sketch_map/asset_intake/kmalexander/_downloads/
+prototypes/sketch_map/asset_intake/kmalexander/_extracted/
+prototypes/sketch_map/assets/**/*.png

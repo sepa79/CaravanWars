@@ -1,0 +1,7 @@
+{
+  "schema_version": 0,
+  "foot_capacity_bulk": 0.25,
+  "horse_capacity_bulk": 1.0,
+  "pack_animal_capacity_bulk": 8.0,
+  "wagon_capacity_bulk": 25.0
+}

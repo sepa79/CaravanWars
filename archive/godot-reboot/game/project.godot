@@ -1,0 +1,12 @@
+; Engine configuration file.
+; It is best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+
+config_version=5
+
+[application]
+
+config/name="CaravanWars Reboot"
+config/features=PackedStringArray("4.4")
+config/icon="res://icon.svg"
+

@@ -1,0 +1,6 @@
+{
+  "base_speed_km_per_day": 32.0,
+  "horse_speed_bonus_km_per_day": 0.5,
+  "wagon_speed_penalty_km_per_day": 2.0,
+  "minimum_speed_km_per_day": 8.0
+}

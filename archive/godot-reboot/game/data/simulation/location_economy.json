@@ -1,0 +1,54 @@
+{
+  "schema_version": 0,
+  "profiles": [
+    {
+      "location_id": "wroclaw_city",
+      "production_per_day": {
+        "coin": 5,
+        "tools": 1
+      },
+      "consumption_per_day": {
+        "food": 4,
+        "grain": 2
+      },
+      "storage_caps": {
+        "food": 150,
+        "coin": 400,
+        "horses": 20,
+        "grain": 120,
+        "tools": 30
+      }
+    },
+    {
+      "location_id": "opole_stronghold",
+      "production_per_day": {
+        "coin": 2
+      },
+      "consumption_per_day": {
+        "food": 3
+      },
+      "storage_caps": {
+        "food": 100,
+        "coin": 220,
+        "horses": 12,
+        "iron": 50,
+        "tools": 25
+      }
+    },
+    {
+      "location_id": "nysa_monastery",
+      "production_per_day": {
+        "wax": 2
+      },
+      "consumption_per_day": {
+        "food": 2
+      },
+      "storage_caps": {
+        "food": 120,
+        "coin": 120,
+        "horses": 6,
+        "wax": 40
+      }
+    }
+  ]
+}

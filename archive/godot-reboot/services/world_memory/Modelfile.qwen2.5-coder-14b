@@ -1,0 +1,4 @@
+FROM C:\Users\Sepa\Downloads\AIModels\Qwen\Qwen2.5-Coder-14B-Instruct-GGUF\qwen2.5-coder-14b-instruct-q3_k_m.gguf
+
+PARAMETER temperature 0.2
+PARAMETER top_p 0.9
