@@ -77,6 +77,14 @@ Acceptable v0 options:
 
 The implementation must not change travel duration, movement validation, party state, or route choice.
 
+## Active TypeScript implementation
+
+`packages/world-sim` emits one owner-specific event for every newly observed
+authored waypoint when direct travel starts. Repeating travel does not emit a
+duplicate observation for a waypoint already known by that party. The Party
+Map serializes those observed waypoint and referenced landmark marks, while
+continuing to withhold unobserved route geometry and all terrain-area shapes.
+
 ## WorldMemory export
 
 Extend `WorldMemoryEventMapper` so `worldsim_route_waypoint_observed` can export owner-specific route memory.

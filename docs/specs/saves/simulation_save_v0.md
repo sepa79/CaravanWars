@@ -45,6 +45,15 @@ The snapshot exists so `new game`, `load game`, tests, and future WorldMemory se
 
 `locations` stores physical managed locations and their resource state.
 
+The active TypeScript scheduled-domain snapshot additionally stores one
+canonical World Clock snapshot (elapsed time, next scheduling sequence, and all
+pending/cancelled/completed/failed scheduled records), Governance state,
+Facility state, host inventories, cohort aggregates, and emitted foundation
+events. `WorldSimulation` embeds only the foundation domain snapshot beside its
+top-level clock, avoiding a duplicated clock contract. The standalone
+`SimulationFoundationSnapshot` includes the clock for component save/load and
+deterministic continuation tests.
+
 `player_map_state` is reserved for the future player-drawn parchment map journal. It is intentionally empty in v0. The region graph remains the source of truth; player map state is presentation/memory state.
 
 ## New game
@@ -89,7 +98,12 @@ No backward compatibility is required during this reboot. Future schema changes 
 
 ## Test coverage
 
-Covered by `game/tests/SimulationSaveCodecTest.gd`:
+Active TypeScript coverage in
+`packages/world-sim/test/simulation-foundation.test.ts` proves JSON round-trip
+save/load with pending retry intents, Facility generation/idempotency state,
+inventory, cohorts, event history, and identical deterministic continuation.
+
+Legacy evidence remains covered by `game/tests/SimulationSaveCodecTest.gd`:
 
 - new game creates the expected start state,
 - save/load preserves day, party state, knowledge, active travel intent, and runtime events,

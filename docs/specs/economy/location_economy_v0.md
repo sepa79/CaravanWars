@@ -89,3 +89,15 @@ The economy remains physical and deterministic:
 - future parties will physically move goods;
 - managers will react through commands;
 - WorldMemory will store who knows or believes that a location has shortage or surplus.
+
+## Active TypeScript implementation
+
+`WorldSimulation.advanceDays` processes only crossed full days using the
+canonical profiles loaded by `economy-config.ts`. Location state, resource
+changes, and `location_economy_ticked` events remain authoritative server
+state; Party Map exposes only a location physically co-located with its
+observer.
+
+Full-day boundary comparison uses an explicit `1e-9` day numeric tolerance so
+twenty-four submitted `1/24` day increments process exactly one day despite
+binary floating-point representation.

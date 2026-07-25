@@ -51,6 +51,71 @@ WorldMemory owns durable, actor-specific observations, reports, and rumors.
 WorldSim owns physical truth and decides what can be observed. World Clock
 provides deterministic simulation time; it does not own gameplay decisions.
 
+### Ownership, governors, and authority
+
+Ownership and operational control are separate relationships. An entity such
+as a Facility, Trade Hub, party, settlement, or future MarsKolony installation
+may be owned by an actor, organisation, polity, or other principal while being
+operated by a different governor.
+
+- `owner_id` answers who possesses or ultimately benefits from the entity.
+- `governor_actor_id` identifies its direct operational decision maker.
+- A governor may manage multiple entities and may be human-controlled,
+  deterministic code, an AI policy, or an LLM-assisted actor.
+- A governor may have an optional explicit `superior_actor_id`. Root governors
+  have no superior.
+- Roles and authority scopes determine which commands a governor or superior
+  may issue. Ownership alone does not grant an implicit command bypass.
+- Delegation, temporary substitution, and exceptional issuers must be explicit
+  authority records rather than hard-coded social layers.
+
+Small organisations may assign several roles and Facilities to one actor.
+Larger organisations may use an arbitrary superior chain. Setting-specific
+roles such as mayor, quartermaster, guild master, colony governor, or chief
+engineer are configuration over this generic model, not engine-level classes.
+
+Authority and communication are separate. Permission to issue a command does
+not make that command reach a remote subordinate instantly; delivery must use
+an available physical or communications mechanism.
+
+### Scheduled domain work
+
+World Clock owns deterministic time and an ordered queue of serializable
+scheduled-event intents. It does not contain Facility logic or call opaque
+callbacks. When an intent becomes due, WorldSim dispatches it to the component
+that owns the referenced entity through a typed handler.
+
+A Facility production cycle follows this pattern:
+
+```text
+facility created or resumed
+    -> schedules FacilityProductionTickDue
+    -> World Clock reaches due time
+    -> WorldSim dispatches the due intent to Facilities
+    -> Facility validates current state and applies one deterministic cycle
+    -> Facility returns domain events and an optional next-tick intent
+    -> WorldSim records events and schedules the next intent
+```
+
+The queued item says that work is due; the resulting
+`FacilityProductionTicked` domain event says what actually happened. Keeping
+these distinct supports cancellation, pause/resume, save/load, deterministic
+replay, and explicit failures without embedding component behavior in the
+clock.
+
+World Clock never reorders due work by gameplay category. Scheduling order is
+causal order: if consumption is due before an arrival, it sees no arrived
+goods. The consumer may schedule a later retry, but the arrival cannot
+retroactively alter the completed consumption attempt.
+
+The active TypeScript foundation implements this boundary in `world-clock.ts`,
+`governance.ts`, `facilities.ts`, and the thin `simulation-foundation.ts`
+dispatcher composed into canonical `WorldSimulation`. Clock snapshots retain
+the complete event lifecycle; Facility snapshots retain generation/idempotency
+state and cohort-level host state. Operational pause/resume decisions enter
+through an authority-checked command; automatic ticks remain previously
+configured domain work.
+
 ## Active repository boundaries
 
 | Path | Responsibility |

@@ -19,6 +19,8 @@ boundary.
   presentation and memory artifacts.
 - Facilities, World Clock, Trade Hubs, and WorldMemory are separate reusable
   components with explicit contracts.
+- The active simulation foundation includes the serializable scheduled-event
+  queue, generic scoped governance, and deterministic atomic Facility cycles.
 - A Trade Hub is an instance connected to specific Facilities; it is not a
   shared virtual inventory across locations.
 
@@ -43,6 +45,17 @@ npm ci
 npm run typecheck
 npm test
 ```
+
+Run the development-only browser Truth Map on the Devbox:
+
+```bash
+npm run dev:truth-map
+```
+
+Open `http://192.168.88.21:4173` from the home LAN or through the configured
+WireGuard route. The development harness defaults to an actor-filtered Party
+Map and offers an explicit Truth Map selector. Its merchant control runs a
+small physical food-delivery loop through the normal command boundary.
 
 Development is hosted on the Devbox. No Godot installation is required for the
 active implementation.

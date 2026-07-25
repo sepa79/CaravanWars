@@ -57,3 +57,12 @@ If required memory is missing, do nothing with an explicit reason.
 ## LLM planning hook
 
 Future LLM-assisted merchant decisions may rank opportunities, estimate risk, or choose negotiation intent from the same owner memory entries. The LLM still returns a proposal; command validation and physical state mutation stay in the authoritative simulation.
+
+## Active TypeScript implementation
+
+`packages/world-sim/src/merchant-memory-ai.ts` implements the food loop. Each
+processing step submits at most one normal command: withdraw, travel, or
+deposit. It filters entries by `ownerId`, may inspect only its own party
+snapshot, and never receives the global location snapshot. Missing or foreign
+memory returns an explicit no-action reason; stale observations may produce a
+normal rejected command and are not repaired from hidden truth.

@@ -70,3 +70,9 @@ foot_count * foot_capacity_bulk
 Party cargo is physical simulation state. Future transfer and trade commands must mutate it through the authoritative command model, not through direct manager edits.
 
 `TransferGoodsCommand` is the first physical transfer command. It moves goods between party cargo and a managed location at the same node, without yet modeling price or social permission.
+
+## Active TypeScript implementation
+
+`WorldSimulation` owns cargo beside party movement state. It calculates
+capacity from the canonical catalog and cargo config, rejects over-capacity
+seeds and withdrawals, and exposes cargo through authoritative snapshots.

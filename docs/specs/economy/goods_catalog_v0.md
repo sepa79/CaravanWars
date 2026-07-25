@@ -14,6 +14,10 @@ It is not a combat equipment catalog. Weapons, armor, character gear, and item s
 - Economy consumer: `game/simulation/LocationEconomyConfig.gd`
 - Tests: `game/tests/GoodsCatalogTest.gd`
 
+The active TypeScript loader and validator is
+`packages/world-sim/src/economy-config.ts`; Godot paths are archived parity
+evidence.
+
 ## Schema / shape
 
 ```json

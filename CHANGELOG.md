@@ -1,0 +1,55 @@
+# Changelog
+
+## Unreleased
+
+### Added
+
+- Architecture contracts for generic owner/governor authority chains and
+  reusable, event-scheduled Facility production cycles.
+- Serializable World Clock scheduling ordered by due time and stable scheduling
+  sequence, including cancellation, persisted lifecycle/idempotency state,
+  explicit dispatch failures, positive-delay retries, and a bounded same-time
+  event budget.
+- Generic Governance runtime with separate owners and governors, controller
+  kinds, role configuration, scoped superior chains, time-bounded delegations,
+  cycle rejection, and an authority-checked Facility operation command.
+- Deterministic atomic Facilities with generation invalidation, duplicate-event
+  protection, explicit blocked outcomes for resources, storage, power,
+  maintenance, and workforce, plus configurable retry cadence.
+- A save/load integration fixture covering cohort-level production, warehouse
+  stock, same-time consumption-before-delivery causality, shortage unrest and
+  workforce loss, blocked follow-up production, and a successful later retry.
+- Serializable World Clock scheduling ordered by due time and stable scheduling
+  sequence, including cancellation, persisted lifecycle/idempotency state,
+  explicit dispatch failures, positive-delay retries, and a bounded same-time
+  event budget.
+- Generic Governance runtime with separate owners and governors, controller
+  kinds, role configuration, scoped superior chains, time-bounded delegations,
+  cycle rejection, and an authority-checked Facility operation command.
+- Deterministic atomic Facilities with generation invalidation, duplicate-event
+  protection, explicit blocked outcomes for resources, storage, power,
+  maintenance, and workforce, plus configurable retry cadence.
+- A save/load integration fixture covering cohort-level production, warehouse
+  stock, same-time consumption-before-delivery causality, shortage unrest and
+  workforce loss, blocked follow-up production, and a successful later retry.
+
+- Deterministic TypeScript World Clock with explicit positive time advances.
+- Server-authoritative `MovePartyCommand` handling, party travel state,
+  route-waypoint interpolation, snapshots, and rejection tests.
+- Development-only Node/Vite browser Truth Map with Canvas rendering, explicit
+  time controls, and movement through the normal command boundary.
+- Playwright browser coverage for Truth Map rendering, command-driven travel,
+  deterministic arrival, and explicit invalid host-control failures.
+- Actor-filtered Party Map snapshots that serialize only party-known nodes and
+  routes and never fall back to authoritative truth for an unknown observer.
+- Owner-specific route observation events at travel start, with Party Map
+  discovery of authored waypoints and referenced landmarks without exposing
+  full terrain geometry.
+- Canonical goods, party-cargo, and location-economy config loaders for the
+  active TypeScript runtime.
+- Physical party cargo and managed-location resources inside the same
+  authoritative `WorldSimulation`, including full-day metabolism and atomic
+  `TransferGoodsCommand` validation/events.
+- A single typed world-command envelope shared by browser and AI controllers.
+- Memory-bounded merchant AI plus a playable browser loop that withdraws,
+  transports, and deposits food without reading remote authoritative truth.

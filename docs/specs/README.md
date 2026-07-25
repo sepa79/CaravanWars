@@ -76,6 +76,7 @@ TODO
 ## Current canonical references
 
 - Party movement command: `docs/specs/commands/move_party.md`
+- World command envelope v0: `docs/specs/commands/world_command_envelope_v0.md`
 - Assign party order command: `docs/specs/commands/assign_party_order.md`
 - Cancel party order command: `docs/specs/commands/cancel_party_order.md`
 - Replace party order command: `docs/specs/commands/replace_party_order.md`
@@ -92,9 +93,11 @@ TODO
 - Actor task state v0: `docs/specs/state/actor_task_state_v0.md`
 - Managed world parties v0: `docs/specs/state/managed_world_parties_v0.md`
 - Location state v0: `docs/specs/state/location_state_v0.md`
+- Generic governance v0: `docs/specs/state/governance_v0.md`
 - Goods catalog v0: `docs/specs/economy/goods_catalog_v0.md`
 - Party cargo v0: `docs/specs/economy/party_cargo_v0.md`
 - Location economy v0: `docs/specs/economy/location_economy_v0.md`
+- Facilities v0: `docs/specs/economy/facilities_v0.md`
 - Merchant autoplay scenario v0: `docs/specs/economy/merchant_autoplay_scenario_v0.md`
 - Merchant memory AI v0: `docs/specs/economy/merchant_memory_ai_v0.md`
 - Mayor food manager v0: `docs/specs/economy/mayor_food_manager_v0.md`
@@ -104,6 +107,9 @@ TODO
 - Report back intent v0: `docs/specs/economy/report_back_intent_v0.md`
 - Opportunity policy v0: `docs/specs/economy/opportunity_policy_v0.md`
 - Debug party map harness v0: `docs/specs/debug/debug_party_map_harness_v0.md`
+- Browser Truth Map API v0: `docs/specs/debug/browser_truth_map_api_v0.md`
+- World Clock v0: `docs/specs/state/world_clock_v0.md`
+- Party Map snapshot v0: `docs/specs/state/party_map_snapshot_v0.md`
 - World physical layers v0: `docs/specs/regions/world_physical_layers_v0.md`
 - Planned route geometry v0: `docs/specs/regions/route_geometry_v0.md`
 - Route observation integration v0: `docs/specs/worldsim/route_observation_integration_v0.md`

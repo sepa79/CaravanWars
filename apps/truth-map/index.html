@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#17140f" />
+    <title>CaravanWars — Party Map</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="masthead">
+        <div>
+          <p class="eyebrow" data-i18n="eyebrow"></p>
+          <h1>CaravanWars</h1>
+          <p class="subtitle" data-i18n="subtitle"></p>
+        </div>
+        <div class="mode-badge">
+          <span class="mode-dot"></span>
+          <label for="mapMode" data-i18n="mapMode"></label>
+          <select id="mapMode">
+            <option value="party" data-i18n="partyMode"></option>
+            <option value="truth" data-i18n="truthMode"></option>
+          </select>
+        </div>
+      </header>
+
+      <section class="workspace">
+        <aside class="control-panel">
+          <section class="panel-section">
+            <p class="section-label" data-i18n="selectedParty"></p>
+            <h2 id="partyName">—</h2>
+            <dl class="facts">
+              <div><dt data-i18n="partyId"></dt><dd id="partyId">—</dd></div>
+              <div><dt data-i18n="status"></dt><dd id="partyStatus">—</dd></div>
+              <div><dt data-i18n="location"></dt><dd id="partyLocation">—</dd></div>
+              <div><dt data-i18n="speed"></dt><dd id="partySpeed">—</dd></div>
+            </dl>
+          </section>
+
+          <section class="panel-section">
+            <p class="section-label" data-i18n="merchantAi"></p>
+            <dl class="facts">
+              <div><dt data-i18n="cargoFood"></dt><dd id="cargoFood">—</dd></div>
+              <div><dt data-i18n="localFood"></dt><dd id="localFood">—</dd></div>
+            </dl>
+            <button id="merchantStep" class="primary" data-i18n="runMerchantStep"></button>
+            <p id="merchantResult" class="command-result" aria-live="polite"></p>
+          </section>
+
+          <section class="panel-section">
+            <p class="section-label" data-i18n="travelCommand"></p>
+            <label class="field-label" for="destination" data-i18n="destination"></label>
+            <select id="destination"></select>
+            <button id="moveButton" class="primary" data-i18n="depart"></button>
+            <p id="commandResult" class="command-result" aria-live="polite"></p>
+          </section>
+
+          <section class="panel-section">
+            <p class="section-label" data-i18n="worldClock"></p>
+            <div id="clock" class="clock">—</div>
+            <div class="button-grid">
+              <button id="advanceSixHours" data-i18n="advanceSixHours"></button>
+              <button id="advanceDay" data-i18n="advanceDay"></button>
+            </div>
+            <label class="toggle-row">
+              <input id="autoAdvance" type="checkbox" />
+              <span data-i18n="autoAdvance"></span>
+            </label>
+            <button id="resetButton" class="quiet" data-i18n="reset"></button>
+          </section>
+        </aside>
+
+        <section class="map-panel">
+          <div class="map-heading">
+            <div>
+              <p id="mapScopeLabel" class="section-label"></p>
+              <h2 id="regionName">—</h2>
+            </div>
+            <div id="regionStats" class="region-stats">—</div>
+          </div>
+          <div class="canvas-wrap">
+            <canvas id="mapCanvas"></canvas>
+            <div class="legend">
+              <span><i class="legend-road"></i><b data-i18n="routes"></b></span>
+              <span><i class="legend-node"></i><b data-i18n="locations"></b></span>
+              <span><i class="legend-landmark"></i><b data-i18n="landmarks"></b></span>
+              <span><i class="legend-party"></i><b data-i18n="party"></b></span>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+    <script type="module" src="/src/client.ts"></script>
+  </body>
+</html>

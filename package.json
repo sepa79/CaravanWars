@@ -11,10 +11,13 @@
   ],
   "scripts": {
     "check": "npm run typecheck && npm test",
+    "dev:truth-map": "tsx apps/truth-map/src/server.ts",
+    "test:browser": "playwright test",
     "test": "tsx --test packages/**/*.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/node": "^26.1.1",
     "tsx": "^4.23.1",
     "typescript": "^7.0.2"

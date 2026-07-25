@@ -40,6 +40,7 @@ Valid `direction` values:
 - Withdraw requires enough goods in the location.
 - Withdraw must not exceed composition-derived party cargo capacity.
 - Deposit requires enough goods in party cargo.
+- Deposit must not exceed the location profile's storage cap.
 - Rejected commands must not mutate party or location state.
 
 ## Events
@@ -58,3 +59,10 @@ Accepted transfers append a `goods_transferred` runtime event with:
 - resulting `location_resource_amount`
 
 This event may be exported to WorldMemory as an observation, but it is still not durable truth by itself.
+
+## Active TypeScript implementation
+
+The command is submitted through `World Command Envelope v0` to the same
+`WorldSimulation` that owns travel, party position, cargo, and locations.
+Accepted transfers are atomic and append `goods_transferred`; every validation
+failure returns an explicit code and preserves state.

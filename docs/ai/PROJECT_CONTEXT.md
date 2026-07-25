@@ -13,8 +13,12 @@ TypeScript with a browser-first client and a thin future Electron shell.
 - The authored Silesia graph is active under `data/regions/silesia.json`.
 - `packages/world-sim` loads and validates the region graph with explicit
   failures and conformance tests.
-- Deterministic travel, clock, commands, and snapshots are the next vertical
-  slice.
+- Deterministic travel, World Clock, Truth Map, actor-filtered Party Map, route
+  observations, physical cargo/location economy, and the first memory-bounded
+  merchant AI vertical slice are active in TypeScript.
+- World Clock scheduled intents, generic Governance, and deterministic
+  Facilities are active with save/load and a cohort-based shortage integration
+  fixture.
 
 ## Non-negotiable model
 

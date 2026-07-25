@@ -39,6 +39,7 @@ Active TypeScript migration path:
 
 ```bash
 npm run check
+npm run test:browser
 ```
 
 Legacy Godot path:
