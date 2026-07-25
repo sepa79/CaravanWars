@@ -4,21 +4,17 @@
 
 ### Added
 
+- Location-bound Trade Hub instances with physical Facility and party
+  deposits/withdrawals, local accounts, goods and currency escrow, stable
+  price-time matching, partial fills, cancellation, and scheduled expiry.
+- Canonical Trade Hub commands authorized by Governance and deduplicated by
+  command id, plus save/load continuation and a two-location physical transport
+  integration scenario.
+- Atomic World Clock batch scheduling for domain commands that enqueue more
+  than one intent.
+
 - Architecture contracts for generic owner/governor authority chains and
   reusable, event-scheduled Facility production cycles.
-- Serializable World Clock scheduling ordered by due time and stable scheduling
-  sequence, including cancellation, persisted lifecycle/idempotency state,
-  explicit dispatch failures, positive-delay retries, and a bounded same-time
-  event budget.
-- Generic Governance runtime with separate owners and governors, controller
-  kinds, role configuration, scoped superior chains, time-bounded delegations,
-  cycle rejection, and an authority-checked Facility operation command.
-- Deterministic atomic Facilities with generation invalidation, duplicate-event
-  protection, explicit blocked outcomes for resources, storage, power,
-  maintenance, and workforce, plus configurable retry cadence.
-- A save/load integration fixture covering cohort-level production, warehouse
-  stock, same-time consumption-before-delivery causality, shortage unrest and
-  workforce loss, blocked follow-up production, and a successful later retry.
 - Serializable World Clock scheduling ordered by due time and stable scheduling
   sequence, including cancellation, persisted lifecycle/idempotency state,
   explicit dispatch failures, positive-delay retries, and a bounded same-time

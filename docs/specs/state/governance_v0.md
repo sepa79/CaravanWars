@@ -72,6 +72,10 @@ The canonical runtime contract is `packages/world-sim/src/governance.ts`.
 Facility pause/resume proves its use at the normal authoritative command
 boundary in `WorldSimulation.submitCommand`.
 
+Trade Hub v0 uses the same evaluator with `trade:transfer`, `trade:order`, and
+`trade:cancel` scopes. These scopes authorize a submitted command only; they do
+not grant remote delivery, shared memory, or knowledge of another hub's state.
+
 ## Out of scope for v0
 
 - elections, inheritance, and political legitimacy,

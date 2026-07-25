@@ -73,6 +73,11 @@ scheduled before an equal-time `ArrivalDue` observes pre-arrival state.
 Recurring components return a new intent. A retry has a new event id and an
 explicit positive delay; it never mutates or re-runs the original record.
 
+Components that require several intents to commit one domain command use the
+clock's atomic batch scheduling operation. The full batch is validated for ids,
+times, and sequence capacity before any record is inserted, preventing partial
+queue mutation.
+
 ## Lifecycle, cancellation, and idempotency
 
 Records have `pending`, `cancelled`, `completed`, or `failed` status. Dispatch

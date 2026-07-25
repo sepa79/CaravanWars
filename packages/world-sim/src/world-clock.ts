@@ -87,21 +87,31 @@ export class WorldClock {
   }
 
   schedule(intent: ScheduledEventIntent): void {
-    validateIntent(intent, this.#elapsedDays);
-    if (this.#records.has(intent.eventId)) {
-      throw new WorldClockValidationError(`Scheduled event id is already known: ${intent.eventId}.`);
+    this.scheduleAll([intent]);
+  }
+
+  scheduleAll(intents: readonly ScheduledEventIntent[]): void {
+    const batchIds = new Set<string>();
+    for (const intent of intents) {
+      validateIntent(intent, this.#elapsedDays);
+      if (this.#records.has(intent.eventId) || batchIds.has(intent.eventId)) {
+        throw new WorldClockValidationError(`Scheduled event id is already known: ${intent.eventId}.`);
+      }
+      batchIds.add(intent.eventId);
     }
-    if (this.#nextSchedulingSequence >= Number.MAX_SAFE_INTEGER) {
+    if (this.#nextSchedulingSequence + intents.length > Number.MAX_SAFE_INTEGER) {
       throw new WorldClockValidationError("World clock scheduling sequence is exhausted.");
     }
-    const record: ScheduledEventRecord = {
-      intent: copyIntent(intent),
-      schedulingSequence: this.#nextSchedulingSequence,
-      status: "pending",
-      failureMessage: null,
-    };
-    this.#nextSchedulingSequence += 1;
-    this.#records.set(intent.eventId, record);
+    for (const intent of intents) {
+      const record: ScheduledEventRecord = {
+        intent: copyIntent(intent),
+        schedulingSequence: this.#nextSchedulingSequence,
+        status: "pending",
+        failureMessage: null,
+      };
+      this.#nextSchedulingSequence += 1;
+      this.#records.set(intent.eventId, record);
+    }
   }
 
   cancel(eventId: string): boolean {
@@ -145,7 +155,7 @@ export class WorldClock {
         status: "completed",
         failureMessage: null,
       });
-      for (const intent of followUps) this.schedule(intent);
+      this.scheduleAll(followUps);
     }
     this.#advanceTimeTo(targetElapsedDays, options.onTimeAdvanced);
   }

@@ -19,6 +19,9 @@ TypeScript with a browser-first client and a thin future Electron shell.
 - World Clock scheduled intents, generic Governance, and deterministic
   Facilities are active with save/load and a cohort-based shortage integration
   fixture.
+- Trade Hub v0 is active with per-location physical inventory, local accounts,
+  escrowed buy/sell orders, deterministic matching and expiry, and party-based
+  transport between independent hubs.
 
 ## Non-negotiable model
 

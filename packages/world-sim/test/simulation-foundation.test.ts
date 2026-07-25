@@ -19,7 +19,10 @@ test("production, shortage, delivery, retry, and workforce feedback preserve cau
   simulation.advanceDays(0.5);
 
   const atHalfDay = simulation.snapshot();
-  assert.deepEqual(atHalfDay.events.map((event) => [event.eventType, event.outcome]), [
+  assert.deepEqual(atHalfDay.events.map((event) => [
+    event.eventType,
+    "outcome" in event ? event.outcome : null,
+  ]), [
     ["FacilityProductionTicked", "completed"],
     ["ResourceConsumptionAttempted", "shortage"],
     ["ResourceDeliveryAttempted", "delivered"],

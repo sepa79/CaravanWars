@@ -61,6 +61,11 @@ does not consume partial stock; configured cohort effects may increase unrest
 and reduce available workforce, which subsequent Facility cycles read as local
 managed state.
 
+A Facility host may transfer produced goods to a Trade Hub only when that host
+is explicitly connected to the concrete hub instance. The authoritative
+transfer checks Governance and available host stock before atomically removing
+the goods from the host and depositing them into the hub account.
+
 ## Canonical implementation
 
 The canonical runtime contract is `packages/world-sim/src/facilities.ts`.

@@ -48,7 +48,8 @@ The snapshot exists so `new game`, `load game`, tests, and future WorldMemory se
 The active TypeScript scheduled-domain snapshot additionally stores one
 canonical World Clock snapshot (elapsed time, next scheduling sequence, and all
 pending/cancelled/completed/failed scheduled records), Governance state,
-Facility state, host inventories, cohort aggregates, and emitted foundation
+Facility state, host inventories, cohort aggregates, Trade Hub inventories,
+accounts, escrow, order books, idempotency ledgers, and emitted foundation
 events. `WorldSimulation` embeds only the foundation domain snapshot beside its
 top-level clock, avoiding a duplicated clock contract. The standalone
 `SimulationFoundationSnapshot` includes the clock for component save/load and
@@ -97,6 +98,10 @@ No compatibility fallback or graph substitution is allowed in v0.
 No backward compatibility is required during this reboot. Future schema changes must increment `schema_version` and document migration behavior explicitly.
 
 ## Test coverage
+
+The active TypeScript Trade Hub integration round-trips its foundation snapshot
+through JSON and proves identical matching, expiry, balances, and event order
+after continuation from the loaded state.
 
 Active TypeScript coverage in
 `packages/world-sim/test/simulation-foundation.test.ts` proves JSON round-trip

@@ -104,7 +104,7 @@ export class MerchantMemoryAI {
 function submit(
   simulation: WorldSimulation,
   action: Exclude<MerchantMemoryAction, "none">,
-  command: Exclude<WorldCommandEnvelope, { readonly commandType: "set_facility_operation" }>,
+  command: Extract<WorldCommandEnvelope, { readonly commandType: "move_party" | "transfer_goods" }>,
 ): MerchantMemoryDecision {
   const commandResult = command.commandType === "move_party"
     ? simulation.submitCommand(command).result

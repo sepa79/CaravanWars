@@ -23,6 +23,9 @@ boundary.
   queue, generic scoped governance, and deterministic atomic Facility cycles.
 - A Trade Hub is an instance connected to specific Facilities; it is not a
   shared virtual inventory across locations.
+- Trade Hub v0 provides location-bound deposits, escrowed limit orders,
+  deterministic partial matching, cancellation, and World Clock expiry through
+  the canonical command boundary.
 
 See `docs/ARCHITECTURE.md`, `docs/adr/ADR-001-project-direction.md`, and
 `docs/adr/ADR-002-node-electron-migration.md`.

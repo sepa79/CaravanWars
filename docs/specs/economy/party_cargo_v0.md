@@ -76,3 +76,8 @@ Party cargo is physical simulation state. Future transfer and trade commands mus
 `WorldSimulation` owns cargo beside party movement state. It calculates
 capacity from the canonical catalog and cargo config, rejects over-capacity
 seeds and withdrawals, and exposes cargo through authoritative snapshots.
+
+Trade Hub deposits and pickups use this same physical cargo state. The party
+must be idle at the hub node; deposits require carried goods and pickups require
+free cargo capacity. Goods become available at another hub only after the party
+travels there through normal movement commands and deposits them locally.

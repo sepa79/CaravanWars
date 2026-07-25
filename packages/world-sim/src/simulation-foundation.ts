@@ -10,6 +10,23 @@ import type {
 } from "./facilities.js";
 import { Governance } from "./governance.js";
 import type { GovernanceSnapshot } from "./governance.js";
+import {
+  TRADE_HUBS_COMPONENT,
+  TRADE_HUB_MATCH_DUE,
+  TRADE_HUB_ORDER_EXPIRY_DUE,
+  TradeHubs,
+} from "./trade-hubs.js";
+import type {
+  CancelTradeHubOrderCommand,
+  PlaceTradeHubOrderCommand,
+  TradeHubCommand,
+  TradeHubCommandFailure,
+  TradeHubCommandMutation,
+  TradeHubCommandResult,
+  TradeHubEvent,
+  TradeHubsSnapshot,
+  TransferTradeHubGoodsCommand,
+} from "./trade-hubs.js";
 import { WorldClock } from "./world-clock.js";
 import type {
   ScheduledEventIntent,
@@ -62,13 +79,15 @@ export interface ResourceDeliveryAttemptedEvent {
 export type SimulationFoundationEvent =
   | FacilityProductionEvent
   | ResourceConsumptionAttemptedEvent
-  | ResourceDeliveryAttemptedEvent;
+  | ResourceDeliveryAttemptedEvent
+  | TradeHubEvent;
 
 export interface SimulationFoundationDomainSnapshot {
   readonly governance: GovernanceSnapshot;
   readonly facilities: FacilitiesSnapshot;
   readonly events: readonly SimulationFoundationEvent[];
   readonly maxEventsPerAdvance: number;
+  readonly tradeHubs: TradeHubsSnapshot | null;
 }
 
 export interface SimulationFoundationSnapshot extends SimulationFoundationDomainSnapshot {
@@ -80,6 +99,7 @@ export interface SimulationFoundationOptions {
   readonly governance: Governance;
   readonly facilities: Facilities;
   readonly maxEventsPerAdvance: number;
+  readonly tradeHubs?: TradeHubs | null;
   readonly events?: readonly SimulationFoundationEvent[];
 }
 
@@ -87,6 +107,12 @@ export interface FacilityOperationCommand {
   readonly issuerActorId: string;
   readonly facilityId: string;
   readonly operation: "pause" | "resume";
+}
+
+export interface TransferFacilityGoodsToTradeHubCommand extends TransferTradeHubGoodsCommand {
+  readonly direction: "deposit";
+  readonly facilityId: string;
+  readonly facilityHostId: string;
 }
 
 export type FacilityOperationResult =
@@ -108,6 +134,7 @@ export class WorldSimulationFoundation {
   readonly #clock: WorldClock;
   #governance: Governance;
   #facilities: Facilities;
+  #tradeHubs: TradeHubs | null;
   readonly #maxEventsPerAdvance: number;
   #events: SimulationFoundationEvent[];
   #resetSnapshot: SimulationFoundationSnapshot | null = null;
@@ -127,6 +154,9 @@ export class WorldSimulationFoundation {
       facilitiesSnapshot.hosts,
     );
     this.#maxEventsPerAdvance = options.maxEventsPerAdvance;
+    this.#tradeHubs = options.tradeHubs === undefined || options.tradeHubs === null
+      ? null
+      : new TradeHubs(options.tradeHubs.snapshot());
     this.#events = Array.from(structuredClone(options.events ?? []));
   }
 
@@ -154,6 +184,9 @@ export class WorldSimulationFoundation {
       this.#resetSnapshot.facilities.facilities,
       this.#resetSnapshot.facilities.hosts,
     );
+    this.#tradeHubs = this.#resetSnapshot.tradeHubs === null
+      ? null
+      : new TradeHubs(this.#resetSnapshot.tradeHubs);
     this.#events = Array.from(structuredClone(this.#resetSnapshot.events));
   }
 
@@ -187,6 +220,106 @@ export class WorldSimulationFoundation {
     return { accepted: true, scheduledEventId: intent.eventId };
   }
 
+  preparePartyTradeHubTransfer(command: TransferTradeHubGoodsCommand): TradeHubCommandResult | null {
+    const tradeHubs = this.#tradeHubs;
+    if (tradeHubs === null) return tradeFoundationMissing();
+    const replayed = tradeHubs.replay(command);
+    if (replayed !== null) return replayed;
+    return this.#authorizeTradeCommand(command, "trade:transfer");
+  }
+
+  recordTradeHubPhysicalFailure(
+    command: TransferTradeHubGoodsCommand,
+    message: string,
+  ): TradeHubCommandFailure {
+    const tradeHubs = this.#requireTradeHubs();
+    return tradeHubs.recordFailure(command, {
+      accepted: false,
+      idempotentReplay: false,
+      errorCode: "PHYSICAL_TRANSFER_REJECTED",
+      message,
+    });
+  }
+
+  executePreparedPartyTradeHubTransfer(
+    command: TransferTradeHubGoodsCommand,
+  ): TradeHubCommandMutation {
+    const mutation = this.#requireTradeHubs().transferGoods(command, this.#clock.elapsedDays);
+    this.#recordTradeMutation(mutation);
+    return mutation;
+  }
+
+  tradeHubNodeId(hubId: string): string | null {
+    return this.#tradeHubs?.hubNodeId(hubId) ?? null;
+  }
+
+  executeFacilityTradeHubTransfer(
+    command: TransferFacilityGoodsToTradeHubCommand,
+  ): TradeHubCommandResult {
+    const tradeHubs = this.#tradeHubs;
+    if (tradeHubs === null) return tradeFoundationMissing();
+    const replayed = tradeHubs.replay(command);
+    if (replayed !== null) return replayed;
+    const authorization = this.#authorizeTradeCommand(command, "trade:transfer", command.facilityId);
+    if (authorization !== null) return authorization;
+    if (!tradeHubs.isFacilityConnected(command.hubId, command.facilityHostId)) {
+      return tradeHubs.recordFailure(command, tradeFailure(
+        "FACILITY_NOT_CONNECTED",
+        `Facility host ${command.facilityHostId} is not connected to hub ${command.hubId}.`,
+      ));
+    }
+    if (this.#facilities.availableResource(command.facilityHostId, command.goodsId) < command.amount) {
+      return tradeHubs.recordFailure(command, tradeFailure(
+        "PHYSICAL_TRANSFER_REJECTED",
+        `Facility host ${command.facilityHostId} has insufficient ${command.goodsId}.`,
+      ));
+    }
+    const mutation = tradeHubs.transferGoods(command, this.#clock.elapsedDays);
+    if (mutation.result.accepted) {
+      if (!this.#facilities.withdraw(command.facilityHostId, command.goodsId, command.amount)) {
+        throw new SimulationFoundationValidationError("Validated Facility withdrawal failed.");
+      }
+      this.#recordTradeMutation(mutation);
+    }
+    return mutation.result;
+  }
+
+  executePlaceTradeHubOrder(command: PlaceTradeHubOrderCommand): TradeHubCommandResult {
+    const tradeHubs = this.#tradeHubs;
+    if (tradeHubs === null) return tradeFoundationMissing();
+    const replayed = tradeHubs.replay(command);
+    if (replayed !== null) return replayed;
+    const authorization = this.#authorizeTradeCommand(command, "trade:order");
+    if (authorization !== null) return authorization;
+    const before = tradeHubs.snapshot();
+    const mutation = tradeHubs.placeOrder(command, this.#clock.elapsedDays);
+    if (!mutation.result.accepted) return mutation.result;
+    try {
+      this.#clock.scheduleAll(mutation.scheduledIntents);
+    } catch (error: unknown) {
+      this.#tradeHubs = new TradeHubs(before);
+      const message = error instanceof Error ? error.message : String(error);
+      return this.#tradeHubs.recordFailure(
+        command,
+        tradeFailure("SCHEDULING_FAILED", `TradeHub scheduling failed: ${message}`),
+      );
+    }
+    this.#recordTradeMutation(mutation);
+    return mutation.result;
+  }
+
+  executeCancelTradeHubOrder(command: CancelTradeHubOrderCommand): TradeHubCommandResult {
+    const tradeHubs = this.#tradeHubs;
+    if (tradeHubs === null) return tradeFoundationMissing();
+    const replayed = tradeHubs.replay(command);
+    if (replayed !== null) return replayed;
+    const authorization = this.#authorizeTradeCommand(command, "trade:cancel");
+    if (authorization !== null) return authorization;
+    const mutation = tradeHubs.cancelOrder(command, this.#clock.elapsedDays);
+    this.#recordTradeMutation(mutation);
+    return mutation.result;
+  }
+
   advanceDays(
     days: number,
     onTimeAdvanced?: (fromElapsedDays: number, toElapsedDays: number) => void,
@@ -212,6 +345,7 @@ export class WorldSimulationFoundation {
       facilities: this.#facilities.snapshot(),
       events: structuredClone(this.#events),
       maxEventsPerAdvance: this.#maxEventsPerAdvance,
+      tradeHubs: this.#tradeHubs?.snapshot() ?? null,
     };
   }
 
@@ -220,6 +354,7 @@ export class WorldSimulationFoundation {
       clock: WorldClock.fromSnapshot(snapshot.clock),
       governance: new Governance(snapshot.governance),
       facilities: new Facilities(snapshot.facilities.facilities, snapshot.facilities.hosts),
+      tradeHubs: snapshot.tradeHubs === null ? null : new TradeHubs(snapshot.tradeHubs),
       maxEventsPerAdvance: snapshot.maxEventsPerAdvance,
       events: snapshot.events,
     });
@@ -241,6 +376,12 @@ export class WorldSimulationFoundation {
     if (intent.kind === RESOURCE_DELIVERY_DUE
       && intent.targetComponent === SETTLEMENT_RESOURCES_COMPONENT) {
       return this.#dispatchDelivery(intent);
+    }
+    if ((intent.kind === TRADE_HUB_MATCH_DUE || intent.kind === TRADE_HUB_ORDER_EXPIRY_DUE)
+      && intent.targetComponent === TRADE_HUBS_COMPONENT) {
+      const events = this.#requireTradeHubs().handleScheduledIntent(intent, this.#clock.elapsedDays);
+      this.#events.push(...events);
+      return [];
     }
     throw new SimulationFoundationValidationError(
       `No WorldSim dispatcher for ${intent.targetComponent}/${intent.kind}.`,
@@ -290,6 +431,36 @@ export class WorldSimulationFoundation {
       outcome: delivered ? "delivered" : "blocked_storage",
     });
     return [];
+  }
+
+  #authorizeTradeCommand(
+    command: TradeHubCommand,
+    scope: string,
+    managedEntityId = command.accountEntityId,
+  ): TradeHubCommandFailure | null {
+    const decision = this.#governance.authorize({
+      issuerActorId: command.issuerActorId,
+      managedEntityId,
+      requiredScope: scope,
+      elapsedDays: this.#clock.elapsedDays,
+    });
+    if (decision.authorized) return null;
+    const failure = tradeFailure(
+      "NOT_AUTHORIZED",
+      `Actor ${command.issuerActorId} is not authorized for ${scope} on ${managedEntityId}.`,
+    );
+    return this.#requireTradeHubs().recordFailure(command, failure);
+  }
+
+  #recordTradeMutation(mutation: TradeHubCommandMutation): void {
+    this.#events.push(...mutation.events);
+  }
+
+  #requireTradeHubs(): TradeHubs {
+    if (this.#tradeHubs === null) {
+      throw new SimulationFoundationValidationError("TradeHubs are not configured.");
+    }
+    return this.#tradeHubs;
   }
 
   #requireConfigurationOpen(): void {
@@ -407,4 +578,18 @@ function requireNonNegative(value: unknown, path: string): asserts value is numb
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
     throw new SimulationFoundationValidationError(`${path} must be finite and non-negative.`);
   }
+}
+
+function tradeFoundationMissing(): TradeHubCommandFailure {
+  return tradeFailure(
+    "TRADE_FOUNDATION_NOT_CONFIGURED",
+    "TradeHub foundation is not configured.",
+  );
+}
+
+function tradeFailure(
+  errorCode: TradeHubCommandFailure["errorCode"],
+  message: string,
+): TradeHubCommandFailure {
+  return { accepted: false, idempotentReplay: false, errorCode, message };
 }

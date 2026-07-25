@@ -48,6 +48,7 @@ export type {
   TransferGoodsCommand,
   TransferGoodsErrorCode,
   TransferGoodsResult,
+  TransferPartyGoodsWithTradeHubCommand,
   WorldEconomySeed,
   WorldCommandEnvelope,
   WorldCommandSubmissionResult,
@@ -117,11 +118,45 @@ export type {
   ResourceDeliveryPayload,
   FacilityOperationCommand,
   FacilityOperationResult,
+  TransferFacilityGoodsToTradeHubCommand,
   SimulationFoundationEvent,
   SimulationFoundationDomainSnapshot,
   SimulationFoundationOptions,
   SimulationFoundationSnapshot,
 } from "./simulation-foundation.js";
+
+export {
+  TRADE_HUBS_COMPONENT,
+  TRADE_HUB_MATCH_DUE,
+  TRADE_HUB_ORDER_EXPIRY_DUE,
+  TradeHubs,
+  TradeHubValidationError,
+} from "./trade-hubs.js";
+export type {
+  CancelTradeHubOrderCommand,
+  PlaceTradeHubOrderCommand,
+  ProcessedTradeHubCommandSnapshot,
+  TradeHubAccountSnapshot,
+  TradeHubCommand,
+  TradeHubCommandErrorCode,
+  TradeHubCommandFailure,
+  TradeHubCommandIdentity,
+  TradeHubCommandMutation,
+  TradeHubCommandResult,
+  TradeHubCommandSuccess,
+  TradeHubEvent,
+  TradeHubGoodsTransferredEvent,
+  TradeHubOrderClosedEvent,
+  TradeHubOrderPlacedEvent,
+  TradeHubOrderSnapshot,
+  TradeHubScheduledIntentIgnoredEvent,
+  TradeHubsSnapshot,
+  TradeHubSnapshot,
+  TradeHubTradeExecutedEvent,
+  TradeOrderSide,
+  TradeOrderStatus,
+  TransferTradeHubGoodsCommand,
+} from "./trade-hubs.js";
 
 export {
   EconomyConfigValidationError,

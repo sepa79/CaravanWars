@@ -14,8 +14,15 @@ import type {
   FacilityOperationCommand,
   FacilityOperationResult,
   SimulationFoundationDomainSnapshot,
+  TransferFacilityGoodsToTradeHubCommand,
   WorldSimulationFoundation,
 } from "./simulation-foundation.js";
+import type {
+  CancelTradeHubOrderCommand,
+  PlaceTradeHubOrderCommand,
+  TradeHubCommandResult,
+  TransferTradeHubGoodsCommand,
+} from "./trade-hubs.js";
 import type {
   GoodsCatalog,
   LocationEconomyConfig,
@@ -113,15 +120,33 @@ export type TransferGoodsResult =
       readonly message: string;
     };
 
+export interface TransferPartyGoodsWithTradeHubCommand extends TransferTradeHubGoodsCommand {
+  readonly partyId: string;
+}
+
 export type WorldCommandEnvelope =
   | { readonly commandType: "move_party"; readonly command: MovePartyCommand }
   | { readonly commandType: "transfer_goods"; readonly command: TransferGoodsCommand }
-  | { readonly commandType: "set_facility_operation"; readonly command: FacilityOperationCommand };
+  | { readonly commandType: "set_facility_operation"; readonly command: FacilityOperationCommand }
+  | {
+      readonly commandType: "trade_hub_transfer_party_goods";
+      readonly command: TransferPartyGoodsWithTradeHubCommand;
+    }
+  | {
+      readonly commandType: "trade_hub_transfer_facility_goods";
+      readonly command: TransferFacilityGoodsToTradeHubCommand;
+    }
+  | { readonly commandType: "place_trade_hub_order"; readonly command: PlaceTradeHubOrderCommand }
+  | { readonly commandType: "cancel_trade_hub_order"; readonly command: CancelTradeHubOrderCommand };
 
 export type WorldCommandSubmissionResult =
   | { readonly commandType: "move_party"; readonly result: CommandResult }
   | { readonly commandType: "transfer_goods"; readonly result: TransferGoodsResult }
-  | { readonly commandType: "set_facility_operation"; readonly result: FacilityOperationResult };
+  | { readonly commandType: "set_facility_operation"; readonly result: FacilityOperationResult }
+  | { readonly commandType: "trade_hub_transfer_party_goods"; readonly result: TradeHubCommandResult }
+  | { readonly commandType: "trade_hub_transfer_facility_goods"; readonly result: TradeHubCommandResult }
+  | { readonly commandType: "place_trade_hub_order"; readonly result: TradeHubCommandResult }
+  | { readonly commandType: "cancel_trade_hub_order"; readonly result: TradeHubCommandResult };
 
 export interface PartyTravelSnapshot {
   readonly edgeId: string;
@@ -395,6 +420,18 @@ export class WorldSimulation {
   submitCommand(
     envelope: Extract<WorldCommandEnvelope, { readonly commandType: "set_facility_operation" }>,
   ): Extract<WorldCommandSubmissionResult, { readonly commandType: "set_facility_operation" }>;
+  submitCommand(
+    envelope: Extract<WorldCommandEnvelope, { readonly commandType: "trade_hub_transfer_party_goods" }>,
+  ): Extract<WorldCommandSubmissionResult, { readonly commandType: "trade_hub_transfer_party_goods" }>;
+  submitCommand(
+    envelope: Extract<WorldCommandEnvelope, { readonly commandType: "trade_hub_transfer_facility_goods" }>,
+  ): Extract<WorldCommandSubmissionResult, { readonly commandType: "trade_hub_transfer_facility_goods" }>;
+  submitCommand(
+    envelope: Extract<WorldCommandEnvelope, { readonly commandType: "place_trade_hub_order" }>,
+  ): Extract<WorldCommandSubmissionResult, { readonly commandType: "place_trade_hub_order" }>;
+  submitCommand(
+    envelope: Extract<WorldCommandEnvelope, { readonly commandType: "cancel_trade_hub_order" }>,
+  ): Extract<WorldCommandSubmissionResult, { readonly commandType: "cancel_trade_hub_order" }>;
   submitCommand(envelope: WorldCommandEnvelope): WorldCommandSubmissionResult;
   submitCommand(envelope: WorldCommandEnvelope): WorldCommandSubmissionResult {
     if (envelope.commandType === "move_party") {
@@ -403,13 +440,40 @@ export class WorldSimulation {
     if (envelope.commandType === "transfer_goods") {
       return { commandType: "transfer_goods", result: this.#executeTransferGoods(envelope.command) };
     }
+    if (envelope.commandType === "set_facility_operation") {
+      return {
+        commandType: "set_facility_operation",
+        result: this.#simulationFoundation?.executeFacilityOperation(envelope.command) ?? {
+          accepted: false,
+          errorCode: "FOUNDATION_NOT_CONFIGURED",
+          message: "World simulation foundation is not configured.",
+        },
+      };
+    }
+    if (envelope.commandType === "trade_hub_transfer_party_goods") {
+      return {
+        commandType: envelope.commandType,
+        result: this.#executePartyTradeHubTransfer(envelope.command),
+      };
+    }
+    if (envelope.commandType === "trade_hub_transfer_facility_goods") {
+      return {
+        commandType: envelope.commandType,
+        result: this.#simulationFoundation?.executeFacilityTradeHubTransfer(envelope.command)
+          ?? tradeFoundationNotConfigured(),
+      };
+    }
+    if (envelope.commandType === "place_trade_hub_order") {
+      return {
+        commandType: envelope.commandType,
+        result: this.#simulationFoundation?.executePlaceTradeHubOrder(envelope.command)
+          ?? tradeFoundationNotConfigured(),
+      };
+    }
     return {
-      commandType: "set_facility_operation",
-      result: this.#simulationFoundation?.executeFacilityOperation(envelope.command) ?? {
-        accepted: false,
-        errorCode: "FOUNDATION_NOT_CONFIGURED",
-        message: "World simulation foundation is not configured.",
-      },
+      commandType: envelope.commandType,
+      result: this.#simulationFoundation?.executeCancelTradeHubOrder(envelope.command)
+        ?? tradeFoundationNotConfigured(),
     };
   }
 
@@ -547,6 +611,54 @@ export class WorldSimulation {
       locationResourceAmount: location.resources.get(goods.id) ?? 0,
     });
     return { accepted: true };
+  }
+
+  #executePartyTradeHubTransfer(
+    command: TransferPartyGoodsWithTradeHubCommand,
+  ): TradeHubCommandResult {
+    const foundation = this.#simulationFoundation;
+    if (foundation === null) return tradeFoundationNotConfigured();
+    const existing = foundation.preparePartyTradeHubTransfer(command);
+    if (existing !== null) return existing;
+    const economy = this.#economySeed;
+    const party = this.#parties.get(command.partyId);
+    const hubNodeId = foundation.tradeHubNodeId(command.hubId);
+    let physicalFailure: string | null = null;
+    if (economy === null) physicalFailure = "World economy is not configured.";
+    else if (party === undefined) physicalFailure = `Party ${command.partyId} does not exist.`;
+    else if (!economy.goodsCatalog.goodsById.has(command.goodsId)) {
+      physicalFailure = `Goods ${command.goodsId} does not exist.`;
+    } else if (!Number.isSafeInteger(command.amount) || command.amount <= 0) {
+      physicalFailure = "TradeHub transfer amount must be a positive safe integer.";
+    } else if (party.location.status !== "idle") {
+      physicalFailure = `Party ${party.id} is traveling.`;
+    } else if (hubNodeId === null) {
+      physicalFailure = `TradeHub ${command.hubId} does not exist.`;
+    } else if (party.location.nodeId !== hubNodeId) {
+      physicalFailure = `Party ${party.id} is not at TradeHub ${command.hubId}.`;
+    } else if (command.direction === "deposit"
+      && (party.cargo.get(command.goodsId) ?? 0) < command.amount) {
+      physicalFailure = `Party ${party.id} has insufficient ${command.goodsId}.`;
+    } else if (command.direction === "withdraw") {
+      const goods = economy.goodsCatalog.goodsById.get(command.goodsId)!;
+      const used = calculateCargoUsedBulk(party.cargo, economy.goodsCatalog);
+      const capacity = calculatePartyCargoCapacity(party.composition, economy.partyCargoConfig);
+      if (used + command.amount * goods.bulkPerUnit > capacity) {
+        physicalFailure = `Party ${party.id} cargo would exceed capacity.`;
+      }
+    }
+    if (physicalFailure !== null) {
+      return foundation.recordTradeHubPhysicalFailure(command, physicalFailure);
+    }
+    const mutation = foundation.executePreparedPartyTradeHubTransfer(command);
+    if (!mutation.result.accepted) return mutation.result;
+    const current = party!.cargo.get(command.goodsId) ?? 0;
+    setQuantity(
+      party!.cargo,
+      command.goodsId,
+      command.direction === "deposit" ? current - command.amount : current + command.amount,
+    );
+    return mutation.result;
   }
 
   advanceDays(days: number): void {
@@ -1089,6 +1201,15 @@ function rejectedTransfer(
   message: string,
 ): TransferGoodsResult {
   return { accepted: false, errorCode, message };
+}
+
+function tradeFoundationNotConfigured(): TradeHubCommandResult {
+  return {
+    accepted: false,
+    idempotentReplay: false,
+    errorCode: "TRADE_FOUNDATION_NOT_CONFIGURED",
+    message: "TradeHub foundation is not configured.",
+  };
 }
 
 function calculatePartyCargoCapacity(

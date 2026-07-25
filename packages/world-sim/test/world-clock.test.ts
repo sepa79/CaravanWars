@@ -99,6 +99,17 @@ test("rejects values that structured clone can copy but JSON saves cannot serial
   }), /must not be cyclic/);
 });
 
+test("batch scheduling is atomic when any event id conflicts", () => {
+  const clock = new WorldClock();
+  clock.schedule(intent("known", "Work", 1));
+  const before = clock.snapshot();
+  assert.throws(() => clock.scheduleAll([
+    intent("new", "Work", 1),
+    intent("known", "Work", 1),
+  ]), WorldClockValidationError);
+  assert.deepEqual(clock.snapshot(), before);
+});
+
 function intent(eventId: string, kind: string, dueElapsedDays: number): ScheduledEventIntent {
   return {
     eventId,

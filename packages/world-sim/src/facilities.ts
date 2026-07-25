@@ -277,6 +277,19 @@ export class Facilities {
     return true;
   }
 
+  availableResource(hostId: string, resourceId: string): number {
+    return this.#requireHost(hostId).inventory.get(resourceId) ?? 0;
+  }
+
+  withdraw(hostId: string, resourceId: string, amount: number): boolean {
+    requirePositiveNumber(amount, "Withdrawal amount");
+    const host = this.#requireHost(hostId);
+    const available = host.inventory.get(resourceId) ?? 0;
+    if (available < amount) return false;
+    setQuantity(host.inventory, resourceId, available - amount);
+    return true;
+  }
+
   consumeForCohort(
     hostId: string,
     resourceId: string,

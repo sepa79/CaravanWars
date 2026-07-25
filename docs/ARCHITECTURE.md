@@ -116,6 +116,22 @@ state and cohort-level host state. Operational pause/resume decisions enter
 through an authority-checked command; automatic ticks remain previously
 configured domain work.
 
+### Local Trade Hub settlement
+
+Each Trade Hub owns a location-bound inventory, local accounts, escrow, and an
+order book. Deposits and withdrawals cross the normal physical transfer
+boundary: Facilities may supply only explicitly connected hubs, while parties
+must be present at the hub node and have the required cargo or free capacity.
+Moving goods between hubs therefore requires a physical carrier and normal
+travel commands.
+
+Orders reserve only goods or abstract currency already deposited in that hub.
+Matching is deterministic by explicit price and stable placement sequence;
+full and partial fills are atomic. Expiry is a serializable World Clock intent,
+so matching and expiry at the same instant follow actual scheduling order, not
+event-type priority. Governance authorizes transfer, order, and cancellation
+commands but does not imply communication, memory, or global market knowledge.
+
 ## Active repository boundaries
 
 | Path | Responsibility |
