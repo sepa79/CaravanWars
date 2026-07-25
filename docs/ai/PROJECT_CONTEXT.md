@@ -22,6 +22,9 @@ TypeScript with a browser-first client and a thin future Electron shell.
 - Trade Hub v0 is active with per-location physical inventory, local accounts,
   escrowed buy/sell orders, deterministic matching and expiry, and party-based
   transport between independent hubs.
+- TypeScript WorldMemory v0 is active with private actor/party/location scope,
+  provenance, observed/known times, explicit aging, idempotent ingest, and a
+  memory-only MerchantAI trade loop across two physical hubs.
 
 ## Non-negotiable model
 

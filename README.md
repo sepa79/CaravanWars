@@ -26,6 +26,9 @@ boundary.
 - Trade Hub v0 provides location-bound deposits, escrowed limit orders,
   deterministic partial matching, cancellation, and World Clock expiry through
   the canonical command boundary.
+- WorldMemory v0 stores deterministic private observations with provenance,
+  two simulation timestamps, explicit aging, idempotent ingest, and JSON replay;
+  the TradeHub MerchantAI consumes only its owner view and local affordances.
 
 See `docs/ARCHITECTURE.md`, `docs/adr/ADR-001-project-direction.md`, and
 `docs/adr/ADR-002-node-electron-migration.md`.

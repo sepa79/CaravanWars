@@ -132,6 +132,20 @@ so matching and expiry at the same instant follow actual scheduling order, not
 event-type priority. Governance authorizes transfer, order, and cancellation
 commands but does not imply communication, memory, or global market knowledge.
 
+### Private WorldMemory
+
+WorldMemory is an append-ordered, owner-scoped knowledge component. WorldSim
+adjudicates local physical observations and writes bounded entries with
+provenance plus observed-at and known-at simulation times. Queries require the
+owner kind and id and derive explicit freshness without mutating historical
+entries.
+
+Deterministic AI receives only its private WorldMemory view, directly managed
+party state, and immediate local affordances. It proposes normal
+`WorldCommandEnvelope` commands, which remain subject to physical validation
+and Governance. Neither authority nor a shared textual identifier transfers
+knowledge between actors, parties, locations, or remote Trade Hubs.
+
 ## Active repository boundaries
 
 | Path | Responsibility |

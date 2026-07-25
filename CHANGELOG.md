@@ -4,6 +4,15 @@
 
 ### Added
 
+- TypeScript WorldMemory v0 with deterministic owner-scoped entries,
+  provenance, observed/known simulation times, explicit freshness, atomic
+  idempotent ingest, and validated JSON save/load.
+- WorldSimulation-adjudicated local TradeHub observation and owner-scoped
+  command-result memory without remote truth exposure.
+- A pure memory-driven MerchantAI TradeHub policy and full Facility-to-market
+  vertical scenario covering local purchase, physical inter-hub transport,
+  local resale, replay, stale knowledge, and actor isolation.
+
 - Location-bound Trade Hub instances with physical Facility and party
   deposits/withdrawals, local accounts, goods and currency escrow, stable
   price-time matching, partial fills, cancellation, and scheduled expiry.

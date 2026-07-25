@@ -144,3 +144,13 @@ Observed roles:
 - `llama3.1:8b`: valid but usually too bland or occasionally wrong.
 
 Warm calls were often sub-second. Switching models cost about 1-4 seconds, with `phi4` and `qwen3:8b` more expensive to wake. Use model queues in batches instead of alternating models for every job.
+
+## Active TypeScript v0
+
+`packages/world-sim/src/world-memory.ts` now implements the setting-independent
+private memory core: deterministic append ids, `(owner_kind, owner_id)` scope,
+provenance, observed-at/known-at simulation times, explicit freshness,
+idempotent atomic ingest, and JSON save/load. Direct local TradeHub observation
+is adjudicated by WorldSimulation. Rumor transfer, distortion, confidence,
+SQLite persistence, and background LLM jobs remain later layers over this
+contract rather than implicit v0 behavior.

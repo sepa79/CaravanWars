@@ -50,6 +50,12 @@ Strategic choice must come from WorldMemory, not a global scan.
 
 Current `MerchantFoodManager` is a technical scenario harness proving cargo/travel commands. `MerchantMemoryAI` is the first production-direction slice: it chooses food delivery actions from the merchant party's memory entries such as `need_ledger` and `location_observation`.
 
+The active TypeScript TradeHub slice strengthens this boundary:
+`MerchantMemoryAI.decideTrade` receives no `WorldSimulation` reference. Its
+inputs are one owner-scoped `WorldMemoryOwnerView` plus party state and local
+TradeHub affordances adjudicated by WorldSimulation. Stale or foreign entries
+produce an explicit no-action decision instead of a truth-state lookup.
+
 ## LLM Planning
 
 LLM decisions receive memory owned by the deciding actor or party, plus a bounded list of legal actions. LLM output is a proposal. It may not mutate resources, movement, cargo, party knowledge, or memory directly.

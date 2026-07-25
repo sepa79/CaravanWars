@@ -84,7 +84,8 @@ identical deterministic continuation.
 
 ## Out of scope
 
-- strategic merchant AI and WorldMemory market knowledge;
+- strategic merchant AI, price forecasting, and global market knowledge; the
+  active deterministic WorldMemory slice uses only remembered local summaries;
 - fees, taxes, debt, banking, exchange rates, or price balancing;
 - cross-hub clearing, remote pickup, hidden prices, and order amendments.
 

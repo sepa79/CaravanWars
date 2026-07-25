@@ -20,6 +20,7 @@ import type {
 import type {
   CancelTradeHubOrderCommand,
   PlaceTradeHubOrderCommand,
+  TradeHubAccountSnapshot,
   TradeHubCommandResult,
   TransferTradeHubGoodsCommand,
 } from "./trade-hubs.js";
@@ -28,6 +29,14 @@ import type {
   LocationEconomyConfig,
   PartyCargoConfig,
 } from "./economy-config.js";
+import { WorldMemory } from "./world-memory.js";
+import type {
+  WorldMemoryEntry,
+  WorldMemoryIngest,
+  WorldMemoryOwnerKind,
+  WorldMemoryOwnerView,
+  WorldMemorySnapshot,
+} from "./world-memory.js";
 
 export interface PartyTravelConfig {
   readonly baseSpeedKmPerDay: number;
@@ -186,6 +195,37 @@ export interface WorldSnapshot {
   readonly parties: readonly PartySnapshot[];
   readonly locations: readonly LocationSnapshot[];
   readonly runtimeEvents: readonly WorldSimulationEvent[];
+  readonly worldMemory: WorldMemorySnapshot;
+}
+
+export interface ObserveLocalTradeContextRequest {
+  readonly observationId: string;
+  readonly observerPartyId: string;
+  readonly ownerId: string;
+  readonly ownerKind: Extract<WorldMemoryOwnerKind, "actor" | "party">;
+  readonly accountEntityId: string;
+  readonly staleAfterDays: number;
+}
+
+export type ObserveLocalTradeContextResult =
+  | { readonly accepted: true; readonly entries: readonly WorldMemoryEntry[] }
+  | {
+      readonly accepted: false;
+      readonly errorCode: "PARTY_NOT_FOUND" | "PARTY_BUSY" | "OWNER_SCOPE_MISMATCH" | "NO_LOCAL_TRADE_HUB" | "MEMORY_INGEST_CONFLICT";
+      readonly message: string;
+    };
+
+export interface LocalTradeHubAffordance {
+  readonly hubId: string;
+  readonly nodeId: string;
+  readonly account: TradeHubAccountSnapshot | null;
+}
+
+export interface MerchantLocalTradeAffordances {
+  readonly party: PartySnapshot;
+  readonly issuerActorId: string;
+  readonly accountEntityId: string;
+  readonly localTradeHubs: readonly LocalTradeHubAffordance[];
 }
 
 export interface RouteWaypointObservedEvent {
@@ -382,6 +422,8 @@ export class WorldSimulation {
   readonly #partySeeds: readonly PartySeed[];
   readonly #economySeed: WorldEconomySeed | null;
   readonly #simulationFoundation: WorldSimulationFoundation | null;
+  #worldMemory: WorldMemory;
+  readonly #initialWorldMemorySnapshot: WorldMemorySnapshot;
   #parties: Map<string, PartyRuntimeState>;
   #locations: Map<string, LocationRuntimeState>;
   #runtimeEvents: WorldSimulationEvent[] = [];
@@ -393,6 +435,7 @@ export class WorldSimulation {
     economySeed: WorldEconomySeed | null,
     clock = new WorldClock(),
     simulationFoundation: WorldSimulationFoundation | null = null,
+    worldMemory = new WorldMemory(),
   ) {
     this.#graph = graph;
     this.#travelConfig = travelConfig;
@@ -409,6 +452,8 @@ export class WorldSimulation {
     this.#parties = createParties(graph, this.#partySeeds, this.#economySeed?.goodsCatalog ?? null);
     this.#locations = createLocations(graph, this.#economySeed);
     validateInitialCargoCapacities(this.#parties, this.#economySeed);
+    this.#worldMemory = new WorldMemory(worldMemory.snapshot());
+    this.#initialWorldMemorySnapshot = this.#worldMemory.snapshot();
   }
 
   submitCommand(
@@ -451,29 +496,37 @@ export class WorldSimulation {
       };
     }
     if (envelope.commandType === "trade_hub_transfer_party_goods") {
+      const result = this.#executePartyTradeHubTransfer(envelope.command);
+      this.#rememberTradeCommandResult(envelope.command, result);
       return {
         commandType: envelope.commandType,
-        result: this.#executePartyTradeHubTransfer(envelope.command),
+        result,
       };
     }
     if (envelope.commandType === "trade_hub_transfer_facility_goods") {
+      const result = this.#simulationFoundation?.executeFacilityTradeHubTransfer(envelope.command)
+        ?? tradeFoundationNotConfigured();
+      this.#rememberTradeCommandResult(envelope.command, result);
       return {
         commandType: envelope.commandType,
-        result: this.#simulationFoundation?.executeFacilityTradeHubTransfer(envelope.command)
-          ?? tradeFoundationNotConfigured(),
+        result,
       };
     }
     if (envelope.commandType === "place_trade_hub_order") {
+      const result = this.#simulationFoundation?.executePlaceTradeHubOrder(envelope.command)
+        ?? tradeFoundationNotConfigured();
+      this.#rememberTradeCommandResult(envelope.command, result);
       return {
         commandType: envelope.commandType,
-        result: this.#simulationFoundation?.executePlaceTradeHubOrder(envelope.command)
-          ?? tradeFoundationNotConfigured(),
+        result,
       };
     }
+    const result = this.#simulationFoundation?.executeCancelTradeHubOrder(envelope.command)
+      ?? tradeFoundationNotConfigured();
+    this.#rememberTradeCommandResult(envelope.command, result);
     return {
       commandType: envelope.commandType,
-      result: this.#simulationFoundation?.executeCancelTradeHubOrder(envelope.command)
-        ?? tradeFoundationNotConfigured(),
+      result,
     };
   }
 
@@ -481,6 +534,105 @@ export class WorldSimulation {
     const party = this.#parties.get(partyId);
     if (party === undefined) throw new WorldSimulationQueryError(`Party ${partyId} does not exist.`);
     return createPartySnapshot(this.#graph, party, this.#economySeed);
+  }
+
+  worldMemoryView(ownerId: string, ownerKind: WorldMemoryOwnerKind): WorldMemoryOwnerView {
+    return this.#worldMemory.ownerView(ownerId, ownerKind, this.#clock.elapsedDays);
+  }
+
+  merchantLocalTradeAffordances(partyId: string): MerchantLocalTradeAffordances {
+    const party = this.#parties.get(partyId);
+    if (party === undefined) throw new WorldSimulationQueryError(`Party ${partyId} does not exist.`);
+    const snapshot = createPartySnapshot(this.#graph, party, this.#economySeed);
+    const hubs = party.location.status === "idle"
+      ? this.#simulationFoundation?.tradeHubSnapshotsAtNode(party.location.nodeId) ?? []
+      : [];
+    return {
+      party: snapshot,
+      issuerActorId: party.managerActorId,
+      accountEntityId: party.id,
+      localTradeHubs: hubs.map((hub) => ({
+        hubId: hub.hubId,
+        nodeId: hub.nodeId,
+        account: structuredClone(hub.accounts.find((account) => account.accountEntityId === party.id) ?? null),
+      })),
+    };
+  }
+
+  observeLocalTradeContext(request: ObserveLocalTradeContextRequest): ObserveLocalTradeContextResult {
+    const party = this.#parties.get(request.observerPartyId);
+    if (party === undefined) {
+      return { accepted: false, errorCode: "PARTY_NOT_FOUND", message: `Party ${request.observerPartyId} does not exist.` };
+    }
+    if (party.location.status !== "idle") {
+      return { accepted: false, errorCode: "PARTY_BUSY", message: `Party ${party.id} is traveling.` };
+    }
+    const expectedOwnerId = request.ownerKind === "party" ? party.id : party.managerActorId;
+    if (request.ownerId !== expectedOwnerId) {
+      return {
+        accepted: false,
+        errorCode: "OWNER_SCOPE_MISMATCH",
+        message: `Observer ${party.id} cannot write memory owned by ${request.ownerId}.`,
+      };
+    }
+    const hubs = this.#simulationFoundation?.tradeHubSnapshotsAtNode(party.location.nodeId) ?? [];
+    if (hubs.length === 0) {
+      return {
+        accepted: false,
+        errorCode: "NO_LOCAL_TRADE_HUB",
+        message: `Party ${party.id} has no TradeHub at ${party.location.nodeId}.`,
+      };
+    }
+    const observationNodeId = party.location.nodeId;
+    const ingests: WorldMemoryIngest[] = hubs.map((hub) => {
+      const openOrders = hub.orders.filter((order) =>
+        order.status === "open" || order.status === "partially_filled");
+      const goodsIds = [...new Set(openOrders.map((order) => order.goodsId))].sort();
+      const market = goodsIds.map((goodsId) => {
+        const orders = openOrders.filter((order) => order.goodsId === goodsId);
+        const bids = orders.filter((order) => order.side === "buy").map((order) => order.limitPrice);
+        const asks = orders.filter((order) => order.side === "sell").map((order) => order.limitPrice);
+        return {
+          goodsId,
+          bestBid: bids.length === 0 ? null : Math.max(...bids),
+          bestAsk: asks.length === 0 ? null : Math.min(...asks),
+        };
+      });
+      const account = hub.accounts.find((item) => item.accountEntityId === request.accountEntityId);
+      return {
+        ingestId: `${request.observationId}:${hub.hubId}`,
+        ownerId: request.ownerId,
+        ownerKind: request.ownerKind,
+        kind: "trade_hub_observation",
+        observedAtElapsedDays: this.#clock.elapsedDays,
+        knownAtElapsedDays: this.#clock.elapsedDays,
+        staleAfterDays: request.staleAfterDays,
+        provenance: {
+          sourceType: "direct_observation",
+          sourceId: request.observationId,
+          sourceOwnerId: request.ownerId,
+          nodeId: observationNodeId,
+        },
+        payload: {
+          hubId: hub.hubId,
+          nodeId: hub.nodeId,
+          market,
+          observerPartyId: party.id,
+          observerPartyCargo: Object.fromEntries(party.cargo),
+          account: account === undefined ? null : {
+            availableGoods: account.availableGoods,
+            escrowGoods: account.escrowGoods,
+            availableCurrency: account.availableCurrency,
+            escrowCurrency: account.escrowCurrency,
+          },
+        },
+      };
+    });
+    const result = this.#worldMemory.ingestAll(ingests);
+    if (!result.accepted) {
+      return { accepted: false, errorCode: "MEMORY_INGEST_CONFLICT", message: result.message };
+    }
+    return { accepted: true, entries: result.entries };
   }
 
   #executeMoveParty(command: MovePartyCommand): CommandResult {
@@ -702,6 +854,7 @@ export class WorldSimulation {
     );
     this.#locations = createLocations(this.#graph, this.#economySeed);
     this.#runtimeEvents = [];
+    this.#worldMemory = new WorldMemory(this.#initialWorldMemorySnapshot);
   }
 
   snapshot(): WorldSnapshot {
@@ -712,7 +865,38 @@ export class WorldSimulation {
         createPartySnapshot(this.#graph, party, this.#economySeed)),
       locations: [...this.#locations.values()].map(createLocationSnapshot),
       runtimeEvents: this.#runtimeEvents.map(copyWorldSimulationEvent),
+      worldMemory: this.#worldMemory.snapshot(),
     };
+  }
+
+  #rememberTradeCommandResult(
+    command: TransferTradeHubGoodsCommand | PlaceTradeHubOrderCommand | CancelTradeHubOrderCommand,
+    result: TradeHubCommandResult,
+  ): void {
+    const accountParty = this.#parties.get(command.accountEntityId);
+    const resultOwnerIsParty = accountParty?.managerActorId === command.issuerActorId;
+    this.#worldMemory.ingest({
+      ingestId: `trade-command:${command.commandId}:${result.accepted ? "accepted" : result.errorCode}`,
+      ownerId: resultOwnerIsParty ? command.accountEntityId : command.issuerActorId,
+      ownerKind: resultOwnerIsParty ? "party" : "actor",
+      kind: "trade_command_result",
+      observedAtElapsedDays: this.#clock.elapsedDays,
+      knownAtElapsedDays: this.#clock.elapsedDays,
+      staleAfterDays: null,
+      provenance: {
+        sourceType: "command_result",
+        sourceId: command.commandId,
+        sourceOwnerId: command.issuerActorId,
+        nodeId: this.#simulationFoundation?.tradeHubNodeId(command.hubId) ?? null,
+      },
+      payload: {
+        hubId: command.hubId,
+        commandId: command.commandId,
+        accepted: result.accepted,
+        errorCode: result.accepted ? null : result.errorCode,
+        orderId: "orderId" in command ? command.orderId : null,
+      },
+    });
   }
 
   partyMapSnapshot(partyId: string): PartyMapSnapshot {

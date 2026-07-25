@@ -44,6 +44,10 @@ export type {
   LocationEconomyTickedEvent,
   LocationSeed,
   LocationSnapshot,
+  LocalTradeHubAffordance,
+  MerchantLocalTradeAffordances,
+  ObserveLocalTradeContextRequest,
+  ObserveLocalTradeContextResult,
   RouteWaypointObservedEvent,
   TransferGoodsCommand,
   TransferGoodsErrorCode,
@@ -165,6 +169,22 @@ export {
   loadPartyCargoConfigFile,
 } from "./economy-config.js";
 
+export { WorldMemory, WorldMemoryValidationError } from "./world-memory.js";
+export type {
+  ProcessedWorldMemoryIngest,
+  WorldMemoryBatchIngestResult,
+  WorldMemoryEntry,
+  WorldMemoryEntryView,
+  WorldMemoryFreshness,
+  WorldMemoryIngest,
+  WorldMemoryIngestResult,
+  WorldMemoryOwnerKind,
+  WorldMemoryOwnerView,
+  WorldMemoryProvenance,
+  WorldMemorySnapshot,
+  WorldMemorySourceType,
+} from "./world-memory.js";
+
 export { MerchantMemoryAI } from "./merchant-memory-ai.js";
 export type {
   LocationObservationMemory,
@@ -172,6 +192,9 @@ export type {
   MerchantMemoryDecision,
   MerchantMemoryEntry,
   NeedLedgerMemory,
+  MerchantTradeAction,
+  MerchantTradeDecision,
+  MerchantTradePolicy,
 } from "./merchant-memory-ai.js";
 export type {
   GoodsCatalog,

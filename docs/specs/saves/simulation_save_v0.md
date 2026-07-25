@@ -55,6 +55,11 @@ top-level clock, avoiding a duplicated clock contract. The standalone
 `SimulationFoundationSnapshot` includes the clock for component save/load and
 deterministic continuation tests.
 
+The active TypeScript snapshot also stores the canonical WorldMemory snapshot:
+next append sequence, private entries, and processed-ingest fingerprints.
+WorldMemory JSON load validates deterministic ids, owner scope, provenance,
+timestamps, payload serialization, and idempotency records.
+
 `player_map_state` is reserved for the future player-drawn parchment map journal. It is intentionally empty in v0. The region graph remains the source of truth; player map state is presentation/memory state.
 
 ## New game

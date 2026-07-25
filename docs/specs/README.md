@@ -94,6 +94,7 @@ TODO
 - Managed world parties v0: `docs/specs/state/managed_world_parties_v0.md`
 - Location state v0: `docs/specs/state/location_state_v0.md`
 - Generic governance v0: `docs/specs/state/governance_v0.md`
+- WorldMemory v0: `docs/specs/state/world_memory_v0.md`
 - Goods catalog v0: `docs/specs/economy/goods_catalog_v0.md`
 - Party cargo v0: `docs/specs/economy/party_cargo_v0.md`
 - Location economy v0: `docs/specs/economy/location_economy_v0.md`

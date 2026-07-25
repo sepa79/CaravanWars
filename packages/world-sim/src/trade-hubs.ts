@@ -447,6 +447,10 @@ export class TradeHubs {
     return this.#hubs.get(hubId)?.nodeId ?? null;
   }
 
+  snapshotsAtNode(nodeId: string): readonly TradeHubSnapshot[] {
+    return this.snapshot().hubs.filter((hub) => hub.nodeId === nodeId);
+  }
+
   snapshot(): TradeHubsSnapshot {
     return {
       hubs: [...this.#hubs.values()].map((hub) => ({

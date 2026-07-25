@@ -66,3 +66,9 @@ deposit. It filters entries by `ownerId`, may inspect only its own party
 snapshot, and never receives the global location snapshot. Missing or foreign
 memory returns an explicit no-action reason; stale observations may produce a
 normal rejected command and are not repaired from hidden truth.
+
+The active TradeHub policy is a pure proposal path. `decideTrade` receives one
+party-scoped WorldMemory view and local affordances, selects a fresh remembered
+ask/bid pair deterministically, and proposes at most one buy, pickup, travel,
+deposit, or sell command. It never receives `WorldSimulation`; the orchestrator
+submits the proposal through the canonical envelope and Governance.

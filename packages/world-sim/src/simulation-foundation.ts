@@ -24,6 +24,7 @@ import type {
   TradeHubCommandMutation,
   TradeHubCommandResult,
   TradeHubEvent,
+  TradeHubSnapshot,
   TradeHubsSnapshot,
   TransferTradeHubGoodsCommand,
 } from "./trade-hubs.js";
@@ -251,6 +252,10 @@ export class WorldSimulationFoundation {
 
   tradeHubNodeId(hubId: string): string | null {
     return this.#tradeHubs?.hubNodeId(hubId) ?? null;
+  }
+
+  tradeHubSnapshotsAtNode(nodeId: string): readonly TradeHubSnapshot[] {
+    return this.#tradeHubs?.snapshotsAtNode(nodeId) ?? [];
   }
 
   executeFacilityTradeHubTransfer(
