@@ -46,6 +46,8 @@ import {
   POPULATION_SEASON_DUE,
   PopulationDynamics,
 } from "./population-dynamics.js";
+import { ROUTE_ENCOUNTER_DUE, ROUTE_SECURITY_COMPONENT, RouteSecurity } from "./route-security.js";
+import type { CreateSecurityTaskCommand, EncounterPhysicalPort, PlanRouteEncounterCommand, RouteEncounterEvent, RouteSecuritySnapshot, SecurityCommandResult, TransitionSecurityTaskCommand } from "./route-security.js";
 import type {
   AllocateLabourCommand,
   PopulationCommandResult,
@@ -104,6 +106,7 @@ export type SimulationFoundationEvent =
   | ResourceDeliveryAttemptedEvent
   | FacilityProfileProcessEvent
   | PopulationEvent
+  | RouteEncounterEvent
   | TradeHubEvent;
 
 export interface SimulationFoundationDomainSnapshot {
@@ -113,6 +116,7 @@ export interface SimulationFoundationDomainSnapshot {
   readonly maxEventsPerAdvance: number;
   readonly tradeHubs: TradeHubsSnapshot | null;
   readonly population?: PopulationSnapshot | null;
+  readonly routeSecurity?: RouteSecuritySnapshot | null;
 }
 
 export interface SimulationFoundationSnapshot extends SimulationFoundationDomainSnapshot {
@@ -126,6 +130,7 @@ export interface SimulationFoundationOptions {
   readonly maxEventsPerAdvance: number;
   readonly tradeHubs?: TradeHubs | null;
   readonly population?: PopulationDynamics | null;
+  readonly routeSecurity?: RouteSecurity | null;
   readonly events?: readonly SimulationFoundationEvent[];
 }
 
@@ -162,6 +167,8 @@ export class WorldSimulationFoundation {
   #facilities: Facilities;
   #tradeHubs: TradeHubs | null;
   #population: PopulationDynamics | null;
+  #routeSecurity: RouteSecurity | null;
+  #encounterPort: EncounterPhysicalPort | null = null;
   readonly #maxEventsPerAdvance: number;
   #events: SimulationFoundationEvent[];
   #resetSnapshot: SimulationFoundationSnapshot | null = null;
@@ -186,6 +193,7 @@ export class WorldSimulationFoundation {
       ? null
       : new TradeHubs(options.tradeHubs.snapshot());
     this.#population = options.population === undefined || options.population === null ? null : new PopulationDynamics(options.population.snapshot());
+    this.#routeSecurity = options.routeSecurity === undefined || options.routeSecurity === null ? null : new RouteSecurity(options.routeSecurity.snapshot());
     this.#events = Array.from(structuredClone(options.events ?? []));
   }
 
@@ -218,6 +226,7 @@ export class WorldSimulationFoundation {
       ? null
       : new TradeHubs(this.#resetSnapshot.tradeHubs);
     this.#population = this.#resetSnapshot.population === undefined || this.#resetSnapshot.population === null ? null : new PopulationDynamics(this.#resetSnapshot.population);
+    this.#routeSecurity = this.#resetSnapshot.routeSecurity === undefined || this.#resetSnapshot.routeSecurity === null ? null : new RouteSecurity(this.#resetSnapshot.routeSecurity);
     this.#events = Array.from(structuredClone(this.#resetSnapshot.events));
   }
 
@@ -262,6 +271,27 @@ export class WorldSimulationFoundation {
 
   populationSnapshot(): PopulationSnapshot | null { return this.#population?.snapshot() ?? null; }
   populationSettlement(settlementId: string) { return this.#population?.snapshot().settlements.find((item) => item.settlementId === settlementId) ?? null; }
+
+  setEncounterPhysicalPort(port: EncounterPhysicalPort): void { this.#encounterPort = port; }
+  routeSecuritySnapshot(): RouteSecuritySnapshot | null { return this.#routeSecurity?.snapshot() ?? null; }
+  routeSecurityRoute(routeId: string) { return this.#routeSecurity?.route(routeId) ?? null; }
+  executeCreateSecurityTask(command: CreateSecurityTaskCommand): SecurityCommandResult {
+    const labour = this.#population?.allocationFor(command.executorPartyId) ?? 0;
+    return this.#requireRouteSecurity().createTask(command, this.#clock.elapsedDays, this.authorize(command.issuerActorId, command.executorPartyId, "security:task"), labour);
+  }
+  executeTransitionSecurityTask(command: TransitionSecurityTaskCommand): SecurityCommandResult {
+    const task = this.#routeSecurity?.tasks().find((item) => item.taskId === command.taskId);
+    return this.#requireRouteSecurity().transitionTask(command, this.#clock.elapsedDays, task !== undefined && this.authorize(command.issuerActorId, task.executorPartyId, "security:task"));
+  }
+  executePlanRouteEncounter(command: PlanRouteEncounterCommand): SecurityCommandResult {
+    const security = this.#requireRouteSecurity(), port = this.#encounterPort;
+    if (port === null) return { accepted: false, idempotentReplay: false, errorCode: "PARTY_NOT_PHYSICAL", message: "WorldSimulation encounter port is unavailable." };
+    const before = security.snapshot();
+    const mutation = security.planEncounter(command, this.#clock.elapsedDays, this.authorize(command.issuerActorId, command.attackerPartyId, "security:encounter"), port.party);
+    if (!mutation.result.accepted || mutation.intent === null) return mutation.result;
+    try { this.#clock.schedule(mutation.intent); return mutation.result; }
+    catch (error) { return security.recordSchedulingFailure(command, before, error); }
+  }
 
   executeFacilityOperation(command: FacilityOperationCommand): FacilityOperationResult {
     const authority = this.#governance.authorize({
@@ -466,6 +496,7 @@ export class WorldSimulationFoundation {
       maxEventsPerAdvance: this.#maxEventsPerAdvance,
       tradeHubs: this.#tradeHubs?.snapshot() ?? null,
       population: this.#population?.snapshot() ?? null,
+      routeSecurity: this.#routeSecurity?.snapshot() ?? null,
     };
   }
 
@@ -476,6 +507,7 @@ export class WorldSimulationFoundation {
       facilities: new Facilities(snapshot.facilities.facilities, snapshot.facilities.hosts, snapshot.facilities.profileRuntime ?? null),
       tradeHubs: snapshot.tradeHubs === null ? null : new TradeHubs(snapshot.tradeHubs),
       population: snapshot.population === undefined || snapshot.population === null ? null : new PopulationDynamics(snapshot.population),
+      routeSecurity: snapshot.routeSecurity === undefined || snapshot.routeSecurity === null ? null : new RouteSecurity(snapshot.routeSecurity),
       maxEventsPerAdvance: snapshot.maxEventsPerAdvance,
       events: snapshot.events,
     });
@@ -505,6 +537,11 @@ export class WorldSimulationFoundation {
       });
       this.#events.push(result.event);
       return result.nextIntent === null ? [] : [result.nextIntent];
+    }
+    if (intent.kind === ROUTE_ENCOUNTER_DUE && intent.targetComponent === ROUTE_SECURITY_COMPONENT) {
+      if (this.#encounterPort === null) throw new SimulationFoundationValidationError("Encounter physical port is unavailable.");
+      this.#events.push(this.#requireRouteSecurity().handleEncounter(intent, this.#clock.elapsedDays, this.#encounterPort));
+      return [];
     }
     if (intent.kind === POPULATION_MIGRATION_ARRIVAL_DUE && intent.targetComponent === POPULATION_COMPONENT) {
       this.#events.push(this.#requirePopulation().handleMigrationArrival(intent, this.#clock.elapsedDays));
@@ -610,6 +647,10 @@ export class WorldSimulationFoundation {
   #requirePopulation(): PopulationDynamics {
     if (this.#population === null) throw new SimulationFoundationValidationError("PopulationDynamics is not configured.");
     return this.#population;
+  }
+  #requireRouteSecurity(): RouteSecurity {
+    if (this.#routeSecurity === null) throw new SimulationFoundationValidationError("RouteSecurity is not configured.");
+    return this.#routeSecurity;
   }
 
 

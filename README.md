@@ -19,6 +19,8 @@ boundary.
   presentation and memory artifacts.
 - Facilities, World Clock, Trade Hubs, and WorldMemory are separate reusable
   components with explicit contracts.
+- RouteSecurity keeps local edge risk and task/encounter lifecycle while
+  WorldSimulation remains the only owner of physical Parties, cargo and losses.
 - The active simulation foundation includes the serializable scheduled-event
   queue, generic scoped governance, and deterministic atomic Facility cycles.
 - A Trade Hub is an instance connected to specific Facilities; it is not a

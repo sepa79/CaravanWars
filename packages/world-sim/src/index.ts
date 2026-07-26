@@ -276,6 +276,8 @@ export {
   POPULATION_SEASON_DUE,
   PopulationDynamics,
 } from "./population-dynamics.js";
+export { BanditRouteController, ROUTE_ENCOUNTER_DUE, ROUTE_SECURITY_COMPONENT, RouteSecurity, SecurityAwareRouteController } from "./route-security.js";
+export type { CreateSecurityTaskCommand, EncounterPartyView, EncounterPhysicalMutation, EncounterPhysicalPort, PlanRouteEncounterCommand, RouteChoicePolicy, RouteEncounterEvent, RouteEncounterSnapshot, RouteSecuritySnapshot, RouteSecurityState, SecurityCommandResult, SecurityPartyRole, SecurityPartyState, SecurityTaskKind, SecurityTaskSnapshot, SecurityTaskStatus, TransitionSecurityTaskCommand } from "./route-security.js";
 export type {
   AllocateLabourCommand,
   GovernorPopulationPolicy,

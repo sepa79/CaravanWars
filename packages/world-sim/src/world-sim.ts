@@ -44,6 +44,8 @@ import type {
 import type { AssignSupplyTaskCommand, GovernorSupplyAffordance } from "./governor-controller.js";
 import { PopulationDynamics } from "./population-dynamics.js";
 import type { AllocateLabourCommand, PopulationCommandResult, StartMigrationCommand } from "./population-dynamics.js";
+import { RouteSecurity } from "./route-security.js";
+import type { CreateSecurityTaskCommand, EncounterPartyView, EncounterPhysicalMutation, PlanRouteEncounterCommand, RouteEncounterEvent, SecurityCommandResult, TransitionSecurityTaskCommand } from "./route-security.js";
 
 export interface DeliverSupplyTaskCommand {
   readonly commandId: string;
@@ -184,7 +186,10 @@ export type WorldCommandEnvelope =
   | { readonly commandType: "deliver_supply_task"; readonly command: DeliverSupplyTaskCommand }
   | { readonly commandType: "report_supply_task"; readonly command: ReportSupplyTaskCommand }
   | { readonly commandType: "allocate_labour"; readonly command: AllocateLabourCommand }
-  | { readonly commandType: "start_population_migration"; readonly command: StartMigrationCommand };
+  | { readonly commandType: "start_population_migration"; readonly command: StartMigrationCommand }
+  | { readonly commandType: "create_security_task"; readonly command: CreateSecurityTaskCommand }
+  | { readonly commandType: "transition_security_task"; readonly command: TransitionSecurityTaskCommand }
+  | { readonly commandType: "plan_route_encounter"; readonly command: PlanRouteEncounterCommand };
 
 export type WorldCommandSubmissionResult =
   | { readonly commandType: "move_party"; readonly result: CommandResult }
@@ -198,7 +203,10 @@ export type WorldCommandSubmissionResult =
   | { readonly commandType: "deliver_supply_task"; readonly result: SupplyCommandResult }
   | { readonly commandType: "report_supply_task"; readonly result: SupplyCommandResult }
   | { readonly commandType: "allocate_labour"; readonly result: PopulationCommandResult }
-  | { readonly commandType: "start_population_migration"; readonly result: PopulationCommandResult };
+  | { readonly commandType: "start_population_migration"; readonly result: PopulationCommandResult }
+  | { readonly commandType: "create_security_task"; readonly result: SecurityCommandResult }
+  | { readonly commandType: "transition_security_task"; readonly result: SecurityCommandResult }
+  | { readonly commandType: "plan_route_encounter"; readonly result: SecurityCommandResult };
 
 export interface PartyTravelSnapshot {
   readonly edgeId: string;
@@ -216,7 +224,7 @@ export interface PartySnapshot {
   readonly status: "idle" | "traveling";
   readonly currentNodeId: string | null;
   readonly position: Vec2;
-  readonly composition: PartyComposition;
+  composition: PartyComposition;
   readonly knownRouteIds: readonly string[];
   readonly observedWaypointIds: readonly string[];
   readonly observedLandmarkIds: readonly string[];
@@ -376,7 +384,7 @@ interface PartyRuntimeState {
   readonly id: string;
   readonly displayName: string;
   readonly managerActorId: string;
-  readonly composition: PartyComposition;
+  composition: PartyComposition;
   readonly cargo: Map<string, number>;
   readonly knownRouteIds: ReadonlySet<string>;
   readonly observedWaypointIds: Set<string>;
@@ -498,9 +506,12 @@ export class WorldSimulation {
     this.#economySeed = economySeed === null ? null : copyWorldEconomySeed(economySeed);
     this.#parties = createParties(graph, this.#partySeeds, this.#economySeed?.goodsCatalog ?? null);
     this.#locations = createLocations(graph, this.#economySeed);
+    for (const route of this.#simulationFoundation?.routeSecuritySnapshot()?.routes ?? []) if (!graph.edgesById.has(route.routeId)) throw new WorldSimulationConfigurationError(`RouteSecurity route ${route.routeId} is absent from the canonical graph.`);
+    for (const securityParty of this.#simulationFoundation?.routeSecuritySnapshot()?.parties ?? []) if (!this.#parties.has(securityParty.partyId)) throw new WorldSimulationConfigurationError(`RouteSecurity party ${securityParty.partyId} is not a physical WorldSimulation Party.`);
     validateInitialCargoCapacities(this.#parties, this.#economySeed);
     this.#worldMemory = new WorldMemory(worldMemory.snapshot());
     this.#initialWorldMemorySnapshot = this.#worldMemory.snapshot();
+    this.#bindEncounterPort();
   }
 
   static fromSnapshot(
@@ -517,6 +528,7 @@ export class WorldSimulation {
       facilities: new Facilities(domain.facilities.facilities, domain.facilities.hosts, domain.facilities.profileRuntime ?? null),
       tradeHubs: domain.tradeHubs === null ? null : new TradeHubs(domain.tradeHubs),
       population: domain.population === undefined || domain.population === null ? null : new PopulationDynamics(domain.population),
+      routeSecurity: domain.routeSecurity === undefined || domain.routeSecurity === null ? null : new RouteSecurity(domain.routeSecurity),
       maxEventsPerAdvance: domain.maxEventsPerAdvance,
       events: domain.events,
     });
@@ -559,6 +571,12 @@ export class WorldSimulation {
   ): Extract<WorldCommandSubmissionResult, { readonly commandType: "cancel_trade_hub_order" }>;
   submitCommand(envelope: WorldCommandEnvelope): WorldCommandSubmissionResult;
   submitCommand(envelope: WorldCommandEnvelope): WorldCommandSubmissionResult {
+    if (envelope.commandType === "create_security_task") return { commandType: envelope.commandType, result: this.#simulationFoundation?.executeCreateSecurityTask(envelope.command) ?? securityUnavailable() };
+    if (envelope.commandType === "transition_security_task") return { commandType: envelope.commandType, result: this.#simulationFoundation?.executeTransitionSecurityTask(envelope.command) ?? securityUnavailable() };
+    if (envelope.commandType === "plan_route_encounter") {
+      if (!this.#graph.edgesById.has(envelope.command.routeId)) return { commandType: envelope.commandType, result: securityRejected("INVALID_COMMAND", "Encounter route is absent from the region graph.") };
+      return { commandType: envelope.commandType, result: this.#simulationFoundation?.executePlanRouteEncounter(envelope.command) ?? securityUnavailable() };
+    }
     if (envelope.commandType === "allocate_labour") {
       return { commandType: envelope.commandType, result: this.#simulationFoundation?.executeAllocateLabour(envelope.command) ?? populationUnavailable() };
     }
@@ -736,6 +754,25 @@ export class WorldSimulation {
           .filter((party) => party.location.status === "idle" && party.location.nodeId === (hubs.find((hub) => hub.connectedFacilityHostIds.includes(facility.hostId))?.nodeId ?? ""))
           .map((party) => party.id).sort(),
       }));
+  }
+
+  observeLocalRouteSecurity(observationId: string, observerPartyId: string, ownerId: string, ownerKind: Extract<WorldMemoryOwnerKind, "actor" | "party">, routeId: string, staleAfterDays: number): WorldMemoryEntry | null {
+    const party = this.#parties.get(observerPartyId), edge = this.#graph.edgesById.get(routeId), security = this.#simulationFoundation?.routeSecurityRoute(routeId);
+    if (party === undefined || edge === undefined || security === null || security === undefined) return null;
+    const local = party.location.status === "traveling" ? party.location.edgeId === routeId : edge.originNodeId === party.location.nodeId || edge.targetNodeId === party.location.nodeId;
+    if (!local || ownerId !== (ownerKind === "party" ? party.id : party.managerActorId)) return null;
+    const result = this.#worldMemory.ingest({ ingestId: `route-security:${observationId}`, ownerId, ownerKind, kind: "route_security_observation", observedAtElapsedDays: this.#clock.elapsedDays, knownAtElapsedDays: this.#clock.elapsedDays, staleAfterDays, provenance: { sourceType: "direct_observation", sourceId: observationId, sourceOwnerId: observerPartyId, nodeId: party.location.status === "idle" ? party.location.nodeId : null }, payload: { routeId, riskPermille: security.riskPermille, incidentCount: security.incidentCount, patrolStrength: security.patrolStrength } });
+    return result.accepted ? result.entry : null;
+  }
+
+  reportRouteIncident(reportId: string, reporterPartyId: string, recipientActorId: string, encounterId: string, staleAfterDays: number): WorldMemoryEntry | null {
+    const party = this.#parties.get(reporterPartyId), foundation = this.#simulationFoundation;
+    if (party === undefined || foundation === null || party.location.status !== "idle") return null;
+    const incident = foundation.eventsSince(0).events.find((event): event is RouteEncounterEvent & { readonly eventType: "RouteEncounterResolved" } => event.eventType === "RouteEncounterResolved" && event.encounterId === encounterId && (event.attackerPartyId === party.id || event.defenderPartyId === party.id));
+    const edge = incident === undefined ? undefined : this.#graph.edgesById.get(incident.routeId);
+    if (incident === undefined || edge === undefined || (party.location.nodeId !== edge.originNodeId && party.location.nodeId !== edge.targetNodeId) || !foundation.authorize(recipientActorId, incident.routeId, "security:task")) return null;
+    const result = this.#worldMemory.ingest({ ingestId: `route-report:${reportId}`, ownerId: recipientActorId, ownerKind: "actor", kind: "route_incident_report", observedAtElapsedDays: incident.elapsedDays, knownAtElapsedDays: this.#clock.elapsedDays, staleAfterDays, provenance: { sourceType: "report", sourceId: reportId, sourceOwnerId: reporterPartyId, nodeId: party.location.nodeId }, payload: { encounterId, routeId: incident.routeId, outcome: incident.outcome, stolenCargo: incident.stolenCargo, casualties: incident.attackerCasualties + incident.defenderCasualties } });
+    return result.accepted ? result.entry : null;
   }
 
   merchantLocalTradeAffordances(partyId: string): MerchantLocalTradeAffordances {
@@ -1147,6 +1184,32 @@ export class WorldSimulation {
     }
   }
 
+  #bindEncounterPort(): void {
+    this.#simulationFoundation?.setEncounterPhysicalPort({ party: (id) => this.#encounterParty(id), apply: (mutation) => this.#applyEncounterMutation(mutation) });
+  }
+
+  #encounterParty(id: string): EncounterPartyView | null {
+    const party = this.#parties.get(id); if (party === undefined) return null;
+    const state = this.#simulationFoundation?.routeSecuritySnapshot()?.parties.find((item) => item.partyId === id);
+    const capacity = this.#economySeed === null ? 0 : calculatePartyCargoCapacity(party.composition, this.#economySeed.partyCargoConfig);
+    const used = this.#economySeed === null ? 0 : calculateCargoUsedBulk(party.cargo, this.#economySeed.goodsCatalog);
+    return { partyId: id, travelingRouteId: party.location.status === "traveling" ? party.location.edgeId : null, composition: { ...party.composition }, cargo: Object.fromEntries(party.cargo), cargoFreeBulk: Math.max(0, capacity - used), conditionPermille: state?.conditionPermille ?? 1000, moralePermille: state?.moralePermille ?? 1000 };
+  }
+
+  #applyEncounterMutation(mutation: EncounterPhysicalMutation): boolean {
+    const attacker = this.#parties.get(mutation.attackerPartyId), defender = this.#parties.get(mutation.defenderPartyId);
+    if (attacker === undefined || defender === undefined || this.#economySeed === null) return false;
+    for (const [goodsId, amount] of Object.entries(mutation.stolenCargo)) if (!Number.isSafeInteger(amount) || amount < 0 || (defender.cargo.get(goodsId) ?? 0) < amount) return false;
+    const incoming = new Map(attacker.cargo); for (const [goodsId, amount] of Object.entries(mutation.stolenCargo)) setQuantity(incoming, goodsId, (incoming.get(goodsId) ?? 0) + amount);
+    if (calculateCargoUsedBulk(incoming, this.#economySeed.goodsCatalog) > calculatePartyCargoCapacity(attacker.composition, this.#economySeed.partyCargoConfig)) return false;
+    const casualtyTargets: readonly (readonly [PartyRuntimeState | undefined, number])[] = [[attacker, mutation.attackerCasualties], [defender, mutation.defenderCasualties], ...Object.entries(mutation.escortCasualties).map(([id, count]) => [this.#parties.get(id), count] as const)];
+    if (casualtyTargets.some(([party, count]) => party === undefined || !Number.isSafeInteger(count) || count < 0 || count > party.composition.footCount + party.composition.horseCount + party.composition.guardCount)) return false;
+    for (const [goodsId, amount] of Object.entries(mutation.stolenCargo)) { setQuantity(defender.cargo, goodsId, (defender.cargo.get(goodsId) ?? 0) - amount); setQuantity(attacker.cargo, goodsId, (attacker.cargo.get(goodsId) ?? 0) + amount); }
+    for (const [party, count] of casualtyTargets) if (party !== undefined) party.composition = applyCasualties(party.composition, count);
+    if (defender.location.status === "traveling") defender.location.progressKm = Math.max(0, defender.location.progressKm - defender.location.speedKmPerDay * mutation.defenderDelayDays);
+    return true;
+  }
+
   reset(): void {
     if (this.#simulationFoundation === null) this.#clock.reset();
     else this.#simulationFoundation.reset();
@@ -1179,6 +1242,7 @@ export class WorldSimulation {
       const party = this.#parties.get(source.id);
       if (party === undefined) throw new WorldSimulationConfigurationError(`Snapshot party ${source.id} is missing from seed.`);
       party.cargo.clear();
+      party.composition = { ...source.composition };
       for (const [goodsId, amount] of Object.entries(source.cargo)) party.cargo.set(goodsId, amount);
       party.location = source.travel === null
         ? { status: "idle", nodeId: requireRestoredNode(source) }
@@ -1597,6 +1661,20 @@ function validatePartyComposition(partyId: string, composition: PartyComposition
     }
   }
 }
+
+function applyCasualties(composition: PartyComposition, casualties: number): PartyComposition {
+  let remaining = casualties;
+  const guardLoss = Math.min(composition.guardCount, remaining); remaining -= guardLoss;
+  const footLoss = Math.min(composition.footCount, remaining); remaining -= footLoss;
+  const horseLoss = Math.min(composition.horseCount, remaining);
+  return { ...composition, guardCount: composition.guardCount - guardLoss, footCount: composition.footCount - footLoss, horseCount: composition.horseCount - horseLoss };
+}
+
+function securityRejected(errorCode: Extract<SecurityCommandResult, { accepted: false }>["errorCode"], message: string): SecurityCommandResult {
+  return { accepted: false, idempotentReplay: false, errorCode, message };
+}
+
+function securityUnavailable(): SecurityCommandResult { return securityRejected("INVALID_COMMAND", "RouteSecurity is not configured."); }
 
 function createPartySnapshot(
   graph: RegionGraph,

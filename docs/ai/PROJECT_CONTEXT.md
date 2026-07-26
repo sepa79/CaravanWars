@@ -53,6 +53,8 @@ TypeScript with a browser-first client and a thin future Electron shell.
   adjudication.
 - Regional autonomy is orchestration over WorldSimulation and the canonical
   command envelope, never a second authoritative economy.
+- Route security is local region-edge state. Bandits, patrols and escorts are
+  physical Parties; private, aging observations drive their controllers.
 
 ## Active paths
 

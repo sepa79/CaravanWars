@@ -8,6 +8,8 @@ import { WorldSimulation } from "./world-sim.js";
 import type { PartyTravelConfig, WorldEconomySeed, WorldSnapshot } from "./world-sim.js";
 import { GovernorPopulationController } from "./population-dynamics.js";
 import type { GovernorPopulationPolicy } from "./population-dynamics.js";
+import type { RouteEncounterEvent } from "./route-security.js";
+import { BanditRouteController } from "./route-security.js";
 
 export interface RegionalFacilityMarketPolicy {
   readonly facilityId: string;
@@ -35,6 +37,11 @@ export interface RegionalMerchantPolicy {
   readonly quantity: number;
 }
 
+export interface RegionalSecurityPolicy {
+  readonly bandits: readonly { readonly partyId: string; readonly issuerActorId: string; readonly routeId: string; readonly originNodeId: string; readonly destinationNodeId: string; readonly targetPartyIds: readonly string[] }[];
+  readonly responses: readonly { readonly governorActorId: string; readonly routeId: string; readonly originNodeId: string; readonly destinationNodeId: string; readonly patrolPartyId: string; readonly escortPartyId: string }[];
+}
+
 export interface AutonomousRegionalEconomyConfig {
   readonly configId: string;
   readonly seed: number;
@@ -44,6 +51,7 @@ export interface AutonomousRegionalEconomyConfig {
   readonly merchants: readonly RegionalMerchantPolicy[];
   readonly routeDistanceByKey: Readonly<Record<string, number>>;
   readonly populationGovernors?: readonly { readonly governorActorId: string; readonly settlementId: string; readonly policy: GovernorPopulationPolicy }[];
+  readonly security?: RegionalSecurityPolicy;
 }
 
 export interface RegionalDecisionRecord {
@@ -73,6 +81,12 @@ export interface RegionalEconomyMetrics {
   readonly activeTasks: number;
   readonly terminalTasks: number;
   readonly failedCommands: number;
+  readonly routeIncidents: number;
+  readonly successfulAmbushes: number;
+  readonly cargoStolen: number;
+  readonly securityCasualties: number;
+  readonly activeSecurityTasks: number;
+  readonly averageRouteRiskPermille: number;
 }
 
 export interface AutonomousRegionalEconomySnapshot {
@@ -107,6 +121,7 @@ export class AutonomousRegionalEconomyRunner {
   readonly #governor = new GovernorAIController();
   readonly #merchant = new MerchantMemoryAI();
   readonly #populationGovernor = new GovernorPopulationController();
+  readonly #banditController = new BanditRouteController();
   #decisions: RegionalDecisionRecord[];
   #nextDecisionSequence: number;
   readonly #actionOrdinals: Map<string, number>;
@@ -211,6 +226,8 @@ export class AutonomousRegionalEconomyRunner {
     }
     const unrest = (snapshot.simulationFoundation?.facilities.hosts ?? [])
       .flatMap((host) => host.cohorts).reduce((sum, cohort) => sum + cohort.unrest, 0);
+    const incidentEvents = events.filter((event): event is RouteEncounterEvent & { readonly eventType: "RouteEncounterResolved" } => event.eventType === "RouteEncounterResolved");
+    const security = snapshot.simulationFoundation?.routeSecurity;
     return {
       elapsedDays: snapshot.clock.elapsedDays,
       productionByGoods: production,
@@ -223,6 +240,12 @@ export class AutonomousRegionalEconomyRunner {
       activeTasks: tasks.filter((task) => task.status === "created" || task.status === "accepted" || task.status === "in_progress").length,
       terminalTasks: tasks.filter((task) => task.status === "completed" || task.status === "failed" || task.status === "abandoned").length,
       failedCommands: this.#decisions.filter((item) => item.accepted === false).length,
+      routeIncidents: incidentEvents.length,
+      successfulAmbushes: incidentEvents.filter((event) => event.outcome === "ambush_success").length,
+      cargoStolen: incidentEvents.reduce((sum, event) => sum + Object.values(event.stolenCargo).reduce((total, amount) => total + amount, 0), 0),
+      securityCasualties: incidentEvents.reduce((sum, event) => sum + event.attackerCasualties + event.defenderCasualties, 0),
+      activeSecurityTasks: security?.tasks.filter((task) => task.status === "created" || task.status === "accepted" || task.status === "in_progress").length ?? 0,
+      averageRouteRiskPermille: security === undefined || security === null || security.routes.length === 0 ? 0 : Math.round(security.routes.reduce((sum, route) => sum + route.riskPermille, 0) / security.routes.length),
     };
   }
 
@@ -238,6 +261,7 @@ export class AutonomousRegionalEconomyRunner {
     this.#planPopulationLabour();
     this.#executeSupplyTasks();
     this.#runIndependentMerchants();
+    this.#runRouteSecurity();
     this.#world.advanceDays(0.001);
   }
 
@@ -396,6 +420,61 @@ export class AutonomousRegionalEconomyRunner {
       side: "buy", goodsId: task.goodsId, quantity: task.amount, limitPrice: source.bestAsk, expiresAtElapsedDays: null,
     }}).result;
     this.#record(party.managerActorId, result.accepted ? "task_buy_placed" : result.errorCode, "place_trade_hub_order", result.accepted);
+  }
+
+  #runRouteSecurity(): void {
+    const policy = this.#config.security;
+    if (policy === undefined) return;
+    for (const bandit of policy.bandits) {
+      if (this.#banditController.choose(this.#world.worldMemoryView(bandit.partyId, "party"), bandit.partyId).routeId !== bandit.routeId) continue;
+      this.#world.observeLocalRouteSecurity(`regional:${bandit.partyId}:${this.#nextAction(`security-observe:${bandit.partyId}`)}`, bandit.partyId, bandit.partyId, "party", bandit.routeId, 30);
+      let attacker = this.#world.partySnapshot(bandit.partyId);
+      if (attacker.status === "idle" && (attacker.currentNodeId === bandit.originNodeId || attacker.currentNodeId === bandit.destinationNodeId)) {
+        this.#world.submitCommand({ commandType: "move_party", command: { party_id: bandit.partyId, from_node_id: attacker.currentNodeId, to_node_id: attacker.currentNodeId === bandit.originNodeId ? bandit.destinationNodeId : bandit.originNodeId } });
+        attacker = this.#world.partySnapshot(bandit.partyId);
+      }
+      if (attacker.travel?.edgeId !== bandit.routeId) continue;
+      const target = bandit.targetPartyIds.map((id) => this.#world.partySnapshot(id)).find((item) => item.travel?.edgeId === bandit.routeId);
+      const security = this.#world.snapshot().simulationFoundation?.routeSecurity;
+      if (target === undefined || security?.encounters.some((item) => item.status === "pending" && (item.attackerPartyId === bandit.partyId || item.defenderPartyId === target.id)) === true) continue;
+      const escorts = policy.responses.map((item) => this.#world.partySnapshot(item.escortPartyId)).filter((item) => item.travel?.edgeId === bandit.routeId).map((item) => item.id);
+      const ordinal = this.#nextAction(`encounter:${bandit.partyId}`);
+      this.#world.submitCommand({ commandType: "plan_route_encounter", command: { commandId: `regional:encounter:${bandit.partyId}:${ordinal}`, issuerActorId: bandit.issuerActorId, encounterId: `regional:${bandit.partyId}:${ordinal}`, routeId: bandit.routeId, attackerPartyId: bandit.partyId, defenderPartyId: target.id, escortPartyIds: escorts, delayDays: 0.0005 } });
+    }
+    for (const response of policy.responses) {
+      const snapshot = this.#world.snapshot();
+      const incident = [...(snapshot.simulationFoundation?.events ?? [])].reverse().find((event): event is RouteEncounterEvent & { readonly eventType: "RouteEncounterResolved" } => event.eventType === "RouteEncounterResolved" && event.routeId === response.routeId);
+      if (incident === undefined) continue;
+      const defender = this.#world.partySnapshot(incident.defenderPartyId);
+      if (defender.status === "idle") this.#world.reportRouteIncident(`regional-report:${incident.encounterId}`, defender.id, response.governorActorId, incident.encounterId, 180);
+      let task = snapshot.simulationFoundation?.routeSecurity?.tasks.find((item) => item.executorPartyId === response.patrolPartyId && item.routeId === response.routeId && !["completed", "failed", "abandoned"].includes(item.status));
+      if (task === undefined && this.#world.worldMemoryView(response.governorActorId, "actor").entries.some((entry) => entry.kind === "route_incident_report" && entry.freshness === "fresh")) {
+        const ordinal = this.#nextAction(`patrol:${response.routeId}`), taskId = `regional:patrol:${response.routeId}:${ordinal}`;
+        const created = this.#world.submitCommand({ commandType: "create_security_task", command: { commandId: `${taskId}:create`, issuerActorId: response.governorActorId, taskId, kind: "patrol", executorPartyId: response.patrolPartyId, routeId: response.routeId, protectedPartyId: null, labourRequired: 2 } }).result;
+        if (created.accepted) {
+          this.#world.submitCommand({ commandType: "transition_security_task", command: { commandId: `${taskId}:accept`, issuerActorId: response.governorActorId, taskId, status: "accepted", reason: "incident_report" } });
+          this.#world.submitCommand({ commandType: "transition_security_task", command: { commandId: `${taskId}:start`, issuerActorId: response.governorActorId, taskId, status: "in_progress", reason: "patrol_dispatched" } });
+        }
+        task = this.#world.snapshot().simulationFoundation?.routeSecurity?.tasks.find((item) => item.taskId === taskId);
+      }
+      if (task?.status !== "in_progress") continue;
+      const patrol = this.#world.partySnapshot(response.patrolPartyId), startedAt = task.transitions.at(-1)?.elapsedDays ?? this.#world.elapsedDays();
+      if (patrol.status === "idle" && patrol.currentNodeId === response.originNodeId && startedAt === this.#world.elapsedDays()) this.#world.submitCommand({ commandType: "move_party", command: { party_id: patrol.id, from_node_id: response.originNodeId, to_node_id: response.destinationNodeId } });
+      else if (patrol.status === "idle" && patrol.currentNodeId === response.destinationNodeId) this.#world.submitCommand({ commandType: "transition_security_task", command: { commandId: `${task.taskId}:complete`, issuerActorId: response.governorActorId, taskId: task.taskId, status: "completed", reason: "route_patrolled" } });
+      const currentSecurity = this.#world.snapshot().simulationFoundation?.routeSecurity;
+      let escortTask = currentSecurity?.tasks.find((item) => item.executorPartyId === response.escortPartyId && !["completed", "failed", "abandoned"].includes(item.status));
+      if (escortTask === undefined) {
+        const ordinal = this.#nextAction(`escort:${response.routeId}`), taskId = `regional:escort:${response.routeId}:${ordinal}`;
+        const created = this.#world.submitCommand({ commandType: "create_security_task", command: { commandId: `${taskId}:create`, issuerActorId: response.governorActorId, taskId, kind: "escort", executorPartyId: response.escortPartyId, routeId: response.routeId, protectedPartyId: defender.id, labourRequired: 2 } }).result;
+        if (created.accepted) { this.#world.submitCommand({ commandType: "transition_security_task", command: { commandId: `${taskId}:accept`, issuerActorId: response.governorActorId, taskId, status: "accepted", reason: "merchant_requested_protection" } }); this.#world.submitCommand({ commandType: "transition_security_task", command: { commandId: `${taskId}:start`, issuerActorId: response.governorActorId, taskId, status: "in_progress", reason: "escort_dispatched" } }); }
+        escortTask = this.#world.snapshot().simulationFoundation?.routeSecurity?.tasks.find((item) => item.taskId === taskId);
+      }
+      if (escortTask?.status === "in_progress") {
+        const escort = this.#world.partySnapshot(response.escortPartyId), escortStarted = escortTask.transitions.at(-1)?.elapsedDays ?? this.#world.elapsedDays();
+        if (escort.status === "idle" && escort.currentNodeId === response.originNodeId && escortStarted === this.#world.elapsedDays()) this.#world.submitCommand({ commandType: "move_party", command: { party_id: escort.id, from_node_id: response.originNodeId, to_node_id: response.destinationNodeId } });
+        else if (escort.status === "idle" && escort.currentNodeId === response.destinationNodeId) this.#world.submitCommand({ commandType: "transition_security_task", command: { commandId: `${escortTask.taskId}:complete`, issuerActorId: response.governorActorId, taskId: escortTask.taskId, status: "completed", reason: "escort_arrived" } });
+      }
+    }
   }
 
   #runIndependentMerchants(): void {

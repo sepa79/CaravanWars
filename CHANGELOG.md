@@ -4,6 +4,11 @@
 
 ### Added
 
+- Route Security, Bandits & Escorts v1 with local route risk, physical
+  security Parties, Governance/labour-checked task lifecycle, deterministic
+  delayed encounters, atomic physical effects, private aging observations,
+  replay-safe saves, regional metrics and labelled truth diagnostics.
+
 - Population, Health & Labour Dynamics v1 with deterministic age cohorts,
   births/aging/deaths, nutrition, disease/recovery, seasonal scarce labour,
   memory-bound Governor allocation, ration reserves and delayed migration.

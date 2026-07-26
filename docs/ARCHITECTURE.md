@@ -190,6 +190,16 @@ and submit authority-checked allocation or migration commands. Facilities use
 only labour allocated to their entity. Migrants remain in a route-bound
 in-transit process until a WorldClock arrival event.
 
+### Route security, bandits and escorts
+
+RouteSecurity indexes canonical region-graph edges and is composed into the
+same Foundation. Bandit, patrol and escort actors remain normal physical
+Parties. It schedules deterministic encounter intents; a narrow WorldSimulation
+port validates and atomically applies cargo, casualty and delay effects.
+Security tasks use Governance and allocated military labour. Route decisions
+consume only fresh owner-scoped WorldMemory. Party Map never receives route
+risk; the labelled TRUTH/DEBUG view may inspect it.
+
 ## Active repository boundaries
 
 | Path | Responsibility |

@@ -46,6 +46,7 @@ export interface SeasonalEconomyDiagnostics extends ReturnType<AutonomousRegiona
   readonly calendar: ReturnType<typeof calendarAt>;
   readonly profiles: NonNullable<AutonomousRegionalEconomySnapshot["world"]["simulationFoundation"]>["facilities"]["profileRuntime"];
   readonly populationDynamics: NonNullable<AutonomousRegionalEconomySnapshot["world"]["simulationFoundation"]>["population"];
+  readonly routeSecurity: NonNullable<AutonomousRegionalEconomySnapshot["world"]["simulationFoundation"]>["routeSecurity"];
   readonly winterReserves: readonly { readonly hostId: string; readonly hay: number; readonly seedGrain: number; readonly edibleGrain: number }[];
   readonly annualReports: readonly SeasonalEconomyReport[];
 }
@@ -93,6 +94,7 @@ export class SeasonalRegionalEconomyRunner {
       calendar: calendarAt(snapshot.world.clock.elapsedDays),
       profiles: facilities?.profileRuntime ?? null,
       populationDynamics: snapshot.world.simulationFoundation?.population ?? null,
+      routeSecurity: snapshot.world.simulationFoundation?.routeSecurity ?? null,
       winterReserves: (facilities?.hosts ?? []).map((host) => ({ hostId: host.hostId, hay: host.inventory.hay ?? 0, seedGrain: host.inventory.seed_grain ?? 0, edibleGrain: host.inventory.edible_grain ?? 0 })),
       annualReports: this.#reports.filter((report) => report.season === "annual"),
     };

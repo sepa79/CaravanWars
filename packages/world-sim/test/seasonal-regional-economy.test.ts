@@ -12,8 +12,8 @@ test("seasonal Silesia fixture has ten local hubs, profiled Facilities and at le
   const snapshot = fixture.runner.snapshot();
   assert.equal(snapshot.runner.world.simulationFoundation?.tradeHubs?.hubs.length, 10);
   assert.equal(snapshot.runner.world.simulationFoundation?.facilities.profileRuntime?.instances.length, 10);
-  assert.equal(snapshot.runner.config.merchants.length, 12);
-  assert.equal(snapshot.runner.world.parties.length, 22);
+  assert.equal(snapshot.runner.config.merchants.length, 13);
+  assert.equal(snapshot.runner.world.parties.length, 27);
   assert.equal(snapshot.runner.world.parties.filter((party) => party.id.startsWith("seasonal_merchant_")).length, 12);
   assert.equal("simulationFoundation" in fixture.runner.partyMapSnapshot("seasonal_merchant_0"), false);
 });
@@ -34,6 +34,8 @@ test("full year, save mid-cycle and deterministic continuation preserve bounded 
   assert.equal(left.regional.trades > 0, true);
   assert.equal(left.regional.transportDistanceKm > 0, true);
   assert.equal(left.regional.failedCommands > 0, true);
+  assert.equal(left.regional.routeIncidents > 0, true);
+  assert.equal((resumed.snapshot().runner.world.simulationFoundation?.routeSecurity?.encounters.length ?? 0) > 0, true);
   assert.equal((resumed.snapshot().runner.world.simulationFoundation?.events ?? []).some((event) => event.eventType === "FacilityProfileProcessCompleted" && event.stageId === "sowing"), true);
 });
 
@@ -56,4 +58,19 @@ test("three-year stress run keeps pending work bounded while retained history is
   assert.equal(reports.every((report) => report.pendingQueue === 30), true);
   assert.equal(reports[2]!.retainedHistory < reports[0]!.retainedHistory * 4, true);
   assert.equal(reports[2]!.regional.trades >= reports[0]!.regional.trades, true);
+});
+
+test("autonomous trade attracts bandits, private reporting creates patrol and escort recovery tasks", () => {
+  const fixture = createSeasonalRegionalEconomyFixture(graph, travel, 19);
+  const report = fixture.runner.runDays(720);
+  const snapshot = fixture.runner.snapshot().runner.world;
+  const security = snapshot.simulationFoundation?.routeSecurity;
+  assert.equal(report.regional.routeIncidents > 0, true);
+  assert.equal(report.regional.cargoStolen > 0, true);
+  assert.equal(security?.tasks.some((task) => task.kind === "patrol" && task.status === "completed"), true);
+  assert.equal(security?.tasks.some((task) => task.kind === "escort" && task.status === "completed"), true);
+  assert.equal(snapshot.worldMemory.entries.some((entry) => entry.ownerId === "wroclaw_governor" && entry.kind === "route_incident_report"), true);
+  assert.equal(snapshot.worldMemory.entries.some((entry) => entry.ownerId === "opole_governor" && entry.kind === "route_incident_report"), false);
+  assert.equal(security?.routes.find((route) => route.routeId === "wroclaw_raciborz")?.patrolStrength, 2);
+  assert.equal(report.pendingQueue < 500, true);
 });

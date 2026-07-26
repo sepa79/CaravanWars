@@ -105,5 +105,5 @@ test("regional economy diagnostics require explicit truth mode and advance auton
   await expect(page.locator("#economySeason")).not.toHaveText("—");
   await expect(page.locator("#economyProfiles")).toContainText("_v1");
   await expect(page.locator("#economyPopulation")).toContainText("wroclaw");
-  await expect(page.locator("#economyLabour")).toBeVisible();
+  await expect(page.locator("#economyLabour")).toContainText("SECURITY TRUTH");
 });

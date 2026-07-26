@@ -113,6 +113,10 @@ interface EconomyDiagnostics {
     readonly shortages: number;
     readonly activeTasks: number;
     readonly transportDistanceKm: number;
+    readonly routeIncidents?: number;
+    readonly successfulAmbushes?: number;
+    readonly activeSecurityTasks?: number;
+    readonly averageRouteRiskPermille?: number;
   };
   readonly recentDecisions: readonly { readonly actorId: string; readonly reason: string; readonly accepted: boolean | null }[];
   readonly calendar?: { readonly year: number; readonly dayOfYear: number; readonly season: string };
@@ -120,6 +124,7 @@ interface EconomyDiagnostics {
   readonly winterReserves?: readonly { readonly hay: number; readonly seedGrain: number; readonly edibleGrain: number }[];
   readonly annualReports?: readonly { readonly year: number; readonly grossHarvest: number; readonly edibleSurplus: number; readonly spoilage: number }[];
   readonly populationDynamics?: { readonly settlements: readonly { readonly settlementId: string; readonly cohorts: { readonly children: number; readonly workingAdults: number; readonly elders: number }; readonly healthPermille: number; readonly nutritionPermille: number; readonly allocations: readonly { readonly sector: string; readonly workers: number }[] }[] } | null;
+  readonly routeSecurity?: { readonly routes: readonly { readonly routeId: string; readonly riskPermille: number; readonly incidentCount: number; readonly patrolStrength: number }[]; readonly tasks: readonly { readonly taskId: string; readonly status: string }[] } | null;
 }
 
 const canvas = requireElement<HTMLCanvasElement>("mapCanvas");
@@ -210,7 +215,7 @@ function renderEconomyDiagnostics(diagnostics: EconomyDiagnostics): void {
   economyDay.textContent = diagnostics.metrics.elapsedDays.toFixed(2);
   economyTrades.textContent = String(diagnostics.metrics.trades);
   economyShortages.textContent = String(diagnostics.metrics.shortages);
-  economyTasks.textContent = String(diagnostics.metrics.activeTasks);
+  economyTasks.textContent = `${diagnostics.metrics.activeTasks} logistics; ${diagnostics.metrics.activeSecurityTasks ?? 0} security`;
   economyDistance.textContent = `${diagnostics.metrics.transportDistanceKm.toFixed(0)} km`;
   economySeason.textContent = diagnostics.calendar === undefined ? "—" : `${diagnostics.calendar.season}, Y${diagnostics.calendar.year} D${diagnostics.calendar.dayOfYear}`;
   economyProfiles.textContent = diagnostics.profiles?.instances.map((item) => `${item.profileId}: ${Object.values(item.processStages).join("/")}`).join("; ") ?? "—";
@@ -220,6 +225,7 @@ function renderEconomyDiagnostics(diagnostics: EconomyDiagnostics): void {
   const population = diagnostics.populationDynamics?.settlements ?? [];
   economyPopulation.textContent = population.map((item) => `${item.settlementId}: ${item.cohorts.children + item.cohorts.workingAdults + item.cohorts.elders} h${item.healthPermille} n${item.nutritionPermille}`).join("; ") || "—";
   economyLabour.textContent = population.flatMap((item) => item.allocations.map((allocation) => `${item.settlementId}/${allocation.sector}:${allocation.workers}`)).join("; ") || "unallocated";
+  if (diagnostics.routeSecurity !== undefined && diagnostics.routeSecurity !== null) economyLabour.textContent += ` | SECURITY TRUTH: ${diagnostics.routeSecurity.routes.map((route) => `${route.routeId} risk ${route.riskPermille} incidents ${route.incidentCount} patrol ${route.patrolStrength}`).join("; ")}`;
   economyDecisions.replaceChildren(...diagnostics.recentDecisions.slice(-6).map((decision) => {
     const item = document.createElement("li");
     item.textContent = `${decision.actorId}: ${decision.reason}${decision.accepted === false ? " [rejected]" : ""}`;
