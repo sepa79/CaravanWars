@@ -211,6 +211,31 @@ export type {
   MerchantTradeDecision,
   MerchantTradePolicy,
 } from "./merchant-memory-ai.js";
+
+export { LogisticsTaskBoard } from "./logistics-tasks.js";
+export type {
+  LogisticsTaskBoardSnapshot,
+  LogisticsTaskIdentity,
+  LogisticsTaskMutationResult,
+  LogisticsTaskSnapshot,
+  LogisticsTaskStatus,
+  LogisticsTaskTransition,
+} from "./logistics-tasks.js";
+
+export { AutonomousRegionalEconomyRunner, routeKey } from "./regional-economy.js";
+export type {
+  AutonomousRegionalEconomyConfig,
+  AutonomousRegionalEconomySnapshot,
+  RegionalDecisionRecord,
+  RegionalEconomyDiagnosticSnapshot,
+  RegionalEconomyMetrics,
+  RegionalFacilityMarketPolicy,
+  RegionalGovernorPolicy,
+  RegionalMerchantPolicy,
+} from "./regional-economy.js";
+
+export { createAutonomousRegionalEconomyFixture } from "./regional-economy-fixture.js";
+export type { AutonomousRegionalEconomyFixture } from "./regional-economy-fixture.js";
 export type {
   GoodsCatalog,
   GoodsDefinition,

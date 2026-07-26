@@ -28,6 +28,9 @@ TypeScript with a browser-first client and a thin future Electron shell.
 - Shortage Consequences v0 and GovernorAI v0 are active: recipe/need-owned
   effects produce private authorized observations, normal supply delegation,
   physical cargo delivery, and explicit reports.
+- Autonomous Regional Economy v1 is active: a three-settlement headless runner
+  closes production, shortage, private observation, task, market, transport,
+  recovery, and report loops with deterministic save/resume and metrics.
 
 ## Non-negotiable model
 
@@ -41,6 +44,8 @@ TypeScript with a browser-first client and a thin future Electron shell.
   virtual inventory.
 - WorldMemory owns durable actor-specific knowledge; WorldSim owns observation
   adjudication.
+- Regional autonomy is orchestration over WorldSimulation and the canonical
+  command envelope, never a second authoritative economy.
 
 ## Active paths
 

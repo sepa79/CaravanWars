@@ -68,3 +68,7 @@ the assigned party, physical co-location, carried goods, and host capacity;
 validation and memory-id conflict checks precede the atomic mutation. Reports
 require a completed party-owned task result and physical handoff at the managed
 Facility node.
+
+Regional autonomy submits these same envelopes. Its lifecycle scheduler may
+decide when to propose another command, but cannot call Facility, TradeHub,
+party cargo, or movement mutation methods directly.

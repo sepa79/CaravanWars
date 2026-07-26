@@ -50,6 +50,13 @@ mapping.
 Resets the development scenario to its explicit seed state. It is not a
 gameplay command and must not be exposed by a production server.
 
+### Regional economy diagnostics
+
+`GET /api/economy?view_mode=truth` returns the explicitly marked regional
+economy truth/debug report. `POST /api/economy/advance?view_mode=truth` accepts
+an integer `days` from 1 to 30. Both reject party mode. Party Map never embeds
+regional metrics, task lists, decision reasons, or another owner's memory.
+
 ### `POST /api/ai/merchant-step`
 
 Runs one deterministic Merchant Memory AI decision for the development

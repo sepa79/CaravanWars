@@ -49,6 +49,7 @@ export interface ResourceConsumptionPayload extends Record<string, SerializableV
   readonly amount: number;
   readonly cohortId: string;
   readonly consequences: readonly SerializableValue[];
+  readonly recurrenceDays: number | null;
 }
 
 export interface ResourceDeliveryPayload extends Record<string, SerializableValue> {
@@ -284,6 +285,29 @@ export class WorldSimulationFoundation {
       || event.eventType === "ResourceConsumptionAttempted"));
   }
 
+  eventsSince(index: number): { readonly nextIndex: number; readonly events: readonly SimulationFoundationEvent[] } {
+    if (!Number.isSafeInteger(index) || index < 0 || index > this.#events.length) {
+      throw new SimulationFoundationValidationError(`Invalid event cursor ${index}.`);
+    }
+    return { nextIndex: this.#events.length, events: structuredClone(this.#events.slice(index)) };
+  }
+
+  facilitySnapshots(): readonly FacilitySnapshot[] {
+    return this.#facilities.snapshot().facilities;
+  }
+
+  tradeHubSnapshots(): readonly TradeHubSnapshot[] {
+    return this.#tradeHubs?.snapshot().hubs ?? [];
+  }
+
+  tradeHubSnapshot(hubId: string): TradeHubSnapshot | null {
+    return this.#tradeHubs?.snapshot().hubs.find((hub) => hub.hubId === hubId) ?? null;
+  }
+
+  facilityHostResource(hostId: string, resourceId: string): number {
+    return this.#facilities.availableResource(hostId, resourceId);
+  }
+
   depositToFacilityHost(hostId: string, resourceId: string, amount: number): boolean {
     if (!this.#facilities.canDeposit(hostId, resourceId, amount)) return false;
     return this.#facilities.deposit(hostId, resourceId, amount);
@@ -454,7 +478,8 @@ export class WorldSimulationFoundation {
       appliedConsequences: result.outcome === "shortage" ? result.appliedConsequences : [],
       configuredConsequences: effect.consequences,
     });
-    return retry === null ? [] : [retry];
+    if (retry !== null) return [retry];
+    return payload.recurrenceDays === null ? [] : [createRecurrenceIntent(intent, payload.recurrenceDays)];
   }
 
   #dispatchDelivery(intent: ScheduledEventIntent): readonly ScheduledEventIntent[] {
@@ -558,6 +583,18 @@ function createRetryIntent(
   };
 }
 
+function createRecurrenceIntent(original: ScheduledEventIntent, recurrenceDays: number): ScheduledEventIntent {
+  if (!Number.isFinite(recurrenceDays) || recurrenceDays <= 0) {
+    throw new SimulationFoundationValidationError("Recurrence delay must be finite and positive.");
+  }
+  return {
+    ...original,
+    eventId: `${original.eventId}:next`,
+    dueElapsedDays: original.dueElapsedDays + recurrenceDays,
+    payload: structuredClone(original.payload),
+  };
+}
+
 function readConsumptionPayload(intent: ScheduledEventIntent): ResourceConsumptionPayload {
   const payload = requireRecord(intent.payload, intent.eventId) as Partial<ResourceConsumptionPayload>;
   validateConsumptionPayload(payload, intent.eventId);
@@ -585,6 +622,10 @@ function validateConsumptionPayload(
     payload.consequences,
     `${eventId}.consequences`,
   );
+  if (payload.recurrenceDays !== null
+    && (typeof payload.recurrenceDays !== "number" || !Number.isFinite(payload.recurrenceDays) || payload.recurrenceDays <= 0)) {
+    throw new SimulationFoundationValidationError(`${eventId}.recurrenceDays must be null or finite and positive.`);
+  }
 }
 
 function validateDeliveryPayload(

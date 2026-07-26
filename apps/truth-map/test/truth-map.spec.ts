@@ -87,3 +87,19 @@ test("unknown Party Map observer fails without falling back to truth", async ({ 
     message: "Party missing does not exist.",
   });
 });
+
+test("regional economy diagnostics require explicit truth mode and advance autonomously", async ({ page, request }) => {
+  const hidden = await request.get("/api/economy?view_mode=party&party_id=player_party");
+  expect(hidden.status()).toBe(400);
+  const initial = await request.get("/api/economy?view_mode=truth");
+  expect(initial.ok()).toBeTruthy();
+  const initialBody = await initial.json();
+  expect(initialBody.truthView).toBe(true);
+  const advanced = await request.post("/api/economy/advance?view_mode=truth", { data: { days: 2 } });
+  expect(advanced.ok()).toBeTruthy();
+  expect((await advanced.json()).metrics.elapsedDays).toBeGreaterThan(initialBody.metrics.elapsedDays);
+  await page.goto("/?view_mode=truth");
+  await page.locator("#mapMode").selectOption("truth");
+  await expect(page.locator("#economyDiagnostics")).toBeVisible();
+  await expect(page.locator("#economyDiagnostics")).toContainText("TRUTH / DEBUG");
+});

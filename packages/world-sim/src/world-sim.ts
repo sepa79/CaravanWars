@@ -9,18 +9,22 @@ import type {
   Vec2,
 } from "./region-graph.js";
 import { WorldClock } from "./world-clock.js";
+import { Facilities } from "./facilities.js";
+import { Governance } from "./governance.js";
+import { TradeHubs } from "./trade-hubs.js";
 import type { WorldClockSnapshot } from "./world-clock.js";
 import type {
   FacilityOperationCommand,
   FacilityOperationResult,
   SimulationFoundationDomainSnapshot,
   TransferFacilityGoodsToTradeHubCommand,
-  WorldSimulationFoundation,
 } from "./simulation-foundation.js";
+import { WorldSimulationFoundation } from "./simulation-foundation.js";
 import type {
   CancelTradeHubOrderCommand,
   PlaceTradeHubOrderCommand,
   TradeHubAccountSnapshot,
+  TradeHubSnapshot,
   TradeHubCommandResult,
   TransferTradeHubGoodsCommand,
 } from "./trade-hubs.js";
@@ -208,6 +212,8 @@ export interface PartySnapshot {
   readonly position: Vec2;
   readonly composition: PartyComposition;
   readonly knownRouteIds: readonly string[];
+  readonly observedWaypointIds: readonly string[];
+  readonly observedLandmarkIds: readonly string[];
   readonly cargo: Readonly<Record<string, number>>;
   readonly cargoCapacityBulk: number | null;
   readonly cargoUsedBulk: number | null;
@@ -229,6 +235,7 @@ export interface WorldSnapshot {
   readonly locations: readonly LocationSnapshot[];
   readonly runtimeEvents: readonly WorldSimulationEvent[];
   readonly worldMemory: WorldMemorySnapshot;
+  readonly shortageObservationCursors: Readonly<Record<string, number>>;
 }
 
 export interface ObserveLocalTradeContextRequest {
@@ -460,6 +467,7 @@ export class WorldSimulation {
   #parties: Map<string, PartyRuntimeState>;
   #locations: Map<string, LocationRuntimeState>;
   #runtimeEvents: WorldSimulationEvent[] = [];
+  readonly #shortageObservationCursors = new Map<string, number>();
 
   constructor(
     graph: RegionGraph,
@@ -487,6 +495,38 @@ export class WorldSimulation {
     validateInitialCargoCapacities(this.#parties, this.#economySeed);
     this.#worldMemory = new WorldMemory(worldMemory.snapshot());
     this.#initialWorldMemorySnapshot = this.#worldMemory.snapshot();
+  }
+
+  static fromSnapshot(
+    graph: RegionGraph,
+    travelConfig: PartyTravelConfig,
+    economySeed: WorldEconomySeed | null,
+    snapshot: WorldSnapshot,
+  ): WorldSimulation {
+    const clock = WorldClock.fromSnapshot(snapshot.clock);
+    const domain = snapshot.simulationFoundation;
+    const foundation = domain === null ? null : new WorldSimulationFoundation({
+      clock,
+      governance: new Governance(domain.governance),
+      facilities: new Facilities(domain.facilities.facilities, domain.facilities.hosts),
+      tradeHubs: domain.tradeHubs === null ? null : new TradeHubs(domain.tradeHubs),
+      maxEventsPerAdvance: domain.maxEventsPerAdvance,
+      events: domain.events,
+    });
+    const seeds = snapshot.parties.map((party) => ({
+      id: party.id,
+      displayName: party.displayName,
+      managerActorId: party.managerActorId,
+      nodeId: party.currentNodeId ?? party.travel?.originNodeId ?? "",
+      composition: party.composition,
+      knownRouteIds: party.knownRouteIds,
+      cargo: party.cargo,
+    }));
+    const simulation = new WorldSimulation(
+      graph, travelConfig, seeds, economySeed, clock, foundation, new WorldMemory(snapshot.worldMemory),
+    );
+    simulation.#restoreRuntimeSnapshot(snapshot);
+    return simulation;
   }
 
   submitCommand(
@@ -578,20 +618,54 @@ export class WorldSimulation {
     return createPartySnapshot(this.#graph, party, this.#economySeed);
   }
 
+  elapsedDays(): number {
+    return this.#clock.elapsedDays;
+  }
+
+  facilityHostResource(hostId: string, resourceId: string): number {
+    return this.#simulationFoundation?.facilityHostResource(hostId, resourceId) ?? 0;
+  }
+
+  managedTradeHubSnapshot(issuerActorId: string, accountEntityId: string, hubId: string): TradeHubSnapshot | null {
+    const foundation = this.#simulationFoundation;
+    if (foundation === null || !foundation.authorize(issuerActorId, accountEntityId, "trade:order")) return null;
+    return foundation.tradeHubSnapshot(hubId);
+  }
+
   worldMemoryView(ownerId: string, ownerKind: WorldMemoryOwnerKind): WorldMemoryOwnerView {
     return this.#worldMemory.ownerView(ownerId, ownerKind, this.#clock.elapsedDays);
   }
 
   observeGovernorShortages(
     governorActorId: string,
-    observationId: string,
     staleAfterDays: number,
   ): readonly WorldMemoryEntry[] {
     const foundation = this.#simulationFoundation;
     if (foundation === null) return [];
-    const facilityById = new Map(foundation.domainSnapshot().facilities.facilities.map((item) => [item.facilityId, item]));
+    const facilityById = new Map(foundation.facilitySnapshots().map((item) => [item.facilityId, item]));
     const ingests: WorldMemoryIngest[] = [];
-    for (const event of foundation.shortageEvents()) {
+    const cursor = this.#shortageObservationCursors.get(governorActorId) ?? 0;
+    const batch = foundation.eventsSince(cursor);
+    for (const event of batch.events) {
+      if (event.eventType === "FacilityProductionRecovered") {
+        const facility = facilityById.get(event.facilityId);
+        if (facility === undefined || !foundation.authorize(governorActorId, facility.facilityId, "facility:supply")) continue;
+        for (const goodsId of event.recoveredResourceIds) ingests.push(shortageMemoryIngest(
+          governorActorId, facility, goodsId, event.scheduledEventId, event.elapsedDays,
+          this.#clock.elapsedDays, staleAfterDays, "shortage_recovered", [], 1,
+        ));
+        continue;
+      }
+      if (event.eventType === "ResourceConsumptionAttempted" && event.outcome === "recovered") {
+        const facility = [...facilityById.values()].find((item) => item.hostId === event.hostId);
+        if (facility !== undefined && foundation.authorize(governorActorId, facility.facilityId, "facility:supply")) {
+          ingests.push(shortageMemoryIngest(
+            governorActorId, facility, event.resourceId, event.scheduledEventId, event.elapsedDays,
+            this.#clock.elapsedDays, staleAfterDays, "shortage_recovered", [], event.amount,
+          ));
+        }
+        continue;
+      }
       if (event.eventType !== "FacilityProductionBlocked"
         && event.eventType !== "FacilityProductionDegraded"
         && (event.eventType !== "ResourceConsumptionAttempted" || event.outcome !== "shortage")) continue;
@@ -606,40 +680,31 @@ export class WorldSimulation {
         const consequences = event.eventType === "ResourceConsumptionAttempted"
           ? event.configuredConsequences
           : facility.recipe.shortagePolicies.find((policy) => policy.resourceId === goodsId)?.consequences ?? [];
-        ingests.push({
-          ingestId: `${observationId}:${event.scheduledEventId}:${goodsId}`,
-          ownerId: governorActorId,
-          ownerKind: "actor",
-          kind: "shortage_observation",
-          observedAtElapsedDays: event.elapsedDays,
-          knownAtElapsedDays: this.#clock.elapsedDays,
-          staleAfterDays,
-          provenance: { sourceType: "direct_observation", sourceId: event.scheduledEventId, sourceOwnerId: facility.ownerId, nodeId: null },
-          payload: {
-            facilityId: facility.facilityId,
-            facilityHostId: facility.hostId,
-            goodsId,
-            amount: 1,
-            consequenceTypes: consequences.map((item) => item.type),
-          },
-        });
+        ingests.push(shortageMemoryIngest(
+          governorActorId, facility, goodsId, event.scheduledEventId, event.elapsedDays,
+          this.#clock.elapsedDays, staleAfterDays, "shortage_observation",
+          consequences.map((item) => item.type),
+          event.eventType === "ResourceConsumptionAttempted" ? event.amount : 1,
+        ));
       }
     }
     const result = this.#worldMemory.ingestAll(ingests);
+    if (result.accepted) this.#shortageObservationCursors.set(governorActorId, batch.nextIndex);
     return result.accepted ? result.entries : [];
   }
 
   governorSupplyAffordances(governorActorId: string): readonly GovernorSupplyAffordance[] {
     const foundation = this.#simulationFoundation;
     if (foundation === null) return [];
-    return foundation.domainSnapshot().facilities.facilities
+    const hubs = foundation.tradeHubSnapshots();
+    return foundation.facilitySnapshots()
       .filter((facility) => foundation.authorize(governorActorId, facility.facilityId, "facility:supply"))
       .map((facility) => ({
         facilityId: facility.facilityId,
         facilityHostId: facility.hostId,
-        destinationNodeId: foundation.domainSnapshot().tradeHubs?.hubs.find((hub) => hub.connectedFacilityHostIds.includes(facility.hostId))?.nodeId ?? "",
+        destinationNodeId: hubs.find((hub) => hub.connectedFacilityHostIds.includes(facility.hostId))?.nodeId ?? "",
         executorPartyIds: [...this.#parties.values()]
-          .filter((party) => party.location.status === "idle" && party.location.nodeId === (foundation.domainSnapshot().tradeHubs?.hubs.find((hub) => hub.connectedFacilityHostIds.includes(facility.hostId))?.nodeId ?? ""))
+          .filter((party) => party.location.status === "idle" && party.location.nodeId === (hubs.find((hub) => hub.connectedFacilityHostIds.includes(facility.hostId))?.nodeId ?? ""))
           .map((party) => party.id).sort(),
       }));
   }
@@ -1064,6 +1129,7 @@ export class WorldSimulation {
     this.#locations = createLocations(this.#graph, this.#economySeed);
     this.#runtimeEvents = [];
     this.#worldMemory = new WorldMemory(this.#initialWorldMemorySnapshot);
+    this.#shortageObservationCursors.clear();
   }
 
   snapshot(): WorldSnapshot {
@@ -1075,7 +1141,50 @@ export class WorldSimulation {
       locations: [...this.#locations.values()].map(createLocationSnapshot),
       runtimeEvents: this.#runtimeEvents.map(copyWorldSimulationEvent),
       worldMemory: this.#worldMemory.snapshot(),
+      shortageObservationCursors: Object.fromEntries(this.#shortageObservationCursors),
     };
+  }
+
+  #restoreRuntimeSnapshot(snapshot: WorldSnapshot): void {
+    for (const source of snapshot.parties) {
+      const party = this.#parties.get(source.id);
+      if (party === undefined) throw new WorldSimulationConfigurationError(`Snapshot party ${source.id} is missing from seed.`);
+      party.cargo.clear();
+      for (const [goodsId, amount] of Object.entries(source.cargo)) party.cargo.set(goodsId, amount);
+      party.location = source.travel === null
+        ? { status: "idle", nodeId: requireRestoredNode(source) }
+        : {
+            status: "traveling",
+            edgeId: source.travel.edgeId,
+            originNodeId: source.travel.originNodeId,
+            destinationNodeId: source.travel.destinationNodeId,
+            distanceKm: source.travel.distanceKm,
+            speedKmPerDay: source.travel.speedKmPerDay,
+            progressKm: source.travel.progressKm,
+          };
+      party.observedWaypointIds.clear();
+      for (const id of source.observedWaypointIds) party.observedWaypointIds.add(id);
+      party.observedLandmarkIds.clear();
+      for (const id of source.observedLandmarkIds) party.observedLandmarkIds.add(id);
+    }
+    const restoredLocations = new Map<string, LocationRuntimeState>();
+    for (const source of snapshot.locations) {
+      restoredLocations.set(source.id, {
+        id: source.id,
+        displayName: source.displayName,
+        managerActorId: source.managerActorId,
+        nodeId: source.nodeId,
+        resources: new Map(Object.entries(source.resources)),
+      });
+    }
+    this.#locations = restoredLocations;
+    this.#runtimeEvents = snapshot.runtimeEvents.map(copyWorldSimulationEvent);
+    this.#shortageObservationCursors.clear();
+    const foundationEventCount = snapshot.simulationFoundation?.events.length ?? 0;
+    for (const [actorId, cursor] of Object.entries(snapshot.shortageObservationCursors)) {
+      if (!Number.isSafeInteger(cursor) || cursor < 0 || cursor > foundationEventCount) throw new WorldSimulationConfigurationError(`Invalid shortage cursor for ${actorId}.`);
+      this.#shortageObservationCursors.set(actorId, cursor);
+    }
   }
 
   #rememberTradeCommandResult(
@@ -1482,6 +1591,8 @@ function createPartySnapshot(
       position: node.position,
       composition: { ...party.composition },
       knownRouteIds: [...party.knownRouteIds],
+      observedWaypointIds: [...party.observedWaypointIds].sort(),
+      observedLandmarkIds: [...party.observedLandmarkIds].sort(),
       ...economyCargo,
       travel: null,
     };
@@ -1503,6 +1614,8 @@ function createPartySnapshot(
     position: interpolateTravelPosition(graph, edge, travel),
     composition: { ...party.composition },
     knownRouteIds: [...party.knownRouteIds],
+    observedWaypointIds: [...party.observedWaypointIds].sort(),
+    observedLandmarkIds: [...party.observedLandmarkIds].sort(),
     ...economyCargo,
     travel: {
       edgeId: travel.edgeId,
@@ -1601,6 +1714,38 @@ function supplyRejected(
   message: string,
 ): SupplyCommandResult {
   return { accepted: false, errorCode, message };
+}
+
+function shortageMemoryIngest(
+  governorActorId: string,
+  facility: { readonly facilityId: string; readonly hostId: string; readonly ownerId: string },
+  goodsId: string,
+  scheduledEventId: string,
+  observedAtElapsedDays: number,
+  knownAtElapsedDays: number,
+  staleAfterDays: number,
+  kind: "shortage_observation" | "shortage_recovered",
+  consequenceTypes: readonly string[],
+  amount: number,
+): WorldMemoryIngest {
+  return {
+    ingestId: `shortage:${governorActorId}:${scheduledEventId}:${goodsId}:${kind}`,
+    ownerId: governorActorId,
+    ownerKind: "actor",
+    kind,
+    observedAtElapsedDays,
+    knownAtElapsedDays,
+    staleAfterDays,
+    provenance: { sourceType: "direct_observation", sourceId: scheduledEventId, sourceOwnerId: facility.ownerId, nodeId: null },
+    payload: { facilityId: facility.facilityId, facilityHostId: facility.hostId, goodsId, amount, consequenceTypes },
+  };
+}
+
+function requireRestoredNode(source: PartySnapshot): string {
+  if (source.currentNodeId === null) {
+    throw new WorldSimulationConfigurationError(`Idle snapshot party ${source.id} has no node.`);
+  }
+  return source.currentNodeId;
 }
 
 function tradeFoundationNotConfigured(): TradeHubCommandResult {

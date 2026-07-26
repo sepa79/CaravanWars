@@ -152,6 +152,20 @@ the pure Governor controller receives only private memory and legal
 affordances. Delegation, TradeHub procurement, travel, Facility delivery, and
 reporting all use the canonical command boundary and physical state.
 
+### Autonomous regional orchestration
+
+`AutonomousRegionalEconomyRunner` is a deterministic server-side scheduler over
+one `WorldSimulation`. It supplies bounded private memory views and legal local
+affordances to existing controllers, submits their proposals through the
+canonical envelope, and records explainable decision outcomes. Its
+`LogisticsTaskBoard` owns explicit idempotent task lifecycle and prevents more
+than one active task per destination/goods need. It owns no physical store.
+
+The runner snapshot includes the complete authoritative state plus task,
+decision, append-log cursor, and action-ordinal continuation state. The browser
+may expose its metrics and reasons only through an explicitly labelled truth
+diagnostic endpoint; actor Party Maps remain filtered.
+
 ## Active repository boundaries
 
 | Path | Responsibility |

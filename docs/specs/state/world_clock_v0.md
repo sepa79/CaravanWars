@@ -78,6 +78,11 @@ clock's atomic batch scheduling operation. The full batch is validated for ids,
 times, and sequence capacity before any record is inserted, preventing partial
 queue mutation.
 
+A recurring cohort need may declare positive `recurrenceDays`. Failure
+schedules only its configured retry; success or recovery schedules the next
+recurrence. This prevents overlapping recurrence chains from causing a retry
+storm without adding event-kind priority.
+
 ## Lifecycle, cancellation, and idempotency
 
 Records have `pending`, `cancelled`, `completed`, or `failed` status. Dispatch

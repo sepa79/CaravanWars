@@ -4,6 +4,12 @@
 
 ### Added
 
+- Autonomous Regional Economy v1 with three local settlement economies,
+  competing memory-bound merchants, Governor supply response, physical
+  logistics, a deterministic 1–180 day CLI runner, save/resume, and metrics.
+- Idempotent LogisticsTaskBoard lifecycle and explicitly truth-scoped browser
+  economy diagnostics.
+
 - Configured Shortage Consequences v0 with deterministic block, degradation,
   retry, cohort episode effects, recovery, save/load, and replay behavior.
 - Memory-bound GovernorAI v0 with Governance-scoped delegation, physical

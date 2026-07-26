@@ -35,6 +35,7 @@ export class GovernorAIController {
   ): GovernorDecision {
     const candidates = memory.entries
       .filter((entry) => entry.freshness === "fresh" && entry.kind === "shortage_observation")
+      .filter((entry) => !hasLaterRecovery(memory, entry))
       .map((entry) => shortageCandidate(entry, policy))
       .filter((item): item is NonNullable<typeof item> => item !== null)
       .sort((left, right) => right.weight - left.weight || left.entry.sequence - right.entry.sequence);
@@ -60,6 +61,13 @@ export class GovernorAIController {
     }
     return { action: "none", reason: "NO_LEGAL_AFFORDANCE" };
   }
+}
+
+function hasLaterRecovery(memory: WorldMemoryOwnerView, shortage: WorldMemoryEntryView): boolean {
+  return memory.entries.some((entry) => entry.kind === "shortage_recovered"
+    && entry.sequence > shortage.sequence
+    && entry.payload.facilityId === shortage.payload.facilityId
+    && entry.payload.goodsId === shortage.payload.goodsId);
 }
 
 function shortageCandidate(entry: WorldMemoryEntryView, policy: GovernorShortagePolicy): {

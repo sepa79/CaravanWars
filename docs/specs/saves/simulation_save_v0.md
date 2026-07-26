@@ -117,6 +117,11 @@ snapshot. Supply assignments, results, and reports are owner-scoped WorldMemory
 entries, so their command ids, provenance, order, and replay state use the
 canonical WorldMemory snapshot rather than a parallel task save.
 
+Autonomous Regional Economy v1 also snapshots its typed config,
+LogisticsTaskBoard, decision sequence, action ordinals, per-Governor append-log
+observation cursors, and party route-observation ids. These are required for
+identical continuation and are never reconstructed heuristically.
+
 Legacy evidence remains covered by `game/tests/SimulationSaveCodecTest.gd`:
 
 - new game creates the expected start state,

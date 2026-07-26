@@ -105,6 +105,18 @@ interface MerchantStepResponse {
   readonly state: DebugState;
 }
 
+interface EconomyDiagnostics {
+  readonly truthView: true;
+  readonly metrics: {
+    readonly elapsedDays: number;
+    readonly trades: number;
+    readonly shortages: number;
+    readonly activeTasks: number;
+    readonly transportDistanceKm: number;
+  };
+  readonly recentDecisions: readonly { readonly actorId: string; readonly reason: string; readonly accepted: boolean | null }[];
+}
+
 const canvas = requireElement<HTMLCanvasElement>("mapCanvas");
 const context = requireCanvasContext(canvas);
 
@@ -129,6 +141,14 @@ const cargoFood = requireElement<HTMLElement>("cargoFood");
 const localFood = requireElement<HTMLElement>("localFood");
 const merchantStep = requireElement<HTMLButtonElement>("merchantStep");
 const merchantResult = requireElement<HTMLElement>("merchantResult");
+const economyDiagnostics = requireElement<HTMLElement>("economyDiagnostics");
+const economyDay = requireElement<HTMLElement>("economyDay");
+const economyTrades = requireElement<HTMLElement>("economyTrades");
+const economyShortages = requireElement<HTMLElement>("economyShortages");
+const economyTasks = requireElement<HTMLElement>("economyTasks");
+const economyDistance = requireElement<HTMLElement>("economyDistance");
+const economyDecisions = requireElement<HTMLOListElement>("economyDecisions");
+const advanceEconomy = requireElement<HTMLButtonElement>("advanceEconomy");
 
 let state: DebugState | null = null;
 let requestInFlight = false;
@@ -142,6 +162,7 @@ advanceDay.addEventListener("click", () => { void advanceTime(1); });
 resetButton.addEventListener("click", () => { void resetSimulation(); });
 mapMode.addEventListener("change", () => { void refreshState(); });
 merchantStep.addEventListener("click", () => { void runMerchantStep(); });
+advanceEconomy.addEventListener("click", () => { void advanceRegionalEconomy(); });
 autoAdvance.addEventListener("change", updateAutoAdvance);
 
 void refreshState();
@@ -151,9 +172,40 @@ async function refreshState(reportFailure = true): Promise<void> {
   try {
     state = await requestJson<DebugState>(viewUrl("/api/state"));
     updateView();
+    await refreshEconomyDiagnostics();
   } catch (error: unknown) {
     if (reportFailure) showError(error);
   }
+}
+
+async function refreshEconomyDiagnostics(): Promise<void> {
+  const truth = mapMode.value === "truth";
+  economyDiagnostics.hidden = !truth;
+  if (!truth) return;
+  const diagnostics = await requestJson<EconomyDiagnostics>("/api/economy?view_mode=truth");
+  renderEconomyDiagnostics(diagnostics);
+}
+
+async function advanceRegionalEconomy(): Promise<void> {
+  try {
+    const diagnostics = await postJson<EconomyDiagnostics>("/api/economy/advance?view_mode=truth", { days: 1 });
+    renderEconomyDiagnostics(diagnostics);
+  } catch (error: unknown) {
+    showError(error);
+  }
+}
+
+function renderEconomyDiagnostics(diagnostics: EconomyDiagnostics): void {
+  economyDay.textContent = diagnostics.metrics.elapsedDays.toFixed(2);
+  economyTrades.textContent = String(diagnostics.metrics.trades);
+  economyShortages.textContent = String(diagnostics.metrics.shortages);
+  economyTasks.textContent = String(diagnostics.metrics.activeTasks);
+  economyDistance.textContent = `${diagnostics.metrics.transportDistanceKm.toFixed(0)} km`;
+  economyDecisions.replaceChildren(...diagnostics.recentDecisions.slice(-6).map((decision) => {
+    const item = document.createElement("li");
+    item.textContent = `${decision.actorId}: ${decision.reason}${decision.accepted === false ? " [rejected]" : ""}`;
+    return item;
+  }));
 }
 
 async function submitMove(): Promise<void> {

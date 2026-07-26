@@ -91,9 +91,9 @@ test("canonical WorldSimulation owns the shared clock and dispatches scheduled d
   const snapshot = world.snapshot();
   assert.equal(snapshot.clock.elapsedDays, 0.75);
   assert.equal(snapshot.simulationFoundation?.events.at(-1)?.eventType, "ResourceConsumptionAttempted");
-  const observed = world.observeGovernorShortages("operations_manager", "shortage-round-1", 2);
+  const observed = world.observeGovernorShortages("operations_manager", 2);
   assert.equal(observed.some((entry) => entry.kind === "shortage_observation" && entry.payload.goodsId === "food"), true);
-  assert.equal(world.observeGovernorShortages("outsider", "foreign-round", 2).length, 0);
+  assert.equal(world.observeGovernorShortages("outsider", 2).length, 0);
   assert.equal(world.worldMemoryView("outsider", "actor").entries.length, 0);
   assert.deepEqual(world.submitCommand({
     commandType: "set_facility_operation",
@@ -175,6 +175,7 @@ function createScenario(clock = new WorldClock()): WorldSimulationFoundation {
     resourceId: "food",
     amount: 5,
     cohortId: "residents",
+    recurrenceDays: null,
     consequences: [
       { type: "block" },
       { type: "retry", delayDays: 0.25 },

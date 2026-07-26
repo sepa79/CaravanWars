@@ -12,6 +12,7 @@
   "scripts": {
     "check": "npm run typecheck && npm test",
     "dev:truth-map": "tsx apps/truth-map/src/server.ts",
+    "sim:regional": "tsx packages/world-sim/src/regional-economy-cli.ts",
     "test:browser": "playwright test",
     "test": "tsx --test packages/**/*.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"

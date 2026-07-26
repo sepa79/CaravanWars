@@ -12,6 +12,7 @@ import {
   loadPartyCargoConfigFile,
   loadPartyTravelConfigFile,
   loadRegionGraphFile,
+  createAutonomousRegionalEconomyFixture,
 } from "@caravan-wars/world-sim";
 import type {
   MerchantMemoryEntry,
@@ -102,6 +103,7 @@ const merchantMemory: readonly MerchantMemoryEntry[] = [
 ];
 const merchantAi = new MerchantMemoryAI();
 const simulation = new WorldSimulation(graph, travelConfig, [partySeed], economySeed);
+let regionalEconomy = createAutonomousRegionalEconomyFixture(graph, travelConfig);
 
 const vite = await createViteServer({
   root: applicationRoot,
@@ -130,6 +132,18 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     writeJson(response, 200, createClientState(requestUrl, graph, simulation));
     return;
   }
+  if (method === "GET" && requestUrl.pathname === "/api/economy") {
+    requireTruthDiagnostics(requestUrl);
+    writeJson(response, 200, regionalEconomy.runner.diagnostics());
+    return;
+  }
+  if (method === "POST" && requestUrl.pathname === "/api/economy/advance") {
+    requireTruthDiagnostics(requestUrl);
+    const days = parseRegionalDaysRequest(await readJsonBody(request));
+    regionalEconomy.runner.runDays(days);
+    writeJson(response, 200, regionalEconomy.runner.diagnostics());
+    return;
+  }
   if (method === "POST" && requestUrl.pathname === "/api/commands/move-party") {
     const command = parseMovePartyCommand(await readJsonBody(request));
     writeJson(response, 200, {
@@ -155,6 +169,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
   if (method === "POST" && requestUrl.pathname === "/api/reset") {
     parseEmptyObjectRequest(await readJsonBody(request), "reset request");
     simulation.reset();
+    regionalEconomy = createAutonomousRegionalEconomyFixture(graph, travelConfig);
     writeJson(response, 200, createClientState(requestUrl, graph, simulation));
     return;
   }
@@ -168,6 +183,20 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     const message = error instanceof Error ? error.message : String(error);
     writeJson(response, 500, { error: "VITE_MIDDLEWARE_ERROR", message });
   });
+}
+
+function requireTruthDiagnostics(requestUrl: URL): void {
+  if (requestUrl.searchParams.get("view_mode") !== "truth") {
+    throw new RequestValidationError("regional economy diagnostics require explicit truth view");
+  }
+}
+
+function parseRegionalDaysRequest(value: unknown): number {
+  const source = requireRecord(value, "regional economy advance request");
+  if (!Number.isSafeInteger(source.days) || (source.days as number) < 1 || (source.days as number) > 30) {
+    throw new RequestValidationError("regional economy days must be an integer from 1 to 30");
+  }
+  return source.days as number;
 }
 
 function createDebugState(regionGraph: RegionGraph, world: WorldSimulation): object {
