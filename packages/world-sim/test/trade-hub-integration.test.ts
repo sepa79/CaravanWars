@@ -214,7 +214,7 @@ function createPhysicalScenario(options: {
     governorActorId: "settlement_governor",
     recipe: {
       inputs: {}, energyInputs: {}, maintenanceInputs: {}, outputs: { grain: 6 },
-      workforceRequired: 1, cycleDays: 0.25, blockedRetryDays: null,
+      workforceRequired: 1, cycleDays: 0.25, blockedRetryDays: null, shortagePolicies: [],
     },
     active: true,
     generation: 0,

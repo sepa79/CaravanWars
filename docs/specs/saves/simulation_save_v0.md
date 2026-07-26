@@ -112,6 +112,10 @@ Active TypeScript coverage in
 `packages/world-sim/test/simulation-foundation.test.ts` proves JSON round-trip
 save/load with pending retry intents, Facility generation/idempotency state,
 inventory, cohorts, event history, and identical deterministic continuation.
+Shortage policies and active Facility/cohort episode keys are part of that
+snapshot. Supply assignments, results, and reports are owner-scoped WorldMemory
+entries, so their command ids, provenance, order, and replay state use the
+canonical WorldMemory snapshot rather than a parallel task save.
 
 Legacy evidence remains covered by `game/tests/SimulationSaveCodecTest.gd`:
 

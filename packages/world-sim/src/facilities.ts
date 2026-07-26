@@ -10,6 +10,27 @@ export interface PopulationCohortSeed {
   readonly population: number;
   readonly availableWorkforce: number;
   readonly unrest: number;
+  readonly conditions?: Readonly<Record<string, number>>;
+}
+
+export type ShortageConsequence =
+  | { readonly type: "block" }
+  | { readonly type: "reduced_output"; readonly outputPermille: number }
+  | { readonly type: "retry"; readonly delayDays: number }
+  | {
+      readonly type: "cohort_delta";
+      readonly cohortId: string;
+      readonly conditionId: string;
+      readonly conditionDelta: number;
+      readonly unrestDelta: number;
+      readonly workforceDelta: number;
+      readonly application: "once_per_episode" | "each_attempt";
+    }
+  | { readonly type: "none" };
+
+export interface ResourceShortagePolicy {
+  readonly resourceId: string;
+  readonly consequences: readonly ShortageConsequence[];
 }
 
 export interface FacilityHostSeed {
@@ -17,6 +38,7 @@ export interface FacilityHostSeed {
   readonly inventory: ResourceQuantities;
   readonly storageCaps: ResourceQuantities;
   readonly cohorts: readonly PopulationCohortSeed[];
+  readonly activeCohortShortageKeys?: readonly string[];
 }
 
 export interface FacilityRecipe {
@@ -27,6 +49,7 @@ export interface FacilityRecipe {
   readonly workforceRequired: number;
   readonly cycleDays: number;
   readonly blockedRetryDays: number | null;
+  readonly shortagePolicies: readonly ResourceShortagePolicy[];
 }
 
 export interface FacilitySeed {
@@ -41,6 +64,7 @@ export interface FacilitySeed {
   readonly nextEventOrdinal: number;
   readonly pendingTickEventId: string | null;
   readonly processedEventIds: readonly string[];
+  readonly activeShortageResourceIds?: readonly string[];
 }
 
 export interface FacilityProductionTickPayload {
@@ -64,6 +88,7 @@ export interface FacilityProductionTickedEvent {
   readonly consumed: ResourceQuantities;
   readonly produced: ResourceQuantities;
   readonly availableWorkforce: number;
+  readonly recoveredResourceIds: readonly string[];
 }
 
 export interface FacilityProductionBlockedEvent {
@@ -75,6 +100,32 @@ export interface FacilityProductionBlockedEvent {
   readonly outcome: "blocked";
   readonly reason: FacilityBlockedReason;
   readonly retryEventId: string | null;
+  readonly missingResourceIds: readonly string[];
+  readonly appliedConsequences: readonly ShortageConsequence[];
+}
+
+export interface FacilityProductionDegradedEvent {
+  readonly eventType: "FacilityProductionDegraded";
+  readonly scheduledEventId: string;
+  readonly elapsedDays: number;
+  readonly facilityId: string;
+  readonly generation: number;
+  readonly outcome: "degraded";
+  readonly missingResourceIds: readonly string[];
+  readonly outputPermille: number;
+  readonly consumed: ResourceQuantities;
+  readonly produced: ResourceQuantities;
+  readonly retryEventId: string | null;
+  readonly appliedConsequences: readonly ShortageConsequence[];
+}
+
+export interface FacilityProductionRecoveredEvent {
+  readonly eventType: "FacilityProductionRecovered";
+  readonly scheduledEventId: string;
+  readonly elapsedDays: number;
+  readonly facilityId: string;
+  readonly generation: number;
+  readonly recoveredResourceIds: readonly string[];
 }
 
 export interface FacilityProductionIgnoredEvent {
@@ -90,10 +141,12 @@ export interface FacilityProductionIgnoredEvent {
 export type FacilityProductionEvent =
   | FacilityProductionTickedEvent
   | FacilityProductionBlockedEvent
+  | FacilityProductionDegradedEvent
   | FacilityProductionIgnoredEvent;
 
 export interface FacilityTickResult {
   readonly event: FacilityProductionEvent;
+  readonly recoveryEvent: FacilityProductionRecoveredEvent | null;
   readonly nextIntent: ScheduledEventIntent | null;
 }
 
@@ -108,17 +161,21 @@ export interface FacilitiesSnapshot {
 
 export interface CohortShortageEffect {
   readonly cohortId: string;
-  readonly unrestIncrease: number;
-  readonly workforceLoss: number;
+  readonly consequences: readonly ShortageConsequence[];
 }
 
 export type ResourceConsumptionResult =
-  | { readonly outcome: "consumed"; readonly consumed: number }
+  | {
+      readonly outcome: "consumed";
+      readonly consumed: number;
+      readonly recovered: boolean;
+    }
   | {
       readonly outcome: "shortage";
       readonly available: number;
       readonly required: number;
       readonly cohort: PopulationCohortSeed;
+      readonly appliedConsequences: readonly ShortageConsequence[];
     };
 
 interface FacilityRuntimeState {
@@ -133,6 +190,7 @@ interface FacilityRuntimeState {
   nextEventOrdinal: number;
   pendingTickEventId: string | null;
   readonly processedEventIds: Set<string>;
+  readonly activeShortageResourceIds: Set<string>;
 }
 
 interface FacilityHostRuntimeState {
@@ -140,6 +198,7 @@ interface FacilityHostRuntimeState {
   readonly inventory: Map<string, number>;
   readonly storageCaps: Readonly<Record<string, number>>;
   readonly cohorts: Map<string, PopulationCohortSeed>;
+  readonly activeCohortShortageKeys: Set<string>;
 }
 
 export class FacilitiesValidationError extends Error {
@@ -219,6 +278,82 @@ export class Facilities {
     const host = this.#requireHost(facility.hostId);
     const availableWorkforce = [...host.cohorts.values()]
       .reduce((total, cohort) => total + cohort.availableWorkforce, 0);
+    const missingResourceIds = findMissingResourceIds(host, facility.recipe);
+    if (missingResourceIds.length > 0) {
+      const shortage = evaluateShortage(facility.recipe, missingResourceIds);
+      const appliedConsequences = applyShortageConsequences(
+        host,
+        shortage.consequences,
+        facility.activeShortageResourceIds,
+        missingResourceIds,
+      );
+      for (const resourceId of missingResourceIds) facility.activeShortageResourceIds.add(resourceId);
+      const retryDelayDays = shortage.retryDelayDays;
+      const nextDelay = retryDelayDays ?? (shortage.blocked ? null : facility.recipe.cycleDays);
+      const nextIntent = nextDelay === null
+        ? null
+        : this.#createTickIntent(facility, elapsedDays + nextDelay);
+      if (shortage.blocked) {
+        return {
+          event: {
+            eventType: "FacilityProductionBlocked",
+            scheduledEventId: intent.eventId,
+            elapsedDays,
+            facilityId: facility.facilityId,
+            generation,
+            outcome: "blocked",
+            reason: blockedReasonForMissing(facility.recipe, missingResourceIds),
+            retryEventId: nextIntent?.eventId ?? null,
+            missingResourceIds,
+            appliedConsequences,
+          },
+          recoveryEvent: null,
+          nextIntent,
+        };
+      }
+      const consumed = availableRequiredQuantities(host, facility.recipe);
+      const produced = scaleQuantities(facility.recipe.outputs, shortage.outputPermille);
+      if (!hasOutputCapacity(host, produced)) {
+        const retry = facility.recipe.blockedRetryDays === null
+          ? null
+          : this.#createTickIntent(facility, elapsedDays + facility.recipe.blockedRetryDays);
+        return {
+          event: {
+            eventType: "FacilityProductionBlocked",
+            scheduledEventId: intent.eventId,
+            elapsedDays,
+            facilityId: facility.facilityId,
+            generation,
+            outcome: "blocked",
+            reason: "output_storage_full",
+            retryEventId: retry?.eventId ?? null,
+            missingResourceIds,
+            appliedConsequences,
+          },
+          recoveryEvent: null,
+          nextIntent: retry,
+        };
+      }
+      applyProduction(host, consumed, produced);
+      return {
+        event: {
+          eventType: "FacilityProductionDegraded",
+          scheduledEventId: intent.eventId,
+          elapsedDays,
+          facilityId: facility.facilityId,
+          generation,
+          outcome: "degraded",
+          missingResourceIds,
+          outputPermille: shortage.outputPermille,
+          consumed,
+          produced,
+          retryEventId: retryDelayDays === null ? null : nextIntent?.eventId ?? null,
+          appliedConsequences,
+        },
+        recoveryEvent: null,
+        nextIntent,
+      };
+    }
     const blockedReason = determineBlockedReason(host, facility.recipe, availableWorkforce);
     if (blockedReason !== null) {
       const retry = facility.recipe.blockedRetryDays === null
@@ -234,7 +369,10 @@ export class Facilities {
           outcome: "blocked",
           reason: blockedReason,
           retryEventId: retry?.eventId ?? null,
+          missingResourceIds: [],
+          appliedConsequences: [],
         },
+        recoveryEvent: null,
         nextIntent: retry,
       };
     }
@@ -244,12 +382,9 @@ export class Facilities {
       facility.recipe.energyInputs,
       facility.recipe.maintenanceInputs,
     );
-    for (const [resourceId, amount] of Object.entries(consumed)) {
-      setQuantity(host.inventory, resourceId, (host.inventory.get(resourceId) ?? 0) - amount);
-    }
-    for (const [resourceId, amount] of Object.entries(facility.recipe.outputs)) {
-      setQuantity(host.inventory, resourceId, (host.inventory.get(resourceId) ?? 0) + amount);
-    }
+    applyProduction(host, consumed, facility.recipe.outputs);
+    const recoveredResourceIds = [...facility.activeShortageResourceIds].sort();
+    facility.activeShortageResourceIds.clear();
     const nextIntent = this.#createTickIntent(facility, elapsedDays + facility.recipe.cycleDays);
     return {
       event: {
@@ -262,6 +397,15 @@ export class Facilities {
         consumed,
         produced: { ...facility.recipe.outputs },
         availableWorkforce,
+        recoveredResourceIds,
+      },
+      recoveryEvent: recoveredResourceIds.length === 0 ? null : {
+        eventType: "FacilityProductionRecovered",
+        scheduledEventId: intent.eventId,
+        elapsedDays,
+        facilityId: facility.facilityId,
+        generation,
+        recoveredResourceIds,
       },
       nextIntent,
     };
@@ -279,6 +423,18 @@ export class Facilities {
 
   availableResource(hostId: string, resourceId: string): number {
     return this.#requireHost(hostId).inventory.get(resourceId) ?? 0;
+  }
+
+  facilitySnapshot(facilityId: string): FacilitySnapshot {
+    const facility = this.#requireFacility(facilityId);
+    return this.snapshot().facilities.find((item) => item.facilityId === facility.facilityId)!;
+  }
+
+  canDeposit(hostId: string, resourceId: string, amount: number): boolean {
+    requirePositiveNumber(amount, "Deposit amount");
+    const host = this.#requireHost(hostId);
+    const cap = host.storageCaps[resourceId];
+    return cap !== undefined && (host.inventory.get(resourceId) ?? 0) + amount <= cap;
   }
 
   withdraw(hostId: string, resourceId: string, amount: number): boolean {
@@ -302,20 +458,24 @@ export class Facilities {
     if (cohort === undefined) {
       throw new FacilitiesValidationError(`Host ${hostId} has no cohort ${effect.cohortId}.`);
     }
-    requireNonNegativeNumber(effect.unrestIncrease, "Unrest increase");
-    requireNonNegativeInteger(effect.workforceLoss, "Workforce loss");
+    validateShortageConsequences(effect.consequences, `Cohort ${effect.cohortId} need`);
     const available = host.inventory.get(resourceId) ?? 0;
+    const shortageKey = `${effect.cohortId}:${resourceId}`;
     if (available >= required) {
       setQuantity(host.inventory, resourceId, available - required);
-      return { outcome: "consumed", consumed: required };
+      const recovered = host.activeCohortShortageKeys.delete(shortageKey);
+      return { outcome: "consumed", consumed: required, recovered };
     }
-    const updated: PopulationCohortSeed = {
-      ...cohort,
-      unrest: cohort.unrest + effect.unrestIncrease,
-      availableWorkforce: Math.max(0, cohort.availableWorkforce - effect.workforceLoss),
+    const alreadyActive = host.activeCohortShortageKeys.has(shortageKey);
+    const applied = applyCohortNeedConsequences(host, effect, alreadyActive);
+    host.activeCohortShortageKeys.add(shortageKey);
+    return {
+      outcome: "shortage",
+      available,
+      required,
+      cohort: { ...host.cohorts.get(cohort.cohortId)!, conditions: { ...host.cohorts.get(cohort.cohortId)!.conditions } },
+      appliedConsequences: applied,
     };
-    host.cohorts.set(cohort.cohortId, updated);
-    return { outcome: "shortage", available, required, cohort: { ...updated } };
   }
 
   snapshot(): FacilitiesSnapshot {
@@ -324,12 +484,17 @@ export class Facilities {
         ...facility,
         recipe: copyRecipe(facility.recipe),
         processedEventIds: [...facility.processedEventIds],
+        activeShortageResourceIds: [...facility.activeShortageResourceIds].sort(),
       })),
       hosts: [...this.#hosts.values()].map((host) => ({
         hostId: host.hostId,
         inventory: Object.fromEntries(host.inventory),
         storageCaps: { ...host.storageCaps },
-        cohorts: [...host.cohorts.values()].map((cohort) => ({ ...cohort })),
+        cohorts: [...host.cohorts.values()].map((cohort) => ({
+          ...cohort,
+          conditions: { ...cohort.conditions },
+        })),
+        activeCohortShortageKeys: [...host.activeCohortShortageKeys].sort(),
       })),
     };
   }
@@ -390,16 +555,27 @@ function createHosts(seeds: readonly FacilityHostSeed[]): Map<string, FacilityHo
         throw new FacilitiesValidationError(`Cohort ${cohort.cohortId} workforce exceeds population.`);
       }
       requireNonNegativeNumber(cohort.unrest, `Cohort ${cohort.cohortId} unrest`);
-      cohorts.set(cohort.cohortId, { ...cohort });
+      const conditions = cohort.conditions ?? {};
+      for (const [conditionId, value] of Object.entries(conditions)) {
+        requireId(conditionId, `Cohort ${cohort.cohortId} condition id`);
+        requireFiniteNumber(value, `Cohort ${cohort.cohortId} condition ${conditionId}`);
+      }
+      cohorts.set(cohort.cohortId, { ...cohort, conditions: { ...conditions } });
     }
     for (const [resourceId, cap] of Object.entries(seed.storageCaps)) {
       requireNonNegativeNumber(cap, `Host ${seed.hostId} storage cap ${resourceId}`);
     }
+    const activeCohortShortageKeys = seed.activeCohortShortageKeys ?? [];
+    if (new Set(activeCohortShortageKeys).size !== activeCohortShortageKeys.length) {
+      throw new FacilitiesValidationError(`Host ${seed.hostId} has duplicate cohort shortage keys.`);
+    }
+    for (const key of activeCohortShortageKeys) requireId(key, `Host ${seed.hostId} cohort shortage key`);
     hosts.set(seed.hostId, {
       hostId: seed.hostId,
       inventory,
       storageCaps: { ...seed.storageCaps },
       cohorts,
+      activeCohortShortageKeys: new Set(activeCohortShortageKeys),
     });
   }
   return hosts;
@@ -429,10 +605,16 @@ function createFacilities(
     if (new Set(seed.processedEventIds).size !== seed.processedEventIds.length) {
       throw new FacilitiesValidationError(`Facility ${seed.facilityId} has duplicate processed ids.`);
     }
+    const activeShortageResourceIds = seed.activeShortageResourceIds ?? [];
+    if (new Set(activeShortageResourceIds).size !== activeShortageResourceIds.length) {
+      throw new FacilitiesValidationError(`Facility ${seed.facilityId} has duplicate active shortages.`);
+    }
+    for (const resourceId of activeShortageResourceIds) requireId(resourceId, "Active shortage resource id");
     facilities.set(seed.facilityId, {
       ...seed,
       recipe: copyRecipe(seed.recipe),
       processedEventIds: new Set(seed.processedEventIds),
+      activeShortageResourceIds: new Set(activeShortageResourceIds),
     });
   }
   return facilities;
@@ -447,6 +629,29 @@ function validateRecipe(recipe: FacilityRecipe, facilityId: string): void {
   requirePositiveNumber(recipe.cycleDays, `${facilityId} cycle days`);
   if (recipe.blockedRetryDays !== null) {
     requirePositiveNumber(recipe.blockedRetryDays, `${facilityId} retry days`);
+  }
+  const requiredResourceIds = new Set([
+    ...Object.keys(recipe.inputs),
+    ...Object.keys(recipe.energyInputs),
+    ...Object.keys(recipe.maintenanceInputs),
+  ]);
+  const policies = recipe.shortagePolicies;
+  const seen = new Set<string>();
+  for (const policy of policies) {
+    requireId(policy.resourceId, `${facilityId} shortage resource`);
+    if (!requiredResourceIds.has(policy.resourceId)) {
+      throw new FacilitiesValidationError(`${facilityId} shortage policy references undeclared ${policy.resourceId}.`);
+    }
+    if (seen.has(policy.resourceId)) {
+      throw new FacilitiesValidationError(`${facilityId} has duplicate shortage policy for ${policy.resourceId}.`);
+    }
+    seen.add(policy.resourceId);
+    validateShortageConsequences(policy.consequences, `${facilityId}/${policy.resourceId}`);
+  }
+  for (const resourceId of requiredResourceIds) {
+    if (!seen.has(resourceId)) {
+      throw new FacilitiesValidationError(`${facilityId} has no shortage policy for ${resourceId}.`);
+    }
   }
 }
 
@@ -468,6 +673,203 @@ function determineBlockedReason(
   return null;
 }
 
+function findMissingResourceIds(
+  host: FacilityHostRuntimeState,
+  recipe: FacilityRecipe,
+): readonly string[] {
+  const required = mergeQuantities(recipe.inputs, recipe.energyInputs, recipe.maintenanceInputs);
+  return Object.entries(required)
+    .filter(([resourceId, amount]) => (host.inventory.get(resourceId) ?? 0) < amount)
+    .map(([resourceId]) => resourceId)
+    .sort();
+}
+
+function blockedReasonForMissing(
+  recipe: FacilityRecipe,
+  missingResourceIds: readonly string[],
+): FacilityBlockedReason {
+  if (missingResourceIds.some((resourceId) => resourceId in recipe.inputs)) return "missing_inputs";
+  if (missingResourceIds.some((resourceId) => resourceId in recipe.energyInputs)) return "missing_energy";
+  return "missing_maintenance";
+}
+
+function evaluateShortage(
+  recipe: FacilityRecipe,
+  missingResourceIds: readonly string[],
+): {
+  readonly blocked: boolean;
+  readonly outputPermille: number;
+  readonly retryDelayDays: number | null;
+  readonly consequences: readonly ShortageConsequence[];
+} {
+  const policies = new Map((recipe.shortagePolicies ?? []).map((policy) => [policy.resourceId, policy]));
+  const defaultConsequences: readonly ShortageConsequence[] = [{ type: "block" }, { type: "none" }];
+  const consequences: readonly ShortageConsequence[] = missingResourceIds.flatMap((resourceId) =>
+    policies.get(resourceId)?.consequences ?? defaultConsequences);
+  const outputPermilles = consequences.flatMap((consequence) =>
+    consequence.type === "reduced_output" ? [consequence.outputPermille] : []);
+  const retryDelays = consequences.flatMap((consequence) =>
+    consequence.type === "retry" ? [consequence.delayDays] : []);
+  return {
+    blocked: consequences.some((consequence) => consequence.type === "block")
+      || outputPermilles.length === 0,
+    outputPermille: outputPermilles.length === 0 ? 0 : Math.min(...outputPermilles),
+    retryDelayDays: retryDelays.length === 0 ? null : Math.min(...retryDelays),
+    consequences,
+  };
+}
+
+function applyShortageConsequences(
+  host: FacilityHostRuntimeState,
+  consequences: readonly ShortageConsequence[],
+  activeResourceIds: ReadonlySet<string>,
+  missingResourceIds: readonly string[],
+): readonly ShortageConsequence[] {
+  const episodeAlreadyActive = missingResourceIds.every((resourceId) => activeResourceIds.has(resourceId));
+  const applied: ShortageConsequence[] = [];
+  for (const consequence of consequences) {
+    if (consequence.type !== "cohort_delta") continue;
+    if (consequence.application === "once_per_episode" && episodeAlreadyActive) continue;
+    const cohort = host.cohorts.get(consequence.cohortId);
+    if (cohort === undefined) {
+      throw new FacilitiesValidationError(`Host ${host.hostId} has no cohort ${consequence.cohortId}.`);
+    }
+    const conditions = { ...(cohort.conditions ?? {}) };
+    conditions[consequence.conditionId] = (conditions[consequence.conditionId] ?? 0)
+      + consequence.conditionDelta;
+    host.cohorts.set(cohort.cohortId, {
+      ...cohort,
+      conditions,
+      unrest: Math.max(0, cohort.unrest + consequence.unrestDelta),
+      availableWorkforce: Math.max(
+        0,
+        Math.min(cohort.population, cohort.availableWorkforce + consequence.workforceDelta),
+      ),
+    });
+    applied.push({ ...consequence });
+  }
+  return applied;
+}
+
+function applyCohortNeedConsequences(
+  host: FacilityHostRuntimeState,
+  effect: CohortShortageEffect,
+  alreadyActive: boolean,
+): readonly ShortageConsequence[] {
+  const cohort = host.cohorts.get(effect.cohortId)!;
+  const applied: ShortageConsequence[] = [];
+  let updated = cohort;
+  for (const consequence of effect.consequences) {
+    if (consequence.type !== "cohort_delta") continue;
+    if (consequence.cohortId !== effect.cohortId) {
+      throw new FacilitiesValidationError(
+        `Cohort need ${effect.cohortId} cannot mutate ${consequence.cohortId}.`,
+      );
+    }
+    if (alreadyActive && consequence.application === "once_per_episode") continue;
+    const conditions = { ...(updated.conditions ?? {}) };
+    conditions[consequence.conditionId] = (conditions[consequence.conditionId] ?? 0)
+      + consequence.conditionDelta;
+    updated = {
+      ...updated,
+      conditions,
+      unrest: Math.max(0, updated.unrest + consequence.unrestDelta),
+      availableWorkforce: Math.max(
+        0,
+        Math.min(updated.population, updated.availableWorkforce + consequence.workforceDelta),
+      ),
+    };
+    applied.push({ ...consequence });
+  }
+  host.cohorts.set(effect.cohortId, updated);
+  return applied;
+}
+
+function availableRequiredQuantities(
+  host: FacilityHostRuntimeState,
+  recipe: FacilityRecipe,
+): ResourceQuantities {
+  const required = mergeQuantities(recipe.inputs, recipe.energyInputs, recipe.maintenanceInputs);
+  return Object.fromEntries(Object.entries(required)
+    .filter(([resourceId, amount]) => (host.inventory.get(resourceId) ?? 0) >= amount));
+}
+
+function scaleQuantities(quantities: ResourceQuantities, permille: number): ResourceQuantities {
+  return Object.fromEntries(Object.entries(quantities)
+    .map(([resourceId, amount]) => [resourceId, Math.floor(amount * permille / 1000)] as const)
+    .filter(([, amount]) => amount > 0));
+}
+
+function hasOutputCapacity(host: FacilityHostRuntimeState, outputs: ResourceQuantities): boolean {
+  return Object.entries(outputs).every(([resourceId, amount]) => {
+    const cap = host.storageCaps[resourceId];
+    return cap !== undefined && (host.inventory.get(resourceId) ?? 0) + amount <= cap;
+  });
+}
+
+function applyProduction(
+  host: FacilityHostRuntimeState,
+  consumed: ResourceQuantities,
+  produced: ResourceQuantities,
+): void {
+  for (const [resourceId, amount] of Object.entries(consumed)) {
+    setQuantity(host.inventory, resourceId, (host.inventory.get(resourceId) ?? 0) - amount);
+  }
+  for (const [resourceId, amount] of Object.entries(produced)) {
+    setQuantity(host.inventory, resourceId, (host.inventory.get(resourceId) ?? 0) + amount);
+  }
+}
+
+export function validateShortageConsequences(
+  value: unknown,
+  label: string,
+): asserts value is readonly ShortageConsequence[] {
+  if (!Array.isArray(value)) throw new FacilitiesValidationError(`${label} consequences must be an array.`);
+  for (const item of value) {
+    if (item === null || typeof item !== "object" || Array.isArray(item)) {
+      throw new FacilitiesValidationError(`${label} consequence must be an object.`);
+    }
+    const type = (item as { readonly type?: unknown }).type;
+    if (type !== "block" && type !== "reduced_output" && type !== "retry"
+      && type !== "cohort_delta" && type !== "none") {
+      throw new FacilitiesValidationError(`${label} has unknown consequence type ${String(type)}.`);
+    }
+  }
+  const consequences = value as readonly ShortageConsequence[];
+  if (consequences.length === 0) throw new FacilitiesValidationError(`${label} consequences must not be empty.`);
+  const productionModes = consequences.filter((item) => item.type === "block" || item.type === "reduced_output");
+  if (productionModes.length !== 1) {
+    throw new FacilitiesValidationError(`${label} requires exactly one block or reduced_output consequence.`);
+  }
+  const hasNone = consequences.some((item) => item.type === "none");
+  const cohortConsequences = consequences.filter((item) => item.type === "cohort_delta");
+  if (hasNone === (cohortConsequences.length > 0)) {
+    throw new FacilitiesValidationError(`${label} requires either none or cohort_delta social consequences.`);
+  }
+  if (consequences.filter((item) => item.type === "retry").length > 1) {
+    throw new FacilitiesValidationError(`${label} allows at most one retry consequence.`);
+  }
+  for (const consequence of consequences) {
+    if (consequence.type === "reduced_output") {
+      if (!Number.isSafeInteger(consequence.outputPermille)
+        || consequence.outputPermille <= 0
+        || consequence.outputPermille >= 1000) {
+        throw new FacilitiesValidationError(`${label} outputPermille must be an integer from 1 to 999.`);
+      }
+    } else if (consequence.type === "retry") {
+      requirePositiveNumber(consequence.delayDays, `${label} retry delay`);
+    } else if (consequence.type === "cohort_delta") {
+      requireId(consequence.cohortId, `${label} cohort id`);
+      requireId(consequence.conditionId, `${label} condition id`);
+      requireFiniteNumber(consequence.conditionDelta, `${label} condition delta`);
+      requireFiniteNumber(consequence.unrestDelta, `${label} unrest delta`);
+      if (!Number.isSafeInteger(consequence.workforceDelta)) {
+        throw new FacilitiesValidationError(`${label} workforce delta must be a safe integer.`);
+      }
+    }
+  }
+}
+
 function ignored(
   intent: ScheduledEventIntent,
   elapsedDays: number,
@@ -484,6 +886,7 @@ function ignored(
       outcome: "ignored",
       reason,
     },
+    recoveryEvent: null,
     nextIntent: null,
   };
 }
@@ -524,12 +927,20 @@ function validateQuantities(quantities: ResourceQuantities, label: string): void
 }
 
 function copyRecipe(recipe: FacilityRecipe): FacilityRecipe {
-  return {
+  const copied: FacilityRecipe = {
     ...recipe,
     inputs: { ...recipe.inputs },
     energyInputs: { ...recipe.energyInputs },
     maintenanceInputs: { ...recipe.maintenanceInputs },
     outputs: { ...recipe.outputs },
+  };
+  if (recipe.shortagePolicies === undefined) return copied;
+  return {
+    ...copied,
+    shortagePolicies: recipe.shortagePolicies.map((policy) => ({
+      resourceId: policy.resourceId,
+      consequences: policy.consequences.map((consequence) => ({ ...consequence })),
+    })),
   };
 }
 
@@ -547,6 +958,10 @@ function requireNonNegativeNumber(value: number, label: string): void {
   if (!Number.isFinite(value) || value < 0) {
     throw new FacilitiesValidationError(`${label} must be finite and non-negative.`);
   }
+}
+
+function requireFiniteNumber(value: number, label: string): void {
+  if (!Number.isFinite(value)) throw new FacilitiesValidationError(`${label} must be finite.`);
 }
 
 function requireNonNegativeInteger(value: number, label: string): void {

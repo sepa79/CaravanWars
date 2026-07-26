@@ -146,6 +146,12 @@ party state, and immediate local affordances. It proposes normal
 and Governance. Neither authority nor a shared textual identifier transfers
 knowledge between actors, parties, locations, or remote Trade Hubs.
 
+Shortage meaning belongs to the affected cohort need, Facility recipe, or
+process. WorldSim adjudicates shortage observations for authorized Governors;
+the pure Governor controller receives only private memory and legal
+affordances. Delegation, TradeHub procurement, travel, Facility delivery, and
+reporting all use the canonical command boundary and physical state.
+
 ## Active repository boundaries
 
 | Path | Responsibility |

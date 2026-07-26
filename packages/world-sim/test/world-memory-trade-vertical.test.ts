@@ -156,6 +156,30 @@ test("WorldMemory JSON replay preserves the next deterministic merchant decision
   );
 });
 
+test("Governor delegates a remembered supply task and party delivers physical cargo then reports", () => {
+  const world = createScenario();
+  world.advanceDays(0.25);
+  accepted(submit(world, { commandType: "trade_hub_transfer_facility_goods", command: { commandId: "seed-deposit", issuerActorId: "supplier_governor", accountEntityId: "supplier", hubId: "hub-a", direction: "deposit", goodsId: "grain", amount: 2, facilityId: "farm", facilityHostId: "farm-host" } }));
+  accepted(submit(world, order("seed-sell", "supplier_governor", "supplier", "hub-a", "sell", 2, 1)));
+  accepted(submit(world, { commandType: "move_party", command: { party_id: "merchant", from_node_id: "opole", to_node_id: "wroclaw" } }));
+  world.advanceDays(4);
+  const assignment = { commandId: "assign-1", issuerActorId: "supplier_governor", taskId: "task-1", executorPartyId: "merchant", facilityId: "farm", facilityHostId: "farm-host", destinationNodeId: "wroclaw", goodsId: "grain", amount: 2 };
+  const unauthorized = submit(world, { commandType: "assign_supply_task", command: { ...assignment, commandId: "assign-foreign", issuerActorId: "buyer_governor" } });
+  assert.equal(unauthorized.accepted, false);
+  assert.equal(world.worldMemoryView("merchant", "party").entries.some((entry) => entry.payload.commandId === "assign-foreign"), false);
+  accepted(submit(world, { commandType: "assign_supply_task", command: assignment }));
+  accepted(submit(world, order("task-buy", "merchant_actor", "merchant", "hub-a", "buy", 2, 1)));
+  world.advanceDays(0.01);
+  accepted(submit(world, { commandType: "trade_hub_transfer_party_goods", command: { commandId: "task-pickup", issuerActorId: "merchant_actor", accountEntityId: "merchant", partyId: "merchant", hubId: "hub-a", direction: "withdraw", goodsId: "grain", amount: 2 } }));
+  const delivery = { commandType: "deliver_supply_task", command: { commandId: "deliver-1", issuerActorId: "merchant_actor", taskId: "task-1", executorPartyId: "merchant", facilityId: "farm", facilityHostId: "farm-host", goodsId: "grain", amount: 2 } } as const;
+  accepted(submit(world, delivery));
+  const replay = submit(world, delivery);
+  assert.equal(replay.accepted && "idempotentReplay" in replay && replay.idempotentReplay, true);
+  accepted(submit(world, { commandType: "report_supply_task", command: { commandId: "report-1", issuerActorId: "merchant_actor", taskId: "task-1", executorPartyId: "merchant", recipientActorId: "supplier_governor", facilityId: "farm" } }));
+  assert.equal(world.worldMemoryView("supplier_governor", "actor").entries.at(-1)?.provenance.sourceType, "report");
+  assert.equal(world.worldMemoryView("unrelated", "actor").entries.length, 0);
+});
+
 function decide(
   ai: MerchantMemoryAI,
   world: WorldSimulation,
@@ -215,7 +239,7 @@ function createScenario(): WorldSimulation {
     ownerId: "supplier", governorActorId: "supplier_governor",
     recipe: {
       inputs: {}, energyInputs: {}, maintenanceInputs: {}, outputs: { grain: 6 },
-      workforceRequired: 1, cycleDays: 0.25, blockedRetryDays: null,
+      workforceRequired: 1, cycleDays: 0.25, blockedRetryDays: null, shortagePolicies: [],
     },
     active: true, generation: 0, nextEventOrdinal: 0,
     pendingTickEventId: null, processedEventIds: [],
@@ -238,7 +262,7 @@ function createScenario(): WorldSimulation {
       managedEntities: [
         { entityId: "farm", ownerId: "supplier", governorActorId: "supplier_governor" },
         { entityId: "supplier", ownerId: "supplier", governorActorId: "supplier_governor" },
-        { entityId: "merchant", ownerId: "merchant", governorActorId: "merchant_actor" },
+        { entityId: "merchant", ownerId: "merchant", governorActorId: "supplier_governor" },
         { entityId: "destination-buyer", ownerId: "buyer", governorActorId: "buyer_governor" },
       ],
       governors: [
@@ -246,7 +270,7 @@ function createScenario(): WorldSimulation {
         governor("merchant_actor", "merchant"),
         governor("buyer_governor", "buyer"),
       ],
-      delegations: [],
+      delegations: [{ delegationId: "merchant-supply", delegatorActorId: "supplier_governor", delegateActorId: "merchant_actor", authorityScopes: ["facility:supply", "trade:transfer", "trade:order", "trade:cancel"], validFromElapsedDays: 0, validUntilElapsedDays: null }],
     }),
     maxEventsPerAdvance: 100,
   });
@@ -301,7 +325,7 @@ function account(accountEntityId: string, availableCurrency: number) {
 function governor(actorId: string, principalId: string) {
   return {
     actorId, principalId, superiorActorId: null, roles: ["fixture_trader"],
-    authorityScopes: ["trade:transfer", "trade:order", "trade:cancel"],
+    authorityScopes: ["trade:transfer", "trade:order", "trade:cancel", "facility:supply", "supply:delegate"],
     controller: "deterministic_policy" as const,
   };
 }

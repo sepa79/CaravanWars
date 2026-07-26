@@ -99,6 +99,8 @@ TODO
 - Party cargo v0: `docs/specs/economy/party_cargo_v0.md`
 - Location economy v0: `docs/specs/economy/location_economy_v0.md`
 - Facilities v0: `docs/specs/economy/facilities_v0.md`
+- Shortage consequences v0: `docs/specs/economy/shortage_consequences_v0.md`
+- Governor controller v0: `docs/specs/economy/governor_controller_v0.md`
 - Trade Hub v0: `docs/specs/economy/trade_hub_v0.md`
 - Merchant autoplay scenario v0: `docs/specs/economy/merchant_autoplay_scenario_v0.md`
 - Merchant memory AI v0: `docs/specs/economy/merchant_memory_ai_v0.md`

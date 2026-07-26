@@ -25,6 +25,9 @@ TypeScript with a browser-first client and a thin future Electron shell.
 - TypeScript WorldMemory v0 is active with private actor/party/location scope,
   provenance, observed/known times, explicit aging, idempotent ingest, and a
   memory-only MerchantAI trade loop across two physical hubs.
+- Shortage Consequences v0 and GovernorAI v0 are active: recipe/need-owned
+  effects produce private authorized observations, normal supply delegation,
+  physical cargo delivery, and explicit reports.
 
 ## Non-negotiable model
 

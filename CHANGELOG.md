@@ -4,6 +4,11 @@
 
 ### Added
 
+- Configured Shortage Consequences v0 with deterministic block, degradation,
+  retry, cohort episode effects, recovery, save/load, and replay behavior.
+- Memory-bound GovernorAI v0 with Governance-scoped delegation, physical
+  Facility delivery, and explicit provenance-bearing reports.
+
 - TypeScript WorldMemory v0 with deterministic owner-scoped entries,
   provenance, observed/known simulation times, explicit freshness, atomic
   idempotent ingest, and validated JSON save/load.

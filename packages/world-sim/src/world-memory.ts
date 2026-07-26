@@ -128,6 +128,10 @@ export class WorldMemory {
     }
   }
 
+  previewIngest(ingest: WorldMemoryIngest): WorldMemoryIngestResult {
+    return new WorldMemory(this.snapshot()).ingest(ingest);
+  }
+
   ingest(input: WorldMemoryIngest): WorldMemoryIngestResult {
     validateIngest(input);
     const inputFingerprint = fingerprint(input);

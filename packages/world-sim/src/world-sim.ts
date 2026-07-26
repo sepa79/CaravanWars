@@ -37,6 +37,33 @@ import type {
   WorldMemoryOwnerView,
   WorldMemorySnapshot,
 } from "./world-memory.js";
+import type { AssignSupplyTaskCommand, GovernorSupplyAffordance } from "./governor-controller.js";
+
+export interface DeliverSupplyTaskCommand {
+  readonly commandId: string;
+  readonly issuerActorId: string;
+  readonly taskId: string;
+  readonly executorPartyId: string;
+  readonly facilityId: string;
+  readonly facilityHostId: string;
+  readonly goodsId: string;
+  readonly amount: number;
+}
+
+export interface ReportSupplyTaskCommand {
+  readonly commandId: string;
+  readonly issuerActorId: string;
+  readonly taskId: string;
+  readonly executorPartyId: string;
+  readonly recipientActorId: string;
+  readonly facilityId: string;
+}
+
+export type SupplyCommandResult = { readonly accepted: true; readonly idempotentReplay: boolean } | {
+  readonly accepted: false;
+  readonly errorCode: "NOT_AUTHORIZED" | "PARTY_NOT_FOUND" | "PARTY_BUSY" | "LOCATION_MISMATCH" | "INSUFFICIENT_GOODS" | "STORAGE_EXCEEDED" | "TASK_NOT_FOUND" | "MEMORY_CONFLICT";
+  readonly message: string;
+};
 
 export interface PartyTravelConfig {
   readonly baseSpeedKmPerDay: number;
@@ -146,7 +173,10 @@ export type WorldCommandEnvelope =
       readonly command: TransferFacilityGoodsToTradeHubCommand;
     }
   | { readonly commandType: "place_trade_hub_order"; readonly command: PlaceTradeHubOrderCommand }
-  | { readonly commandType: "cancel_trade_hub_order"; readonly command: CancelTradeHubOrderCommand };
+  | { readonly commandType: "cancel_trade_hub_order"; readonly command: CancelTradeHubOrderCommand }
+  | { readonly commandType: "assign_supply_task"; readonly command: AssignSupplyTaskCommand }
+  | { readonly commandType: "deliver_supply_task"; readonly command: DeliverSupplyTaskCommand }
+  | { readonly commandType: "report_supply_task"; readonly command: ReportSupplyTaskCommand };
 
 export type WorldCommandSubmissionResult =
   | { readonly commandType: "move_party"; readonly result: CommandResult }
@@ -155,7 +185,10 @@ export type WorldCommandSubmissionResult =
   | { readonly commandType: "trade_hub_transfer_party_goods"; readonly result: TradeHubCommandResult }
   | { readonly commandType: "trade_hub_transfer_facility_goods"; readonly result: TradeHubCommandResult }
   | { readonly commandType: "place_trade_hub_order"; readonly result: TradeHubCommandResult }
-  | { readonly commandType: "cancel_trade_hub_order"; readonly result: TradeHubCommandResult };
+  | { readonly commandType: "cancel_trade_hub_order"; readonly result: TradeHubCommandResult }
+  | { readonly commandType: "assign_supply_task"; readonly result: SupplyCommandResult }
+  | { readonly commandType: "deliver_supply_task"; readonly result: SupplyCommandResult }
+  | { readonly commandType: "report_supply_task"; readonly result: SupplyCommandResult };
 
 export interface PartyTravelSnapshot {
   readonly edgeId: string;
@@ -479,6 +512,15 @@ export class WorldSimulation {
   ): Extract<WorldCommandSubmissionResult, { readonly commandType: "cancel_trade_hub_order" }>;
   submitCommand(envelope: WorldCommandEnvelope): WorldCommandSubmissionResult;
   submitCommand(envelope: WorldCommandEnvelope): WorldCommandSubmissionResult {
+    if (envelope.commandType === "assign_supply_task") {
+      return { commandType: envelope.commandType, result: this.#assignSupplyTask(envelope.command) };
+    }
+    if (envelope.commandType === "deliver_supply_task") {
+      return { commandType: envelope.commandType, result: this.#deliverSupplyTask(envelope.command) };
+    }
+    if (envelope.commandType === "report_supply_task") {
+      return { commandType: envelope.commandType, result: this.#reportSupplyTask(envelope.command) };
+    }
     if (envelope.commandType === "move_party") {
       return { commandType: "move_party", result: this.#executeMoveParty(envelope.command) };
     }
@@ -538,6 +580,68 @@ export class WorldSimulation {
 
   worldMemoryView(ownerId: string, ownerKind: WorldMemoryOwnerKind): WorldMemoryOwnerView {
     return this.#worldMemory.ownerView(ownerId, ownerKind, this.#clock.elapsedDays);
+  }
+
+  observeGovernorShortages(
+    governorActorId: string,
+    observationId: string,
+    staleAfterDays: number,
+  ): readonly WorldMemoryEntry[] {
+    const foundation = this.#simulationFoundation;
+    if (foundation === null) return [];
+    const facilityById = new Map(foundation.domainSnapshot().facilities.facilities.map((item) => [item.facilityId, item]));
+    const ingests: WorldMemoryIngest[] = [];
+    for (const event of foundation.shortageEvents()) {
+      if (event.eventType !== "FacilityProductionBlocked"
+        && event.eventType !== "FacilityProductionDegraded"
+        && (event.eventType !== "ResourceConsumptionAttempted" || event.outcome !== "shortage")) continue;
+      const facility = event.eventType === "ResourceConsumptionAttempted"
+        ? [...facilityById.values()].find((item) => item.hostId === event.hostId)
+        : facilityById.get(event.facilityId);
+      if (facility === undefined || !foundation.authorize(governorActorId, facility.facilityId, "facility:supply")) continue;
+      const resourceIds = event.eventType === "ResourceConsumptionAttempted"
+        ? [event.resourceId]
+        : event.missingResourceIds;
+      for (const goodsId of resourceIds) {
+        const consequences = event.eventType === "ResourceConsumptionAttempted"
+          ? event.configuredConsequences
+          : facility.recipe.shortagePolicies.find((policy) => policy.resourceId === goodsId)?.consequences ?? [];
+        ingests.push({
+          ingestId: `${observationId}:${event.scheduledEventId}:${goodsId}`,
+          ownerId: governorActorId,
+          ownerKind: "actor",
+          kind: "shortage_observation",
+          observedAtElapsedDays: event.elapsedDays,
+          knownAtElapsedDays: this.#clock.elapsedDays,
+          staleAfterDays,
+          provenance: { sourceType: "direct_observation", sourceId: event.scheduledEventId, sourceOwnerId: facility.ownerId, nodeId: null },
+          payload: {
+            facilityId: facility.facilityId,
+            facilityHostId: facility.hostId,
+            goodsId,
+            amount: 1,
+            consequenceTypes: consequences.map((item) => item.type),
+          },
+        });
+      }
+    }
+    const result = this.#worldMemory.ingestAll(ingests);
+    return result.accepted ? result.entries : [];
+  }
+
+  governorSupplyAffordances(governorActorId: string): readonly GovernorSupplyAffordance[] {
+    const foundation = this.#simulationFoundation;
+    if (foundation === null) return [];
+    return foundation.domainSnapshot().facilities.facilities
+      .filter((facility) => foundation.authorize(governorActorId, facility.facilityId, "facility:supply"))
+      .map((facility) => ({
+        facilityId: facility.facilityId,
+        facilityHostId: facility.hostId,
+        destinationNodeId: foundation.domainSnapshot().tradeHubs?.hubs.find((hub) => hub.connectedFacilityHostIds.includes(facility.hostId))?.nodeId ?? "",
+        executorPartyIds: [...this.#parties.values()]
+          .filter((party) => party.location.status === "idle" && party.location.nodeId === (foundation.domainSnapshot().tradeHubs?.hubs.find((hub) => hub.connectedFacilityHostIds.includes(facility.hostId))?.nodeId ?? ""))
+          .map((party) => party.id).sort(),
+      }));
   }
 
   merchantLocalTradeAffordances(partyId: string): MerchantLocalTradeAffordances {
@@ -633,6 +737,111 @@ export class WorldSimulation {
       return { accepted: false, errorCode: "MEMORY_INGEST_CONFLICT", message: result.message };
     }
     return { accepted: true, entries: result.entries };
+  }
+
+  #assignSupplyTask(command: AssignSupplyTaskCommand): SupplyCommandResult {
+    const foundation = this.#simulationFoundation;
+    const party = this.#parties.get(command.executorPartyId);
+    if (foundation === null
+      || !foundation.authorize(command.issuerActorId, command.facilityId, "facility:supply")
+      || !foundation.authorize(command.issuerActorId, command.executorPartyId, "supply:delegate")) {
+      return supplyRejected("NOT_AUTHORIZED", "Issuer cannot delegate supply for this Facility and party.");
+    }
+    if (party === undefined) return supplyRejected("PARTY_NOT_FOUND", `Party ${command.executorPartyId} does not exist.`);
+    if (party.location.status !== "idle") return supplyRejected("PARTY_BUSY", `Party ${party.id} is traveling.`);
+    if (party.location.nodeId !== command.destinationNodeId) return supplyRejected("LOCATION_MISMATCH", "Executor and managed Facility are not co-located for delegation.");
+    const result = this.#worldMemory.ingest({
+      ingestId: `supply-command:${command.commandId}`,
+      ownerId: party.id,
+      ownerKind: "party",
+      kind: "supply_task",
+      observedAtElapsedDays: this.#clock.elapsedDays,
+      knownAtElapsedDays: this.#clock.elapsedDays,
+      staleAfterDays: null,
+      provenance: { sourceType: "command_result", sourceId: command.commandId, sourceOwnerId: command.issuerActorId, nodeId: command.destinationNodeId },
+      payload: { ...command },
+    });
+    return result.accepted
+      ? { accepted: true, idempotentReplay: result.idempotentReplay }
+      : supplyRejected("MEMORY_CONFLICT", result.message);
+  }
+
+  #deliverSupplyTask(command: DeliverSupplyTaskCommand): SupplyCommandResult {
+    const foundation = this.#simulationFoundation;
+    const party = this.#parties.get(command.executorPartyId);
+    if (foundation === null || !foundation.authorize(command.issuerActorId, command.facilityId, "facility:supply")) {
+      return supplyRejected("NOT_AUTHORIZED", "Issuer cannot deliver supply for this Facility.");
+    }
+    if (party === undefined) return supplyRejected("PARTY_NOT_FOUND", `Party ${command.executorPartyId} does not exist.`);
+    const priorResult = this.#worldMemory.ownerView(party.id, "party", this.#clock.elapsedDays).entries.find((entry) =>
+      entry.kind === "supply_task_result" && entry.payload.commandId === command.commandId);
+    if (priorResult !== undefined) {
+      return priorResult.payload.taskId === command.taskId
+        && priorResult.payload.goodsId === command.goodsId
+        && priorResult.payload.amount === command.amount
+        ? { accepted: true, idempotentReplay: true }
+        : supplyRejected("MEMORY_CONFLICT", `Command id ${command.commandId} was reused with different data.`);
+    }
+    const task = this.#worldMemory.ownerView(party.id, "party", this.#clock.elapsedDays).entries.find((entry) =>
+      entry.kind === "supply_task" && entry.payload.taskId === command.taskId);
+    if (task === undefined) return supplyRejected("TASK_NOT_FOUND", `Task ${command.taskId} is not known by ${party.id}.`);
+    if (party.location.status !== "idle") return supplyRejected("PARTY_BUSY", `Party ${party.id} is traveling.`);
+    const hubNode = foundation.domainSnapshot().tradeHubs?.hubs.find((hub) => hub.connectedFacilityHostIds.includes(command.facilityHostId))?.nodeId;
+    if (hubNode === undefined || party.location.nodeId !== hubNode) return supplyRejected("LOCATION_MISMATCH", "Party is not physically at the Facility host node.");
+    const carried = party.cargo.get(command.goodsId) ?? 0;
+    if (carried < command.amount) return supplyRejected("INSUFFICIENT_GOODS", "Party cargo does not contain the assigned goods.");
+    const resultIngest: WorldMemoryIngest = {
+      ingestId: `supply-delivery:${command.commandId}`,
+      ownerId: party.id,
+      ownerKind: "party",
+      kind: "supply_task_result",
+      observedAtElapsedDays: this.#clock.elapsedDays,
+      knownAtElapsedDays: this.#clock.elapsedDays,
+      staleAfterDays: null,
+      provenance: { sourceType: "command_result", sourceId: command.commandId, sourceOwnerId: command.issuerActorId, nodeId: hubNode },
+      payload: { commandId: command.commandId, taskId: command.taskId, facilityId: command.facilityId, goodsId: command.goodsId, amount: command.amount, outcome: "delivered" },
+    };
+    const preview = this.#worldMemory.previewIngest(resultIngest);
+    if (!preview.accepted) return supplyRejected("MEMORY_CONFLICT", preview.message);
+    if (!foundation.depositToFacilityHost(command.facilityHostId, command.goodsId, command.amount)) {
+      return supplyRejected("STORAGE_EXCEEDED", "Facility host cannot accept the delivery.");
+    }
+    setQuantity(party.cargo, command.goodsId, carried - command.amount);
+    const result = this.#worldMemory.ingest(resultIngest);
+    if (!result.accepted) throw new WorldSimulationConfigurationError("Supply delivery result ingest conflicted after validated mutation.");
+    return { accepted: true, idempotentReplay: false };
+  }
+
+  #reportSupplyTask(command: ReportSupplyTaskCommand): SupplyCommandResult {
+    const foundation = this.#simulationFoundation;
+    const party = this.#parties.get(command.executorPartyId);
+    if (foundation === null || party === undefined) return supplyRejected("PARTY_NOT_FOUND", "Reporting party does not exist.");
+    if (party.managerActorId !== command.issuerActorId
+      || !foundation.authorize(command.recipientActorId, command.facilityId, "facility:supply")) {
+      return supplyRejected("NOT_AUTHORIZED", "Report sender or recipient is not authorized.");
+    }
+    const resultEntry = this.#worldMemory.ownerView(party.id, "party", this.#clock.elapsedDays).entries.find((entry) =>
+      entry.kind === "supply_task_result" && entry.payload.taskId === command.taskId);
+    if (resultEntry === undefined) return supplyRejected("TASK_NOT_FOUND", `Completed task ${command.taskId} is not known by ${party.id}.`);
+    if (party.location.status !== "idle") return supplyRejected("PARTY_BUSY", "A traveling party cannot deliver a report.");
+    const facility = foundation.facilitySnapshot(command.facilityId);
+    const reportNode = foundation.domainSnapshot().tradeHubs?.hubs.find((hub) =>
+      hub.connectedFacilityHostIds.includes(facility.hostId))?.nodeId;
+    if (reportNode === undefined || party.location.nodeId !== reportNode) {
+      return supplyRejected("LOCATION_MISMATCH", "Report handoff must occur at the managed Facility node.");
+    }
+    const result = this.#worldMemory.ingest({
+      ingestId: `supply-report:${command.commandId}`,
+      ownerId: command.recipientActorId,
+      ownerKind: "actor",
+      kind: "supply_report",
+      observedAtElapsedDays: resultEntry.observedAtElapsedDays,
+      knownAtElapsedDays: this.#clock.elapsedDays,
+      staleAfterDays: null,
+      provenance: { sourceType: "report", sourceId: command.commandId, sourceOwnerId: party.id, nodeId: reportNode },
+      payload: { taskId: command.taskId, resultEntryId: resultEntry.entryId, outcome: "delivered" },
+    });
+    return result.accepted ? { accepted: true, idempotentReplay: result.idempotentReplay } : supplyRejected("MEMORY_CONFLICT", result.message);
   }
 
   #executeMoveParty(command: MovePartyCommand): CommandResult {
@@ -1384,6 +1593,13 @@ function rejectedTransfer(
   errorCode: TransferGoodsErrorCode,
   message: string,
 ): TransferGoodsResult {
+  return { accepted: false, errorCode, message };
+}
+
+function supplyRejected(
+  errorCode: Extract<SupplyCommandResult, { readonly accepted: false }>["errorCode"],
+  message: string,
+): SupplyCommandResult {
   return { accepted: false, errorCode, message };
 }
 

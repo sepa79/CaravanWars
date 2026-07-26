@@ -22,7 +22,8 @@ canonical command payload without granting the caller direct state mutation.
 V0 `commandType` values are `move_party`, `transfer_goods`,
 `set_facility_operation`, `trade_hub_transfer_party_goods`,
 `trade_hub_transfer_facility_goods`, `place_trade_hub_order`, and
-`cancel_trade_hub_order`. The result repeats `commandType` and contains that
+`cancel_trade_hub_order`, plus `assign_supply_task`, `deliver_supply_task`, and
+`report_supply_task`. The result repeats `commandType` and contains that
 command's canonical result. There is no heuristic command detection, payload
 conversion, or fallback handler.
 
@@ -60,3 +61,10 @@ a different payload is an explicit conflict. The older travel,
 location-transfer, and Facility-operation commands remain an in-process v0
 boundary and must not be retried automatically until their own canonical
 idempotency contract is added.
+
+Supply commands carry explicit command and task ids. Assignment requires
+Governance scopes over both the Facility and executor party. Delivery requires
+the assigned party, physical co-location, carried goods, and host capacity;
+validation and memory-id conflict checks precede the atomic mutation. Reports
+require a completed party-owned task result and physical handoff at the managed
+Facility node.

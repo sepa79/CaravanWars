@@ -2,11 +2,15 @@ import {
   FACILITIES_COMPONENT,
   FACILITY_PRODUCTION_TICK_DUE,
   Facilities,
+  validateShortageConsequences,
 } from "./facilities.js";
 import type {
   CohortShortageEffect,
   FacilitiesSnapshot,
   FacilityProductionEvent,
+  FacilityProductionRecoveredEvent,
+  FacilitySnapshot,
+  ShortageConsequence,
 } from "./facilities.js";
 import { Governance } from "./governance.js";
 import type { GovernanceSnapshot } from "./governance.js";
@@ -44,9 +48,7 @@ export interface ResourceConsumptionPayload extends Record<string, SerializableV
   readonly resourceId: string;
   readonly amount: number;
   readonly cohortId: string;
-  readonly unrestIncrease: number;
-  readonly workforceLoss: number;
-  readonly retryDelayDays: number | null;
+  readonly consequences: readonly SerializableValue[];
 }
 
 export interface ResourceDeliveryPayload extends Record<string, SerializableValue> {
@@ -62,9 +64,11 @@ export interface ResourceConsumptionAttemptedEvent {
   readonly hostId: string;
   readonly resourceId: string;
   readonly amount: number;
-  readonly outcome: "consumed" | "shortage";
+  readonly outcome: "consumed" | "shortage" | "recovered";
   readonly availableBefore: number | null;
   readonly retryEventId: string | null;
+  readonly appliedConsequences: readonly ShortageConsequence[];
+  readonly configuredConsequences: readonly ShortageConsequence[];
 }
 
 export interface ResourceDeliveryAttemptedEvent {
@@ -79,6 +83,7 @@ export interface ResourceDeliveryAttemptedEvent {
 
 export type SimulationFoundationEvent =
   | FacilityProductionEvent
+  | FacilityProductionRecoveredEvent
   | ResourceConsumptionAttemptedEvent
   | ResourceDeliveryAttemptedEvent
   | TradeHubEvent;
@@ -258,6 +263,32 @@ export class WorldSimulationFoundation {
     return this.#tradeHubs?.snapshotsAtNode(nodeId) ?? [];
   }
 
+  authorize(issuerActorId: string, managedEntityId: string, requiredScope: string): boolean {
+    return this.#governance.authorize({
+      issuerActorId,
+      managedEntityId,
+      requiredScope,
+      elapsedDays: this.#clock.elapsedDays,
+    }).authorized;
+  }
+
+  facilitySnapshot(facilityId: string): FacilitySnapshot {
+    return this.#facilities.facilitySnapshot(facilityId);
+  }
+
+  shortageEvents(): readonly SimulationFoundationEvent[] {
+    return structuredClone(this.#events.filter((event) =>
+      event.eventType === "FacilityProductionBlocked"
+      || event.eventType === "FacilityProductionDegraded"
+      || event.eventType === "FacilityProductionRecovered"
+      || event.eventType === "ResourceConsumptionAttempted"));
+  }
+
+  depositToFacilityHost(hostId: string, resourceId: string, amount: number): boolean {
+    if (!this.#facilities.canDeposit(hostId, resourceId, amount)) return false;
+    return this.#facilities.deposit(hostId, resourceId, amount);
+  }
+
   executeFacilityTradeHubTransfer(
     command: TransferFacilityGoodsToTradeHubCommand,
   ): TradeHubCommandResult {
@@ -372,6 +403,7 @@ export class WorldSimulationFoundation {
       && intent.targetComponent === FACILITIES_COMPONENT) {
       const result = this.#facilities.handleProductionTick(intent, this.#clock.elapsedDays);
       this.#events.push(result.event);
+      if (result.recoveryEvent !== null) this.#events.push(result.recoveryEvent);
       return result.nextIntent === null ? [] : [result.nextIntent];
     }
     if (intent.kind === RESOURCE_CONSUMPTION_DUE
@@ -397,8 +429,7 @@ export class WorldSimulationFoundation {
     const payload = readConsumptionPayload(intent);
     const effect: CohortShortageEffect = {
       cohortId: payload.cohortId,
-      unrestIncrease: payload.unrestIncrease,
-      workforceLoss: payload.workforceLoss,
+      consequences: payload.consequences as readonly ShortageConsequence[],
     };
     const result = this.#facilities.consumeForCohort(
       payload.hostId,
@@ -406,8 +437,9 @@ export class WorldSimulationFoundation {
       payload.amount,
       effect,
     );
-    const retry = result.outcome === "shortage" && payload.retryDelayDays !== null
-      ? createRetryIntent(intent, payload.retryDelayDays)
+    const retryDelayDays = effect.consequences.find((item) => item.type === "retry")?.delayDays ?? null;
+    const retry = result.outcome === "shortage" && retryDelayDays !== null
+      ? createRetryIntent(intent, retryDelayDays)
       : null;
     this.#events.push({
       eventType: "ResourceConsumptionAttempted",
@@ -416,9 +448,11 @@ export class WorldSimulationFoundation {
       hostId: payload.hostId,
       resourceId: payload.resourceId,
       amount: payload.amount,
-      outcome: result.outcome,
+      outcome: result.outcome === "consumed" && result.recovered ? "recovered" : result.outcome,
       availableBefore: result.outcome === "shortage" ? result.available : null,
       retryEventId: retry?.eventId ?? null,
+      appliedConsequences: result.outcome === "shortage" ? result.appliedConsequences : [],
+      configuredConsequences: effect.consequences,
     });
     return retry === null ? [] : [retry];
   }
@@ -544,11 +578,13 @@ function validateConsumptionPayload(
   requireString(payload.resourceId, `${eventId}.resourceId`);
   requirePositive(payload.amount, `${eventId}.amount`);
   requireString(payload.cohortId, `${eventId}.cohortId`);
-  requireNonNegative(payload.unrestIncrease, `${eventId}.unrestIncrease`);
-  requireNonNegative(payload.workforceLoss, `${eventId}.workforceLoss`);
-  if (payload.retryDelayDays !== null) {
-    requirePositive(payload.retryDelayDays, `${eventId}.retryDelayDays`);
+  if (!Array.isArray(payload.consequences) || payload.consequences.length === 0) {
+    throw new SimulationFoundationValidationError(`${eventId}.consequences must be a non-empty array.`);
   }
+  validateShortageConsequences(
+    payload.consequences,
+    `${eventId}.consequences`,
+  );
 }
 
 function validateDeliveryPayload(

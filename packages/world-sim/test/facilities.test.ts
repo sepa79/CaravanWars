@@ -19,6 +19,14 @@ const RECIPE: FacilityRecipe = {
   workforceRequired: 5,
   cycleDays: 1,
   blockedRetryDays: 0.5,
+  shortagePolicies: ["ore", "power", "tools"].map((resourceId) => ({
+    resourceId,
+    consequences: [
+      { type: "block" as const },
+      { type: "retry" as const, delayDays: 0.5 },
+      { type: "none" as const },
+    ],
+  })),
 };
 
 test("Facility applies a successful cycle atomically and schedules its own next tick", () => {

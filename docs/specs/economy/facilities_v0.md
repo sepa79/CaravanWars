@@ -1,5 +1,10 @@
 # Facilities v0
 
+Facility recipes must declare a shortage policy for every required input,
+energy input, and maintenance input. The policy semantics and recovery episode
+rules are canonical in `shortage_consequences_v0.md`; a goods id itself never
+implies unrest or another social effect.
+
 ## Purpose
 
 A Facility is a concrete managed capability attached to a physical entity or

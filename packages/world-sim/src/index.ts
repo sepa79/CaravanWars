@@ -53,6 +53,9 @@ export type {
   TransferGoodsErrorCode,
   TransferGoodsResult,
   TransferPartyGoodsWithTradeHubCommand,
+  DeliverSupplyTaskCommand,
+  ReportSupplyTaskCommand,
+  SupplyCommandResult,
   WorldEconomySeed,
   WorldCommandEnvelope,
   WorldCommandSubmissionResult,
@@ -104,7 +107,19 @@ export type {
   PopulationCohortSeed,
   ResourceConsumptionResult,
   ResourceQuantities,
+  ResourceShortagePolicy,
+  ShortageConsequence,
+  FacilityProductionDegradedEvent,
+  FacilityProductionRecoveredEvent,
 } from "./facilities.js";
+
+export { GovernorAIController } from "./governor-controller.js";
+export type {
+  AssignSupplyTaskCommand,
+  GovernorDecision,
+  GovernorShortagePolicy,
+  GovernorSupplyAffordance,
+} from "./governor-controller.js";
 
 export {
   RESOURCE_CONSUMPTION_DUE,
