@@ -100,6 +100,11 @@ No compatibility fallback or graph substitution is allowed in v0.
 
 ## Compatibility notes
 
+Facility Profiles v1 state is nested in the canonical Facilities snapshot and
+contains its catalog, process stages, animal cohorts, processed event ids and
+next ordinals. Load restores it before pending profile intents dispatch, so a
+save at any stage continues identically.
+
 No backward compatibility is required during this reboot. Future schema changes must increment `schema_version` and document migration behavior explicitly.
 
 ## Test coverage

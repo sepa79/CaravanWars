@@ -102,4 +102,6 @@ test("regional economy diagnostics require explicit truth mode and advance auton
   await page.locator("#mapMode").selectOption("truth");
   await expect(page.locator("#economyDiagnostics")).toBeVisible();
   await expect(page.locator("#economyDiagnostics")).toContainText("TRUTH / DEBUG");
+  await expect(page.locator("#economySeason")).not.toHaveText("—");
+  await expect(page.locator("#economyProfiles")).toContainText("_v1");
 });

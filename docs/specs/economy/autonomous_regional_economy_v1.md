@@ -8,6 +8,12 @@ V1 is a deterministic headless orchestration layer over one canonical `WorldSimu
 
 Each day advances WorldClock, lets authorized local operators offer Facility output, adjudicates physically local observations, lets Governors propose non-duplicate tasks, advances each executor and independent merchant by at most one normal command, then dispatches matching. Strategic source choice uses only fresh party-owned market observations. Initial remote leads are delayed rumors with provenance. Later prices are learned locally. Stale leads cause no-action or abandonment, never truth lookup.
 
+Facility Profiles & Seasonal Regional Economy v1 reuses this orchestrator with
+a configured 90-day strategic-controller cadence for 1–10 year runs. Due
+physical processes and consumption still dispatch at exact WorldClock times;
+only actor deliberation is batched. The expanded fixture uses ten Silesia
+nodes, ten quartermasters and twelve or more competing merchants.
+
 `LogisticsTaskBoard` owns `created -> accepted -> in_progress -> completed|failed|abandoned`. Transition ids are idempotent; conflicts fail. Only one non-terminal task may cover a `(destinationEntityId, goodsId)` pair. Terminal history is append-only, and a later observed shortage creates a new task instead of resurrecting one.
 
 Run `npm run sim:regional -- --days 30 --seed 17`. Days are 1–180. Optional `--save path` writes the complete JSON snapshot; `--resume path` continues it. Stable metrics cover production, consumption, shortages/recoveries, trades/value, cargo/distance, unrest, throughput, pending queue, task counts, and failed commands.

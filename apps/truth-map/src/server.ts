@@ -12,7 +12,7 @@ import {
   loadPartyCargoConfigFile,
   loadPartyTravelConfigFile,
   loadRegionGraphFile,
-  createAutonomousRegionalEconomyFixture,
+  createSeasonalRegionalEconomyFixture,
 } from "@caravan-wars/world-sim";
 import type {
   MerchantMemoryEntry,
@@ -103,7 +103,7 @@ const merchantMemory: readonly MerchantMemoryEntry[] = [
 ];
 const merchantAi = new MerchantMemoryAI();
 const simulation = new WorldSimulation(graph, travelConfig, [partySeed], economySeed);
-let regionalEconomy = createAutonomousRegionalEconomyFixture(graph, travelConfig);
+let regionalEconomy = createSeasonalRegionalEconomyFixture(graph, travelConfig);
 
 const vite = await createViteServer({
   root: applicationRoot,
@@ -169,7 +169,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
   if (method === "POST" && requestUrl.pathname === "/api/reset") {
     parseEmptyObjectRequest(await readJsonBody(request), "reset request");
     simulation.reset();
-    regionalEconomy = createAutonomousRegionalEconomyFixture(graph, travelConfig);
+    regionalEconomy = createSeasonalRegionalEconomyFixture(graph, travelConfig);
     writeJson(response, 200, createClientState(requestUrl, graph, simulation));
     return;
   }

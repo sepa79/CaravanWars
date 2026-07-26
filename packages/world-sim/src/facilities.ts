@@ -1,4 +1,12 @@
 import type { ScheduledEventIntent } from "./world-clock.js";
+import {
+  FACILITY_PROFILE_PROCESS_DUE,
+  FacilityProfileRuntime,
+} from "./facility-profiles.js";
+import type {
+  FacilityProfileProcessEvent,
+  FacilityProfileRuntimeSnapshot,
+} from "./facility-profiles.js";
 
 export const FACILITY_PRODUCTION_TICK_DUE = "FacilityProductionTickDue";
 export const FACILITIES_COMPONENT = "facilities";
@@ -157,6 +165,7 @@ export interface FacilityHostSnapshot extends FacilityHostSeed {}
 export interface FacilitiesSnapshot {
   readonly facilities: readonly FacilitySnapshot[];
   readonly hosts: readonly FacilityHostSnapshot[];
+  readonly profileRuntime?: FacilityProfileRuntimeSnapshot | null;
 }
 
 export interface CohortShortageEffect {
@@ -211,10 +220,41 @@ export class FacilitiesValidationError extends Error {
 export class Facilities {
   readonly #facilities: Map<string, FacilityRuntimeState>;
   readonly #hosts: Map<string, FacilityHostRuntimeState>;
+  readonly #profileRuntime: FacilityProfileRuntime | null;
 
-  constructor(facilitySeeds: readonly FacilitySeed[], hostSeeds: readonly FacilityHostSeed[]) {
+  constructor(facilitySeeds: readonly FacilitySeed[], hostSeeds: readonly FacilityHostSeed[], profileRuntime: FacilityProfileRuntimeSnapshot | null = null) {
     this.#hosts = createHosts(hostSeeds);
+    this.#profileRuntime = profileRuntime === null ? null : new FacilityProfileRuntime(profileRuntime);
     this.#facilities = createFacilities(facilitySeeds, this.#hosts);
+  }
+
+  initialProfileIntents(elapsedDays: number): readonly ScheduledEventIntent[] {
+    return this.#profileRuntime?.initialIntents(elapsedDays) ?? [];
+  }
+
+  handleProfileProcess(intent: ScheduledEventIntent, elapsedDays: number): { readonly event: FacilityProfileProcessEvent; readonly nextIntent: ScheduledEventIntent | null } {
+    if (intent.kind !== FACILITY_PROFILE_PROCESS_DUE || this.#profileRuntime === null) {
+      throw new FacilitiesValidationError(`No Facility profile runtime for ${intent.eventId}.`);
+    }
+    return this.#profileRuntime.handle(intent, elapsedDays, {
+      available: (hostId, goodsId) => this.availableResource(hostId, goodsId),
+      canApply: (hostId, consumed, produced) => {
+        const host = this.#requireHost(hostId);
+        for (const [goodsId, amount] of Object.entries(consumed)) {
+          if ((host.inventory.get(goodsId) ?? 0) < amount) return false;
+        }
+        for (const [goodsId, amount] of Object.entries(produced)) {
+          const finalAmount = (host.inventory.get(goodsId) ?? 0) - (consumed[goodsId] ?? 0) + amount;
+          if (host.storageCaps[goodsId] === undefined || finalAmount > host.storageCaps[goodsId]!) return false;
+        }
+        return true;
+      },
+      apply: (hostId, consumed, produced) => {
+        const host = this.#requireHost(hostId);
+        for (const [goodsId, amount] of Object.entries(consumed)) setQuantity(host.inventory, goodsId, (host.inventory.get(goodsId) ?? 0) - amount);
+        for (const [goodsId, amount] of Object.entries(produced)) setQuantity(host.inventory, goodsId, (host.inventory.get(goodsId) ?? 0) + amount);
+      },
+    });
   }
 
   startOrResume(facilityId: string, elapsedDays: number): ScheduledEventIntent {
@@ -496,6 +536,7 @@ export class Facilities {
         })),
         activeCohortShortageKeys: [...host.activeCohortShortageKeys].sort(),
       })),
+      profileRuntime: this.#profileRuntime?.snapshot() ?? null,
     };
   }
 

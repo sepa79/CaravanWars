@@ -83,3 +83,8 @@ Goods, recipes, cycle durations, capacities, efficiencies, upkeep, workforce,
 and development curves are configuration. The engine contract must work with
 small artificial fixtures before long-running balance simulations establish
 setting-specific values.
+
+Facility Profiles v1 extends this same component with declarative behavior and
+durable process state. `profileId` is simulation configuration and
+`visualSkinId` is presentation-only. It does not introduce another Facilities
+engine or inventory. See `facility_profiles_seasonal_economy_v1.md`.

@@ -31,9 +31,9 @@ boundary.
   the TradeHub MerchantAI consumes only its owner view and local affordances.
 - Shortage effects are configured on needs and recipes, never globally on a
   goods id; GovernorAI responds from private memory through ordinary commands.
-- Autonomous Regional Economy v1 runs three settlements, their local markets,
-  Governors, supply parties, and competing merchants for 1–180 deterministic
-  days with save/resume and stable metrics.
+- Autonomous Regional Economy v1 has a seasonal extension across ten Silesia
+  nodes with explicit Facility profiles, durable animal cohorts, twelve or
+  more merchants, and deterministic 1–10 year/batch runs.
 
 See `docs/ARCHITECTURE.md`, `docs/adr/ADR-001-project-direction.md`, and
 `docs/adr/ADR-002-node-electron-migration.md`.
@@ -56,6 +56,7 @@ npm ci
 npm run typecheck
 npm test
 npm run sim:regional -- --days 30 --seed 17
+npm run sim:seasonal -- --years 2 --seeds 3,5,17 --merchants 12
 ```
 
 Run the development-only browser Truth Map on the Devbox:

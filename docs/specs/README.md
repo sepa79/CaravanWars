@@ -102,6 +102,7 @@ TODO
 - Shortage consequences v0: `docs/specs/economy/shortage_consequences_v0.md`
 - Governor controller v0: `docs/specs/economy/governor_controller_v0.md`
 - Autonomous regional economy v1: `docs/specs/economy/autonomous_regional_economy_v1.md`
+- Facility Profiles & Seasonal Regional Economy v1: `docs/specs/economy/facility_profiles_seasonal_economy_v1.md`
 - Trade Hub v0: `docs/specs/economy/trade_hub_v0.md`
 - Merchant autoplay scenario v0: `docs/specs/economy/merchant_autoplay_scenario_v0.md`
 - Merchant memory AI v0: `docs/specs/economy/merchant_memory_ai_v0.md`

@@ -31,6 +31,10 @@ TypeScript with a browser-first client and a thin future Electron shell.
 - Autonomous Regional Economy v1 is active: a three-settlement headless runner
   closes production, shortage, private observation, task, market, transport,
   recovery, and report loops with deterministic save/resume and metrics.
+- Facility Profiles & Seasonal Regional Economy v1 is active: one generic
+  Facilities runtime interprets layered crop, livestock, industry and spoilage
+  profiles; a ten-node Silesia fixture runs 1–10 years with 12+ merchants,
+  batch seeds, deterministic process events and annual diagnostics.
 
 ## Non-negotiable model
 

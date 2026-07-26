@@ -166,6 +166,21 @@ decision, append-log cursor, and action-ordinal continuation state. The browser
 may expose its metrics and reasons only through an explicitly labelled truth
 diagnostic endpoint; actor Party Maps remain filtered.
 
+### Facility profiles and seasonal projection
+
+Facilities optionally composes the generic profile runtime. A profile catalog
+contains explicit biology, technology, and management/environment layers;
+instances select behavior with `profileId` and carry presentation-only
+`visualSkinId`. Process stages and animal cohorts are durable, while physical
+mutation uses only the canonical Facility host inventory through an atomic
+port.
+
+The seasonal calendar is a pure projection of WorldClock elapsed days.
+Profile stages schedule ordinary serializable intents and inherit its causal
+ordering, event budget, save/load and replay guarantees. Seasonal regional
+orchestration wraps the existing autonomous runner and WorldSimulation; it is
+not another physical truth or command model.
+
 ## Active repository boundaries
 
 | Path | Responsibility |

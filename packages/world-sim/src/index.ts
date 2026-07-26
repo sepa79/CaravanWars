@@ -236,6 +236,38 @@ export type {
 
 export { createAutonomousRegionalEconomyFixture } from "./regional-economy-fixture.js";
 export type { AutonomousRegionalEconomyFixture } from "./regional-economy-fixture.js";
+export {
+  calendarAt,
+  DAYS_PER_YEAR,
+  FACILITY_PROFILE_PROCESS_DUE,
+  FacilityProfileRuntime,
+} from "./facility-profiles.js";
+export type {
+  AnimalCohort,
+  EvidenceConfidence,
+  EvidenceRange,
+  FacilityProfileDefinition,
+  FacilityProfileInstanceSeed,
+  FacilityProfileInstanceSnapshot,
+  FacilityProfileLayers,
+  FacilityProfileProcess,
+  FacilityProfileProcessEvent,
+  FacilityProfileRuntimeSnapshot,
+  ProcessCadence,
+  ProfileCalendarDate,
+  ProfileProcessStage,
+  SeasonId,
+} from "./facility-profiles.js";
+export { PREINDUSTRIAL_FACILITY_PROFILES_V1 } from "./preindustrial-profile-fixtures.js";
+export { SeasonalRegionalEconomyRunner, runSeasonalBatch } from "./seasonal-regional-economy.js";
+export type {
+  SeasonalBatchResult,
+  SeasonalEconomyDiagnostics,
+  SeasonalEconomyReport,
+  SeasonalRegionalEconomySnapshot,
+} from "./seasonal-regional-economy.js";
+export { createSeasonalRegionalEconomyFixture, SEASONAL_ACTIVE_NODES } from "./seasonal-regional-fixture.js";
+export type { SeasonalRegionalFixture } from "./seasonal-regional-fixture.js";
 export type {
   GoodsCatalog,
   GoodsDefinition,

@@ -4,6 +4,8 @@ import {
   Facilities,
   validateShortageConsequences,
 } from "./facilities.js";
+import { FACILITY_PROFILE_PROCESS_DUE } from "./facility-profiles.js";
+import type { FacilityProfileProcessEvent } from "./facility-profiles.js";
 import type {
   CohortShortageEffect,
   FacilitiesSnapshot,
@@ -87,6 +89,7 @@ export type SimulationFoundationEvent =
   | FacilityProductionRecoveredEvent
   | ResourceConsumptionAttemptedEvent
   | ResourceDeliveryAttemptedEvent
+  | FacilityProfileProcessEvent
   | TradeHubEvent;
 
 export interface SimulationFoundationDomainSnapshot {
@@ -159,6 +162,7 @@ export class WorldSimulationFoundation {
     this.#facilities = new Facilities(
       facilitiesSnapshot.facilities,
       facilitiesSnapshot.hosts,
+      facilitiesSnapshot.profileRuntime ?? null,
     );
     this.#maxEventsPerAdvance = options.maxEventsPerAdvance;
     this.#tradeHubs = options.tradeHubs === undefined || options.tradeHubs === null
@@ -190,6 +194,7 @@ export class WorldSimulationFoundation {
     this.#facilities = new Facilities(
       this.#resetSnapshot.facilities.facilities,
       this.#resetSnapshot.facilities.hosts,
+      this.#resetSnapshot.facilities.profileRuntime ?? null,
     );
     this.#tradeHubs = this.#resetSnapshot.tradeHubs === null
       ? null
@@ -202,6 +207,13 @@ export class WorldSimulationFoundation {
     const intent = this.#facilities.initialTickIntent(facilityId, this.#clock.elapsedDays);
     if (intent !== null) this.#clock.schedule(intent);
     return intent;
+  }
+
+  scheduleInitialFacilityProfileProcesses(): readonly ScheduledEventIntent[] {
+    this.#requireConfigurationOpen();
+    const intents = this.#facilities.initialProfileIntents(this.#clock.elapsedDays);
+    this.#clock.scheduleAll(intents);
+    return intents;
   }
 
   executeFacilityOperation(command: FacilityOperationCommand): FacilityOperationResult {
@@ -413,7 +425,7 @@ export class WorldSimulationFoundation {
     const foundation = new WorldSimulationFoundation({
       clock: WorldClock.fromSnapshot(snapshot.clock),
       governance: new Governance(snapshot.governance),
-      facilities: new Facilities(snapshot.facilities.facilities, snapshot.facilities.hosts),
+      facilities: new Facilities(snapshot.facilities.facilities, snapshot.facilities.hosts, snapshot.facilities.profileRuntime ?? null),
       tradeHubs: snapshot.tradeHubs === null ? null : new TradeHubs(snapshot.tradeHubs),
       maxEventsPerAdvance: snapshot.maxEventsPerAdvance,
       events: snapshot.events,
@@ -428,6 +440,12 @@ export class WorldSimulationFoundation {
       const result = this.#facilities.handleProductionTick(intent, this.#clock.elapsedDays);
       this.#events.push(result.event);
       if (result.recoveryEvent !== null) this.#events.push(result.recoveryEvent);
+      return result.nextIntent === null ? [] : [result.nextIntent];
+    }
+    if (intent.kind === FACILITY_PROFILE_PROCESS_DUE
+      && intent.targetComponent === FACILITIES_COMPONENT) {
+      const result = this.#facilities.handleProfileProcess(intent, this.#clock.elapsedDays);
+      this.#events.push(result.event);
       return result.nextIntent === null ? [] : [result.nextIntent];
     }
     if (intent.kind === RESOURCE_CONSUMPTION_DUE

@@ -115,6 +115,10 @@ interface EconomyDiagnostics {
     readonly transportDistanceKm: number;
   };
   readonly recentDecisions: readonly { readonly actorId: string; readonly reason: string; readonly accepted: boolean | null }[];
+  readonly calendar?: { readonly year: number; readonly dayOfYear: number; readonly season: string };
+  readonly profiles?: { readonly instances: readonly { readonly profileId: string; readonly processStages: Readonly<Record<string, string>> }[] } | null;
+  readonly winterReserves?: readonly { readonly hay: number; readonly seedGrain: number; readonly edibleGrain: number }[];
+  readonly annualReports?: readonly { readonly year: number; readonly grossHarvest: number; readonly edibleSurplus: number; readonly spoilage: number }[];
 }
 
 const canvas = requireElement<HTMLCanvasElement>("mapCanvas");
@@ -147,6 +151,10 @@ const economyTrades = requireElement<HTMLElement>("economyTrades");
 const economyShortages = requireElement<HTMLElement>("economyShortages");
 const economyTasks = requireElement<HTMLElement>("economyTasks");
 const economyDistance = requireElement<HTMLElement>("economyDistance");
+const economySeason = requireElement<HTMLElement>("economySeason");
+const economyProfiles = requireElement<HTMLElement>("economyProfiles");
+const economyReserves = requireElement<HTMLElement>("economyReserves");
+const economyAnnualChart = requireElement<HTMLElement>("economyAnnualChart");
 const economyDecisions = requireElement<HTMLOListElement>("economyDecisions");
 const advanceEconomy = requireElement<HTMLButtonElement>("advanceEconomy");
 
@@ -201,6 +209,11 @@ function renderEconomyDiagnostics(diagnostics: EconomyDiagnostics): void {
   economyShortages.textContent = String(diagnostics.metrics.shortages);
   economyTasks.textContent = String(diagnostics.metrics.activeTasks);
   economyDistance.textContent = `${diagnostics.metrics.transportDistanceKm.toFixed(0)} km`;
+  economySeason.textContent = diagnostics.calendar === undefined ? "—" : `${diagnostics.calendar.season}, Y${diagnostics.calendar.year} D${diagnostics.calendar.dayOfYear}`;
+  economyProfiles.textContent = diagnostics.profiles?.instances.map((item) => `${item.profileId}: ${Object.values(item.processStages).join("/")}`).join("; ") ?? "—";
+  const reserves = diagnostics.winterReserves ?? [];
+  economyReserves.textContent = `hay ${reserves.reduce((sum, item) => sum + item.hay, 0)}, seed ${reserves.reduce((sum, item) => sum + item.seedGrain, 0)}, grain ${reserves.reduce((sum, item) => sum + item.edibleGrain, 0)}`;
+  economyAnnualChart.textContent = diagnostics.annualReports?.map((item) => `Y${item.year} harvest ${item.grossHarvest} surplus ${item.edibleSurplus} spoilage ${item.spoilage}`).join(" | ") || "Annual production chart: no completed year";
   economyDecisions.replaceChildren(...diagnostics.recentDecisions.slice(-6).map((decision) => {
     const item = document.createElement("li");
     item.textContent = `${decision.actorId}: ${decision.reason}${decision.accepted === false ? " [rejected]" : ""}`;

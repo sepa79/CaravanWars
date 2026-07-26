@@ -97,9 +97,10 @@ idempotency boundary.
 
 ## Compatibility notes
 
-Calendar names, seasons, hours, and wall-clock save timestamps are outside v0.
-They must build on elapsed simulation time rather than introduce a second
-clock.
+Calendar names and seasons are outside the clock itself. Facility Profiles v1
+supplies a deterministic 360-day projection over elapsed simulation time; it
+does not introduce a second clock. Hours and wall-clock save timestamps remain
+outside v0.
 
 V0 deliberately retains terminal event records to preserve event-id
 idempotency. Compaction/checkpoint policy and a more efficient queue index are

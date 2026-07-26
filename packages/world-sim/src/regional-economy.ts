@@ -147,6 +147,12 @@ export class AutonomousRegionalEconomyRunner {
     return this.metrics();
   }
 
+  runControlInterval(days: number): RegionalEconomyMetrics {
+    if (!Number.isSafeInteger(days) || days <= 0 || days > 90) throw new Error("control interval must be an integer from 1 to 90 days.");
+    this.#runInterval(days);
+    return this.metrics();
+  }
+
   snapshot(): AutonomousRegionalEconomySnapshot {
     return {
       schemaVersion: 1,
@@ -217,7 +223,11 @@ export class AutonomousRegionalEconomyRunner {
   }
 
   #runOneDay(): void {
-    this.#world.advanceDays(1);
+    this.#runInterval(1);
+  }
+
+  #runInterval(days: number): void {
+    this.#world.advanceDays(days);
     this.#operateLocalMarkets();
     this.#observeLocalMarkets();
     this.#planGovernorTasks();

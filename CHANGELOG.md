@@ -4,6 +4,11 @@
 
 ### Added
 
+- Generic layered Facility Profiles with deterministic seasonal/multistage
+  processes, durable livestock cohorts, explicit spoilage and historical
+  evidence ranges; a ten-node seasonal Silesia economy with a 1–10 year
+  multi-seed runner, save/replay, bounds metrics and truth-only diagnostics.
+
 - Autonomous Regional Economy v1 with three local settlement economies,
   competing memory-bound merchants, Governor supply response, physical
   logistics, a deterministic 1–180 day CLI runner, save/resume, and metrics.

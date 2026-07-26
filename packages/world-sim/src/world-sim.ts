@@ -508,7 +508,7 @@ export class WorldSimulation {
     const foundation = domain === null ? null : new WorldSimulationFoundation({
       clock,
       governance: new Governance(domain.governance),
-      facilities: new Facilities(domain.facilities.facilities, domain.facilities.hosts),
+      facilities: new Facilities(domain.facilities.facilities, domain.facilities.hosts, domain.facilities.profileRuntime ?? null),
       tradeHubs: domain.tradeHubs === null ? null : new TradeHubs(domain.tradeHubs),
       maxEventsPerAdvance: domain.maxEventsPerAdvance,
       events: domain.events,
