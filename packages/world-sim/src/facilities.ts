@@ -232,12 +232,13 @@ export class Facilities {
     return this.#profileRuntime?.initialIntents(elapsedDays) ?? [];
   }
 
-  handleProfileProcess(intent: ScheduledEventIntent, elapsedDays: number): { readonly event: FacilityProfileProcessEvent; readonly nextIntent: ScheduledEventIntent | null } {
+  handleProfileProcess(intent: ScheduledEventIntent, elapsedDays: number, allocatedWorkforce?: (facilityId: string) => number): { readonly event: FacilityProfileProcessEvent; readonly nextIntent: ScheduledEventIntent | null } {
     if (intent.kind !== FACILITY_PROFILE_PROCESS_DUE || this.#profileRuntime === null) {
       throw new FacilitiesValidationError(`No Facility profile runtime for ${intent.eventId}.`);
     }
     return this.#profileRuntime.handle(intent, elapsedDays, {
       available: (hostId, goodsId) => this.availableResource(hostId, goodsId),
+      workforceAvailable: (facilityId) => allocatedWorkforce?.(facilityId) ?? Number.MAX_SAFE_INTEGER,
       canApply: (hostId, consumed, produced) => {
         const host = this.#requireHost(hostId);
         for (const [goodsId, amount] of Object.entries(consumed)) {
@@ -463,6 +464,18 @@ export class Facilities {
 
   availableResource(hostId: string, resourceId: string): number {
     return this.#requireHost(hostId).inventory.get(resourceId) ?? 0;
+  }
+
+  setHostWorkforce(hostId: string, availableWorkforce: number): void {
+    if (!Number.isSafeInteger(availableWorkforce) || availableWorkforce < 0) throw new FacilitiesValidationError("Available workforce must be a non-negative safe integer.");
+    const host = this.#requireHost(hostId);
+    const cohorts = [...host.cohorts.values()].sort((left, right) => left.cohortId.localeCompare(right.cohortId));
+    let remaining = availableWorkforce;
+    for (const cohort of cohorts) {
+      const assigned = Math.min(cohort.population, remaining);
+      host.cohorts.set(cohort.cohortId, { ...cohort, availableWorkforce: assigned });
+      remaining -= assigned;
+    }
   }
 
   facilitySnapshot(facilityId: string): FacilitySnapshot {

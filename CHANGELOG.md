@@ -4,6 +4,10 @@
 
 ### Added
 
+- Population, Health & Labour Dynamics v1 with deterministic age cohorts,
+  births/aging/deaths, nutrition, disease/recovery, seasonal scarce labour,
+  memory-bound Governor allocation, ration reserves and delayed migration.
+
 - Generic layered Facility Profiles with deterministic seasonal/multistage
   processes, durable livestock cohorts, explicit spoilage and historical
   evidence ranges; a ten-node seasonal Silesia economy with a 1–10 year

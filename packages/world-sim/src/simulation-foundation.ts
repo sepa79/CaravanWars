@@ -40,6 +40,19 @@ import type {
   SerializableValue,
   WorldClockSnapshot,
 } from "./world-clock.js";
+import {
+  POPULATION_COMPONENT,
+  POPULATION_MIGRATION_ARRIVAL_DUE,
+  POPULATION_SEASON_DUE,
+  PopulationDynamics,
+} from "./population-dynamics.js";
+import type {
+  AllocateLabourCommand,
+  PopulationCommandResult,
+  PopulationEvent,
+  PopulationSnapshot,
+  StartMigrationCommand,
+} from "./population-dynamics.js";
 
 export const RESOURCE_CONSUMPTION_DUE = "ResourceConsumptionDue";
 export const RESOURCE_DELIVERY_DUE = "ResourceDeliveryDue";
@@ -90,6 +103,7 @@ export type SimulationFoundationEvent =
   | ResourceConsumptionAttemptedEvent
   | ResourceDeliveryAttemptedEvent
   | FacilityProfileProcessEvent
+  | PopulationEvent
   | TradeHubEvent;
 
 export interface SimulationFoundationDomainSnapshot {
@@ -98,6 +112,7 @@ export interface SimulationFoundationDomainSnapshot {
   readonly events: readonly SimulationFoundationEvent[];
   readonly maxEventsPerAdvance: number;
   readonly tradeHubs: TradeHubsSnapshot | null;
+  readonly population?: PopulationSnapshot | null;
 }
 
 export interface SimulationFoundationSnapshot extends SimulationFoundationDomainSnapshot {
@@ -110,6 +125,7 @@ export interface SimulationFoundationOptions {
   readonly facilities: Facilities;
   readonly maxEventsPerAdvance: number;
   readonly tradeHubs?: TradeHubs | null;
+  readonly population?: PopulationDynamics | null;
   readonly events?: readonly SimulationFoundationEvent[];
 }
 
@@ -145,6 +161,7 @@ export class WorldSimulationFoundation {
   #governance: Governance;
   #facilities: Facilities;
   #tradeHubs: TradeHubs | null;
+  #population: PopulationDynamics | null;
   readonly #maxEventsPerAdvance: number;
   #events: SimulationFoundationEvent[];
   #resetSnapshot: SimulationFoundationSnapshot | null = null;
@@ -168,6 +185,7 @@ export class WorldSimulationFoundation {
     this.#tradeHubs = options.tradeHubs === undefined || options.tradeHubs === null
       ? null
       : new TradeHubs(options.tradeHubs.snapshot());
+    this.#population = options.population === undefined || options.population === null ? null : new PopulationDynamics(options.population.snapshot());
     this.#events = Array.from(structuredClone(options.events ?? []));
   }
 
@@ -199,6 +217,7 @@ export class WorldSimulationFoundation {
     this.#tradeHubs = this.#resetSnapshot.tradeHubs === null
       ? null
       : new TradeHubs(this.#resetSnapshot.tradeHubs);
+    this.#population = this.#resetSnapshot.population === undefined || this.#resetSnapshot.population === null ? null : new PopulationDynamics(this.#resetSnapshot.population);
     this.#events = Array.from(structuredClone(this.#resetSnapshot.events));
   }
 
@@ -215,6 +234,34 @@ export class WorldSimulationFoundation {
     this.#clock.scheduleAll(intents);
     return intents;
   }
+
+  scheduleInitialPopulationProcesses(): readonly ScheduledEventIntent[] {
+    this.#requireConfigurationOpen();
+    const intents = this.#population?.initialIntents(this.#clock.elapsedDays) ?? [];
+    this.#clock.scheduleAll(intents);
+    return intents;
+  }
+
+  executeAllocateLabour(command: AllocateLabourCommand): PopulationCommandResult {
+    const population = this.#requirePopulation();
+    return population.allocate(command, this.#clock.elapsedDays, this.authorize(command.issuerActorId, command.settlementId, "population:allocate"));
+  }
+
+  executeStartMigration(command: StartMigrationCommand): PopulationCommandResult {
+    const population = this.#requirePopulation();
+    const before = population.snapshot();
+    const mutation = population.startMigration(command, this.#clock.elapsedDays, this.authorize(command.issuerActorId, command.originSettlementId, "population:migrate"));
+    if (!mutation.result.accepted || mutation.intent === null) return mutation.result;
+    try { this.#clock.schedule(mutation.intent); } catch (error) {
+      population.restore(before);
+      return population.recordMigrationFailure(command, { accepted: false, idempotentReplay: false, errorCode: "SCHEDULING_FAILED", message: error instanceof Error ? error.message : String(error) });
+    }
+    if (mutation.event !== null) this.#events.push(mutation.event);
+    return mutation.result;
+  }
+
+  populationSnapshot(): PopulationSnapshot | null { return this.#population?.snapshot() ?? null; }
+  populationSettlement(settlementId: string) { return this.#population?.snapshot().settlements.find((item) => item.settlementId === settlementId) ?? null; }
 
   executeFacilityOperation(command: FacilityOperationCommand): FacilityOperationResult {
     const authority = this.#governance.authorize({
@@ -418,6 +465,7 @@ export class WorldSimulationFoundation {
       events: structuredClone(this.#events),
       maxEventsPerAdvance: this.#maxEventsPerAdvance,
       tradeHubs: this.#tradeHubs?.snapshot() ?? null,
+      population: this.#population?.snapshot() ?? null,
     };
   }
 
@@ -427,6 +475,7 @@ export class WorldSimulationFoundation {
       governance: new Governance(snapshot.governance),
       facilities: new Facilities(snapshot.facilities.facilities, snapshot.facilities.hosts, snapshot.facilities.profileRuntime ?? null),
       tradeHubs: snapshot.tradeHubs === null ? null : new TradeHubs(snapshot.tradeHubs),
+      population: snapshot.population === undefined || snapshot.population === null ? null : new PopulationDynamics(snapshot.population),
       maxEventsPerAdvance: snapshot.maxEventsPerAdvance,
       events: snapshot.events,
     });
@@ -444,9 +493,22 @@ export class WorldSimulationFoundation {
     }
     if (intent.kind === FACILITY_PROFILE_PROCESS_DUE
       && intent.targetComponent === FACILITIES_COMPONENT) {
-      const result = this.#facilities.handleProfileProcess(intent, this.#clock.elapsedDays);
+      const result = this.#facilities.handleProfileProcess(intent, this.#clock.elapsedDays, (facilityId) => this.#population?.allocationFor(facilityId) ?? Number.MAX_SAFE_INTEGER);
       this.#events.push(result.event);
       return result.nextIntent === null ? [] : [result.nextIntent];
+    }
+    if (intent.kind === POPULATION_SEASON_DUE && intent.targetComponent === POPULATION_COMPONENT) {
+      const result = this.#requirePopulation().handleSeason(intent, this.#clock.elapsedDays, {
+        available: (hostId, goodsId) => this.#facilities.availableResource(hostId, goodsId),
+        consume: (hostId, goodsId, amount) => this.#facilities.withdraw(hostId, goodsId, amount),
+        setWorkforce: (hostId, workforce) => this.#facilities.setHostWorkforce(hostId, workforce),
+      });
+      this.#events.push(result.event);
+      return result.nextIntent === null ? [] : [result.nextIntent];
+    }
+    if (intent.kind === POPULATION_MIGRATION_ARRIVAL_DUE && intent.targetComponent === POPULATION_COMPONENT) {
+      this.#events.push(this.#requirePopulation().handleMigrationArrival(intent, this.#clock.elapsedDays));
+      return [];
     }
     if (intent.kind === RESOURCE_CONSUMPTION_DUE
       && intent.targetComponent === SETTLEMENT_RESOURCES_COMPONENT) {
@@ -544,6 +606,12 @@ export class WorldSimulationFoundation {
     }
     return this.#tradeHubs;
   }
+
+  #requirePopulation(): PopulationDynamics {
+    if (this.#population === null) throw new SimulationFoundationValidationError("PopulationDynamics is not configured.");
+    return this.#population;
+  }
+
 
   #requireConfigurationOpen(): void {
     if (this.#configurationSealed) {

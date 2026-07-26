@@ -35,6 +35,9 @@ TypeScript with a browser-first client and a thin future Electron shell.
   Facilities runtime interprets layered crop, livestock, industry and spoilage
   profiles; a ten-node Silesia fixture runs 1–10 years with 12+ merchants,
   batch seeds, deterministic process events and annual diagnostics.
+- Population, Health & Labour Dynamics v1 is active with age cohorts,
+  seasonal disease, nutrition/health/mortality, scarce labour allocations and
+  route-bound migration through the canonical command boundary.
 
 ## Non-negotiable model
 

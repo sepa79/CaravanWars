@@ -11,12 +11,12 @@ npm run sim:seasonal -- --years 5 --seeds 23 --merchants 12
 npm run sim:seasonal -- --years 10 --seeds 31 --merchants 12
 ```
 
-The three-seed two-year batch completed deterministically. Each run retained
-20 pending events (ten profile processes and ten cohort needs); year-one/year-two
-history was 1,541/3,083 records after the bounded retry fixture adjustment.
-The five-year run completed in about 4 seconds with 20 pending events and 7,709
-retained terminal/event records. The ten-year run completed in about 14 seconds
-with 20 pending events and 15,275 retained records. This demonstrates bounded
+The three-seed runs completed deterministically. Population v1 adds ten
+seasonal cohort processes, so each run retains 30 pending events (ten profile
+processes, ten cohort needs, ten population ticks). A five-year/three-seed run
+completed in about 19 seconds with 8,571 records in the sampled result. A
+ten-year run completed with 30 pending events and 17,201 retained records.
+This demonstrates bounded
 pending work and documented linear history growth. No inventory was negative,
 and save-mid-cycle continuation is covered by the automated replay test.
 

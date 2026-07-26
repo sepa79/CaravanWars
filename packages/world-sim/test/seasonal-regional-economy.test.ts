@@ -53,7 +53,7 @@ test("three-year stress run keeps pending work bounded while retained history is
   const runner = createSeasonalRegionalEconomyFixture(graph, travel, 23).runner;
   const reports = runner.runYears(3);
   assert.equal(reports.length, 3);
-  assert.equal(reports.every((report) => report.pendingQueue === 20), true);
+  assert.equal(reports.every((report) => report.pendingQueue === 30), true);
   assert.equal(reports[2]!.retainedHistory < reports[0]!.retainedHistory * 4, true);
   assert.equal(reports[2]!.regional.trades >= reports[0]!.regional.trades, true);
 });

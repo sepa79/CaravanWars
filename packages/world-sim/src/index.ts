@@ -268,6 +268,32 @@ export type {
 } from "./seasonal-regional-economy.js";
 export { createSeasonalRegionalEconomyFixture, SEASONAL_ACTIVE_NODES } from "./seasonal-regional-fixture.js";
 export type { SeasonalRegionalFixture } from "./seasonal-regional-fixture.js";
+export {
+  GovernorPopulationController,
+  PopulationMigrationController,
+  POPULATION_COMPONENT,
+  POPULATION_MIGRATION_ARRIVAL_DUE,
+  POPULATION_SEASON_DUE,
+  PopulationDynamics,
+} from "./population-dynamics.js";
+export type {
+  AllocateLabourCommand,
+  GovernorPopulationPolicy,
+  LabourAllocation,
+  LabourSector,
+  PopulationAgeCohorts,
+  PopulationCommand,
+  PopulationCommandResult,
+  PopulationEvent,
+  PopulationMigrationEvent,
+  PopulationMigrationPolicy,
+  PopulationMigrationSnapshot,
+  PopulationPolicy,
+  PopulationSeasonEvent,
+  PopulationSettlementSeed,
+  PopulationSnapshot,
+  StartMigrationCommand,
+} from "./population-dynamics.js";
 export type {
   GoodsCatalog,
   GoodsDefinition,

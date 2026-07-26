@@ -79,6 +79,9 @@ The truth-only regional diagnostic may include the seasonal calendar, profile
 ids and process stages, winter reserves and annual reports. These fields are
 debug truth and remain absent from Party Map snapshots.
 
+Population totals, health/nutrition and labour allocations are also truth-only
+diagnostics and remain absent from Party Map snapshots.
+
 The v0 development host listens on port `4173` so it can be viewed over the
 home LAN or configured WireGuard route. It exposes full world truth and has no
 authentication. It must not be internet-published or reused as a production

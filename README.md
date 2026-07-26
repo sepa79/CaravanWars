@@ -34,6 +34,9 @@ boundary.
 - Autonomous Regional Economy v1 has a seasonal extension across ten Silesia
   nodes with explicit Facility profiles, durable animal cohorts, twelve or
   more merchants, and deterministic 1–10 year/batch runs.
+- Population, Health & Labour Dynamics v1 closes the harvest-food-health-work
+  loop with age cohorts, disease/recovery, rationing, Governor labour policy
+  and delayed physical migration.
 
 See `docs/ARCHITECTURE.md`, `docs/adr/ADR-001-project-direction.md`, and
 `docs/adr/ADR-002-node-electron-migration.md`.

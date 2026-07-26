@@ -119,6 +119,7 @@ interface EconomyDiagnostics {
   readonly profiles?: { readonly instances: readonly { readonly profileId: string; readonly processStages: Readonly<Record<string, string>> }[] } | null;
   readonly winterReserves?: readonly { readonly hay: number; readonly seedGrain: number; readonly edibleGrain: number }[];
   readonly annualReports?: readonly { readonly year: number; readonly grossHarvest: number; readonly edibleSurplus: number; readonly spoilage: number }[];
+  readonly populationDynamics?: { readonly settlements: readonly { readonly settlementId: string; readonly cohorts: { readonly children: number; readonly workingAdults: number; readonly elders: number }; readonly healthPermille: number; readonly nutritionPermille: number; readonly allocations: readonly { readonly sector: string; readonly workers: number }[] }[] } | null;
 }
 
 const canvas = requireElement<HTMLCanvasElement>("mapCanvas");
@@ -155,6 +156,8 @@ const economySeason = requireElement<HTMLElement>("economySeason");
 const economyProfiles = requireElement<HTMLElement>("economyProfiles");
 const economyReserves = requireElement<HTMLElement>("economyReserves");
 const economyAnnualChart = requireElement<HTMLElement>("economyAnnualChart");
+const economyPopulation = requireElement<HTMLElement>("economyPopulation");
+const economyLabour = requireElement<HTMLElement>("economyLabour");
 const economyDecisions = requireElement<HTMLOListElement>("economyDecisions");
 const advanceEconomy = requireElement<HTMLButtonElement>("advanceEconomy");
 
@@ -214,6 +217,9 @@ function renderEconomyDiagnostics(diagnostics: EconomyDiagnostics): void {
   const reserves = diagnostics.winterReserves ?? [];
   economyReserves.textContent = `hay ${reserves.reduce((sum, item) => sum + item.hay, 0)}, seed ${reserves.reduce((sum, item) => sum + item.seedGrain, 0)}, grain ${reserves.reduce((sum, item) => sum + item.edibleGrain, 0)}`;
   economyAnnualChart.textContent = diagnostics.annualReports?.map((item) => `Y${item.year} harvest ${item.grossHarvest} surplus ${item.edibleSurplus} spoilage ${item.spoilage}`).join(" | ") || "Annual production chart: no completed year";
+  const population = diagnostics.populationDynamics?.settlements ?? [];
+  economyPopulation.textContent = population.map((item) => `${item.settlementId}: ${item.cohorts.children + item.cohorts.workingAdults + item.cohorts.elders} h${item.healthPermille} n${item.nutritionPermille}`).join("; ") || "—";
+  economyLabour.textContent = population.flatMap((item) => item.allocations.map((allocation) => `${item.settlementId}/${allocation.sector}:${allocation.workers}`)).join("; ") || "unallocated";
   economyDecisions.replaceChildren(...diagnostics.recentDecisions.slice(-6).map((decision) => {
     const item = document.createElement("li");
     item.textContent = `${decision.actorId}: ${decision.reason}${decision.accepted === false ? " [rejected]" : ""}`;

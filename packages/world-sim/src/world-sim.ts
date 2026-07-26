@@ -42,6 +42,8 @@ import type {
   WorldMemorySnapshot,
 } from "./world-memory.js";
 import type { AssignSupplyTaskCommand, GovernorSupplyAffordance } from "./governor-controller.js";
+import { PopulationDynamics } from "./population-dynamics.js";
+import type { AllocateLabourCommand, PopulationCommandResult, StartMigrationCommand } from "./population-dynamics.js";
 
 export interface DeliverSupplyTaskCommand {
   readonly commandId: string;
@@ -180,7 +182,9 @@ export type WorldCommandEnvelope =
   | { readonly commandType: "cancel_trade_hub_order"; readonly command: CancelTradeHubOrderCommand }
   | { readonly commandType: "assign_supply_task"; readonly command: AssignSupplyTaskCommand }
   | { readonly commandType: "deliver_supply_task"; readonly command: DeliverSupplyTaskCommand }
-  | { readonly commandType: "report_supply_task"; readonly command: ReportSupplyTaskCommand };
+  | { readonly commandType: "report_supply_task"; readonly command: ReportSupplyTaskCommand }
+  | { readonly commandType: "allocate_labour"; readonly command: AllocateLabourCommand }
+  | { readonly commandType: "start_population_migration"; readonly command: StartMigrationCommand };
 
 export type WorldCommandSubmissionResult =
   | { readonly commandType: "move_party"; readonly result: CommandResult }
@@ -192,7 +196,9 @@ export type WorldCommandSubmissionResult =
   | { readonly commandType: "cancel_trade_hub_order"; readonly result: TradeHubCommandResult }
   | { readonly commandType: "assign_supply_task"; readonly result: SupplyCommandResult }
   | { readonly commandType: "deliver_supply_task"; readonly result: SupplyCommandResult }
-  | { readonly commandType: "report_supply_task"; readonly result: SupplyCommandResult };
+  | { readonly commandType: "report_supply_task"; readonly result: SupplyCommandResult }
+  | { readonly commandType: "allocate_labour"; readonly result: PopulationCommandResult }
+  | { readonly commandType: "start_population_migration"; readonly result: PopulationCommandResult };
 
 export interface PartyTravelSnapshot {
   readonly edgeId: string;
@@ -510,6 +516,7 @@ export class WorldSimulation {
       governance: new Governance(domain.governance),
       facilities: new Facilities(domain.facilities.facilities, domain.facilities.hosts, domain.facilities.profileRuntime ?? null),
       tradeHubs: domain.tradeHubs === null ? null : new TradeHubs(domain.tradeHubs),
+      population: domain.population === undefined || domain.population === null ? null : new PopulationDynamics(domain.population),
       maxEventsPerAdvance: domain.maxEventsPerAdvance,
       events: domain.events,
     });
@@ -552,6 +559,19 @@ export class WorldSimulation {
   ): Extract<WorldCommandSubmissionResult, { readonly commandType: "cancel_trade_hub_order" }>;
   submitCommand(envelope: WorldCommandEnvelope): WorldCommandSubmissionResult;
   submitCommand(envelope: WorldCommandEnvelope): WorldCommandSubmissionResult {
+    if (envelope.commandType === "allocate_labour") {
+      return { commandType: envelope.commandType, result: this.#simulationFoundation?.executeAllocateLabour(envelope.command) ?? populationUnavailable() };
+    }
+    if (envelope.commandType === "start_population_migration") {
+      const foundation = this.#simulationFoundation;
+      if (foundation === null) return { commandType: envelope.commandType, result: populationUnavailable() };
+      const origin = foundation.populationSettlement(envelope.command.originSettlementId), destination = foundation.populationSettlement(envelope.command.destinationSettlementId);
+      const edge = this.#graph.edgesById.get(envelope.command.routeId);
+      if (origin === null || destination === null || edge === undefined || !((edge.originNodeId === origin.nodeId && edge.targetNodeId === destination.nodeId) || (edge.targetNodeId === origin.nodeId && edge.originNodeId === destination.nodeId))) {
+        return { commandType: envelope.commandType, result: { accepted: false, idempotentReplay: false, errorCode: "INVALID_COMMAND", message: "Migration route must physically connect the origin and destination settlements." } };
+      }
+      return { commandType: envelope.commandType, result: foundation.executeStartMigration(envelope.command) };
+    }
     if (envelope.commandType === "assign_supply_task") {
       return { commandType: envelope.commandType, result: this.#assignSupplyTask(envelope.command) };
     }
@@ -690,6 +710,15 @@ export class WorldSimulation {
     }
     const result = this.#worldMemory.ingestAll(ingests);
     if (result.accepted) this.#shortageObservationCursors.set(governorActorId, batch.nextIndex);
+    return result.accepted ? result.entries : [];
+  }
+
+  observeGovernorPopulation(governorActorId: string, staleAfterDays: number): readonly WorldMemoryEntry[] {
+    const foundation = this.#simulationFoundation, population = foundation?.populationSnapshot();
+    if (foundation === null || foundation === undefined || population === null || population === undefined) return [];
+    const settlementIds = new Set(population.settlements.filter((item) => foundation.authorize(governorActorId, item.settlementId, "population:allocate")).map((item) => item.settlementId));
+    const ingests: WorldMemoryIngest[] = foundation.eventsSince(0).events.flatMap((event) => event.eventType === "PopulationSeasonAdvanced" && settlementIds.has(event.settlementId) ? [{ ingestId: `population:${governorActorId}:${event.scheduledEventId}`, ownerId: governorActorId, ownerKind: "actor" as const, kind: "population_observation", observedAtElapsedDays: event.elapsedDays, knownAtElapsedDays: this.#clock.elapsedDays, staleAfterDays, provenance: { sourceType: "direct_observation" as const, sourceId: event.scheduledEventId, sourceOwnerId: event.settlementId, nodeId: population.settlements.find((item) => item.settlementId === event.settlementId)?.nodeId ?? null }, payload: { settlementId: event.settlementId, season: event.season, population: event.populationAfter, healthPermille: event.healthPermille, nutritionPermille: event.nutritionPermille, labourAvailable: event.labourAvailable, foodRequired: event.foodRequired, foodConsumed: event.foodConsumed, diseaseState: event.diseaseState } }] : []);
+    const result = this.#worldMemory.ingestAll(ingests);
     return result.accepted ? result.entries : [];
   }
 
@@ -1755,6 +1784,10 @@ function tradeFoundationNotConfigured(): TradeHubCommandResult {
     errorCode: "TRADE_FOUNDATION_NOT_CONFIGURED",
     message: "TradeHub foundation is not configured.",
   };
+}
+
+function populationUnavailable(): PopulationCommandResult {
+  return { accepted: false, idempotentReplay: false, errorCode: "INVALID_COMMAND", message: "PopulationDynamics is not configured." };
 }
 
 function calculatePartyCargoCapacity(

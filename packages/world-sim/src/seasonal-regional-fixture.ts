@@ -14,6 +14,8 @@ import { WorldMemory } from "./world-memory.js";
 import { WorldSimulation } from "./world-sim.js";
 import type { PartySeed, PartyTravelConfig, WorldEconomySeed } from "./world-sim.js";
 import type { GoodsCatalog, LocationEconomyConfig, PartyCargoConfig } from "./economy-config.js";
+import { PopulationDynamics } from "./population-dynamics.js";
+import type { PopulationPolicy } from "./population-dynamics.js";
 
 export const SEASONAL_ACTIVE_NODES = ["wroclaw", "opole", "raciborz", "legnica", "glogow", "nysa", "olomouc", "prague", "sudety_pass", "odra_crossing"] as const;
 const PROFILE_IDS = ["cereal_rye_farm_v1", "hay_meadow_v1", "poultry_yard_v1", "pig_husbandry_v1", "cattle_husbandry_v1", "tannery_v1", "weaver_v1", "mill_v1", "granary_spoilage_v1", "cereal_rye_farm_v1"] as const;
@@ -34,8 +36,9 @@ export function createSeasonalRegionalEconomyFixture(graph: RegionGraph, travelC
   });
   const clock = new WorldClock();
   const governance = createGovernance(merchants, supply);
-  const foundation = new WorldSimulationFoundation({ clock, facilities, governance, tradeHubs: new TradeHubs({ hubs: createHubs(merchants, supply) }), maxEventsPerAdvance: 20_000 });
+  const foundation = new WorldSimulationFoundation({ clock, facilities, governance, tradeHubs: new TradeHubs({ hubs: createHubs(merchants, supply) }), population: createPopulation(), maxEventsPerAdvance: 20_000 });
   foundation.scheduleInitialFacilityProfileProcesses();
+  foundation.scheduleInitialPopulationProcesses();
   for (const node of SEASONAL_ACTIVE_NODES) foundation.schedule(resourceConsumptionIntent(`seasonal:${node}:food`, 1, { hostId: `${node}_host`, resourceId: "edible_grain", amount: 1, cohortId: `${node}_residents`, recurrenceDays: 15, consequences: [{ type: "block" }, { type: "retry", delayDays: 5 }, { type: "cohort_delta", cohortId: `${node}_residents`, conditionId: "hunger", conditionDelta: 1, unrestDelta: 1, workforceDelta: -1, application: "once_per_episode" }] }));
   const economySeed = createEconomySeed();
   const world = new WorldSimulation(graph, travelConfig, createParties(graph, merchants, supply), economySeed, clock, foundation, createMemory(merchants, supply));
@@ -47,9 +50,26 @@ export function createSeasonalRegionalEconomyFixture(graph: RegionGraph, travelC
 function createFacilitySeeds(): FacilitySeed[] { return SEASONAL_ACTIVE_NODES.map((node) => ({ facilityId: `${node}_seasonal_facility`, facilityType: "profiled", hostId: `${node}_host`, ownerId: node, governorActorId: `${node}_governor`, recipe: { inputs: {}, energyInputs: {}, maintenanceInputs: {}, outputs: {}, workforceRequired: 0, cycleDays: 1, blockedRetryDays: null, shortagePolicies: [] }, active: false, generation: 0, nextEventOrdinal: 0, pendingTickEventId: null, processedEventIds: [] })); }
 function createHosts(): FacilityHostSeed[] { return SEASONAL_ACTIVE_NODES.map((node, index) => ({ hostId: `${node}_host`, inventory: { seed_grain: PROFILE_IDS[index] === "cereal_rye_farm_v1" ? 20 : 0, edible_grain: index === 0 ? 50 : 2, hay: PROFILE_IDS[index]!.includes("husbandry") ? 60 : 0, feed: PROFILE_IDS[index] === "poultry_yard_v1" ? 30 : 0, hides: PROFILE_IDS[index] === "tannery_v1" ? 12 : 0, fibre: PROFILE_IDS[index] === "weaver_v1" ? 12 : 0 }, storageCaps: Object.fromEntries(GOODS.map((goods) => [goods, 500])), cohorts: [{ cohortId: `${node}_residents`, population: 40 + index * 3, availableWorkforce: 18, unrest: 0 }] })); }
 
+const POPULATION_POLICY: PopulationPolicy = {
+  foodGoodsId: "edible_grain", foodUnitsPerPersonPerSeasonPermille: 80, rationingPermille: 1000, reserveTargetUnits: 2,
+  nutritionLossOnShortagePermille: 80, nutritionRecoveryPermille: 40, healthLossFromMalnutritionPermille: 50, healthRecoveryPermille: 30,
+  unrestDeltaOnFoodShortage: 0, baselineBirthsPerAdultYearPermille: 30, baselineDeathsPerYearPermille: 15,
+  malnutritionDeathsPerYearPermille: 35, maturationPerYearPermille: 80, agingPerYearPermille: 25,
+  seasonalDiseaseRiskPermille: { winter: 180, spring: 70, summer: 40, autumn: 90 }, diseaseHealthLossPermille: 100, diseaseDurationSeasons: 2,
+  seasonalLabourAvailabilityPermille: { winter: 650, spring: 900, summer: 1000, autumn: 900 },
+  labourPriority: ["agriculture", "care", "transport", "industry", "military"],
+};
+
+function createPopulation(): PopulationDynamics {
+  return new PopulationDynamics({ settlements: SEASONAL_ACTIVE_NODES.map((node, index) => {
+    const population = 40 + index * 3;
+    return { settlementId: node, nodeId: node, hostId: `${node}_host`, ownerId: node, governorActorId: `${node}_governor`, cohorts: { children: Math.floor(population * 0.3), workingAdults: Math.floor(population * 0.58), elders: population - Math.floor(population * 0.3) - Math.floor(population * 0.58) }, healthPermille: 900, nutritionPermille: 900, unrest: 0, diseaseState: "none" as const, diseaseSeasonsRemaining: 0, allocations: [], policy: POPULATION_POLICY, nextEventOrdinal: 0, pendingSeasonEventId: null, processedEventIds: [], processedCommandIds: [] };
+  }), migrations: [] });
+}
+
 function createGovernance(merchants: readonly string[], supply: readonly string[]): Governance {
   const entities = [...SEASONAL_ACTIVE_NODES.flatMap((node) => [{ entityId: node, ownerId: node, governorActorId: `${node}_governor` }, { entityId: `${node}_seasonal_facility`, ownerId: node, governorActorId: `${node}_governor` }, { entityId: `${node}_quartermaster`, ownerId: node, governorActorId: `${node}_governor` }]), ...merchants.map((id) => ({ entityId: id, ownerId: id, governorActorId: `${id}_actor` }))];
-  const scopes = ["facility:operate", "facility:supply", "supply:delegate", "trade:transfer", "trade:order", "trade:cancel"];
+  const scopes = ["facility:operate", "facility:supply", "supply:delegate", "trade:transfer", "trade:order", "trade:cancel", "population:allocate", "population:migrate"];
   return new Governance({ managedEntities: entities, governors: [...SEASONAL_ACTIVE_NODES.map((node) => ({ actorId: `${node}_governor`, principalId: node, superiorActorId: null, roles: ["governor"], authorityScopes: scopes, controller: "deterministic_policy" as const })), ...supply.map((id) => ({ actorId: `${id}_actor`, principalId: id.replace("_quartermaster", ""), superiorActorId: `${id.replace("_quartermaster", "")}_governor`, roles: ["quartermaster"], authorityScopes: scopes, controller: "deterministic_policy" as const })), ...merchants.map((id) => ({ actorId: `${id}_actor`, principalId: id, superiorActorId: null, roles: ["merchant"], authorityScopes: scopes, controller: "deterministic_policy" as const }))], delegations: supply.map((id) => ({ delegationId: `${id}:delegation`, delegatorActorId: `${id.replace("_quartermaster", "")}_governor`, delegateActorId: `${id}_actor`, authorityScopes: ["facility:supply", "trade:transfer", "trade:order", "trade:cancel"], validFromElapsedDays: 0, validUntilElapsedDays: null })) });
 }
 
@@ -74,6 +94,12 @@ function createConfig(graph: RegionGraph, seed: number, merchants: readonly stri
     facilityMarkets: SEASONAL_ACTIVE_NODES.map((node, index) => ({ facilityId: `${node}_seasonal_facility`, facilityHostId: `${node}_host`, hubId: `${node}_hub`, sellerAccountEntityId: node, issuerActorId: `${node}_governor`, goodsId: marketGoods(PROFILE_IDS[index]!), lotSize: 8, askPrice: 3 + (index % 5) })),
     governors: SEASONAL_ACTIVE_NODES.map((node) => ({ governorActorId: `${node}_governor`, facilityId: `${node}_seasonal_facility`, facilityHostId: `${node}_host`, destinationNodeId: node, executorPartyIds: [`${node}_quartermaster`], shortagePolicy: { consequenceWeights: { cohort_delta: 100, block: 20, reduced_output: 10, retry: 5, none: 0 } } })),
     merchants: orderedMerchants.map((partyId) => ({ partyId, goodsId: "edible_grain", quantity: 4 })),
+    populationGovernors: SEASONAL_ACTIVE_NODES.map((node) => ({ governorActorId: `${node}_governor`, settlementId: node, policy: { seasonalTargets: {
+      winter: [{ targetEntityId: `${node}_seasonal_facility`, sector: "industry", workers: 4 }, { targetEntityId: `${node}_quartermaster`, sector: "transport", workers: 3 }],
+      spring: [{ targetEntityId: `${node}_seasonal_facility`, sector: "agriculture", workers: 10 }, { targetEntityId: `${node}_quartermaster`, sector: "transport", workers: 3 }],
+      summer: [{ targetEntityId: `${node}_seasonal_facility`, sector: "agriculture", workers: 16 }, { targetEntityId: `${node}_quartermaster`, sector: "transport", workers: 2 }],
+      autumn: [{ targetEntityId: `${node}_seasonal_facility`, sector: "agriculture", workers: 14 }, { targetEntityId: `${node}_quartermaster`, sector: "transport", workers: 3 }],
+    } } })),
   };
 }
 function marketGoods(profileId: string): string { if (profileId.startsWith("cereal")) return "edible_grain"; if (profileId.startsWith("hay")) return "hay"; if (profileId.startsWith("poultry")) return "eggs"; if (profileId.startsWith("pig")) return "meat"; if (profileId.startsWith("cattle")) return "milk"; if (profileId.startsWith("tannery")) return "leather"; if (profileId.startsWith("weaver")) return "cloth"; if (profileId.startsWith("mill")) return "flour"; return "edible_grain"; }

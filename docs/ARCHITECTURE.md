@@ -181,6 +181,15 @@ ordering, event budget, save/load and replay guarantees. Seasonal regional
 orchestration wraps the existing autonomous runner and WorldSimulation; it is
 not another physical truth or command model.
 
+### Population, health and labour
+
+PopulationDynamics is composed into the same Foundation and uses Facility-host
+food as physical truth. Seasonal cohort, health and disease intents update a
+bounded local labour pool. Governors receive adjudicated private observations
+and submit authority-checked allocation or migration commands. Facilities use
+only labour allocated to their entity. Migrants remain in a route-bound
+in-transit process until a WorldClock arrival event.
+
 ## Active repository boundaries
 
 | Path | Responsibility |

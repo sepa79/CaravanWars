@@ -1,5 +1,6 @@
 import { calendarAt, DAYS_PER_YEAR } from "./facility-profiles.js";
 import type { FacilityProfileProcessEvent, SeasonId } from "./facility-profiles.js";
+import type { PopulationSeasonEvent } from "./population-dynamics.js";
 import { AutonomousRegionalEconomyRunner } from "./regional-economy.js";
 import type { AutonomousRegionalEconomySnapshot, RegionalEconomyMetrics } from "./regional-economy.js";
 import type { RegionGraph } from "./region-graph.js";
@@ -11,6 +12,13 @@ export interface SeasonalEconomyReport {
   readonly year: number;
   readonly season: SeasonId | "annual";
   readonly population: number;
+  readonly births: number;
+  readonly deaths: number;
+  readonly migrationsInTransit: number;
+  readonly averageHealthPermille: number;
+  readonly averageNutritionPermille: number;
+  readonly labourAvailable: number;
+  readonly labourAllocated: number;
   readonly sowing: number;
   readonly grossHarvest: number;
   readonly seedReserve: number;
@@ -37,6 +45,7 @@ export interface SeasonalEconomyDiagnostics extends ReturnType<AutonomousRegiona
   readonly truthView: true;
   readonly calendar: ReturnType<typeof calendarAt>;
   readonly profiles: NonNullable<AutonomousRegionalEconomySnapshot["world"]["simulationFoundation"]>["facilities"]["profileRuntime"];
+  readonly populationDynamics: NonNullable<AutonomousRegionalEconomySnapshot["world"]["simulationFoundation"]>["population"];
   readonly winterReserves: readonly { readonly hostId: string; readonly hay: number; readonly seedGrain: number; readonly edibleGrain: number }[];
   readonly annualReports: readonly SeasonalEconomyReport[];
 }
@@ -83,6 +92,7 @@ export class SeasonalRegionalEconomyRunner {
       ...this.#runner.diagnostics(),
       calendar: calendarAt(snapshot.world.clock.elapsedDays),
       profiles: facilities?.profileRuntime ?? null,
+      populationDynamics: snapshot.world.simulationFoundation?.population ?? null,
       winterReserves: (facilities?.hosts ?? []).map((host) => ({ hostId: host.hostId, hay: host.inventory.hay ?? 0, seedGrain: host.inventory.seed_grain ?? 0, edibleGrain: host.inventory.edible_grain ?? 0 })),
       annualReports: this.#reports.filter((report) => report.season === "annual"),
     };
@@ -95,13 +105,20 @@ export class SeasonalRegionalEconomyRunner {
     const foundation = snapshot.world.simulationFoundation;
     const events = foundation?.events ?? [];
     const relevant = events.slice(this.#lastReportEventCursor).filter((event): event is FacilityProfileProcessEvent => event.eventType.startsWith("FacilityProfileProcess"));
+    const populationEvents = events.slice(this.#lastReportEventCursor).filter((event): event is PopulationSeasonEvent => event.eventType === "PopulationSeasonAdvanced");
     this.#lastReportEventCursor = events.length;
     const hosts = foundation?.facilities.hosts ?? [];
     const produced = (goodsId: string) => relevant.reduce((sum, event) => sum + (event.produced[goodsId] ?? 0), 0);
     const consumed = (goodsId: string) => relevant.reduce((sum, event) => sum + (event.consumed[goodsId] ?? 0), 0);
     const report: SeasonalEconomyReport = {
       fromElapsedDay, toElapsedDay, year: season === "annual" ? Math.floor(fromElapsedDay / DAYS_PER_YEAR) + 1 : calendarAt(toElapsedDay).year, season,
-      population: hosts.flatMap((host) => host.cohorts).reduce((sum, cohort) => sum + cohort.population, 0),
+      population: foundation?.population?.settlements.reduce((sum, settlement) => sum + settlement.cohorts.children + settlement.cohorts.workingAdults + settlement.cohorts.elders, 0) ?? hosts.flatMap((host) => host.cohorts).reduce((sum, cohort) => sum + cohort.population, 0),
+      births: populationEvents.reduce((sum, event) => sum + event.births, 0), deaths: populationEvents.reduce((sum, event) => sum + event.deaths, 0),
+      migrationsInTransit: foundation?.population?.migrations.filter((migration) => migration.status === "traveling").reduce((sum, migration) => sum + migration.people, 0) ?? 0,
+      averageHealthPermille: average(foundation?.population?.settlements.map((settlement) => settlement.healthPermille) ?? []),
+      averageNutritionPermille: average(foundation?.population?.settlements.map((settlement) => settlement.nutritionPermille) ?? []),
+      labourAvailable: populationEvents.reduce((sum, event) => sum + event.labourAvailable, 0),
+      labourAllocated: foundation?.population?.settlements.flatMap((settlement) => settlement.allocations).reduce((sum, allocation) => sum + allocation.workers, 0) ?? 0,
       sowing: consumed("seed_grain"), grossHarvest: produced("gross_grain"), seedReserve: produced("seed_grain"), edibleSurplus: produced("edible_grain"),
       feed: hosts.reduce((sum, host) => sum + (host.inventory.hay ?? 0) + (host.inventory.feed ?? 0), 0),
       herdCount: foundation?.facilities.profileRuntime?.instances.flatMap((instance) => instance.animalCohorts).reduce((sum, cohort) => sum + cohort.count, 0) ?? 0,
@@ -116,6 +133,8 @@ export class SeasonalRegionalEconomyRunner {
     return report;
   }
 }
+
+function average(values: readonly number[]): number { return values.length === 0 ? 0 : Math.floor(values.reduce((sum, value) => sum + value, 0) / values.length); }
 
 export interface SeasonalBatchResult { readonly seed: number; readonly reports: readonly SeasonalEconomyReport[]; readonly finalSnapshot: SeasonalRegionalEconomySnapshot }
 

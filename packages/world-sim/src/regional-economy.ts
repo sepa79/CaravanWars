@@ -6,6 +6,8 @@ import { MerchantMemoryAI } from "./merchant-memory-ai.js";
 import type { RegionGraph } from "./region-graph.js";
 import { WorldSimulation } from "./world-sim.js";
 import type { PartyTravelConfig, WorldEconomySeed, WorldSnapshot } from "./world-sim.js";
+import { GovernorPopulationController } from "./population-dynamics.js";
+import type { GovernorPopulationPolicy } from "./population-dynamics.js";
 
 export interface RegionalFacilityMarketPolicy {
   readonly facilityId: string;
@@ -41,6 +43,7 @@ export interface AutonomousRegionalEconomyConfig {
   readonly governors: readonly RegionalGovernorPolicy[];
   readonly merchants: readonly RegionalMerchantPolicy[];
   readonly routeDistanceByKey: Readonly<Record<string, number>>;
+  readonly populationGovernors?: readonly { readonly governorActorId: string; readonly settlementId: string; readonly policy: GovernorPopulationPolicy }[];
 }
 
 export interface RegionalDecisionRecord {
@@ -103,6 +106,7 @@ export class AutonomousRegionalEconomyRunner {
   readonly #tasks: LogisticsTaskBoard;
   readonly #governor = new GovernorAIController();
   readonly #merchant = new MerchantMemoryAI();
+  readonly #populationGovernor = new GovernorPopulationController();
   #decisions: RegionalDecisionRecord[];
   #nextDecisionSequence: number;
   readonly #actionOrdinals: Map<string, number>;
@@ -231,6 +235,7 @@ export class AutonomousRegionalEconomyRunner {
     this.#operateLocalMarkets();
     this.#observeLocalMarkets();
     this.#planGovernorTasks();
+    this.#planPopulationLabour();
     this.#executeSupplyTasks();
     this.#runIndependentMerchants();
     this.#world.advanceDays(0.001);
@@ -313,6 +318,16 @@ export class AutonomousRegionalEconomyRunner {
       const current = this.#tasks.snapshot().tasks.find((item) => item.taskId === task.taskId)!;
       if (current.status !== "in_progress") continue;
       this.#executeSupplyTask(current);
+    }
+  }
+
+  #planPopulationLabour(): void {
+    for (const item of this.#config.populationGovernors ?? []) {
+      this.#world.observeGovernorPopulation(item.governorActorId, this.#config.observationStaleAfterDays);
+      const command = this.#populationGovernor.decide(this.#world.worldMemoryView(item.governorActorId, "actor"), item.settlementId, this.#world.elapsedDays(), item.policy);
+      if (command === null) { this.#record(item.governorActorId, "population_observation_missing", null, null); continue; }
+      const result = this.#world.submitCommand({ commandType: "allocate_labour", command }).result;
+      this.#record(item.governorActorId, result.accepted ? "labour_allocated" : result.errorCode, "allocate_labour", result.accepted);
     }
   }
 

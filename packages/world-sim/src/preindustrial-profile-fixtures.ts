@@ -3,8 +3,8 @@ import type { FacilityProfileDefinition, ProfileProcessStage } from "./facility-
 const RESEARCH_PROVENANCE = "user-provided non-binding preindustrial research ranges; Facility Profiles v1 goal, 2026-07-26";
 const ALL = ["winter", "spring", "summer", "autumn"] as const;
 
-function stage(stageId: string, durationDays: number, allowedSeasons: ProfileProcessStage["allowedSeasons"], inputs: Readonly<Record<string, number>>, outputs: Readonly<Record<string, number>>, nextStageId: string, lossPermille = 0): ProfileProcessStage {
-  return { stageId, durationDays, allowedSeasons, inputs, outputs, nextStageId, lossPermille };
+function stage(stageId: string, durationDays: number, allowedSeasons: ProfileProcessStage["allowedSeasons"], inputs: Readonly<Record<string, number>>, outputs: Readonly<Record<string, number>>, nextStageId: string, lossPermille = 0, workforceRequired = 2): ProfileProcessStage {
+  return { stageId, durationDays, allowedSeasons, inputs, outputs, nextStageId, lossPermille, workforceRequired };
 }
 
 const sharedLayers = {
@@ -25,11 +25,11 @@ export const PREINDUSTRIAL_FACILITY_PROFILES_V1: readonly FacilityProfileDefinit
     },
     processes: [{ processId: "annual_crop", cadence: "multistage", initialStageId: "sowing",
       stages: [
-        stage("sowing", 100, ["spring"], { seed_grain: 10 }, {}, "growth"),
-        stage("growth", 80, ["spring", "summer"], {}, {}, "harvest"),
-        stage("harvest", 60, ["summer", "autumn"], {}, { gross_grain: 40, straw: 16 }, "threshing", 120),
-        stage("threshing", 30, ["autumn", "winter"], { gross_grain: 35 }, { seed_grain: 10, edible_grain: 23 }, "seed_reserve", 57),
-        stage("seed_reserve", 90, ALL, {}, {}, "sowing"),
+        stage("sowing", 100, ["spring"], { seed_grain: 10 }, {}, "growth", 0, 8),
+        stage("growth", 80, ["spring", "summer"], {}, {}, "harvest", 0, 3),
+        stage("harvest", 60, ["summer", "autumn"], {}, { gross_grain: 40, straw: 16 }, "threshing", 120, 16),
+        stage("threshing", 30, ["autumn", "winter"], { gross_grain: 35 }, { seed_grain: 10, edible_grain: 23 }, "seed_reserve", 57, 8),
+        stage("seed_reserve", 90, ALL, {}, {}, "sowing", 0, 1),
       ] }],
   },
   {

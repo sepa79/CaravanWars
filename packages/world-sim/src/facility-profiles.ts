@@ -27,6 +27,7 @@ export interface ProfileProcessStage {
   readonly inputs: Readonly<Record<string, number>>;
   readonly outputs: Readonly<Record<string, number>>;
   readonly lossPermille: number;
+  readonly workforceRequired?: number;
   readonly nextStageId: string;
 }
 
@@ -106,7 +107,7 @@ export interface FacilityProfileProcessEvent {
   readonly consumed: Readonly<Record<string, number>>;
   readonly produced: Readonly<Record<string, number>>;
   readonly losses: Readonly<Record<string, number>>;
-  readonly reason: "completed" | "missing_inputs" | "output_storage_full" | "outside_season" | "duplicate" | "stale";
+  readonly reason: "completed" | "missing_inputs" | "insufficient_workforce" | "output_storage_full" | "outside_season" | "duplicate" | "stale";
 }
 
 interface RuntimeInstance {
@@ -124,6 +125,7 @@ interface RuntimeInstance {
 
 export interface ProfileMutationPort {
   readonly available: (hostId: string, goodsId: string) => number;
+  readonly workforceAvailable: (facilityId: string) => number;
   readonly canApply: (hostId: string, consumed: Readonly<Record<string, number>>, produced: Readonly<Record<string, number>>) => boolean;
   readonly apply: (hostId: string, consumed: Readonly<Record<string, number>>, produced: Readonly<Record<string, number>>) => void;
 }
@@ -191,6 +193,9 @@ export class FacilityProfileRuntime {
     instance.pendingEventIds.set(process.processId, null);
     if (!stage.allowedSeasons.includes(calendar.season)) {
       return { event: makeEvent(intent, elapsedDays, instance, process, stage, calendar.season, {}, {}, {}, "outside_season"), nextIntent: this.#intent(instance, process, elapsedDays + stage.durationDays) };
+    }
+    if (port.workforceAvailable(instance.facilityId) < (stage.workforceRequired ?? 0)) {
+      return { event: makeEvent(intent, elapsedDays, instance, process, stage, calendar.season, {}, {}, {}, "insufficient_workforce"), nextIntent: this.#intent(instance, process, elapsedDays + stage.durationDays) };
     }
     const missing = Object.entries(stage.inputs).some(([goodsId, amount]) => port.available(instance.hostId, goodsId) < amount);
     const gross = stage.outputs;
@@ -260,6 +265,7 @@ function validateDefinition(definition: FacilityProfileDefinition): void {
       if (stage.allowedSeasons.length === 0) throw new Error(`Stage ${stage.stageId} has no season.`);
       if (stage.allowedSeasons.some((season) => !["winter", "spring", "summer", "autumn"].includes(season))) throw new Error(`Stage ${stage.stageId} has an invalid season.`);
       if (!Number.isSafeInteger(stage.lossPermille) || stage.lossPermille < 0 || stage.lossPermille > 999) throw new Error(`Invalid loss on ${stage.stageId}.`);
+      if (stage.workforceRequired !== undefined && (!Number.isSafeInteger(stage.workforceRequired) || stage.workforceRequired < 0)) throw new Error(`Invalid workforce on ${stage.stageId}.`);
       requireStage(process, stage.nextStageId);
       validateQuantities(stage.inputs); validateQuantities(stage.outputs);
     }

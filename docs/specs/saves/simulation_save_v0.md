@@ -105,6 +105,10 @@ contains its catalog, process stages, animal cohorts, processed event ids and
 next ordinals. Load restores it before pending profile intents dispatch, so a
 save at any stage continues identically.
 
+Population v1 adds cohorts, health/nutrition/disease, labour allocations,
+command/event idempotency and route-bound in-transit migrations to the
+Foundation domain snapshot.
+
 No backward compatibility is required during this reboot. Future schema changes must increment `schema_version` and document migration behavior explicitly.
 
 ## Test coverage
