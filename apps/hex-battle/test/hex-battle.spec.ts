@@ -16,13 +16,15 @@ test("group selection, targeted Rally and Advance preview and animate coherently
   const canvas = page.locator("#map"), box = await canvas.boundingBox();
   if (box === null) throw new Error("Battle map missing");
   await canvas.click({ position: { x: box.width * .58, y: box.height * .50 } });
-  await expect(page.locator("#confirm-order")).toBeVisible();
+  await expect(page.locator(".target-confirmation")).toBeVisible();
+  await expect(page.locator("#targetSummary")).toContainText("Advance → hex");
+  await expect(page.locator("#confirmTarget")).toBeVisible();
   const previewPixels = await canvas.evaluate((element: HTMLCanvasElement) => {
     const context = element.getContext("2d")!;
     return Array.from(context.getImageData(0, 0, element.width, element.height).data).filter((value) => value > 180).length;
   });
   expect(previewPixels).toBeGreaterThan(100);
-  await page.locator("#confirm-order").click();
+  await page.locator("#confirmTarget").click();
   const before = await page.request.get("/api/state").then((response) => response.json());
   for (let tick = 0; tick < 8; tick += 1) await page.locator("#advance").click();
   const after = await page.request.get("/api/state").then((response) => response.json());
@@ -52,6 +54,7 @@ async function issueTargeted(page: Page, category: string, order: string, point:
   const canvas = page.locator("#map"), box = await canvas.boundingBox();
   if (box === null) throw new Error("Battle map missing");
   await canvas.click({ position: { x: box.width * point.x, y: box.height * point.y } });
-  await expect(page.locator("#confirm-order")).toBeVisible();
-  await page.locator("#confirm-order").click();
+  await expect(page.locator(".target-confirmation")).toBeVisible();
+  await expect(page.locator("#targetSummary")).toContainText(`${order} → hex`);
+  await page.locator("#confirmTarget").click();
 }
