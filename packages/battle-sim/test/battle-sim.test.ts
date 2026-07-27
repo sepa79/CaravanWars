@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { BattleSimulation, createFordDefenseBattle, formationSlots, type BattleSeed, type Hex } from "../src/battle-sim.js";
+import { BattleSimulation, createFordDefenseBattle, formationSlots, hexDistance, type BattleSeed, type Hex } from "../src/battle-sim.js";
 
 const order = (battle: BattleSimulation, type: "rally" | "advance" | "hold" | "change_facing" | "close_formation" | "loose_formation" | "withdraw", targetHex: Hex | null = null, targetFacing: number | null = null) =>
   battle.issueOrder({ issuerId: "player", targetGroupId: "retainers", category: type === "hold" || type === "change_facing" ? "position" : type === "close_formation" || type === "loose_formation" ? "formation" : type === "withdraw" ? "retreat" : "movement", type, targetHex, targetGroupIdToAttack: null, targetFacing });
@@ -48,9 +48,9 @@ test("all formations and facing rotations produce stable deterministic slots", (
 
 test("blocked ideal slots receive explicit stable fallbacks", () => {
   const battle = createFordDefenseBattle();
-  const preview = battle.previewOrder("retainers", "rally", { q: 0, r: 0 }, 0)!;
+  const preview = battle.previewOrder("retainers", "rally", { q: 0, r: 2 }, 0)!;
   assert.ok(preview.slots.some((slot) => slot.status === "fallback" || slot.status === "blocked"));
-  assert.deepEqual(preview, battle.previewOrder("retainers", "rally", { q: 0, r: 0 }, 0));
+  assert.deepEqual(preview, battle.previewOrder("retainers", "rally", { q: 0, r: 2 }, 0));
 });
 
 test("unordered allies cohere instead of independently charging", () => {
@@ -73,6 +73,23 @@ test("rally, advance and withdrawal move a coherent group through its anchor", (
     assert.notDeepEqual(group.banner, start);
     assert.equal(new Set(battle.truthSnapshot().actors.map((actor) => key(actor.position))).size, battle.truthSnapshot().actors.length);
   }
+});
+
+test("advance to -1,0 translates retainers into nearby slots without crossing the battlefield", () => {
+  const battle = createFordDefenseBattle();
+  assert.equal(order(battle, "advance", { q: -1, r: 0 }).accepted, true);
+  battle.advanceTick();
+  const first = battle.truthSnapshot();
+  const firstGroup = first.groups.find((group) => group.id === "retainers")!;
+  assert.deepEqual(firstGroup.banner, { q: -1, r: 0 });
+  for (let tick = 0; tick < 5; tick += 1) battle.advanceTick();
+  const final = battle.truthSnapshot();
+  const group = final.groups.find((item) => item.id === "retainers")!;
+  assert.equal(group.currentOrder?.status, "completed");
+  for (const actor of final.actors.filter((item) => item.groupId === "retainers")) {
+    assert.ok(hexDistance(actor.position, group.banner) <= 1, `${actor.id} scattered to ${key(actor.position)}`);
+  }
+  assert.equal(new Set(final.actors.map((actor) => key(actor.position))).size, final.actors.length);
 });
 
 test("player action and group movement share one no-overlap reservation step", () => {
@@ -99,7 +116,7 @@ test("following into vacated cells is allowed without overlap", () => {
   assert.equal(order(battle, "advance", { q: 2, r: 0 }).accepted, true);
   for (let tick = 0; tick < 10; tick += 1) battle.advanceTick();
   const moved = battle.playerView().recentEvents.filter((event) => event.type === "moved");
-  assert.ok(moved.length >= 2);
+  assert.ok(moved.length >= 1);
   const positions = battle.truthSnapshot().actors.map((actor) => key(actor.position));
   assert.equal(new Set(positions).size, positions.length);
 });

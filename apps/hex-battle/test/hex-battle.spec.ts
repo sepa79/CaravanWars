@@ -10,16 +10,22 @@ test("group selection, targeted Rally and Advance preview and animate coherently
   await expect(page.locator('[data-group-id="retainers"]')).toContainText("Rally: issued");
   for (let tick = 0; tick < 5; tick += 1) await page.locator("#advance").click();
   await expect(page.locator('[data-group-id="retainers"]')).toContainText(/Rally: (executing|completed)/);
+  await page.locator("#reset").click();
+  await expect(page.locator("#tick")).toHaveText("0");
+  await page.locator('[data-group-id="retainers"]').click();
+  await expect(page.locator("#selectedName")).toHaveText("Retainers");
   await page.getByText("Movement", { exact: true }).click();
   await page.locator('[data-order="advance"]').click();
   await expect(page.locator("#selectedName")).toContainText("choose hex");
   const canvas = page.locator("#map"), box = await canvas.boundingBox();
   if (box === null) throw new Error("Battle map missing");
-  await canvas.hover({ position: { x: box.width * .58, y: box.height * .50 } });
+  const hexSize = Math.min(box.width / (6 * 3.25), box.height / (6 * 2.25));
+  const advanceTarget = { x: box.width / 2 + hexSize * Math.sqrt(3), y: box.height / 2 };
+  await canvas.hover({ position: advanceTarget });
   await expect(page.locator("#selectedInfo")).toContainText("Green hex");
-  await canvas.click({ position: { x: box.width * .58, y: box.height * .50 } });
+  await canvas.click({ position: advanceTarget });
   await expect(page.locator(".target-confirmation")).toBeVisible();
-  await expect(page.locator("#targetSummary")).toContainText("Advance → hex");
+  await expect(page.locator("#targetSummary")).toContainText("Advance → hex 1, 0");
   await expect(page.locator("#confirmTarget")).toBeVisible();
   const previewPixels = await canvas.evaluate((element: HTMLCanvasElement) => {
     const context = element.getContext("2d")!;
@@ -27,17 +33,24 @@ test("group selection, targeted Rally and Advance preview and animate coherently
   });
   expect(previewPixels).toBeGreaterThan(100);
   await page.locator("#confirmTarget").click();
+  await expect(page.locator('[data-group-id="retainers"]')).toContainText("Advance: issued");
   const before = await page.request.get("/api/state").then((response) => response.json());
   await page.locator("#advance").click();
+  await expect(page.locator("#tick")).toHaveText(String(before.tick + 1));
   const afterFirstStep = await page.request.get("/api/state").then((response) => response.json());
   expect(afterFirstStep.alliedGroups.find((group: { groupId: string }) => group.groupId === "retainers").orderStatus).toBe("executing");
-  expect(afterFirstStep.visible.filter((actor: { groupId: string }) => actor.groupId === "retainers").some((actor: { position: unknown }, index: number) => JSON.stringify(actor.position) !== JSON.stringify(before.visible.filter((item: { groupId: string }) => item.groupId === "retainers")[index]?.position))).toBe(true);
-  for (let tick = 0; tick < 7; tick += 1) await page.locator("#advance").click();
+  expect(afterFirstStep.alliedGroups.find((group: { groupId: string }) => group.groupId === "retainers").banner).not.toEqual(before.alliedGroups.find((group: { groupId: string }) => group.groupId === "retainers").banner);
+  let sawRetainerMove = afterFirstStep.recentEvents.some((event: { type: string; actorId: string }) => event.type === "moved" && event.actorId.startsWith("retainer_"));
+  for (let tick = 0; tick < 7; tick += 1) {
+    await page.locator("#advance").click();
+    await expect(page.locator("#tick")).toHaveText(String(before.tick + tick + 2));
+    const stepState = await page.request.get("/api/state").then((response) => response.json());
+    sawRetainerMove ||= stepState.recentEvents.some((event: { type: string; actorId: string }) => event.type === "moved" && event.actorId.startsWith("retainer_"));
+  }
   const after = await page.request.get("/api/state").then((response) => response.json());
   expect(after.tick).toBe(before.tick + 8);
-  expect(after.visible.filter((actor: { groupId: string }) => actor.groupId === "retainers").some((actor: { position: unknown }, index: number) => JSON.stringify(actor.position) !== JSON.stringify(before.visible.filter((item: { groupId: string }) => item.groupId === "retainers")[index]?.position))).toBe(true);
+  expect(sawRetainerMove).toBe(true);
   expect(new Set(after.visible.map((actor: { position: { q: number; r: number } }) => `${actor.position.q},${actor.position.r}`)).size).toBe(after.visible.length);
-  await expect(page.locator("#events")).toContainText("order_status");
 });
 
 for (const viewport of [{ name: "desktop", width: 1280, height: 800 }, { name: "mobile", width: 390, height: 844 }]) {

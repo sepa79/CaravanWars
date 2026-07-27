@@ -15,21 +15,23 @@ Object.assign(targetConfirmation.querySelector<HTMLElement>("div")!.style, { dis
 document.querySelector(".map-wrap")!.append(targetConfirmation);
 const labels: Record<string, string> = { movement: "Movement", position: "Position", formation: "Formation", combat: "Combat", retreat: "Retreat", command: "Command", follow: "Follow me", rally: "Rally", advance: "Advance", hold: "Hold position", change_facing: "Change facing", close_formation: "Close shield line", loose_formation: "Loose formation", attack: "Attack target group", withdraw: "Ordered withdrawal", discretion: "Act at discretion", loose: "Loose group", line: "Line", close_shield_line: "Close shield line" };
 let view: View, selectedHex: Hex | null = null, selectedActor: Actor | null = null, selectedGroup: Group | null = null, pending: Pending | null = null, preview: Preview | null = null, hoveredHex: Hex | null = null, targetHint = "";
+let battleOperationQueue: Promise<void> = Promise.resolve();
 let pressTimer: number | null = null, longPress = false, pressPoint: { x: number; y: number } | null = null, animation: { from: Map<string, Hex>; started: number; events: View["recentEvents"] } | null = null;
 void refresh();
-document.querySelector("#advance")!.addEventListener("click", () => void post("/api/tick", {}));
-document.querySelector("#reset")!.addEventListener("click", () => { selectedHex = null; selectedActor = null; selectedGroup = null; pending = null; preview = null; void post("/api/reset", {}); });
+document.querySelector("#advance")!.addEventListener("click", () => queueBattleOperation(() => post("/api/tick", {})));
+document.querySelector("#reset")!.addEventListener("click", () => { selectedHex = null; selectedActor = null; selectedGroup = null; pending = null; preview = null; queueBattleOperation(() => post("/api/reset", {})); });
 window.addEventListener("resize", () => render());
 canvas.addEventListener("click", (event) => void mapClick(event));
 canvas.addEventListener("pointermove", (event) => { const next = hitAt(event).hex; if (hoveredHex === null || !same(hoveredHex, next)) { hoveredHex = next; if (pending !== null && pending.hex === null) targetHint = validTarget(next) ? `Green hex ${next.q},${next.r}: click to preview this legal target.` : `Red hex ${next.q},${next.r}: this target is unavailable.`; render(); } });
 canvas.addEventListener("pointerleave", () => { hoveredHex = null; render(); });
-targetConfirmation.querySelector("#confirmTarget")!.addEventListener("click", () => void confirmOrder());
+targetConfirmation.querySelector("#confirmTarget")!.addEventListener("click", () => queueBattleOperation(confirmOrder));
 targetConfirmation.querySelector("#cancelTarget")!.addEventListener("click", () => { pending = null; preview = null; render(); });
 canvas.addEventListener("contextmenu", (event) => event.preventDefault());
 canvas.addEventListener("pointerdown", (event) => { if (event.button !== 2) return; event.preventDefault(); pressPoint = { x: event.offsetX, y: event.offsetY }; longPress = false; pressTimer = window.setTimeout(() => { longPress = true; selectHit(hitAt(event)); openContext(event.offsetX, event.offsetY); }, 340); });
 canvas.addEventListener("pointerup", (event) => { if (event.button !== 2) return; if (pressTimer !== null) clearTimeout(pressTimer); if (!longPress && pressPoint !== null && Math.hypot(event.offsetX - pressPoint.x, event.offsetY - pressPoint.y) < 8) void defaultAction(hitAt(event)); pressTimer = null; pressPoint = null; });
 
 async function refresh(): Promise<void> { view = await fetch("/api/state").then((r) => r.json()); render(); }
+function queueBattleOperation(operation: () => Promise<void>): void { battleOperationQueue = battleOperationQueue.then(operation, operation).catch((error) => { targetHint = error instanceof Error ? error.message : String(error); render(); }); }
 async function post(url: string, body: unknown): Promise<void> {
   const before = view === undefined ? new Map<string, Hex>() : new Map(view.visible.map((actor) => [actor.actorId, { ...actor.position }]));
   const response = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }), payload = await response.json();
