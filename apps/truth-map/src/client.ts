@@ -196,36 +196,61 @@ const showExpeditionMap = requireElement<HTMLButtonElement>("showExpeditionMap")
 const deliverContract = requireElement<HTMLButtonElement>("deliverContract");
 const runExpeditionAi = requireElement<HTMLButtonElement>("runExpeditionAi");
 const advanceExpedition = requireElement<HTMLButtonElement>("advanceExpedition");
-const encounterPanel = requireElement<HTMLElement>("encounterPanel");
+const encounterPanel = requireElement<HTMLDialogElement>("encounterPanel");
 const encounterSummary = requireElement<HTMLElement>("encounterSummary");
 const encounterChoices = requireElement<HTMLElement>("encounterChoices");
 const expeditionLog = requireElement<HTMLOListElement>("expeditionLog");
+const apiStatus = requireElement<HTMLElement>("apiStatus");
+const gameStageElement = document.querySelector<HTMLElement>(".game-stage");
+if (gameStageElement === null) throw new Error("Missing .game-stage element.");
+const gameStage: HTMLElement = gameStageElement;
+const contextViews = [...document.querySelectorAll<HTMLElement>("[data-game-view]")];
+const gameTabs = [...document.querySelectorAll<HTMLButtonElement>("[data-panel-target]")];
+const journalPrevious = requireElement<HTMLButtonElement>("journalPrevious");
+const journalNext = requireElement<HTMLButtonElement>("journalNext");
+const journalPage = requireElement<HTMLElement>("journalPage");
+const diagnosticPrevious = requireElement<HTMLButtonElement>("diagnosticPrevious");
+const diagnosticNext = requireElement<HTMLButtonElement>("diagnosticNext");
+const diagnosticPage = requireElement<HTMLElement>("diagnosticPage");
+const diagnosticPages = [...document.querySelectorAll<HTMLElement>("[data-diagnostic-page]")];
 
 let state: DebugState | null = null;
 let requestInFlight = false;
 let autoAdvanceTimer: number | null = null;
 let expeditionState: ExpeditionState | null = null;
 let expeditionCommandMessage = "";
+let activeGameView = "map";
+let journalPageIndex = 0;
+let diagnosticPageIndex = 0;
+let encounterReturnFocus: HTMLElement | null = null;
+let showingExpeditionMap = false;
 
 translateDocument();
 window.addEventListener("resize", render);
+for (const tab of gameTabs) tab.addEventListener("click", () => { const target = tab.dataset.panelTarget; if (target !== undefined) void activateGameView(target); });
+journalPrevious.addEventListener("click", () => { journalPageIndex = Math.max(0, journalPageIndex - 1); renderPlayableExpedition(); });
+journalNext.addEventListener("click", () => { journalPageIndex += 1; renderPlayableExpedition(); });
+diagnosticPrevious.addEventListener("click", () => { diagnosticPageIndex = Math.max(0, diagnosticPageIndex - 1); renderDiagnosticPage(); });
+diagnosticNext.addEventListener("click", () => { diagnosticPageIndex = Math.min(diagnosticPages.length - 1, diagnosticPageIndex + 1); renderDiagnosticPage(); });
 moveButton.addEventListener("click", () => { void submitMove(); });
 advanceSixHours.addEventListener("click", () => { void advanceTime(0.25); });
 advanceDay.addEventListener("click", () => { void advanceTime(1); });
 resetButton.addEventListener("click", () => { void resetSimulation(); });
-mapMode.addEventListener("change", () => { void refreshState(); });
+mapMode.addEventListener("change", () => { if (mapMode.value !== "truth" && activeGameView === "diagnostics") void activateGameView("map"); void refreshState(); });
 merchantStep.addEventListener("click", () => { void runMerchantStep(); });
 advanceEconomy.addEventListener("click", () => { void advanceRegionalEconomy(); });
 acceptContract.addEventListener("click", () => { void expeditionCommand("accept_caravan_contract", { commandId: "browser:accept", issuerActorId: "player_leader", contractId: "contract_wroclaw_opole_food", contractorPartyId: "player_expedition" }); });
 pickupContract.addEventListener("click", () => { void expeditionCommand("pickup_caravan_contract", { commandId: "browser:pickup", issuerActorId: "player_leader", contractId: "contract_wroclaw_opole_food" }); });
 departExpedition.addEventListener("click", () => { void expeditionCommand("move_party", { party_id: "player_expedition", from_node_id: "wroclaw", to_node_id: "opole" }); });
 exploreExpedition.addEventListener("click", () => { void expeditionCommand("search_area", { commandId: "browser:explore:forest-shortcut", issuerActorId: "player_leader", partyId: "player_expedition", areaKnowledgeId: "area:rumored_forest_shortcut", searchRadiusKm: 3, observationSkillPermille: 820 }); });
-showExpeditionMap.addEventListener("click", () => { if (expeditionState !== null) { state = expeditionState.partyMap; updateView(); } });
+showExpeditionMap.addEventListener("click", () => { if (expeditionState !== null) { showingExpeditionMap = true; state = expeditionState.partyMap; updateView(); void activateGameView("map"); } });
 deliverContract.addEventListener("click", () => { void expeditionCommand("deliver_caravan_contract", { commandId: "browser:deliver", issuerActorId: "player_leader", contractId: "contract_wroclaw_opole_food" }); });
 runExpeditionAi.addEventListener("click", () => { void expeditionAiStep(); });
 advanceExpedition.addEventListener("click", () => { void advancePlayableExpedition(0.25); });
 autoAdvance.addEventListener("change", updateAutoAdvance);
 
+gameStage.dataset.activeView = activeGameView;
+encounterPanel.addEventListener("cancel", (event) => { event.preventDefault(); });
 void refreshState();
 window.setInterval(() => { void refreshState(false); }, 1_000);
 
@@ -233,22 +258,22 @@ async function refreshState(reportFailure = true): Promise<void> {
   try {
     state = await requestJson<DebugState>(viewUrl("/api/state"));
     updateView();
-    await refreshEconomyDiagnostics();
-    await refreshPlayableExpedition();
+    await Promise.all([refreshEconomyDiagnostics(), refreshPlayableExpedition()]);
+    setApiStatus("Połączono", false);
   } catch (error: unknown) {
+    setApiStatus(error instanceof Error ? error.message : String(error), true);
     if (reportFailure) showError(error);
   }
 }
 
-async function refreshPlayableExpedition(): Promise<void> { expeditionState = await requestJson<ExpeditionState>("/api/expedition/state"); renderPlayableExpedition(); }
-function renderPlayableExpedition(): void { const current = expeditionState, contract = current?.expedition?.contracts[0]; if (current === null || current.expedition === null || contract === undefined) return; expeditionContract.textContent = `${contract.quantity} ${contract.goodsId}: Wrocław → Opole`; expeditionStatus.textContent = `Status: ${contract.status}`; expeditionDeadline.textContent = `dzień ${contract.deadlineElapsedDays}, zapłata ${contract.paymentCoin} coin`; expeditionCharacters.textContent = current.expedition.characters.map((item) => `${item.characterId} [${item.roles.join("/")}] h${item.healthPermille} f${item.fatiguePermille}`).join("; "); expeditionCargo.textContent = Object.entries(current.party.cargo).map(([id, amount]) => `${id} ${amount}`).join(", ") || "puste"; acceptContract.disabled = contract.status !== "offered"; pickupContract.disabled = contract.status !== "accepted"; departExpedition.disabled = contract.status !== "picked_up" || current.party.currentNodeId !== "wroclaw"; exploreExpedition.disabled = contract.status !== "picked_up" || current.party.currentNodeId !== "wroclaw"; deliverContract.disabled = contract.status !== "picked_up" || current.party.currentNodeId !== "opole"; const encounter = current.expedition.encounter; encounterPanel.hidden = encounter === null; encounterChoices.replaceChildren(); if (encounter !== null) { encounterSummary.textContent = `Zagrożenie na ${encounter.routeId}. Wybór ma fizyczne konsekwencje.`; for (const decision of encounter.affordances) { const button = document.createElement("button"); button.textContent = decision; button.dataset.decision = decision; button.addEventListener("click", () => { void expeditionCommand("resolve_expedition_encounter", { commandId: `browser:encounter:${encounter.encounterId}:${decision}`, issuerActorId: "player_leader", encounterId: encounter.encounterId, decision }); }); encounterChoices.append(button); } } expeditionLog.replaceChildren(...current.expedition.log.slice(-10).map((entry) => { const item = document.createElement("li"); item.textContent = `D${entry.elapsedDays.toFixed(2)} ${entry.text}`; return item; })); }
+async function refreshPlayableExpedition(): Promise<void> { expeditionState = await requestJson<ExpeditionState>("/api/expedition/state"); if (showingExpeditionMap) { state = expeditionState.partyMap; updateView(); } renderPlayableExpedition(); }
+function renderPlayableExpedition(): void { const current = expeditionState, contract = current?.expedition?.contracts[0]; if (current === null || current.expedition === null || contract === undefined) return; expeditionContract.textContent = `${contract.quantity} ${contract.goodsId}: Wrocław → Opole`; expeditionStatus.textContent = `Status: ${contract.status}`; expeditionDeadline.textContent = `dzień ${contract.deadlineElapsedDays}, zapłata ${contract.paymentCoin} coin`; expeditionCharacters.textContent = current.expedition.characters.map((item) => `${item.characterId} [${item.roles.join("/")}] h${item.healthPermille} f${item.fatiguePermille}`).join("; "); expeditionCargo.textContent = Object.entries(current.party.cargo).map(([id, amount]) => `${id} ${amount}`).join(", ") || "puste"; acceptContract.disabled = contract.status !== "offered"; pickupContract.disabled = contract.status !== "accepted"; departExpedition.disabled = contract.status !== "picked_up" || current.party.currentNodeId !== "wroclaw"; exploreExpedition.disabled = contract.status !== "picked_up" || current.party.currentNodeId !== "wroclaw"; deliverContract.disabled = contract.status !== "picked_up" || current.party.currentNodeId !== "opole"; const encounter = current.expedition.encounter; encounterChoices.replaceChildren(); if (encounter !== null) { encounterSummary.textContent = `Zagrożenie na ${encounter.routeId}. Wybór ma fizyczne konsekwencje.`; for (const decision of encounter.affordances) { const button = document.createElement("button"); button.textContent = decision; button.dataset.decision = decision; button.addEventListener("click", () => { void expeditionCommand("resolve_expedition_encounter", { commandId: `browser:encounter:${encounter.encounterId}:${decision}`, issuerActorId: "player_leader", encounterId: encounter.encounterId, decision }); }); encounterChoices.append(button); } if (!encounterPanel.open) { encounterReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null; encounterPanel.showModal(); requestAnimationFrame(() => encounterChoices.querySelector<HTMLButtonElement>("button")?.focus()); } } else if (encounterPanel.open) { encounterPanel.close(); encounterReturnFocus?.focus(); encounterReturnFocus = null; } const pageSize = 4, pageCount = Math.max(1, Math.ceil(current.expedition.log.length / pageSize)); journalPageIndex = Math.min(journalPageIndex, pageCount - 1); const entries = current.expedition.log.slice().reverse().slice(journalPageIndex * pageSize, (journalPageIndex + 1) * pageSize); expeditionLog.replaceChildren(...entries.map((entry) => { const item = document.createElement("li"); item.textContent = `D${entry.elapsedDays.toFixed(2)} ${entry.text}`; return item; })); journalPage.textContent = `${journalPageIndex + 1} / ${pageCount}`; journalPrevious.disabled = journalPageIndex === 0; journalNext.disabled = journalPageIndex + 1 >= pageCount; }
 async function expeditionCommand(commandType: string, command: Record<string, unknown>): Promise<void> { try { const response = await postJson<{ readonly result: { readonly result: { readonly accepted: boolean; readonly errorCode?: string; readonly message?: string } }; readonly state: ExpeditionState }>("/api/expedition/command", { commandType, command }); expeditionState = response.state; const result = response.result.result; expeditionCommandMessage = result.accepted ? "Komenda przyjęta" : `${result.errorCode}: ${result.message}`; renderPlayableExpedition(); expeditionStatus.textContent += ` — ${expeditionCommandMessage}`; } catch (error) { showError(error); } }
 async function advancePlayableExpedition(days: number): Promise<void> { expeditionState = await postJson<ExpeditionState>("/api/expedition/advance", { days }); renderPlayableExpedition(); }
 async function expeditionAiStep(): Promise<void> { const response = await postJson<{ readonly state: ExpeditionState }>("/api/expedition/ai-step", {}); expeditionState = response.state; renderPlayableExpedition(); }
 
 async function refreshEconomyDiagnostics(): Promise<void> {
   const truth = mapMode.value === "truth";
-  economyDiagnostics.hidden = !truth;
   if (!truth) return;
   const diagnostics = await requestJson<EconomyDiagnostics>("/api/economy?view_mode=truth");
   renderEconomyDiagnostics(diagnostics);
@@ -283,7 +308,12 @@ function renderEconomyDiagnostics(diagnostics: EconomyDiagnostics): void {
     item.textContent = `${decision.actorId}: ${decision.reason}${decision.accepted === false ? " [rejected]" : ""}`;
     return item;
   }));
+  renderDiagnosticPage();
 }
+
+async function activateGameView(view: string): Promise<void> { activeGameView = view; gameStage.dataset.activeView = view; for (const candidate of contextViews) candidate.hidden = candidate.dataset.gameView !== "map" && candidate.dataset.gameView !== view; for (const tab of gameTabs) tab.setAttribute("aria-selected", String(tab.dataset.panelTarget === view)); if (view === "diagnostics" && mapMode.value !== "truth") { mapMode.value = "truth"; await refreshState(); } const active = contextViews.find((candidate) => candidate.dataset.gameView === view); (active?.querySelector<HTMLElement>("button:not(:disabled),select:not(:disabled),[tabindex]") ?? document.querySelector<HTMLElement>(`[data-panel-target="${view}"]`))?.focus(); requestAnimationFrame(render); }
+function renderDiagnosticPage(): void { for (const page of diagnosticPages) page.hidden = Number(page.dataset.diagnosticPage) !== diagnosticPageIndex; diagnosticPage.textContent = `${diagnosticPageIndex + 1} / ${diagnosticPages.length}`; diagnosticPrevious.disabled = diagnosticPageIndex === 0; diagnosticNext.disabled = diagnosticPageIndex + 1 >= diagnosticPages.length; }
+function setApiStatus(message: string, error: boolean): void { apiStatus.textContent = message; apiStatus.classList.toggle("error", error); }
 
 async function submitMove(): Promise<void> {
   const currentState = state;

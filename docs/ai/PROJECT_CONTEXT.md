@@ -96,6 +96,12 @@ pickup/travel/delivery, pausable encounter choices, private journal and the
 headless AI controller all execute inside the authoritative TypeScript
 simulation. Fixture values are v1 configuration, not final balance.
 
+The browser presentation is now a viewport-locked responsive game shell. It
+keeps the actor-filtered map and one context view inside `100dvh`, pages long
+diagnostic/journal data, uses a keyboard-managed encounter dialog, and exposes
+an explicit API health/version probe. Presentation state does not replace the
+authoritative Expedition or command model.
+
 ## Do not guess
 
 - Do not invent gameplay values when configuration or contracts own them.

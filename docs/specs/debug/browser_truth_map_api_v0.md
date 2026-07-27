@@ -1,5 +1,10 @@
 # Browser Truth Map API v0
 
+Viewport-Locked Game UI v1 adds `GET /api/health`, returning the explicit API
+version and canonical Expedition state route. `GET /api/expedition/state`
+remains the single server-owned playable projection; a missing route is an
+observable error and is never converted into client-only fallback state.
+
 ## Purpose
 
 This development-only HTTP boundary connects the browser Canvas Truth Map to

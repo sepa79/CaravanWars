@@ -133,6 +133,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
   const method = request.method ?? "GET";
   const requestUrl = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
 
+  if (method === "GET" && requestUrl.pathname === "/api/health") { writeJson(response, 200, { apiVersion: "viewport-game-ui-v1", expeditionEndpoint: "/api/expedition/state" }); return; }
   if (method === "GET" && requestUrl.pathname === "/api/state") {
     writeJson(response, 200, createClientState(requestUrl, graph, simulation));
     return;

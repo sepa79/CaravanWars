@@ -120,6 +120,7 @@ TODO
 - Debug party map harness v0: `docs/specs/debug/debug_party_map_harness_v0.md`
 - Browser Truth Map API v0: `docs/specs/debug/browser_truth_map_api_v0.md`
 - Playable Caravan Expedition v1: `docs/specs/debug/playable_caravan_expedition_v1.md`
+- Viewport-Locked Game UI v1: `docs/specs/debug/viewport_locked_game_ui_v1.md`
 - World Clock v0: `docs/specs/state/world_clock_v0.md`
 - Party Map snapshot v0: `docs/specs/state/party_map_snapshot_v0.md`
 - World physical layers v0: `docs/specs/regions/world_physical_layers_v0.md`

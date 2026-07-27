@@ -72,6 +72,11 @@ Run the development-only browser Truth Map on the Devbox:
 npm run dev:truth-map
 ```
 
+`dev:truth-map` watches server and client sources, including API route changes.
+Use `npm run start:truth-map` for a single non-watching process. The game shell
+is locked to the browser viewport; use its Map, Skład, Kontrakt, Dziennik,
+Rozkazy, AI and Debug tabs instead of scrolling the page.
+
 Open `http://192.168.88.21:4173` from the home LAN or through the configured
 WireGuard route. The development harness defaults to an actor-filtered Party
 Map and offers an explicit Truth Map selector. Its merchant control runs a

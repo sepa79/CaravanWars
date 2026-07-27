@@ -10,7 +10,7 @@ export default defineConfig({
     viewport: { width: 1440, height: 900 },
   },
   webServer: {
-    command: "npm run dev:truth-map",
+    command: "npm run start:truth-map",
     env: {
       ...process.env,
       PORT: "4174",

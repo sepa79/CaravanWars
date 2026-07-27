@@ -2,144 +2,84 @@
 <html lang="pl">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#17140f" />
-    <title>CaravanWars — Party Map</title>
+    <title>CaravanWars — Expedition</title>
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
-    <main class="shell">
-      <header class="masthead">
-        <div>
-          <p class="eyebrow" data-i18n="eyebrow"></p>
-          <h1>CaravanWars</h1>
-          <p class="subtitle" data-i18n="subtitle"></p>
-        </div>
-        <div class="mode-badge">
-          <span class="mode-dot"></span>
-          <label for="mapMode" data-i18n="mapMode"></label>
-          <select id="mapMode">
-            <option value="party" data-i18n="partyMode"></option>
-            <option value="truth" data-i18n="truthMode"></option>
-          </select>
-        </div>
+    <main class="game-shell">
+      <header class="top-bar">
+        <button id="brandHome" class="brand" type="button" data-panel-target="map" aria-label="Pokaż mapę"><span>CaravanWars</span><small>Expedition v1</small></button>
+        <div class="top-status"><span id="clock" class="clock">—</span><span id="apiStatus" class="api-status" role="status">Łączenie…</span></div>
+        <label class="mode-badge" for="mapMode"><span class="mode-dot"></span><span data-i18n="mapMode"></span><select id="mapMode"><option value="party" data-i18n="partyMode"></option><option value="truth" data-i18n="truthMode"></option></select></label>
       </header>
 
-      <section class="workspace">
-        <aside class="control-panel">
-          <section class="panel-section">
-            <p class="section-label" data-i18n="selectedParty"></p>
-            <h2 id="partyName">—</h2>
-            <dl class="facts">
-              <div><dt data-i18n="partyId"></dt><dd id="partyId">—</dd></div>
-              <div><dt data-i18n="status"></dt><dd id="partyStatus">—</dd></div>
-              <div><dt data-i18n="location"></dt><dd id="partyLocation">—</dd></div>
-              <div><dt data-i18n="speed"></dt><dd id="partySpeed">—</dd></div>
-            </dl>
-          </section>
+      <nav class="game-tabs" aria-label="Widoki gry">
+        <button type="button" data-panel-target="map" aria-selected="true">Mapa</button>
+        <button type="button" data-panel-target="caravan" aria-selected="false">Skład</button>
+        <button type="button" data-panel-target="contract" aria-selected="false">Kontrakt</button>
+        <button type="button" data-panel-target="journal" aria-selected="false">Dziennik</button>
+        <button type="button" data-panel-target="commands" aria-selected="false">Rozkazy</button>
+        <button type="button" data-panel-target="ai" aria-selected="false">AI</button>
+        <button type="button" data-panel-target="diagnostics" aria-selected="false">Debug</button>
+      </nav>
 
-          <section id="expeditionPanel" class="panel-section expedition-panel">
-            <p class="section-label">PLAYABLE CARAVAN EXPEDITION</p>
-            <h2 id="expeditionContract">Wczytywanie kontraktu…</h2>
-            <p id="expeditionStatus" class="command-result">—</p>
-            <dl class="facts">
-              <div><dt>Skład</dt><dd id="expeditionCharacters">—</dd></div>
-              <div><dt>Cargo / monety</dt><dd id="expeditionCargo">—</dd></div>
-              <div><dt>Termin</dt><dd id="expeditionDeadline">—</dd></div>
-            </dl>
-            <div class="button-grid">
-              <button id="acceptContract" class="primary">Przyjmij kontrakt</button>
-              <button id="pickupContract">Odbierz cargo</button>
-              <button id="departExpedition">Wyrusz do Opola</button>
-              <button id="exploreExpedition">Zbadaj pogłoskę o skrócie</button>
-              <button id="showExpeditionMap">Pokaż prywatną mapę wyprawy</button>
-              <button id="deliverContract">Dostarcz i rozlicz</button>
-              <button id="runExpeditionAi">Krok AI</button>
-              <button id="advanceExpedition">+ 6 godzin wyprawy</button>
-            </div>
-            <section id="encounterPanel" class="encounter-panel" hidden>
-              <p class="section-label">ENCOUNTER — decyzja zatrzymuje karawanę</p>
-              <p id="encounterSummary"></p>
-              <div id="encounterChoices" class="button-grid"></div>
-            </section>
-            <h3>Dziennik wyprawy</h3>
-            <ol id="expeditionLog" class="diagnostic-list"></ol>
-          </section>
-
-          <section id="economyDiagnostics" class="panel-section" hidden>
-            <p class="section-label">TRUTH / DEBUG — Regional Economy</p>
-            <dl class="facts">
-              <div><dt>Day</dt><dd id="economyDay">—</dd></div>
-              <div><dt>Trades</dt><dd id="economyTrades">—</dd></div>
-              <div><dt>Shortages</dt><dd id="economyShortages">—</dd></div>
-              <div><dt>Active tasks</dt><dd id="economyTasks">—</dd></div>
-              <div><dt>Distance</dt><dd id="economyDistance">—</dd></div>
-              <div><dt>Season / year</dt><dd id="economySeason">—</dd></div>
-              <div><dt>Facility profiles</dt><dd id="economyProfiles">—</dd></div>
-              <div><dt>Winter reserves</dt><dd id="economyReserves">—</dd></div>
-              <div><dt>Population / health</dt><dd id="economyPopulation">—</dd></div>
-              <div><dt>Labour allocations</dt><dd id="economyLabour">—</dd></div>
-              <div><dt>Continuous space</dt><dd id="spatialDiagnostics">—</dd></div>
-            </dl>
-            <button id="advanceEconomy" class="primary">Run regional day</button>
-            <p id="economyAnnualChart" class="command-result">Annual production chart: no completed year</p>
-            <ol id="economyDecisions" class="diagnostic-list"></ol>
-          </section>
-
-          <section class="panel-section">
-            <p class="section-label" data-i18n="merchantAi"></p>
-            <dl class="facts">
-              <div><dt data-i18n="cargoFood"></dt><dd id="cargoFood">—</dd></div>
-              <div><dt data-i18n="localFood"></dt><dd id="localFood">—</dd></div>
-            </dl>
-            <button id="merchantStep" class="primary" data-i18n="runMerchantStep"></button>
-            <p id="merchantResult" class="command-result" aria-live="polite"></p>
-          </section>
-
-          <section class="panel-section">
-            <p class="section-label" data-i18n="travelCommand"></p>
-            <label class="field-label" for="destination" data-i18n="destination"></label>
-            <select id="destination"></select>
-            <button id="moveButton" class="primary" data-i18n="depart"></button>
-            <p id="commandResult" class="command-result" aria-live="polite"></p>
-          </section>
-
-          <section class="panel-section">
-            <p class="section-label" data-i18n="worldClock"></p>
-            <div id="clock" class="clock">—</div>
-            <div class="button-grid">
-              <button id="advanceSixHours" data-i18n="advanceSixHours"></button>
-              <button id="advanceDay" data-i18n="advanceDay"></button>
-            </div>
-            <label class="toggle-row">
-              <input id="autoAdvance" type="checkbox" />
-              <span data-i18n="autoAdvance"></span>
-            </label>
-            <button id="resetButton" class="quiet" data-i18n="reset"></button>
-          </section>
-        </aside>
-
-        <section class="map-panel">
+      <section class="game-stage">
+        <section id="mapView" class="map-panel" data-game-view="map">
           <div class="map-heading">
-            <div>
-              <p id="mapScopeLabel" class="section-label"></p>
-              <h2 id="regionName">—</h2>
-            </div>
+            <div><p id="mapScopeLabel" class="section-label"></p><h1 id="regionName">—</h1></div>
             <div id="regionStats" class="region-stats">—</div>
           </div>
-          <p id="navigationKnowledge" class="command-result">—</p>
-          <div class="canvas-wrap">
-            <canvas id="mapCanvas"></canvas>
-            <div class="legend">
-              <span><i class="legend-road"></i><b data-i18n="routes"></b></span>
-              <span><i class="legend-node"></i><b data-i18n="locations"></b></span>
-              <span><i class="legend-landmark"></i><b data-i18n="landmarks"></b></span>
-              <span><i class="legend-party"></i><b data-i18n="party"></b></span>
-            </div>
-          </div>
+          <p id="navigationKnowledge" class="map-note">—</p>
+          <div class="canvas-wrap"><canvas id="mapCanvas"></canvas><div class="legend"><span><i class="legend-road"></i><b data-i18n="routes"></b></span><span><i class="legend-node"></i><b data-i18n="locations"></b></span><span><i class="legend-landmark"></i><b data-i18n="landmarks"></b></span><span><i class="legend-party"></i><b data-i18n="party"></b></span></div></div>
         </section>
+
+        <aside id="contextPanel" class="context-panel" aria-label="Panel kontekstowy">
+          <section class="context-view" data-game-view="caravan" hidden>
+            <header class="panel-heading"><p class="section-label" data-i18n="selectedParty"></p><h2 id="partyName">—</h2></header>
+            <dl class="facts"><div><dt data-i18n="partyId"></dt><dd id="partyId">—</dd></div><div><dt data-i18n="status"></dt><dd id="partyStatus">—</dd></div><div><dt data-i18n="location"></dt><dd id="partyLocation">—</dd></div><div><dt data-i18n="speed"></dt><dd id="partySpeed">—</dd></div><div><dt>Cargo / monety</dt><dd id="expeditionCargo">—</dd></div></dl>
+            <h3>Skład</h3><div id="expeditionCharacters" class="compact-copy">—</div>
+            <button id="showExpeditionMap" type="button">Pokaż prywatną mapę wyprawy</button>
+          </section>
+
+          <section id="expeditionPanel" class="context-view" data-game-view="contract" hidden>
+            <header class="panel-heading"><p class="section-label">PLAYABLE CARAVAN EXPEDITION</p><h2 id="expeditionContract">Wczytywanie kontraktu…</h2><p id="expeditionStatus" class="command-result" aria-live="polite">—</p></header>
+            <dl class="facts"><div><dt>Termin</dt><dd id="expeditionDeadline">—</dd></div></dl>
+            <div class="action-grid"><button id="acceptContract" class="primary">Przyjmij</button><button id="pickupContract">Odbierz cargo</button><button id="departExpedition">Trasa do Opola</button><button id="exploreExpedition">Eksploruj skrót</button><button id="deliverContract">Dostarcz</button><button id="advanceExpedition">+ 6 godzin</button></div>
+          </section>
+
+          <section class="context-view" data-game-view="journal" hidden>
+            <header class="panel-heading"><p class="section-label">PRYWATNA WIEDZA</p><h2>Dziennik wyprawy</h2></header>
+            <ol id="expeditionLog" class="paged-list"></ol>
+            <div class="pager"><button id="journalPrevious" type="button" aria-label="Poprzednia strona dziennika">←</button><span id="journalPage">1 / 1</span><button id="journalNext" type="button" aria-label="Następna strona dziennika">→</button></div>
+          </section>
+
+          <section class="context-view" data-game-view="commands" hidden>
+            <header class="panel-heading"><p class="section-label" data-i18n="travelCommand"></p><h2>Ruch i czas</h2></header>
+            <label class="field-label" for="destination" data-i18n="destination"></label><select id="destination"></select><button id="moveButton" class="primary" data-i18n="depart"></button><p id="commandResult" class="command-result" aria-live="polite"></p>
+            <div class="action-grid"><button id="advanceSixHours" data-i18n="advanceSixHours"></button><button id="advanceDay" data-i18n="advanceDay"></button></div>
+            <label class="toggle-row"><input id="autoAdvance" type="checkbox" /><span data-i18n="autoAdvance"></span></label><button id="resetButton" class="quiet" data-i18n="reset"></button>
+          </section>
+
+          <section class="context-view" data-game-view="ai" hidden>
+            <header class="panel-heading"><p class="section-label">KONTROLERY</p><h2>AI i automatyzacja</h2></header>
+            <dl class="facts"><div><dt data-i18n="cargoFood"></dt><dd id="cargoFood">—</dd></div><div><dt data-i18n="localFood"></dt><dd id="localFood">—</dd></div></dl>
+            <button id="merchantStep" class="primary" data-i18n="runMerchantStep"></button><p id="merchantResult" class="command-result" aria-live="polite"></p><button id="runExpeditionAi">Krok Expedition AI</button>
+          </section>
+
+          <section id="economyDiagnostics" class="context-view" data-game-view="diagnostics" hidden>
+            <header class="panel-heading"><p class="section-label">TRUTH / DEBUG</p><h2>Diagnostyka regionu</h2></header>
+            <div data-diagnostic-page="0"><dl class="facts"><div><dt>Day</dt><dd id="economyDay">—</dd></div><div><dt>Trades</dt><dd id="economyTrades">—</dd></div><div><dt>Shortages</dt><dd id="economyShortages">—</dd></div><div><dt>Active tasks</dt><dd id="economyTasks">—</dd></div><div><dt>Distance</dt><dd id="economyDistance">—</dd></div><div><dt>Season / year</dt><dd id="economySeason">—</dd></div></dl></div>
+            <div data-diagnostic-page="1" hidden><dl class="facts"><div><dt>Facility profiles</dt><dd id="economyProfiles">—</dd></div><div><dt>Winter reserves</dt><dd id="economyReserves">—</dd></div><div><dt>Population / health</dt><dd id="economyPopulation">—</dd></div><div><dt>Labour/security</dt><dd id="economyLabour">—</dd></div><div><dt>Continuous space</dt><dd id="spatialDiagnostics">—</dd></div></dl></div>
+            <div data-diagnostic-page="2" hidden><p id="economyAnnualChart" class="compact-copy">Annual production chart: no completed year</p><ol id="economyDecisions" class="paged-list"></ol></div>
+            <div class="pager"><button id="diagnosticPrevious" type="button" aria-label="Poprzednia strona diagnostyki">←</button><span id="diagnosticPage">1 / 3</span><button id="diagnosticNext" type="button" aria-label="Następna strona diagnostyki">→</button></div><button id="advanceEconomy" class="primary">Run regional day</button>
+          </section>
+        </aside>
       </section>
     </main>
+
+    <dialog id="encounterPanel" class="encounter-dialog" aria-labelledby="encounterTitle"><div class="dialog-card"><p class="section-label">ENCOUNTER</p><h2 id="encounterTitle">Karawana zatrzymana</h2><p id="encounterSummary"></p><div id="encounterChoices" class="action-grid"></div></div></dialog>
     <script type="module" src="/src/client.ts"></script>
   </body>
 </html>

@@ -4,6 +4,11 @@
 
 ### Added
 
+- Viewport-Locked Game UI v1 with a true `100dvh` game shell, responsive
+  map/context views, paged journal and diagnostics, accessible encounter modal,
+  five-size browser geometry matrix, screenshot inspection, API health route
+  and a watching development server that prevents stale Expedition routing.
+
 - Playable Caravan Expedition v1 with canonical character/Party composition,
   physical caravan contracts, pausable deterministic encounter choices, a
   private expedition journal, browser happy/failure paths and a headless AI

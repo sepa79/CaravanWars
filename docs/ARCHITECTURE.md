@@ -265,3 +265,8 @@ and deadlines remain in its canonical `WorldClock`; authority remains in
 Governance; navigation and journal observations remain owner-scoped views.
 Human browser actions and `ExpeditionAIController` submit the same
 `WorldCommandEnvelope` variants.
+
+The browser presentation is a viewport-locked shell: a bounded map surface and
+one mutually exclusive context view, with paged history and a native encounter
+modal. Responsive layout changes visibility and geometry only. It does not
+duplicate simulation, Expedition, navigation, or command state in the client.

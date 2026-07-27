@@ -11,7 +11,8 @@
   ],
   "scripts": {
     "check": "npm run typecheck && npm test",
-    "dev:truth-map": "tsx apps/truth-map/src/server.ts",
+    "dev:truth-map": "tsx watch apps/truth-map/src/server.ts",
+    "start:truth-map": "tsx apps/truth-map/src/server.ts",
     "sim:regional": "tsx packages/world-sim/src/regional-economy-cli.ts",
     "sim:seasonal": "tsx packages/world-sim/src/seasonal-economy-cli.ts",
     "sim:expedition": "tsx packages/world-sim/src/expedition-cli.ts",
