@@ -158,6 +158,23 @@ test("playable expedition failure path conserves loss and rejects incomplete del
   await expect(page.locator("#expeditionStatus")).toContainText("INSUFFICIENT_GOODS");
 });
 
+test("fight presents its result and an explicit way to continue the journey", async ({ page }) => {
+  await page.goto("/");
+  await openPanel(page, "contract");
+  await page.locator("#acceptContract").click();
+  await page.locator("#pickupContract").click();
+  await page.locator("#departExpedition").click();
+  await page.locator("#advanceExpedition").click();
+  await expect(page.locator("#encounterPanel")).toBeVisible();
+  await page.locator('[data-decision="fight"]').click();
+  await expect(page.locator("#encounterTitle")).toHaveText("Walka rozstrzygnięta");
+  await expect(page.locator("#encounterSummary")).toContainText("fight:");
+  await expect(page.locator('[data-encounter-continue="true"]')).toBeVisible();
+  await page.locator('[data-encounter-continue="true"]').click();
+  await expect(page.locator("#encounterPanel")).not.toBeVisible();
+  await expect(page.locator("#expeditionLog")).toContainText("fight:");
+});
+
 test("playable API is current and contract loads without a 404 UI error", async ({ page, request }) => {
   const health = await request.get("/api/health");
   expect(health.ok()).toBe(true);
@@ -191,6 +208,8 @@ for (const viewport of viewports) test(`game shell remains viewport-locked at ${
   await expect(page.locator("#encounterPanel")).toBeInViewport();
   await expect(page.locator("#encounterChoices button").first()).toBeFocused();
   await page.locator('[data-decision="negotiate"]').click();
+  await expect(page.locator('[data-encounter-continue="true"]')).toBeVisible();
+  await page.locator('[data-encounter-continue="true"]').click();
   await expect(page.locator("#encounterPanel")).not.toBeVisible();
   const resized = { width: Math.max(390, viewport.width - 173), height: Math.max(640, viewport.height - 91) };
   await page.setViewportSize(resized); await assertViewportLocked(page);
