@@ -95,6 +95,7 @@ TODO
 - Location state v0: `docs/specs/state/location_state_v0.md`
 - Generic governance v0: `docs/specs/state/governance_v0.md`
 - WorldMemory v0: `docs/specs/state/world_memory_v0.md`
+- Characters & Party Composition v1: `docs/specs/state/characters_party_composition_v1.md`
 - Goods catalog v0: `docs/specs/economy/goods_catalog_v0.md`
 - Party cargo v0: `docs/specs/economy/party_cargo_v0.md`
 - Location economy v0: `docs/specs/economy/location_economy_v0.md`
@@ -105,6 +106,8 @@ TODO
 - Facility Profiles & Seasonal Regional Economy v1: `docs/specs/economy/facility_profiles_seasonal_economy_v1.md`
 - Population, Health & Labour Dynamics v1: `docs/specs/economy/population_health_labour_v1.md`
 - Route Security, Bandits & Escorts v1: `docs/specs/economy/route_security_bandits_escorts_v1.md`
+- Caravan Contracts v1: `docs/specs/economy/caravan_contracts_v1.md`
+- Encounter Decisions v1: `docs/specs/economy/encounter_decisions_v1.md`
 - Trade Hub v0: `docs/specs/economy/trade_hub_v0.md`
 - Merchant autoplay scenario v0: `docs/specs/economy/merchant_autoplay_scenario_v0.md`
 - Merchant memory AI v0: `docs/specs/economy/merchant_memory_ai_v0.md`
@@ -116,6 +119,7 @@ TODO
 - Opportunity policy v0: `docs/specs/economy/opportunity_policy_v0.md`
 - Debug party map harness v0: `docs/specs/debug/debug_party_map_harness_v0.md`
 - Browser Truth Map API v0: `docs/specs/debug/browser_truth_map_api_v0.md`
+- Playable Caravan Expedition v1: `docs/specs/debug/playable_caravan_expedition_v1.md`
 - World Clock v0: `docs/specs/state/world_clock_v0.md`
 - Party Map snapshot v0: `docs/specs/state/party_map_snapshot_v0.md`
 - World physical layers v0: `docs/specs/regions/world_physical_layers_v0.md`

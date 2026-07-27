@@ -202,6 +202,7 @@ export class RouteSecurity {
   }
 
   route(routeId: string): RouteSecurityState | null { return this.#routes.has(routeId) ? structuredClone(this.#route(routeId)) : null; }
+  recordExpeditionDecision(routeId: string, outcome: string): void { if (!this.#routes.has(routeId)) return; const success = outcome === "cargo_surrendered" || outcome === "ransom_paid" || outcome === "fight_lost"; this.#adjustRoute(routeId, success ? 70 : -30, 0, success, true); }
   party(partyId: string): SecurityPartyState | null { const party = this.#parties.get(partyId); return party === undefined ? null : structuredClone(party); }
   tasks(): readonly SecurityTaskSnapshot[] { return [...this.#tasks.values()].map((item) => structuredClone(item)); }
   snapshot(): RouteSecuritySnapshot { return { seed: this.#seed, routes: [...this.#routes.values()].map((item) => structuredClone(item)), parties: [...this.#parties.values()].map((item) => structuredClone(item)), tasks: this.tasks(), encounters: [...this.#encounters.values()].map((item) => structuredClone(item)), processedCommandIds: [...this.#processedCommands.values()].map((item) => structuredClone(item)), processedEventIds: [...this.#processedEvents] }; }

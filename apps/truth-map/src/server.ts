@@ -13,6 +13,8 @@ import {
   loadPartyTravelConfigFile,
   loadRegionGraphFile,
   createSeasonalRegionalEconomyFixture,
+  createPlayableExpeditionFixture,
+  ExpeditionAIController,
 } from "@caravan-wars/world-sim";
 import type {
   MerchantMemoryEntry,
@@ -20,6 +22,7 @@ import type {
   PartySeed,
   RegionGraph,
   WorldEconomySeed,
+  WorldCommandEnvelope,
 } from "@caravan-wars/world-sim";
 import { createServer as createViteServer } from "vite";
 
@@ -104,6 +107,8 @@ const merchantMemory: readonly MerchantMemoryEntry[] = [
 const merchantAi = new MerchantMemoryAI();
 const simulation = new WorldSimulation(graph, travelConfig, [partySeed], economySeed);
 let regionalEconomy = createSeasonalRegionalEconomyFixture(graph, travelConfig);
+let playableExpedition = createPlayableExpeditionFixture(graph, travelConfig);
+const expeditionAi = new ExpeditionAIController();
 
 const vite = await createViteServer({
   root: applicationRoot,
@@ -132,6 +137,11 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     writeJson(response, 200, createClientState(requestUrl, graph, simulation));
     return;
   }
+  if (method === "GET" && requestUrl.pathname === "/api/expedition/state") { writeJson(response, 200, createExpeditionState()); return; }
+  if (method === "POST" && requestUrl.pathname === "/api/expedition/command") { const envelope = parseExpeditionEnvelope(await readJsonBody(request)); const result = playableExpedition.world.submitCommand(envelope); writeJson(response, 200, { result, state: createExpeditionState() }); return; }
+  if (method === "POST" && requestUrl.pathname === "/api/expedition/advance") { const days = parseAdvanceTimeRequest(await readJsonBody(request)); ensureExpeditionAmbush(); playableExpedition.world.advanceDays(days); writeJson(response, 200, createExpeditionState()); return; }
+  if (method === "POST" && requestUrl.pathname === "/api/expedition/ai-step") { parseEmptyObjectRequest(await readJsonBody(request), "expedition AI step"); const decision = expeditionAi.decide(playableExpedition.world, playableExpedition.playerPartyId); const result = decision.envelope === null ? null : playableExpedition.world.submitCommand(decision.envelope); writeJson(response, 200, { decision, result, state: createExpeditionState() }); return; }
+  if (method === "POST" && requestUrl.pathname === "/api/expedition/reset") { parseEmptyObjectRequest(await readJsonBody(request), "expedition reset"); playableExpedition = createPlayableExpeditionFixture(graph, travelConfig); writeJson(response, 200, createExpeditionState()); return; }
   if (method === "GET" && requestUrl.pathname === "/api/economy") {
     requireTruthDiagnostics(requestUrl);
     writeJson(response, 200, regionalEconomy.runner.diagnostics());
@@ -170,6 +180,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     parseEmptyObjectRequest(await readJsonBody(request), "reset request");
     simulation.reset();
     regionalEconomy = createSeasonalRegionalEconomyFixture(graph, travelConfig);
+    playableExpedition = createPlayableExpeditionFixture(graph, travelConfig);
     writeJson(response, 200, createClientState(requestUrl, graph, simulation));
     return;
   }
@@ -184,6 +195,11 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     writeJson(response, 500, { error: "VITE_MIDDLEWARE_ERROR", message });
   });
 }
+
+function createExpeditionState(): object { const world = playableExpedition.world, partyId = playableExpedition.playerPartyId; return { partyMap: world.partyMapSnapshot(partyId), party: world.partySnapshot(partyId), expedition: world.partyExpeditionView(partyId) }; }
+function ensureExpeditionAmbush(): void { const world = playableExpedition.world, player = world.partySnapshot(playableExpedition.playerPartyId), bandit = world.partySnapshot(playableExpedition.banditPartyId), snapshot = world.caravanExpeditionSnapshot(); if (player.travel?.edgeId !== "wroclaw_opole" || snapshot?.encounters.some((item) => item.defenderPartyId === player.id) === true) return; if (bandit.currentNodeId === "wroclaw") world.submitCommand({ commandType: "move_party", command: { party_id: bandit.id, from_node_id: "wroclaw", to_node_id: "opole" } }); if (world.partySnapshot(bandit.id).travel?.edgeId === "wroclaw_opole") world.submitCommand({ commandType: "plan_expedition_encounter", command: { commandId: "browser:ambush", issuerActorId: "bandit_chief", encounterId: "browser_ambush", routeId: "wroclaw_opole", attackerPartyId: bandit.id, defenderPartyId: player.id, delayDays: 0.25 } }); }
+
+function parseExpeditionEnvelope(value: unknown): WorldCommandEnvelope { const root = requireRecord(value, "expedition command envelope"); if (typeof root.commandType !== "string") throw new RequestValidationError("commandType is required"); const command = requireRecord(root.command, "expedition command"); const allowed = new Set(["accept_caravan_contract", "pickup_caravan_contract", "deliver_caravan_contract", "abandon_caravan_contract", "resolve_expedition_encounter", "move_party", "spatial_travel", "search_area", "rest_expedition_party"]); if (!allowed.has(root.commandType)) throw new RequestValidationError(`expedition commandType ${root.commandType} is not allowed`); return { commandType: root.commandType, command } as unknown as WorldCommandEnvelope; }
 
 function requireTruthDiagnostics(requestUrl: URL): void {
   if (requestUrl.searchParams.get("view_mode") !== "truth") {

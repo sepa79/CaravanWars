@@ -36,6 +36,14 @@ unknown world IDs. Search/travel enqueue ordinary serializable WorldClock
 intents; reports require a positive simulated courier delay; relocation is a
 Governance-scoped truth command.
 
+Playable Expedition v1 extends the union with `offer_caravan_contract`,
+`accept_caravan_contract`, `pickup_caravan_contract`,
+`deliver_caravan_contract`, `abandon_caravan_contract`,
+`plan_expedition_encounter`, `resolve_expedition_encounter`, and
+`rest_expedition_party`. All carry stable command IDs and exact fingerprint
+replay. They cannot bypass physical inventory/cargo, escrow, Party pause or
+Governance validation.
+
 The generic Facility operation payload is:
 
 ```json

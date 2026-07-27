@@ -38,6 +38,34 @@
             </dl>
           </section>
 
+          <section id="expeditionPanel" class="panel-section expedition-panel">
+            <p class="section-label">PLAYABLE CARAVAN EXPEDITION</p>
+            <h2 id="expeditionContract">Wczytywanie kontraktu…</h2>
+            <p id="expeditionStatus" class="command-result">—</p>
+            <dl class="facts">
+              <div><dt>Skład</dt><dd id="expeditionCharacters">—</dd></div>
+              <div><dt>Cargo / monety</dt><dd id="expeditionCargo">—</dd></div>
+              <div><dt>Termin</dt><dd id="expeditionDeadline">—</dd></div>
+            </dl>
+            <div class="button-grid">
+              <button id="acceptContract" class="primary">Przyjmij kontrakt</button>
+              <button id="pickupContract">Odbierz cargo</button>
+              <button id="departExpedition">Wyrusz do Opola</button>
+              <button id="exploreExpedition">Zbadaj pogłoskę o skrócie</button>
+              <button id="showExpeditionMap">Pokaż prywatną mapę wyprawy</button>
+              <button id="deliverContract">Dostarcz i rozlicz</button>
+              <button id="runExpeditionAi">Krok AI</button>
+              <button id="advanceExpedition">+ 6 godzin wyprawy</button>
+            </div>
+            <section id="encounterPanel" class="encounter-panel" hidden>
+              <p class="section-label">ENCOUNTER — decyzja zatrzymuje karawanę</p>
+              <p id="encounterSummary"></p>
+              <div id="encounterChoices" class="button-grid"></div>
+            </section>
+            <h3>Dziennik wyprawy</h3>
+            <ol id="expeditionLog" class="diagnostic-list"></ol>
+          </section>
+
           <section id="economyDiagnostics" class="panel-section" hidden>
             <p class="section-label">TRUTH / DEBUG — Regional Economy</p>
             <dl class="facts">

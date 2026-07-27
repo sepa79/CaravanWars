@@ -44,6 +44,9 @@ test("labour allocations are authority checked, idempotent, bounded and priority
   assert.equal(foundation.executeAllocateLabour(command).idempotentReplay, true);
   assert.equal(foundation.executeAllocateLabour({ ...command, commandId: "foreign", issuerActorId: "b_governor" }).accepted, false);
   assert.equal(foundation.executeAllocateLabour({ ...command, commandId: "too-many", allocations: [{ allocationId: "all", targetEntityId: "farm", sector: "agriculture", workers: 999 }] }).accepted, false);
+  const partyConflict = foundation.executeAllocateLabour({ ...command, commandId: "party-conflict" }, 5);
+  assert.equal(partyConflict.accepted, false);
+  assert.equal(!partyConflict.accepted && partyConflict.errorCode, "INSUFFICIENT_LABOUR");
   foundation.advanceDays(90);
   assert.equal(foundation.populationSnapshot()!.settlements.find((item) => item.settlementId === "a")!.allocations.reduce((sum, item) => sum + item.workers, 0) <= 24, true);
 });

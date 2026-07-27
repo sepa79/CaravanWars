@@ -437,7 +437,7 @@ export class AutonomousRegionalEconomyRunner {
       const target = bandit.targetPartyIds.map((id) => this.#world.partySnapshot(id)).find((item) => item.travel?.edgeId === bandit.routeId);
       const security = this.#world.snapshot().simulationFoundation?.routeSecurity;
       if (target === undefined || security?.encounters.some((item) => item.status === "pending" && (item.attackerPartyId === bandit.partyId || item.defenderPartyId === target.id)) === true) continue;
-      const escorts = policy.responses.map((item) => this.#world.partySnapshot(item.escortPartyId)).filter((item) => item.travel?.edgeId === bandit.routeId).map((item) => item.id);
+      const escorts: string[] = policy.responses.map((item) => this.#world.partySnapshot(item.escortPartyId)).filter((item) => item.travel?.edgeId === bandit.routeId).map((item) => item.id);
       const ordinal = this.#nextAction(`encounter:${bandit.partyId}`);
       this.#world.submitCommand({ commandType: "plan_route_encounter", command: { commandId: `regional:encounter:${bandit.partyId}:${ordinal}`, issuerActorId: bandit.issuerActorId, encounterId: `regional:${bandit.partyId}:${ordinal}`, routeId: bandit.routeId, attackerPartyId: bandit.partyId, defenderPartyId: target.id, escortPartyIds: escorts, delayDays: 0.0005 } });
     }

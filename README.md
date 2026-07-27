@@ -63,6 +63,7 @@ npm run typecheck
 npm test
 npm run sim:regional -- --days 30 --seed 17
 npm run sim:seasonal -- --years 2 --seeds 3,5,17 --merchants 12
+npm run sim:expedition -- --years 3 --seeds 17,29,47
 ```
 
 Run the development-only browser Truth Map on the Devbox:
@@ -75,6 +76,11 @@ Open `http://192.168.88.21:4173` from the home LAN or through the configured
 WireGuard route. The development harness defaults to an actor-filtered Party
 Map and offers an explicit Truth Map selector. Its merchant control runs a
 small physical food-delivery loop through the normal command boundary.
+
+The **Playable Caravan Expedition** panel is the v1 onboarding loop: accept the
+Wrocław–Opole contract, inspect the physical roster and supplies, pick up real
+cargo, depart, advance time, choose an encounter response, and deliver. Its
+map/journal are owner-filtered; full truth remains separately labelled.
 
 Development is hosted on the Devbox. No Godot installation is required for the
 active implementation.

@@ -88,6 +88,14 @@ Electron packaging comes after the browser client is useful.
 - Treating Trade Hubs as shared inventories instead of physical instances.
 - Allowing LLM output to bypass command validation.
 
+## Current playable vertical slice
+
+The active browser exposes a deterministic Wrocław–Opole caravan expedition.
+Character/Party composition, contract escrow and lifecycle, physical
+pickup/travel/delivery, pausable encounter choices, private journal and the
+headless AI controller all execute inside the authoritative TypeScript
+simulation. Fixture values are v1 configuration, not final balance.
+
 ## Do not guess
 
 - Do not invent gameplay values when configuration or contracts own them.

@@ -4,6 +4,11 @@
 
 ### Added
 
+- Playable Caravan Expedition v1 with canonical character/Party composition,
+  physical caravan contracts, pausable deterministic encounter choices, a
+  private expedition journal, browser happy/failure paths and a headless AI
+  runner using the same authoritative command boundary.
+
 - Continuous Space, Exploration & Private Navigation Graph v1 with one
   authoritative 2D truth, hidden/off-road locations, deterministic movement
   and search, private uncertain navigation knowledge, save/replay, and

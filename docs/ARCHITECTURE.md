@@ -254,3 +254,14 @@ copying its contract/data into an active boundary and adding conformance tests.
 See `docs/adr/ADR-001-project-direction.md`,
 `docs/adr/ADR-002-node-electron-migration.md`, and
 `docs/architecture/SERVER_AUTHORITATIVE_MODEL.md`.
+
+## Playable caravan expedition
+
+`CaravanExpeditions` is a component of the one `WorldSimulation`, not a client
+state model. It owns canonical character/vehicle/animal expedition state,
+contract lifecycles, encounter pauses and their idempotency ledgers. Physical
+Party position/cargo and local inventories remain in `WorldSimulation`; time
+and deadlines remain in its canonical `WorldClock`; authority remains in
+Governance; navigation and journal observations remain owner-scoped views.
+Human browser actions and `ExpeditionAIController` submit the same
+`WorldCommandEnvelope` variants.

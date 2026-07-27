@@ -49,6 +49,8 @@ import { RouteSecurity } from "./route-security.js";
 import type { CreateSecurityTaskCommand, EncounterPartyView, EncounterPhysicalMutation, PlanRouteEncounterCommand, RouteEncounterEvent, SecurityCommandResult, TransitionSecurityTaskCommand } from "./route-security.js";
 import { ContinuousSpace, SPATIAL_SEARCH_DUE, SPATIAL_TRAVEL_DUE, buildNavigationKnowledgeGraph, detectionSucceeds, deterministicSearchPath, distance as spatialDistance, distanceToPolyline, navigationItem, pointAlongPolyline, polylineDistance, spatialSpeedKmPerDay, terrainAt } from "./continuous-space.js";
 import type { ObserveSurroundingsCommand, ReportNavigationKnowledgeCommand, SearchAreaCommand, SpatialCommandResult, SpatialRuntimeSnapshot, SpatialSearchPlan, SpatialTravelCommand, SpatialTravelPlan } from "./continuous-space.js";
+import { CaravanExpeditions } from "./caravan-expedition.js";
+import type { AbandonCaravanContractCommand, AcceptCaravanContractCommand, CaravanExpeditionSnapshot, DeliverCaravanContractCommand, EncounterMutationPlan, ExpeditionCommandResult, ExpeditionPhysicalPort, OfferCaravanContractCommand, PickupCaravanContractCommand, PlanExpeditionEncounterCommand, ResolveExpeditionEncounterCommand, RestExpeditionPartyCommand } from "./caravan-expedition.js";
 
 export interface DeliverSupplyTaskCommand {
   readonly commandId: string;
@@ -199,7 +201,15 @@ export type WorldCommandEnvelope =
   | { readonly commandType: "search_area"; readonly command: SearchAreaCommand }
   | { readonly commandType: "observe_surroundings"; readonly command: ObserveSurroundingsCommand }
   | { readonly commandType: "report_navigation_knowledge"; readonly command: ReportNavigationKnowledgeCommand }
-  | { readonly commandType: "relocate_spatial_object"; readonly command: RelocateSpatialObjectCommand };
+  | { readonly commandType: "relocate_spatial_object"; readonly command: RelocateSpatialObjectCommand }
+  | { readonly commandType: "accept_caravan_contract"; readonly command: AcceptCaravanContractCommand }
+  | { readonly commandType: "offer_caravan_contract"; readonly command: OfferCaravanContractCommand }
+  | { readonly commandType: "pickup_caravan_contract"; readonly command: PickupCaravanContractCommand }
+  | { readonly commandType: "deliver_caravan_contract"; readonly command: DeliverCaravanContractCommand }
+  | { readonly commandType: "abandon_caravan_contract"; readonly command: AbandonCaravanContractCommand }
+  | { readonly commandType: "plan_expedition_encounter"; readonly command: PlanExpeditionEncounterCommand }
+  | { readonly commandType: "resolve_expedition_encounter"; readonly command: ResolveExpeditionEncounterCommand }
+  | { readonly commandType: "rest_expedition_party"; readonly command: RestExpeditionPartyCommand };
 
 export type WorldCommandSubmissionResult =
   | { readonly commandType: "move_party"; readonly result: CommandResult }
@@ -221,7 +231,15 @@ export type WorldCommandSubmissionResult =
   | { readonly commandType: "search_area"; readonly result: SpatialCommandResult }
   | { readonly commandType: "observe_surroundings"; readonly result: SpatialCommandResult }
   | { readonly commandType: "report_navigation_knowledge"; readonly result: SpatialCommandResult }
-  | { readonly commandType: "relocate_spatial_object"; readonly result: SpatialCommandResult };
+  | { readonly commandType: "relocate_spatial_object"; readonly result: SpatialCommandResult }
+  | { readonly commandType: "offer_caravan_contract"; readonly result: ExpeditionCommandResult }
+  | { readonly commandType: "accept_caravan_contract"; readonly result: ExpeditionCommandResult }
+  | { readonly commandType: "pickup_caravan_contract"; readonly result: ExpeditionCommandResult }
+  | { readonly commandType: "deliver_caravan_contract"; readonly result: ExpeditionCommandResult }
+  | { readonly commandType: "abandon_caravan_contract"; readonly result: ExpeditionCommandResult }
+  | { readonly commandType: "plan_expedition_encounter"; readonly result: ExpeditionCommandResult }
+  | { readonly commandType: "resolve_expedition_encounter"; readonly result: ExpeditionCommandResult }
+  | { readonly commandType: "rest_expedition_party"; readonly result: ExpeditionCommandResult };
 
 export interface PartyTravelSnapshot {
   readonly edgeId: string;
@@ -280,6 +298,7 @@ export interface WorldSnapshot {
   readonly worldMemory: WorldMemorySnapshot;
   readonly shortageObservationCursors: Readonly<Record<string, number>>;
   readonly continuousSpace: SpatialRuntimeSnapshot;
+  readonly caravanExpedition: CaravanExpeditionSnapshot | null;
 }
 
 export interface ObserveLocalTradeContextRequest {
@@ -526,6 +545,8 @@ export class WorldSimulation {
   readonly #partySeeds: readonly PartySeed[];
   readonly #economySeed: WorldEconomySeed | null;
   readonly #simulationFoundation: WorldSimulationFoundation | null;
+  #caravanExpedition: CaravanExpeditions | null;
+  readonly #initialCaravanExpeditionSnapshot: CaravanExpeditionSnapshot | null;
   #continuousSpace: ContinuousSpace;
   readonly #initialContinuousSpaceSnapshot: SpatialRuntimeSnapshot;
   #worldMemory: WorldMemory;
@@ -544,6 +565,7 @@ export class WorldSimulation {
     simulationFoundation: WorldSimulationFoundation | null = null,
     worldMemory = new WorldMemory(),
     continuousSpace = ContinuousSpace.create(defaultSpatialConfig()),
+    caravanExpedition: CaravanExpeditions | null = null,
   ) {
     this.#graph = graph;
     this.#travelConfig = travelConfig;
@@ -564,11 +586,14 @@ export class WorldSimulation {
     validateInitialCargoCapacities(this.#parties, this.#economySeed);
     this.#worldMemory = new WorldMemory(worldMemory.snapshot());
     this.#continuousSpace = new ContinuousSpace(continuousSpace.snapshot());
+    this.#caravanExpedition = caravanExpedition === null ? null : new CaravanExpeditions(caravanExpedition.snapshot());
+    this.#initialCaravanExpeditionSnapshot = this.#caravanExpedition?.snapshot() ?? null;
     this.#initialContinuousSpaceSnapshot = this.#continuousSpace.snapshot();
     this.#seedNavigationKnowledge();
     this.#initialWorldMemorySnapshot = this.#worldMemory.snapshot();
     this.#bindEncounterPort();
     this.#simulationFoundation?.setSpatialEventHandler((intent, elapsedDays) => this.#handleSpatialEvent(intent, elapsedDays));
+    this.#simulationFoundation?.setExpeditionEventHandler((intent, elapsedDays) => this.#caravanExpedition?.handleEvent(intent, elapsedDays, this.#expeditionPort()));
   }
 
   static fromSnapshot(
@@ -599,7 +624,7 @@ export class WorldSimulation {
       cargo: party.cargo,
     }));
     const simulation = new WorldSimulation(
-      graph, travelConfig, seeds, economySeed, clock, foundation, new WorldMemory(snapshot.worldMemory), new ContinuousSpace(snapshot.continuousSpace),
+      graph, travelConfig, seeds, economySeed, clock, foundation, new WorldMemory(snapshot.worldMemory), new ContinuousSpace(snapshot.continuousSpace), snapshot.caravanExpedition === null ? null : new CaravanExpeditions(snapshot.caravanExpedition),
     );
     simulation.#restoreRuntimeSnapshot(snapshot);
     return simulation;
@@ -626,8 +651,19 @@ export class WorldSimulation {
   submitCommand(
     envelope: Extract<WorldCommandEnvelope, { readonly commandType: "cancel_trade_hub_order" }>,
   ): Extract<WorldCommandSubmissionResult, { readonly commandType: "cancel_trade_hub_order" }>;
+  submitCommand(
+    envelope: Extract<WorldCommandEnvelope, { readonly commandType: "offer_caravan_contract" }>,
+  ): Extract<WorldCommandSubmissionResult, { readonly commandType: "offer_caravan_contract" }>;
   submitCommand(envelope: WorldCommandEnvelope): WorldCommandSubmissionResult;
   submitCommand(envelope: WorldCommandEnvelope): WorldCommandSubmissionResult {
+    if (envelope.commandType === "offer_caravan_contract") return { commandType: envelope.commandType, result: this.#requireExpedition().offer(envelope.command, this.#clock.elapsedDays, this.#expeditionPort()) };
+    if (envelope.commandType === "accept_caravan_contract") return { commandType: envelope.commandType, result: this.#acceptCaravanContract(envelope.command) };
+    if (envelope.commandType === "pickup_caravan_contract") return { commandType: envelope.commandType, result: this.#requireExpedition().pickup(envelope.command, this.#clock.elapsedDays, this.#expeditionPort()) };
+    if (envelope.commandType === "deliver_caravan_contract") return { commandType: envelope.commandType, result: this.#deliverCaravanContract(envelope.command) };
+    if (envelope.commandType === "abandon_caravan_contract") return { commandType: envelope.commandType, result: this.#requireExpedition().abandon(envelope.command, this.#clock.elapsedDays, this.#expeditionPort()) };
+    if (envelope.commandType === "plan_expedition_encounter") return { commandType: envelope.commandType, result: this.#planExpeditionEncounter(envelope.command) };
+    if (envelope.commandType === "resolve_expedition_encounter") return { commandType: envelope.commandType, result: this.#resolveExpeditionEncounter(envelope.command) };
+    if (envelope.commandType === "rest_expedition_party") return { commandType: envelope.commandType, result: this.#requireExpedition().rest(envelope.command, this.#clock.elapsedDays, this.#expeditionPort()) };
     if (envelope.commandType === "spatial_travel") return { commandType: envelope.commandType, result: this.#startSpatialTravel(envelope.command) };
     if (envelope.commandType === "search_area") return { commandType: envelope.commandType, result: this.#startSpatialSearch(envelope.command) };
     if (envelope.commandType === "observe_surroundings") return { commandType: envelope.commandType, result: this.#observeSurroundings(envelope.command) };
@@ -640,7 +676,7 @@ export class WorldSimulation {
       return { commandType: envelope.commandType, result: this.#simulationFoundation?.executePlanRouteEncounter(envelope.command) ?? securityUnavailable() };
     }
     if (envelope.commandType === "allocate_labour") {
-      return { commandType: envelope.commandType, result: this.#simulationFoundation?.executeAllocateLabour(envelope.command) ?? populationUnavailable() };
+      return { commandType: envelope.commandType, result: this.#simulationFoundation?.executeAllocateLabour(envelope.command, this.#caravanExpedition?.reservedLabour(envelope.command.settlementId) ?? 0) ?? populationUnavailable() };
     }
     if (envelope.commandType === "start_population_migration") {
       const foundation = this.#simulationFoundation;
@@ -720,6 +756,20 @@ export class WorldSimulation {
 
   elapsedDays(): number {
     return this.#clock.elapsedDays;
+  }
+
+  caravanExpeditionSnapshot(): CaravanExpeditionSnapshot | null { return this.#caravanExpedition?.snapshot() ?? null; }
+  privateExpeditionLog(partyId: string) { if (!this.#parties.has(partyId)) throw new WorldSimulationQueryError(`Party ${partyId} does not exist.`); return this.#caravanExpedition?.privateLog(partyId) ?? []; }
+  partyExpeditionView(partyId: string) {
+    const party = this.#parties.get(partyId); if (party === undefined) throw new WorldSimulationQueryError(`Party ${partyId} does not exist.`);
+    const snapshot = this.#caravanExpedition?.snapshot(); if (snapshot === undefined) return null;
+    const nodeId = party.location.status === "idle" ? party.location.nodeId : null;
+    return {
+      characters: snapshot.characters.filter((item) => item.partyId === partyId), animals: snapshot.animals.filter((item) => item.partyId === partyId), vehicles: snapshot.vehicles.filter((item) => item.partyId === partyId),
+      contracts: snapshot.contracts.filter((item) => item.contractorPartyId === partyId || (item.status === "offered" && this.#locations.get(item.pickupLocationId)?.nodeId === nodeId)),
+      encounter: snapshot.encounters.find((item) => item.defenderPartyId === partyId && item.status === "awaiting_decision") ?? null,
+      metrics: snapshot.metrics, log: this.#caravanExpedition?.privateLog(partyId) ?? [],
+    };
   }
 
   facilityHostResource(hostId: string, resourceId: string): number {
@@ -1041,6 +1091,64 @@ export class WorldSimulation {
     return result.accepted ? { accepted: true, idempotentReplay: result.idempotentReplay } : supplyRejected("MEMORY_CONFLICT", result.message);
   }
 
+  #acceptCaravanContract(command: AcceptCaravanContractCommand): ExpeditionCommandResult {
+    const expedition = this.#requireExpedition(), beforeExpedition = expedition.snapshot(), beforeLocations = [...this.#locations.entries()].map(([id, value]) => [id, new Map(value.resources)] as const), beforeParties = [...this.#parties.entries()].map(([id, value]) => [id, new Map(value.cargo)] as const);
+    const mutation = expedition.accept(command, this.#clock.elapsedDays, this.#expeditionPort());
+    if (!mutation.result.accepted || mutation.intent === null) return mutation.result;
+    try { this.#simulationFoundation?.scheduleCommandIntent(mutation.intent); if (this.#simulationFoundation === null) throw new Error("Contracts require the canonical Foundation dispatcher."); return mutation.result; }
+    catch (error) { this.#caravanExpedition = new CaravanExpeditions(beforeExpedition); for (const [id, resources] of beforeLocations) { const location = this.#locations.get(id)!; location.resources.clear(); for (const [goodsId, amount] of resources) location.resources.set(goodsId, amount); } for (const [id, cargo] of beforeParties) { const party = this.#parties.get(id)!; party.cargo.clear(); for (const [goodsId, amount] of cargo) party.cargo.set(goodsId, amount); } return { accepted: false, idempotentReplay: false, errorCode: "SCHEDULING_FAILED", message: error instanceof Error ? error.message : String(error) }; }
+  }
+
+  #deliverCaravanContract(command: DeliverCaravanContractCommand): ExpeditionCommandResult {
+    const result = this.#requireExpedition().deliver(command, this.#clock.elapsedDays, this.#expeditionPort());
+    if (result.accepted) this.#rememberExpeditionResult(command.commandId, command.contractId, "contract_completed", result.outcome ?? "completed");
+    return result;
+  }
+
+  #planExpeditionEncounter(command: PlanExpeditionEncounterCommand): ExpeditionCommandResult {
+    const expedition = this.#requireExpedition(), before = expedition.snapshot(), mutation = expedition.planEncounter(command, this.#clock.elapsedDays, this.#expeditionPort());
+    if (!mutation.result.accepted || mutation.intent === null) return mutation.result;
+    try { if (this.#simulationFoundation === null) throw new Error("Encounters require the canonical Foundation dispatcher."); this.#simulationFoundation.scheduleCommandIntent(mutation.intent); return mutation.result; }
+    catch (error) { this.#caravanExpedition = new CaravanExpeditions(before); return { accepted: false, idempotentReplay: false, errorCode: "SCHEDULING_FAILED", message: error instanceof Error ? error.message : String(error) }; }
+  }
+
+  #resolveExpeditionEncounter(command: ResolveExpeditionEncounterCommand): ExpeditionCommandResult {
+    const result = this.#requireExpedition().resolveEncounter(command, this.#clock.elapsedDays, this.#expeditionPort());
+    if (result.accepted) { const encounter = this.#caravanExpedition?.snapshot().encounters.find((item) => item.encounterId === command.encounterId); if (encounter !== undefined) this.#simulationFoundation?.recordExpeditionEncounter(encounter.routeId, result.outcome ?? command.decision); this.#rememberExpeditionResult(command.commandId, command.encounterId, "encounter_result", result.outcome ?? command.decision); }
+    return result;
+  }
+
+  #rememberExpeditionResult(sourceId: string, subjectId: string, kind: string, outcome: string): void {
+    const encounter = this.#caravanExpedition?.snapshot().encounters.find((item) => item.encounterId === subjectId), contract = this.#caravanExpedition?.snapshot().contracts.find((item) => item.contractId === subjectId), ownerId = encounter?.defenderPartyId ?? contract?.contractorPartyId;
+    if (ownerId === null || ownerId === undefined) return;
+    const owner = this.#parties.get(ownerId), nodeId = owner?.location.status === "idle" ? owner.location.nodeId : null;
+    this.#worldMemory.ingest({ ingestId: `expedition-result:${sourceId}`, ownerId, ownerKind: "party", kind, observedAtElapsedDays: this.#clock.elapsedDays, knownAtElapsedDays: this.#clock.elapsedDays, staleAfterDays: null, provenance: { sourceType: "command_result", sourceId, sourceOwnerId: ownerId, nodeId }, payload: { subjectId, outcome } });
+  }
+
+  #requireExpedition(): CaravanExpeditions { if (this.#caravanExpedition === null) throw new WorldSimulationConfigurationError("Caravan expedition is not configured."); return this.#caravanExpedition; }
+
+  #expeditionPort(): ExpeditionPhysicalPort {
+    return {
+      party: (partyId) => { const party = this.#parties.get(partyId); if (party === undefined) return null; const snapshot = createPartySnapshot(this.#graph, party, this.#economySeed), capacity = this.#economySeed === null ? 0 : calculatePartyCargoCapacity(party.composition, this.#economySeed.partyCargoConfig), used = this.#economySeed === null ? 0 : calculateCargoUsedBulk(party.cargo, this.#economySeed.goodsCatalog); return { partyId, managerActorId: party.managerActorId, nodeId: snapshot.currentNodeId, travelingRouteId: snapshot.travel?.edgeId ?? null, composition: { ...party.composition }, cargo: { ...snapshot.cargo }, cargoFreeBulk: Math.max(0, capacity - used), position: [...snapshot.position] }; },
+      authorize: (issuerActorId, entityId, scope) => this.#simulationFoundation?.authorize(issuerActorId, entityId, scope) === true,
+      locationNode: (locationId) => this.#locations.get(locationId)?.nodeId ?? null,
+      reserveContract: (contract, partyId) => { const party = this.#parties.get(partyId), issuer = this.#locations.get(contract.issuerLocationId); if (party === undefined || issuer === undefined || party.location.status !== "idle" || party.location.nodeId !== issuer.nodeId) return "location"; if ((issuer.resources.get("coin") ?? 0) < contract.paymentCoin || (party.cargo.get("coin") ?? 0) < contract.collateralCoin) return "funds"; setQuantity(issuer.resources, "coin", (issuer.resources.get("coin") ?? 0) - contract.paymentCoin); setQuantity(party.cargo, "coin", (party.cargo.get("coin") ?? 0) - contract.collateralCoin); return "ok"; },
+      pickupContract: (contract) => { const party = contract.contractorPartyId === null ? undefined : this.#parties.get(contract.contractorPartyId), location = this.#locations.get(contract.pickupLocationId); if (party === undefined || location === undefined || party.location.status !== "idle" || party.location.nodeId !== location.nodeId) return "location"; if ((location.resources.get(contract.goodsId) ?? 0) < contract.quantity) return "goods"; if (this.#economySeed === null) return "capacity"; const cargo = new Map(party.cargo); setQuantity(cargo, contract.goodsId, (cargo.get(contract.goodsId) ?? 0) + contract.quantity); if (calculateCargoUsedBulk(cargo, this.#economySeed.goodsCatalog) > calculatePartyCargoCapacity(party.composition, this.#economySeed.partyCargoConfig)) return "capacity"; setQuantity(location.resources, contract.goodsId, (location.resources.get(contract.goodsId) ?? 0) - contract.quantity); setQuantity(party.cargo, contract.goodsId, (party.cargo.get(contract.goodsId) ?? 0) + contract.quantity); return "ok"; },
+      deliverContract: (contract) => { const party = contract.contractorPartyId === null ? undefined : this.#parties.get(contract.contractorPartyId), location = this.#locations.get(contract.deliveryLocationId); if (party === undefined || location === undefined || party.location.status !== "idle" || party.location.nodeId !== location.nodeId) return "location"; if ((party.cargo.get(contract.goodsId) ?? 0) < contract.quantity) return "goods"; if (this.#economySeed === null) return "capacity"; const cargo = new Map(party.cargo); setQuantity(cargo, contract.goodsId, (cargo.get(contract.goodsId) ?? 0) - contract.quantity); setQuantity(cargo, "coin", (cargo.get("coin") ?? 0) + contract.paymentEscrowCoin + contract.collateralEscrowCoin); if (calculateCargoUsedBulk(cargo, this.#economySeed.goodsCatalog) > calculatePartyCargoCapacity(party.composition, this.#economySeed.partyCargoConfig)) return "capacity"; setQuantity(party.cargo, contract.goodsId, (party.cargo.get(contract.goodsId) ?? 0) - contract.quantity); setQuantity(location.resources, contract.goodsId, (location.resources.get(contract.goodsId) ?? 0) + contract.quantity); setQuantity(party.cargo, "coin", (party.cargo.get("coin") ?? 0) + contract.paymentEscrowCoin + contract.collateralEscrowCoin); return "ok"; },
+      abandonContract: (contract) => { const issuer = this.#locations.get(contract.issuerLocationId); if (issuer !== undefined) setQuantity(issuer.resources, "coin", (issuer.resources.get("coin") ?? 0) + contract.paymentEscrowCoin + contract.collateralEscrowCoin); },
+      applyEncounter: (plan) => this.#applyExpeditionEncounter(plan),
+    };
+  }
+
+  #applyExpeditionEncounter(plan: EncounterMutationPlan): boolean {
+    const attacker = this.#parties.get(plan.attackerPartyId), defender = this.#parties.get(plan.defenderPartyId); if (attacker === undefined || defender === undefined || this.#economySeed === null) return false;
+    const transfers = { ...plan.cargo, ...(plan.coin > 0 ? { coin: plan.coin } : {}) }; for (const [goodsId, amount] of Object.entries(transfers)) if (!Number.isSafeInteger(amount) || amount < 0 || (defender.cargo.get(goodsId) ?? 0) < amount) return false;
+    const incoming = new Map(attacker.cargo); for (const [goodsId, amount] of Object.entries(transfers)) setQuantity(incoming, goodsId, (incoming.get(goodsId) ?? 0) + amount); if (calculateCargoUsedBulk(incoming, this.#economySeed.goodsCatalog) > calculatePartyCargoCapacity(attacker.composition, this.#economySeed.partyCargoConfig)) return false;
+    const defenderLoss = plan.defenderCasualtyCharacterIds.length, attackerLoss = plan.attackerCasualtyCharacterIds.length; if (defenderLoss > defender.composition.footCount || attackerLoss > attacker.composition.footCount) return false;
+    for (const [goodsId, amount] of Object.entries(transfers)) { setQuantity(defender.cargo, goodsId, (defender.cargo.get(goodsId) ?? 0) - amount); setQuantity(attacker.cargo, goodsId, (attacker.cargo.get(goodsId) ?? 0) + amount); }
+    defender.composition = applyCharacterCasualties(defender.composition, defenderLoss); attacker.composition = applyCharacterCasualties(attacker.composition, attackerLoss); if (plan.abandonWagon && defender.composition.wagonCount > 0) defender.composition = { ...defender.composition, wagonCount: defender.composition.wagonCount - 1 }; if (defender.location.status === "traveling") defender.location.progressKm = Math.max(0, defender.location.progressKm - defender.location.speedKmPerDay * plan.retreatDays); return true;
+  }
+
   #startSpatialTravel(command: SpatialTravelCommand): SpatialCommandResult {
     const replay = this.#continuousSpace.replay(command); if (replay !== null) return replay;
     const party = this.#parties.get(command.partyId); if (party === undefined) return this.#continuousSpace.record(command, spatialRejected("PARTY_NOT_FOUND", `Party ${command.partyId} does not exist.`));
@@ -1070,8 +1178,8 @@ export class WorldSimulation {
     const item = navigationItem(this.navigationKnowledgeGraph(party.id, "party"), command.areaKnowledgeId);
     if (item === null || (item.uncertainty === null && item.estimatedPosition === null)) return this.#continuousSpace.record(command, spatialRejected("KNOWLEDGE_UNKNOWN", "Search area is not present in private navigation knowledge."));
     if (!Number.isFinite(command.searchRadiusKm) || command.searchRadiusKm <= 0 || command.searchRadiusKm > 30 || !Number.isSafeInteger(command.observationSkillPermille) || command.observationSkillPermille < 0 || command.observationSkillPermille > 1000) return this.#continuousSpace.record(command, spatialRejected("INVALID_COMMAND", "Search radius or observation skill is invalid."));
-    const center = item.uncertainty?.center ?? item.estimatedPosition!, config = this.#continuousSpace.config(), searchPath = deterministicSearchPath(center, Math.min(command.searchRadiusKm, item.uncertainty?.radiusKm ?? command.searchRadiusKm) / config.coordinateKmScale, config.maxSearchSteps), path = [[...party.location.position] as Vec2, ...searchPath], distanceKm = polylineDistance(path, config.coordinateKmScale), speed = this.#spatialSpeed(party, terrainAt(this.#graph, center).map((area) => area.kind), "offroad");
-    const plan: SpatialSearchPlan = { commandId: command.commandId, eventId: `spatial:${command.commandId}:search`, partyId: party.id, center: [...center], radiusKm: command.searchRadiusKm, path, distanceKm, durationDays: distanceKm / speed, observationSkillPermille: command.observationSkillPermille, knowledgeEntryId: item.provenanceEntryId };
+    const center = item.uncertainty?.center ?? item.estimatedPosition!, config = this.#continuousSpace.config(), searchPath = deterministicSearchPath(center, Math.min(command.searchRadiusKm, item.uncertainty?.radiusKm ?? command.searchRadiusKm) / config.coordinateKmScale, config.maxSearchSteps), path = [[...party.location.position] as Vec2, ...searchPath], distanceKm = polylineDistance(path, config.coordinateKmScale), speed = this.#spatialSpeed(party, terrainAt(this.#graph, center).map((area) => area.kind), "offroad"), observationSkill = this.#caravanExpedition === null ? command.observationSkillPermille : Math.min(command.observationSkillPermille, this.#caravanExpedition.visibilitySkill(party.id));
+    const plan: SpatialSearchPlan = { commandId: command.commandId, eventId: `spatial:${command.commandId}:search`, partyId: party.id, center: [...center], radiusKm: command.searchRadiusKm, path, distanceKm, durationDays: distanceKm / speed, observationSkillPermille: observationSkill, knowledgeEntryId: item.provenanceEntryId };
     const intent: ScheduledEventIntent = { eventId: plan.eventId, kind: SPATIAL_SEARCH_DUE, dueElapsedDays: this.#clock.elapsedDays + plan.durationDays, targetComponent: "continuous_space", targetEntityId: party.id, payload: { plan: plan as unknown as SerializableValue } };
     if (this.#simulationFoundation === null) return this.#continuousSpace.record(command, spatialRejected("SCHEDULING_FAILED", "Spatial search requires the canonical Foundation dispatcher."));
     try { this.#simulationFoundation.scheduleCommandIntent(intent); } catch (error) { return this.#continuousSpace.record(command, spatialRejected("SCHEDULING_FAILED", error instanceof Error ? error.message : String(error))); }
@@ -1085,7 +1193,7 @@ export class WorldSimulation {
     if (!this.#canCommandNavigation(command.issuerActorId, party)) return this.#continuousSpace.record(command, spatialRejected("NOT_AUTHORIZED", "Issuer cannot command observation."));
     if (!Number.isSafeInteger(command.observationSkillPermille) || command.observationSkillPermille < 0 || command.observationSkillPermille > 1000) return this.#continuousSpace.record(command, spatialRejected("INVALID_COMMAND", "Observation skill is invalid."));
     const position = createPartySnapshot(this.#graph, party, this.#economySeed).position;
-    this.#adjudicateSpatialObservation(party, position, [position], command.observationSkillPermille, command.commandId);
+    this.#adjudicateSpatialObservation(party, position, [position], this.#caravanExpedition === null ? command.observationSkillPermille : Math.min(command.observationSkillPermille, this.#caravanExpedition.visibilitySkill(party.id)), command.commandId);
     return this.#continuousSpace.record(command, { accepted: true, idempotentReplay: false, scheduledEventId: null });
   }
 
@@ -1150,7 +1258,8 @@ export class WorldSimulation {
   #canCommandNavigation(issuerActorId: string, party: PartyRuntimeState): boolean { return issuerActorId === party.managerActorId || this.#simulationFoundation?.authorize(issuerActorId, party.id, "navigation:command") === true; }
   #spatialSpeed(party: PartyRuntimeState, terrainKinds: readonly string[], mode: "road" | "track" | "offroad"): number {
     const capacity = this.#economySeed === null ? 1 : calculatePartyCargoCapacity(party.composition, this.#economySeed.partyCargoConfig), used = this.#economySeed === null ? 0 : calculateCargoUsedBulk(party.cargo, this.#economySeed.goodsCatalog), burden = Math.round(used / Math.max(1, capacity) * 1000), winter = (Math.floor(this.#clock.elapsedDays) % 360) < 90;
-    return spatialSpeedKmPerDay(calculatePartyTravelSpeed(party.composition, this.#travelConfig), this.#continuousSpace.config(), terrainKinds, burden, 1000, winter, 1000, mode);
+    const characterModifier = this.#caravanExpedition?.travelModifierPermille(party.id) ?? 1000;
+    return spatialSpeedKmPerDay(calculatePartyTravelSpeed(party.composition, this.#travelConfig) * characterModifier / 1000, this.#continuousSpace.config(), terrainKinds, burden, 1000, winter, 1000, mode);
   }
 
   #seedNavigationKnowledge(): void {
@@ -1199,7 +1308,7 @@ export class WorldSimulation {
       originNodeId: command.from_node_id,
       destinationNodeId: command.to_node_id,
       distanceKm: edge.distanceKm,
-      speedKmPerDay: calculatePartyTravelSpeed(party.composition, this.#travelConfig),
+      speedKmPerDay: calculatePartyTravelSpeed(party.composition, this.#travelConfig) * (this.#caravanExpedition?.travelModifierPermille(party.id) ?? 1000) / 1000,
       progressKm: 0,
     };
     this.#observeRoute(party, edge, command.from_node_id, command.to_node_id);
@@ -1358,11 +1467,15 @@ export class WorldSimulation {
     const days = currentElapsedDays - previousElapsedDays;
     for (const party of this.#parties.values()) {
       if (party.location.status !== "traveling") continue;
+      if (this.#caravanExpedition?.isPaused(party.id) === true) continue;
       const travel = party.location;
+      const travelDays = Math.min(days, (travel.distanceKm - travel.progressKm) / travel.speedKmPerDay);
+      if (this.#caravanExpedition !== null && travelDays > 0) { const due = this.#caravanExpedition.accrueTravelSupplies(party.id, travelDays, party.composition.horseCount + party.composition.packAnimalCount > 0), foodAvailable = party.cargo.get("food") ?? 0, fodderAvailable = party.cargo.get("fodder") ?? 0, foodTaken = Math.min(foodAvailable, due.food), fodderTaken = Math.min(fodderAvailable, due.fodder); setQuantity(party.cargo, "food", foodAvailable - foodTaken); setQuantity(party.cargo, "fodder", fodderAvailable - fodderTaken); if (due.food + due.fodder > 0) this.#caravanExpedition.applySupplyCondition(party.id, foodTaken === due.food, fodderTaken === due.fodder); }
       travel.progressKm = Math.min(
         travel.distanceKm,
         travel.progressKm + travel.speedKmPerDay * days,
       );
+      this.#caravanExpedition?.addTravelFatigue(party.id, travel.speedKmPerDay * days);
       if ("spatial" in travel) continue;
       if (travel.progressKm + 1e-9 >= travel.distanceKm) {
         travel.progressKm = travel.distanceKm;
@@ -1409,6 +1522,7 @@ export class WorldSimulation {
     this.#runtimeEvents = [];
     this.#worldMemory = new WorldMemory(this.#initialWorldMemorySnapshot);
     this.#continuousSpace = new ContinuousSpace(this.#initialContinuousSpaceSnapshot);
+    this.#caravanExpedition = this.#initialCaravanExpeditionSnapshot === null ? null : new CaravanExpeditions(this.#initialCaravanExpeditionSnapshot);
     this.#shortageObservationCursors.clear();
   }
 
@@ -1423,6 +1537,7 @@ export class WorldSimulation {
       worldMemory: this.#worldMemory.snapshot(),
       shortageObservationCursors: Object.fromEntries(this.#shortageObservationCursors),
       continuousSpace: this.#continuousSpace.snapshot(),
+      caravanExpedition: this.#caravanExpedition?.snapshot() ?? null,
     };
   }
 
@@ -1865,6 +1980,10 @@ function applyCasualties(composition: PartyComposition, casualties: number): Par
   const footLoss = Math.min(composition.footCount, remaining); remaining -= footLoss;
   const horseLoss = Math.min(composition.horseCount, remaining);
   return { ...composition, guardCount: composition.guardCount - guardLoss, footCount: composition.footCount - footLoss, horseCount: composition.horseCount - horseLoss };
+}
+
+function applyCharacterCasualties(composition: PartyComposition, casualties: number): PartyComposition {
+  return { ...composition, footCount: Math.max(0, composition.footCount - casualties), guardCount: Math.max(0, composition.guardCount - Math.min(composition.guardCount, casualties)) };
 }
 
 function securityRejected(errorCode: Extract<SecurityCommandResult, { accepted: false }>["errorCode"], message: string): SecurityCommandResult {

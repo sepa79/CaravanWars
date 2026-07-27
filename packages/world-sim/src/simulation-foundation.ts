@@ -171,6 +171,7 @@ export class WorldSimulationFoundation {
   #routeSecurity: RouteSecurity | null;
   #encounterPort: EncounterPhysicalPort | null = null;
   #spatialEventHandler: ((intent: ScheduledEventIntent, elapsedDays: number) => void) | null = null;
+  #expeditionEventHandler: ((intent: ScheduledEventIntent, elapsedDays: number) => void) | null = null;
   readonly #maxEventsPerAdvance: number;
   #events: SimulationFoundationEvent[];
   #resetSnapshot: SimulationFoundationSnapshot | null = null;
@@ -253,9 +254,9 @@ export class WorldSimulationFoundation {
     return intents;
   }
 
-  executeAllocateLabour(command: AllocateLabourCommand): PopulationCommandResult {
+  executeAllocateLabour(command: AllocateLabourCommand, externallyReservedLabour = 0): PopulationCommandResult {
     const population = this.#requirePopulation();
-    return population.allocate(command, this.#clock.elapsedDays, this.authorize(command.issuerActorId, command.settlementId, "population:allocate"));
+    return population.allocate(command, this.#clock.elapsedDays, this.authorize(command.issuerActorId, command.settlementId, "population:allocate"), externallyReservedLabour);
   }
 
   executeStartMigration(command: StartMigrationCommand): PopulationCommandResult {
@@ -276,9 +277,11 @@ export class WorldSimulationFoundation {
 
   setEncounterPhysicalPort(port: EncounterPhysicalPort): void { this.#encounterPort = port; }
   setSpatialEventHandler(handler: (intent: ScheduledEventIntent, elapsedDays: number) => void): void { this.#spatialEventHandler = handler; }
+  setExpeditionEventHandler(handler: (intent: ScheduledEventIntent, elapsedDays: number) => void): void { this.#expeditionEventHandler = handler; }
   scheduleCommandIntent(intent: ScheduledEventIntent): void { this.#clock.schedule(intent); }
   routeSecuritySnapshot(): RouteSecuritySnapshot | null { return this.#routeSecurity?.snapshot() ?? null; }
   routeSecurityRoute(routeId: string) { return this.#routeSecurity?.route(routeId) ?? null; }
+  recordExpeditionEncounter(routeId: string, outcome: string): void { this.#routeSecurity?.recordExpeditionDecision(routeId, outcome); }
   executeCreateSecurityTask(command: CreateSecurityTaskCommand): SecurityCommandResult {
     const labour = this.#population?.allocationFor(command.executorPartyId) ?? 0;
     return this.#requireRouteSecurity().createTask(command, this.#clock.elapsedDays, this.authorize(command.issuerActorId, command.executorPartyId, "security:task"), labour);
@@ -520,6 +523,11 @@ export class WorldSimulationFoundation {
   }
 
   #dispatch(intent: ScheduledEventIntent): readonly ScheduledEventIntent[] {
+    if (intent.targetComponent === "caravan_expedition") {
+      if (this.#expeditionEventHandler === null) throw new SimulationFoundationValidationError("Expedition event handler is unavailable.");
+      this.#expeditionEventHandler(intent, this.#clock.elapsedDays);
+      return [];
+    }
     if (intent.kind === FACILITY_PRODUCTION_TICK_DUE
       && intent.targetComponent === FACILITIES_COMPONENT) {
       const result = this.#facilities.handleProductionTick(intent, this.#clock.elapsedDays);

@@ -25,6 +25,11 @@ export {
   loadPartyTravelConfigFile,
 } from "./world-sim.js";
 
+export { CARAVAN_EXPEDITION_COMPONENT, CONTRACT_DEADLINE_DUE, EXPEDITION_ENCOUNTER_DUE, CaravanExpeditions } from "./caravan-expedition.js";
+export type { AbandonCaravanContractCommand, AcceptCaravanContractCommand, OfferCaravanContractCommand, CaravanContractState, CaravanContractStatus, CaravanExpeditionSnapshot, CharacterCondition, CharacterRole, CharacterState, DeliverCaravanContractCommand, EncounterDecision, ExpeditionAnimalState, ExpeditionCommandResult, ExpeditionEncounterState, ExpeditionLogEntry, ExpeditionMetrics, ExpeditionVehicleState, PickupCaravanContractCommand, PlanExpeditionEncounterCommand, ResolveExpeditionEncounterCommand, RestExpeditionPartyCommand } from "./caravan-expedition.js";
+export { ExpeditionAIController, createPlayableExpeditionFixture } from "./playable-expedition.js";
+export type { ExpeditionAIDecision, PlayableExpeditionFixture } from "./playable-expedition.js";
+
 export type {
   CommandResult,
   MovePartyCommand,

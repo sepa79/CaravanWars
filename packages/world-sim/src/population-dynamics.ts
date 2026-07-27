@@ -220,13 +220,14 @@ export class PopulationDynamics {
     return { eventType: "PopulationMigrationArrived", scheduledEventId: intent.eventId, elapsedDays, migrationId: migration.migrationId, originSettlementId: migration.originSettlementId, destinationSettlementId: migration.destinationSettlementId, people: migration.people, reason: "arrived" };
   }
 
-  allocate(command: AllocateLabourCommand, elapsedDays: number, authorized: boolean): PopulationCommandResult {
+  allocate(command: AllocateLabourCommand, elapsedDays: number, authorized: boolean, externallyReservedLabour = 0): PopulationCommandResult {
     const settlement = this.#requireSettlement(command.settlementId), replay = replayCommand(settlement, command);
     if (replay !== null) return replay;
     if (!authorized) return recordCommand(settlement, command, failure("NOT_AUTHORIZED", "Actor is not authorized to allocate settlement labour."));
     try { validateAllocations(command.allocations); } catch (error) { return recordCommand(settlement, command, failure("INVALID_COMMAND", error instanceof Error ? error.message : String(error))); }
     const available = calculateLabour(settlement, calendarAt(elapsedDays).season);
-    if (command.allocations.reduce((sum, item) => sum + item.workers, 0) > available) return recordCommand(settlement, command, failure("INSUFFICIENT_LABOUR", `Requested labour exceeds available ${available}.`));
+    if (!Number.isSafeInteger(externallyReservedLabour) || externallyReservedLabour < 0) return recordCommand(settlement, command, failure("INVALID_COMMAND", "External labour reservation is invalid."));
+    if (command.allocations.reduce((sum, item) => sum + item.workers, 0) + externallyReservedLabour > available) return recordCommand(settlement, command, failure("INSUFFICIENT_LABOUR", `Requested labour plus ${externallyReservedLabour} Party labour exceeds available ${available}.`));
     settlement.allocations = Array.from(structuredClone(command.allocations));
     return recordCommand(settlement, command, { accepted: true, idempotentReplay: false, scheduledEventId: null });
   }

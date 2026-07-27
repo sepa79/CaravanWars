@@ -114,3 +114,36 @@ test("regional economy diagnostics require explicit truth mode and advance auton
   await expect(page.locator("#economyLabour")).toContainText("SECURITY TRUTH");
   await expect(page.locator("#spatialDiagnostics")).toContainText("off-road");
 });
+
+test("playable expedition completes contract through physical cargo, encounter decision and settlement", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Pokaż prywatną mapę wyprawy" }).click();
+  await expect(page.locator("#partyId")).toHaveText("player_expedition");
+  await expect(page.locator("body")).not.toContainText("great_forest_bandit_base");
+  await expect(page.locator("#expeditionContract")).toContainText("8 food");
+  await page.locator("#acceptContract").click();
+  await expect(page.locator("#expeditionStatus")).toContainText("accepted");
+  await page.locator("#pickupContract").click();
+  await expect(page.locator("#expeditionCargo")).toContainText("food 12");
+  await page.locator("#departExpedition").click();
+  await page.locator("#advanceExpedition").click();
+  await expect(page.locator("#encounterPanel")).toBeVisible();
+  await page.locator('[data-decision="negotiate"]').click();
+  await expect(page.locator("#expeditionLog")).toContainText("negotiated_passage");
+  const advance = await page.request.post("/api/expedition/advance", { data: { days: 5 } });
+  expect(advance.ok()).toBe(true);
+  await page.reload();
+  await expect(page.locator("#deliverContract")).toBeEnabled();
+  await page.locator("#deliverContract").click();
+  await expect(page.locator("#expeditionStatus")).toContainText("completed");
+  await expect(page.locator("#expeditionLog")).toContainText("received 25 coin");
+});
+
+test("playable expedition failure path conserves loss and rejects incomplete delivery", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#acceptContract").click(); await page.locator("#pickupContract").click(); await page.locator("#departExpedition").click(); await page.locator("#advanceExpedition").click();
+  await page.locator('[data-decision="surrender_cargo"]').click();
+  await expect(page.locator("#expeditionCargo")).toContainText("food 6");
+  await page.request.post("/api/expedition/advance", { data: { days: 5 } }); await page.reload(); await page.locator("#deliverContract").click();
+  await expect(page.locator("#expeditionStatus")).toContainText("INSUFFICIENT_GOODS");
+});

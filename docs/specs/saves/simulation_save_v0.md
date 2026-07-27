@@ -120,6 +120,13 @@ Foundation domain snapshot.
 
 No backward compatibility is required during this reboot. Future schema changes must increment `schema_version` and document migration behavior explicitly.
 
+Playable Expedition v1 adds one `caravanExpedition` block containing
+characters and their physical equipment, animals, vehicles, contracts and
+transitions, encounters, private log, metrics, command/event fingerprints and
+partition-independent travel-supply accrual. Party cargo and coordinates are
+not duplicated there. JSON load restores paused encounters, escrow and
+mid-travel provision accrual exactly.
+
 ## Test coverage
 
 The active TypeScript Trade Hub integration round-trips its foundation snapshot
