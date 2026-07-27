@@ -83,7 +83,7 @@ test("Facility goods cross two independent TradeHubs only through physical party
     from_node_id: "wroclaw",
     to_node_id: "opole",
   }));
-  world.advanceDays(4);
+  world.advanceDays(6);
   assert.equal(world.partySnapshot("merchant").currentNodeId, "opole");
   assertAccepted(submit(world, "trade_hub_transfer_party_goods", {
     commandId: "merchant-deposit-b",
@@ -255,7 +255,7 @@ function createPhysicalScenario(options: {
       ],
       delegations: [],
     }),
-    maxEventsPerAdvance: 100,
+    maxEventsPerAdvance: 1000,
   });
   foundation.scheduleInitialFacilityTick("farm");
   if (options.preScheduleTradeEventCollision === true) {

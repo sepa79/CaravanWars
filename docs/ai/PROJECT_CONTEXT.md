@@ -60,6 +60,9 @@ TypeScript with a browser-first client and a thin future Electron shell.
   command envelope, never a second authoritative economy.
 - Route security is local region-edge state. Bandits, patrols and escorts are
   physical Parties; private, aging observations drive their controllers.
+- Road Party motion is canonical WorldClock work: commands set generation-
+  scoped targets, hourly ticks move physical distance and re-route from current
+  private knowledge; no continuous advance hook or stored itinerary exists.
 
 ## Active paths
 

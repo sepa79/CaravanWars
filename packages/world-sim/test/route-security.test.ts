@@ -69,6 +69,7 @@ test("canonical WorldSimulation conserves physical cargo, applies casualties, an
   const world = new WorldSimulation(graph, travel, [seed("bandits", "bandit_ai", 8, {}), seed("merchant", "merchant_ai", 0, { food: 8 })], economy, clock, foundation);
   assert.equal(world.submitCommand({ commandType: "move_party", command: { party_id: "bandits", from_node_id: "wroclaw", to_node_id: "opole" } }).result.accepted, true);
   assert.equal(world.submitCommand({ commandType: "move_party", command: { party_id: "merchant", from_node_id: "wroclaw", to_node_id: "opole" } }).result.accepted, true);
+  world.advanceDays(travel.movementTickDays);
   assert.equal(world.submitCommand({ commandType: "plan_route_encounter", command: { commandId: "world-plan", issuerActorId: "bandit_ai", encounterId: "world-raid", routeId: "wroclaw_opole", attackerPartyId: "bandits", defenderPartyId: "merchant", escortPartyIds: [], delayDays: 0.1 } }).result.accepted, true);
   const saved = JSON.parse(JSON.stringify(world.snapshot()));
   const resumed = WorldSimulation.fromSnapshot(graph, travel, economy, saved);

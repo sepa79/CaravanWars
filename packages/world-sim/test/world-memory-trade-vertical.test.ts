@@ -45,7 +45,7 @@ test("memory-only merchant observes, buys, transports, and sells across independ
     commandType: "move_party",
     command: { party_id: "merchant", from_node_id: "opole", to_node_id: "wroclaw" },
   }));
-  world.advanceDays(4);
+  world.advanceDays(6);
   observe(world, "observe-a");
 
   let decision = decide(ai, world, policy);
@@ -62,7 +62,7 @@ test("memory-only merchant observes, buys, transports, and sells across independ
   decision = decide(ai, world, policy);
   assert.equal(decision.action, "travel");
   accepted(submitDecision(world, decision));
-  world.advanceDays(4);
+  world.advanceDays(6);
   assert.equal(world.partySnapshot("merchant").currentNodeId, "opole");
 
   decision = decide(ai, world, policy);
@@ -116,6 +116,7 @@ test("remote observation and foreign owner writes are rejected without leaking k
     commandType: "move_party",
     command: { party_id: "merchant", from_node_id: "opole", to_node_id: "wroclaw" },
   }));
+  world.advanceDays(loadPartyTravelConfigFile(resolve("data/simulation/party_travel.json")).movementTickDays);
   const traveling = world.observeLocalTradeContext({
     observationId: "traveling", observerPartyId: "merchant", ownerId: "merchant",
     ownerKind: "party", accountEntityId: "merchant", staleAfterDays: 2,
@@ -162,7 +163,7 @@ test("Governor delegates a remembered supply task and party delivers physical ca
   accepted(submit(world, { commandType: "trade_hub_transfer_facility_goods", command: { commandId: "seed-deposit", issuerActorId: "supplier_governor", accountEntityId: "supplier", hubId: "hub-a", direction: "deposit", goodsId: "grain", amount: 2, facilityId: "farm", facilityHostId: "farm-host" } }));
   accepted(submit(world, order("seed-sell", "supplier_governor", "supplier", "hub-a", "sell", 2, 1)));
   accepted(submit(world, { commandType: "move_party", command: { party_id: "merchant", from_node_id: "opole", to_node_id: "wroclaw" } }));
-  world.advanceDays(4);
+  world.advanceDays(6);
   const assignment = { commandId: "assign-1", issuerActorId: "supplier_governor", taskId: "task-1", executorPartyId: "merchant", facilityId: "farm", facilityHostId: "farm-host", destinationNodeId: "wroclaw", goodsId: "grain", amount: 2 };
   const unauthorized = submit(world, { commandType: "assign_supply_task", command: { ...assignment, commandId: "assign-foreign", issuerActorId: "buyer_governor" } });
   assert.equal(unauthorized.accepted, false);
@@ -272,7 +273,7 @@ function createScenario(): WorldSimulation {
       ],
       delegations: [{ delegationId: "merchant-supply", delegatorActorId: "supplier_governor", delegateActorId: "merchant_actor", authorityScopes: ["facility:supply", "trade:transfer", "trade:order", "trade:cancel"], validFromElapsedDays: 0, validUntilElapsedDays: null }],
     }),
-    maxEventsPerAdvance: 100,
+    maxEventsPerAdvance: 1000,
   });
   foundation.scheduleInitialFacilityTick("farm");
   const goodsCatalog = syntheticCatalog();

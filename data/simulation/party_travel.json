@@ -1,4 +1,5 @@
 {
+  "movement_tick_hours": 1,
   "base_speed_km_per_day": 32.0,
   "horse_speed_bonus_km_per_day": 0.5,
   "wagon_speed_penalty_km_per_day": 2.0,

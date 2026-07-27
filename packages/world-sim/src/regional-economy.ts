@@ -262,6 +262,8 @@ export class AutonomousRegionalEconomyRunner {
     this.#executeSupplyTasks();
     this.#runIndependentMerchants();
     this.#runRouteSecurity();
+    this.#world.advanceDays(this.#world.movementTickDays());
+    this.#runRouteSecurity();
     this.#world.advanceDays(0.001);
   }
 

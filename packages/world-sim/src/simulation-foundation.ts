@@ -171,6 +171,7 @@ export class WorldSimulationFoundation {
   #routeSecurity: RouteSecurity | null;
   #encounterPort: EncounterPhysicalPort | null = null;
   #spatialEventHandler: ((intent: ScheduledEventIntent, elapsedDays: number) => void) | null = null;
+  #movementEventHandler: ((intent: ScheduledEventIntent, elapsedDays: number) => readonly ScheduledEventIntent[]) | null = null;
   #expeditionEventHandler: ((intent: ScheduledEventIntent, elapsedDays: number) => void) | null = null;
   readonly #maxEventsPerAdvance: number;
   #events: SimulationFoundationEvent[];
@@ -277,6 +278,7 @@ export class WorldSimulationFoundation {
 
   setEncounterPhysicalPort(port: EncounterPhysicalPort): void { this.#encounterPort = port; }
   setSpatialEventHandler(handler: (intent: ScheduledEventIntent, elapsedDays: number) => void): void { this.#spatialEventHandler = handler; }
+  setMovementEventHandler(handler: (intent: ScheduledEventIntent, elapsedDays: number) => readonly ScheduledEventIntent[]): void { this.#movementEventHandler = handler; }
   setExpeditionEventHandler(handler: (intent: ScheduledEventIntent, elapsedDays: number) => void): void { this.#expeditionEventHandler = handler; }
   scheduleCommandIntent(intent: ScheduledEventIntent): void { this.#clock.schedule(intent); }
   routeSecuritySnapshot(): RouteSecuritySnapshot | null { return this.#routeSecurity?.snapshot() ?? null; }
@@ -523,6 +525,10 @@ export class WorldSimulationFoundation {
   }
 
   #dispatch(intent: ScheduledEventIntent): readonly ScheduledEventIntent[] {
+    if (intent.targetComponent === "party_movement") {
+      if (this.#movementEventHandler === null) throw new SimulationFoundationValidationError("Party movement event handler is unavailable.");
+      return this.#movementEventHandler(intent, this.#clock.elapsedDays);
+    }
     if (intent.targetComponent === "caravan_expedition") {
       if (this.#expeditionEventHandler === null) throw new SimulationFoundationValidationError("Expedition event handler is unavailable.");
       this.#expeditionEventHandler(intent, this.#clock.elapsedDays);

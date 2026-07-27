@@ -29,6 +29,13 @@ test("rejects invalid clock advances instead of silently ignoring them", () => {
   assert.equal(clock.snapshot().elapsedDays, 0);
 });
 
+test("integer drift canonicalization never moves an already-ahead clock backwards", () => {
+  const clock = new WorldClock(1 + 5e-10);
+  const before = clock.elapsedDays;
+  clock.advanceDays(1e-10);
+  assert.equal(clock.elapsedDays > before, true);
+});
+
 test("dispatches by due time and stable scheduling sequence without kind priorities", () => {
   const clock = new WorldClock();
   const observed: string[] = [];

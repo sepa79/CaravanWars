@@ -24,6 +24,9 @@ boundary.
   WorldSimulation remains the only owner of physical Parties, cargo and losses.
 - The active simulation foundation includes the serializable scheduled-event
   queue, generic scoped governance, and deterministic atomic Facility cycles.
+- Road movement is a self-scheduling WorldClock event chain: `move_party`
+  replaces a target/generation, while hourly ticks move exact physical distance
+  and choose each next edge from current private navigation knowledge.
 - A Trade Hub is an instance connected to specific Facilities; it is not a
   shared virtual inventory across locations.
 - Trade Hub v0 provides location-bound deposits, escrowed limit orders,

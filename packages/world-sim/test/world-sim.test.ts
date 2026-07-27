@@ -39,7 +39,7 @@ const PLAYER_PARTY: PartySeed = {
   cargo: {},
 };
 
-test("valid adjacent move follows authored geometry and arrives after deterministic ticks", () => {
+test("move command schedules a canonical tick without moving and every valid tick schedules one successor", () => {
   const simulation = createSimulation();
   assert.equal(simulation.partyMapSnapshot("player_party").region.edges.length, 1);
   const result = submitMove(simulation, {
@@ -49,13 +49,22 @@ test("valid adjacent move follows authored geometry and arrives after determinis
   });
 
   assert.deepEqual(result, { accepted: true });
-  simulation.advanceDays(25 / 31);
-  const travelingParty = simulation.snapshot().parties[0];
-  assert.equal(travelingParty?.status, "traveling");
-  assert.deepEqual(travelingParty?.position, [52, 34]);
-  assert.equal(travelingParty?.travel?.progressKm, 25);
+  let travelingParty = simulation.snapshot().parties[0]!;
+  assert.equal(travelingParty.status, "idle");
+  assert.deepEqual(travelingParty.position, [48, 28]);
+  assert.equal(travelingParty.movementOrder?.targetNodeId, "opole");
+  assert.equal(simulation.snapshot().clock.scheduledEvents.filter((item) => item.status === "pending").length, 1);
 
-  simulation.advanceDays(75 / 31);
+  simulation.advanceDays(1 / 24);
+  travelingParty = simulation.snapshot().parties[0]!;
+  assert.equal(travelingParty.status, "traveling");
+  assert.ok(Math.abs(travelingParty.travel!.progressKm - travelingParty.travel!.speedKmPerDay * (1 / 24)) < 1e-9);
+  assert.equal(simulation.snapshot().clock.scheduledEvents.filter((item) => item.status === "pending").length, 1);
+
+  simulation.advanceDays(19 / 24);
+  assert.equal(travelingParty?.status, "traveling");
+
+  simulation.advanceDays(6);
   const arrivedParty = simulation.snapshot().parties[0];
   assert.equal(arrivedParty?.status, "idle");
   assert.equal(arrivedParty?.currentNodeId, "opole");
@@ -68,7 +77,7 @@ test("valid adjacent move follows authored geometry and arrives after determinis
 test("arrival signposts reveal only public routes adjacent to the destination", () => {
   const simulation = createSimulation();
   assert.equal(submitMove(simulation, { party_id: "player_party", from_node_id: "wroclaw", to_node_id: "opole" }).accepted, true);
-  simulation.advanceDays(100 / 31);
+  simulation.advanceDays(6);
   const map = simulation.partyMapSnapshot("player_party");
   const expected = loadRegionGraphFile(SILESIA_PATH).edges.filter((edge) => edge.visibility === "public" && (edge.originNodeId === "opole" || edge.targetNodeId === "opole")).map((edge) => edge.id).sort();
   const learned = map.region.edges.filter((edge) => edge.originNodeId === "opole" || edge.targetNodeId === "opole").map((edge) => edge.id).sort();
@@ -84,15 +93,15 @@ test("reverse travel follows the same authored route in reverse", () => {
     from_node_id: "wroclaw",
     to_node_id: "opole",
   }).accepted, true);
-  simulation.advanceDays(100 / 31);
+  simulation.advanceDays(4);
   assert.equal(submitMove(simulation, {
     party_id: "player_party",
     from_node_id: "opole",
     to_node_id: "wroclaw",
   }).accepted, true);
 
-  simulation.advanceDays(18 / 31);
-  assert.deepEqual(simulation.snapshot().parties[0]?.position, [63, 41]);
+  simulation.advanceDays(1 / 24);
+  assert.equal(simulation.snapshot().parties[0]?.travel?.destinationNodeId, "wroclaw");
 });
 
 test("rejected movement commands do not mutate party state", () => {
@@ -126,7 +135,7 @@ test("rejected movement commands do not mutate party state", () => {
   }
 });
 
-test("a new road destination reverses travel from the exact current position", () => {
+test("target change after two ticks preserves exact position and affects only the next tick", () => {
   const simulation = createSimulation();
   assert.equal(submitMove(simulation, {
     party_id: "player_party",
@@ -134,7 +143,7 @@ test("a new road destination reverses travel from the exact current position", (
     to_node_id: "opole",
   }).accepted, true);
 
-  simulation.advanceDays(1);
+  simulation.advanceDays(2 / 24);
   const before = simulation.partySnapshot("player_party");
   const result = submitMove(simulation, {
     party_id: "player_party",
@@ -144,22 +153,26 @@ test("a new road destination reverses travel from the exact current position", (
   assert.equal(result.accepted, true);
   const after = simulation.partySnapshot("player_party");
   assert.deepEqual(after.position, before.position);
-  assert.equal(after.travel?.destinationNodeId, "wroclaw");
-  assert.ok(Math.abs(after.travel!.progressKm - (after.travel!.distanceKm - before.travel!.progressKm)) < 1e-9);
+  assert.equal(after.travel?.destinationNodeId, "opole");
+  simulation.advanceDays(1 / 24);
+  const reversed = simulation.partySnapshot("player_party");
+  assert.equal(reversed.travel?.destinationNodeId, "wroclaw");
+  const distanceFromWroclaw = (position: readonly number[]) => Math.hypot(position[0]! - 48, position[1]! - 28);
+  assert.ok(distanceFromWroclaw(reversed.position) < distanceFromWroclaw(before.position));
 });
 
 test("rerouting mid-road returns to the junction and continues along the new known road", () => {
   const graph = loadRegionGraphFile(SILESIA_PATH), config = loadPartyTravelConfigFile(PARTY_TRAVEL_PATH);
   const simulation = new WorldSimulation(graph, config, [{ ...PLAYER_PARTY, knownRouteIds: ["wroclaw_opole", "wroclaw_legnica"] }], null);
   assert.equal(submitMove(simulation, { party_id: "player_party", from_node_id: "wroclaw", to_node_id: "opole" }).accepted, true);
-  simulation.advanceDays(0.5);
+  simulation.advanceDays(2 / 24);
   const position = simulation.partySnapshot("player_party").position;
   assert.equal(submitMove(simulation, { party_id: "player_party", from_node_id: "opole", to_node_id: "legnica" }).accepted, true);
   let party = simulation.partySnapshot("player_party");
   assert.deepEqual(party.position, position);
-  assert.equal(party.travel?.destinationNodeId, "wroclaw");
-  assert.deepEqual(party.travel?.plannedNodeIds, ["legnica"]);
-  simulation.advanceDays(party.travel!.progressKm / party.travel!.speedKmPerDay);
+  assert.equal(party.travel?.destinationNodeId, "opole");
+  assert.equal(party.movementOrder?.targetNodeId, "legnica");
+  simulation.advanceDays(3 / 24);
   party = simulation.partySnapshot("player_party");
   assert.equal(party.travel?.originNodeId, "wroclaw");
   assert.equal(party.travel?.destinationNodeId, "legnica");
@@ -212,11 +225,11 @@ test("known-route travel reveals waypoints only as the party physically reaches 
   assert.deepEqual(partyMap.region.landmarks, []);
   assert.deepEqual(simulation.snapshot().runtimeEvents, []);
 
-  simulation.advanceDays(24 / 31);
+  simulation.advanceDays(1);
   partyMap = simulation.partyMapSnapshot("player_party");
   assert.deepEqual(partyMap.region.edges[0]?.routeWaypoints, []);
 
-  simulation.advanceDays(2 / 31);
+  simulation.advanceDays(1);
   partyMap = simulation.partyMapSnapshot("player_party");
   assert.deepEqual(
     partyMap.region.edges[0]?.routeWaypoints.map((waypoint) => waypoint.id),
@@ -230,7 +243,7 @@ test("known-route travel reveals waypoints only as the party physically reaches 
 
   const events = simulation.snapshot().runtimeEvents;
   assert.equal(events.length, 1);
-  assert.ok(Math.abs(events[0]!.elapsedDays - 26 / 31) < 1e-12);
+  assert.ok(events[0]!.elapsedDays > 1 && events[0]!.elapsedDays <= 2);
   assert.deepEqual({ ...events[0], elapsedDays: undefined }, {
     eventType: "worldsim_route_waypoint_observed",
     elapsedDays: undefined,
@@ -354,6 +367,51 @@ test("twenty-four explicit hourly advances cross exactly one economy day", () =>
 
   assert.equal(simulation.snapshot().locations[0]?.resources.food, 36);
   assert.ok(Math.abs(simulation.snapshot().clock.elapsedDays - 1) < 1e-9);
+});
+
+test("one day advance is identical to twenty-four hourly advances, including queue and discoveries", () => {
+  const whole = createSimulation(), hourly = createSimulation();
+  for (const simulation of [whole, hourly]) assert.equal(submitMove(simulation, { party_id: "player_party", from_node_id: "wroclaw", to_node_id: "opole" }).accepted, true);
+  whole.advanceDays(1);
+  for (let hour = 0; hour < 24; hour += 1) hourly.advanceDays(1 / 24);
+  assert.deepEqual(hourly.snapshot(), whole.snapshot());
+});
+
+test("stale generation ticks are harmless after a reroute", () => {
+  const simulation = createSimulation();
+  assert.equal(submitMove(simulation, { party_id: "player_party", from_node_id: "wroclaw", to_node_id: "opole" }).accepted, true);
+  assert.equal(submitMove(simulation, { party_id: "player_party", from_node_id: "wroclaw", to_node_id: "wroclaw" }).accepted, true);
+  simulation.advanceDays(1 / 24);
+  const party = simulation.partySnapshot("player_party"), events = simulation.snapshot().clock.scheduledEvents;
+  assert.equal(party.status, "idle");
+  assert.deepEqual(party.position, [48, 28]);
+  assert.equal(events.filter((item) => item.status === "completed").length, 2);
+  assert.equal(events.filter((item) => item.status === "pending").length, 0);
+});
+
+test("large clock advance crosses multiple nodes without losing or inventing tick time", () => {
+  const graph = loadRegionGraphFile(SILESIA_PATH), config = loadPartyTravelConfigFile(PARTY_TRAVEL_PATH);
+  const simulation = new WorldSimulation(graph, config, [{ ...PLAYER_PARTY, knownRouteIds: ["wroclaw_opole", "opole_raciborz"] }], null);
+  assert.equal(submitMove(simulation, { party_id: "player_party", from_node_id: "wroclaw", to_node_id: "raciborz" }).accepted, true);
+  simulation.advanceDays(10);
+  const party = simulation.partySnapshot("player_party");
+  assert.equal(party.currentNodeId, "raciborz");
+  assert.equal(party.movementOrder, null);
+  assert.equal(simulation.snapshot().clock.scheduledEvents.filter((item) => item.status === "pending").length, 0);
+});
+
+test("save/load mid-tick and after reroute preserves deterministic continuation", () => {
+  const graph = loadRegionGraphFile(SILESIA_PATH), config = loadPartyTravelConfigFile(PARTY_TRAVEL_PATH);
+  const original = new WorldSimulation(graph, config, [{ ...PLAYER_PARTY, knownRouteIds: ["wroclaw_opole", "wroclaw_legnica"] }], null);
+  assert.equal(submitMove(original, { party_id: "player_party", from_node_id: "wroclaw", to_node_id: "opole" }).accepted, true);
+  original.advanceDays(1 / 48);
+  let resumed = WorldSimulation.fromSnapshot(graph, config, null, structuredClone(original.snapshot()));
+  original.advanceDays(2 / 24); resumed.advanceDays(2 / 24);
+  assert.deepEqual(resumed.snapshot(), original.snapshot());
+  assert.equal(submitMove(original, { party_id: "player_party", from_node_id: "opole", to_node_id: "legnica" }).accepted, true);
+  resumed = WorldSimulation.fromSnapshot(graph, config, null, structuredClone(original.snapshot()));
+  original.advanceDays(1); resumed.advanceDays(1);
+  assert.deepEqual(resumed.snapshot(), original.snapshot());
 });
 
 function createSimulation(): WorldSimulation {

@@ -26,7 +26,11 @@ test("gameplay Move targets the expedition world and Reset exists only in Debug"
   await moveOnMap(page, "opole");
   await expect(page.locator("#commandResult")).toContainText("Komenda przyjęta");
   await expect(page.locator("#commandResult")).not.toContainText("PARTY_NOT_FOUND");
+  await expect(page.locator("#partyStatus")).toHaveText("oczekuje");
+  await page.locator("#advanceSixHours").click();
+  await expect(page.locator("#clock")).toContainText("06:00");
   await expect(page.locator("#partyStatus")).toHaveText("w podróży");
+  await expect(page.locator("#partyLocation")).toContainText("Opole");
   await openPanel(page, "diagnostics");
   await expect(page.locator("#resetButton")).toBeVisible();
 });
@@ -109,7 +113,7 @@ test("playable expedition completes contract through physical cargo, encounter d
   await expect(page.locator("#encounterTitle")).toHaveText("Karawana zatrzymana");
   await page.locator('[data-decision="negotiate"]').click();
   await expect(page.locator("#expeditionLog")).toContainText("negotiated_passage");
-  const advance = await page.request.post("/api/expedition/advance", { data: { days: 5 } });
+  const advance = await page.request.post("/api/expedition/advance", { data: { days: 7 } });
   expect(advance.ok()).toBe(true);
   await page.reload();
   await expect(page.locator("#regionStats")).not.toContainText("2 miejsc · 1 dróg");

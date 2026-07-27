@@ -42,7 +42,7 @@ test("merchant AI moves food from remembered source to remembered need through n
   const travel = ai.process(simulation, "merchant_party", memory);
   assert.equal(travel.action, "travel");
   assert.equal(travel.commandResult?.accepted, true);
-  simulation.advanceDays(4);
+  simulation.advanceDays(6);
   assert.equal(simulation.partySnapshot("merchant_party").currentNodeId, "wroclaw");
 
   const deposit = ai.process(simulation, "merchant_party", memory);

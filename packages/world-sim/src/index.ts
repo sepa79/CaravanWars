@@ -18,6 +18,8 @@ export type {
 
 export {
   PartyTravelConfigValidationError,
+  PARTY_MOVEMENT_COMPONENT,
+  PARTY_MOVEMENT_TICK_DUE,
   WorldSimulation,
   WorldSimulationConfigurationError,
   WorldSimulationQueryError,
@@ -43,6 +45,7 @@ export type {
   PartyMapSnapshot,
   PartyTravelConfig,
   PartyTravelSnapshot,
+  PartyMovementOrderSnapshot,
   PartySpatialTravelSnapshot,
   WorldSnapshot,
   WorldSimulationEvent,

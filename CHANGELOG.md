@@ -4,6 +4,11 @@
 
 ### Added
 
+- Canonical event-driven Party movement: replaceable generation-scoped road
+  orders, hourly self-scheduling WorldClock ticks, dynamic private-knowledge
+  routing at nodes, physical mid-edge reversal, interleaved encounter pause,
+  progressive discovery and deterministic save/replay.
+
 - Viewport-Locked Game UI v1 with a true `100dvh` game shell, responsive
   map/context views, paged journal and diagnostics, accessible encounter modal,
   five-size browser geometry matrix, screenshot inspection, API health route

@@ -32,8 +32,9 @@ The snapshot exists so `new game`, `load game`, tests, and future WorldMemory se
 - authorized issuer actor ids,
 - current node,
 - active travel state,
-- active travel intent destination,
-- planned path node/edge ids,
+- active movement order target and generation,
+- exact road edge/orientation/progress or idle/off-road coordinate,
+- next movement-tick ordinal and pending event id,
 - assigned/active party order,
 - active or recently completed party task,
 - active or recently completed actor tasks,
@@ -126,6 +127,11 @@ transitions, encounters, private log, metrics, command/event fingerprints and
 partition-independent travel-supply accrual. Party cargo and coordinates are
 not duplicated there. JSON load restores paused encounters, escrow and
 mid-travel provision accrual exactly.
+
+Canonical road movement does not persist a planned path. Its current order,
+generation/version, exact edge progress, pending `PartyMovementTickEvent` and
+all stale invalidated clock records are sufficient for identical continuation.
+Loading never reconstructs, fast-forwards or invents an arrival.
 
 ## Test coverage
 

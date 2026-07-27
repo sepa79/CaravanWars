@@ -27,6 +27,10 @@ V0 `commandType` values are `move_party`, `transfer_goods`,
 command's canonical result. There is no heuristic command detection, payload
 conversion, or fallback handler.
 
+`move_party` is order submission, not synchronous motion: acceptance stores a
+generation-scoped target and schedules the first serializable movement tick.
+Neither clients nor AI may include a resolved itinerary or mutate progress.
+
 Continuous Space v1 extends the same discriminated union with
 `spatial_travel`, `search_area`, `observe_surroundings`,
 `report_navigation_knowledge`, and `relocate_spatial_object`. These payloads

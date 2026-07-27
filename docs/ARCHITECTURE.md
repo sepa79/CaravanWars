@@ -216,6 +216,13 @@ confidence and uncertainty; reports have simulated delay. Party Map receives
 only this projection, while labelled TRUTH/DEBUG can inspect hidden truth and a
 selected owner's graph.
 
+Road movement is a WorldClock-owned event chain. `move_party` stores only a
+replaceable target plus generation and schedules the first authored-cadence
+`PartyMovementTickEvent`; every valid tick moves one time slice and schedules
+at most one successor. Nodes trigger fresh private-graph route selection, not
+a stored itinerary. Mid-edge reroutes preserve edge/progress coordinates, and
+encounter pauses stop the chain until a normal decision command resumes it.
+
 ## Active repository boundaries
 
 | Path | Responsibility |

@@ -60,7 +60,6 @@ interface PartyTravel {
   readonly distanceKm: number;
   readonly progressKm: number;
   readonly speedKmPerDay: number;
-  readonly plannedNodeIds: readonly string[];
 }
 
 interface PartyState {
@@ -72,6 +71,7 @@ interface PartyState {
   readonly knownRouteIds: readonly string[];
   readonly cargo: Readonly<Record<string, number>>;
   readonly travel: PartyTravel | null;
+  readonly movementOrder: { readonly targetNodeId: string; readonly generation: number } | null;
 }
 
 interface LocationState {
@@ -410,7 +410,7 @@ function openMapContextMenu(event: MouseEvent): void {
   const node = mapNodeAt(event) ?? state?.region.nodes.find((candidate) => candidate.id === selectedMapNodeId);
   if (node === undefined) { mapContextMenu.hidden = true; return; }
   selectedMapNodeId = node.id;
-  const party = state?.snapshot.parties[0], currentGoal = party?.travel?.plannedNodeIds.at(-1) ?? party?.travel?.destinationNodeId ?? party?.currentNodeId;
+  const party = state?.snapshot.parties[0], currentGoal = party?.movementOrder?.targetNodeId ?? party?.currentNodeId;
   moveToSelected.disabled = party === undefined || currentGoal === node.id || debugMapActive;
   mapContextTitle.textContent = node.displayName;
   moveToSelected.textContent = moveToSelected.disabled ? "To jest obecny cel" : party?.status === "traveling" ? `Zmień cel na ${node.displayName}` : `Wyrusz do ${node.displayName}`;

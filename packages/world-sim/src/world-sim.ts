@@ -52,6 +52,9 @@ import type { ObserveSurroundingsCommand, ReportNavigationKnowledgeCommand, Sear
 import { CaravanExpeditions } from "./caravan-expedition.js";
 import type { AbandonCaravanContractCommand, AcceptCaravanContractCommand, CaravanExpeditionSnapshot, DeliverCaravanContractCommand, EncounterMutationPlan, ExpeditionCommandResult, ExpeditionPhysicalPort, OfferCaravanContractCommand, PickupCaravanContractCommand, PlanExpeditionEncounterCommand, ResolveExpeditionEncounterCommand, RestExpeditionPartyCommand } from "./caravan-expedition.js";
 
+export const PARTY_MOVEMENT_COMPONENT = "party_movement";
+export const PARTY_MOVEMENT_TICK_DUE = "PartyMovementTickEvent";
+
 export interface DeliverSupplyTaskCommand {
   readonly commandId: string;
   readonly issuerActorId: string;
@@ -79,6 +82,7 @@ export type SupplyCommandResult = { readonly accepted: true; readonly idempotent
 };
 
 export interface PartyTravelConfig {
+  readonly movementTickDays: number;
   readonly baseSpeedKmPerDay: number;
   readonly horseSpeedBonusKmPerDay: number;
   readonly wagonSpeedPenaltyKmPerDay: number;
@@ -130,7 +134,8 @@ export type MovePartyErrorCode =
   | "ORIGIN_MISMATCH"
   | "NODE_NOT_FOUND"
   | "ROUTE_NOT_FOUND"
-  | "ROUTE_UNKNOWN";
+  | "ROUTE_UNKNOWN"
+  | "SCHEDULING_FAILED";
 
 export type CommandResult =
   | { readonly accepted: true }
@@ -248,7 +253,11 @@ export interface PartyTravelSnapshot {
   readonly distanceKm: number;
   readonly progressKm: number;
   readonly speedKmPerDay: number;
-  readonly plannedNodeIds: readonly string[];
+}
+
+export interface PartyMovementOrderSnapshot {
+  readonly targetNodeId: string;
+  readonly generation: number;
 }
 
 export interface PartySpatialTravelSnapshot {
@@ -280,6 +289,10 @@ export interface PartySnapshot {
   readonly cargoUsedBulk: number | null;
   readonly travel: PartyTravelSnapshot | null;
   readonly spatialTravel: PartySpatialTravelSnapshot | null;
+  readonly movementOrder: PartyMovementOrderSnapshot | null;
+  readonly movementGeneration: number;
+  readonly nextMovementTickOrdinal: number;
+  readonly pendingMovementTickEventId: string | null;
 }
 
 export interface LocationSnapshot {
@@ -430,9 +443,8 @@ interface TravelingPartyState {
   readonly originNodeId: string;
   readonly destinationNodeId: string;
   readonly distanceKm: number;
-  readonly speedKmPerDay: number;
+  speedKmPerDay: number;
   progressKm: number;
-  plannedNodeIds: string[];
 }
 
 interface SpatialTravelingPartyState {
@@ -462,6 +474,10 @@ interface PartyRuntimeState {
   readonly observedWaypointIds: Set<string>;
   readonly observedLandmarkIds: Set<string>;
   location: PartyLocationState;
+  movementOrder: PartyMovementOrderSnapshot | null;
+  movementGeneration: number;
+  nextMovementTickOrdinal: number;
+  pendingMovementTickEventId: string | null;
 }
 
 interface LocationRuntimeState {
@@ -473,6 +489,7 @@ interface LocationRuntimeState {
 }
 
 interface AuthoredPartyTravelConfig {
+  readonly movement_tick_hours?: unknown;
   readonly base_speed_km_per_day?: unknown;
   readonly horse_speed_bonus_km_per_day?: unknown;
   readonly wagon_speed_penalty_km_per_day?: unknown;
@@ -515,6 +532,7 @@ export function loadPartyTravelConfigFile(filePath: string): PartyTravelConfig {
   }
   const source = parsed as AuthoredPartyTravelConfig;
   return {
+    movementTickDays: requirePositiveNumber(source.movement_tick_hours, "movement_tick_hours") / 24,
     baseSpeedKmPerDay: requirePositiveNumber(source.base_speed_km_per_day, "base_speed_km_per_day"),
     horseSpeedBonusKmPerDay: requireNonNegativeNumber(
       source.horse_speed_bonus_km_per_day,
@@ -596,6 +614,7 @@ export class WorldSimulation {
     this.#initialWorldMemorySnapshot = this.#worldMemory.snapshot();
     this.#bindEncounterPort();
     this.#simulationFoundation?.setSpatialEventHandler((intent, elapsedDays) => this.#handleSpatialEvent(intent, elapsedDays));
+    this.#simulationFoundation?.setMovementEventHandler((intent, elapsedDays) => this.#handleMovementTick(intent, elapsedDays));
     this.#simulationFoundation?.setExpeditionEventHandler((intent, elapsedDays) => this.#caravanExpedition?.handleEvent(intent, elapsedDays, this.#expeditionPort()));
   }
 
@@ -1117,7 +1136,7 @@ export class WorldSimulation {
 
   #resolveExpeditionEncounter(command: ResolveExpeditionEncounterCommand): ExpeditionCommandResult {
     const result = this.#requireExpedition().resolveEncounter(command, this.#clock.elapsedDays, this.#expeditionPort());
-    if (result.accepted) { const encounter = this.#caravanExpedition?.snapshot().encounters.find((item) => item.encounterId === command.encounterId); if (encounter !== undefined) this.#simulationFoundation?.recordExpeditionEncounter(encounter.routeId, result.outcome ?? command.decision); this.#rememberExpeditionResult(command.commandId, command.encounterId, "encounter_result", result.outcome ?? command.decision); }
+    if (result.accepted) { const encounter = this.#caravanExpedition?.snapshot().encounters.find((item) => item.encounterId === command.encounterId); if (encounter !== undefined) { this.#simulationFoundation?.recordExpeditionEncounter(encounter.routeId, result.outcome ?? command.decision); this.#ensureMovementTick(this.#parties.get(encounter.defenderPartyId)); } this.#rememberExpeditionResult(command.commandId, command.encounterId, "encounter_result", result.outcome ?? command.decision); }
     return result;
   }
 
@@ -1148,8 +1167,9 @@ export class WorldSimulation {
     const transfers = { ...plan.cargo, ...(plan.coin > 0 ? { coin: plan.coin } : {}) }; for (const [goodsId, amount] of Object.entries(transfers)) if (!Number.isSafeInteger(amount) || amount < 0 || (defender.cargo.get(goodsId) ?? 0) < amount) return false;
     const incoming = new Map(attacker.cargo); for (const [goodsId, amount] of Object.entries(transfers)) setQuantity(incoming, goodsId, (incoming.get(goodsId) ?? 0) + amount); if (calculateCargoUsedBulk(incoming, this.#economySeed.goodsCatalog) > calculatePartyCargoCapacity(attacker.composition, this.#economySeed.partyCargoConfig)) return false;
     const defenderLoss = plan.defenderCasualtyCharacterIds.length, attackerLoss = plan.attackerCasualtyCharacterIds.length; if (defenderLoss > defender.composition.footCount || attackerLoss > attacker.composition.footCount) return false;
+    this.#delayMovement(defender, plan.retreatDays);
     for (const [goodsId, amount] of Object.entries(transfers)) { setQuantity(defender.cargo, goodsId, (defender.cargo.get(goodsId) ?? 0) - amount); setQuantity(attacker.cargo, goodsId, (attacker.cargo.get(goodsId) ?? 0) + amount); }
-    defender.composition = applyCharacterCasualties(defender.composition, defenderLoss); attacker.composition = applyCharacterCasualties(attacker.composition, attackerLoss); if (plan.abandonWagon && defender.composition.wagonCount > 0) defender.composition = { ...defender.composition, wagonCount: defender.composition.wagonCount - 1 }; if (defender.location.status === "traveling") defender.location.progressKm = Math.max(0, defender.location.progressKm - defender.location.speedKmPerDay * plan.retreatDays); return true;
+    defender.composition = applyCharacterCasualties(defender.composition, defenderLoss); attacker.composition = applyCharacterCasualties(attacker.composition, attackerLoss); if (plan.abandonWagon && defender.composition.wagonCount > 0) defender.composition = { ...defender.composition, wagonCount: defender.composition.wagonCount - 1 }; return true;
   }
 
   #startSpatialTravel(command: SpatialTravelCommand): SpatialCommandResult {
@@ -1262,7 +1282,8 @@ export class WorldSimulation {
   #spatialSpeed(party: PartyRuntimeState, terrainKinds: readonly string[], mode: "road" | "track" | "offroad"): number {
     const capacity = this.#economySeed === null ? 1 : calculatePartyCargoCapacity(party.composition, this.#economySeed.partyCargoConfig), used = this.#economySeed === null ? 0 : calculateCargoUsedBulk(party.cargo, this.#economySeed.goodsCatalog), burden = Math.round(used / Math.max(1, capacity) * 1000), winter = (Math.floor(this.#clock.elapsedDays) % 360) < 90;
     const characterModifier = this.#caravanExpedition?.travelModifierPermille(party.id) ?? 1000;
-    return spatialSpeedKmPerDay(calculatePartyTravelSpeed(party.composition, this.#travelConfig) * characterModifier / 1000, this.#continuousSpace.config(), terrainKinds, burden, 1000, winter, 1000, mode);
+    const hour = (this.#clock.elapsedDays - Math.floor(this.#clock.elapsedDays)) * 24, visibilityPermille = hour < 6 || hour >= 20 ? 800 : 1000;
+    return spatialSpeedKmPerDay(calculatePartyTravelSpeed(party.composition, this.#travelConfig) * characterModifier / 1000, this.#continuousSpace.config(), terrainKinds, burden, 1000, winter, visibilityPermille, mode);
   }
 
   #seedNavigationKnowledge(): void {
@@ -1292,36 +1313,89 @@ export class WorldSimulation {
       );
     }
 
-    const knownEdges = new Set(this.navigationKnowledgeGraph(party.id, "party").edges.filter((item) => item.worldObjectId !== null && item.freshness === "fresh").map((item) => item.worldObjectId!));
-    const routeFrom = (start: string) => shortestKnownRoute(this.#graph, knownEdges, start, command.to_node_id);
-    if (party.location.status === "traveling") {
-      const travel = party.location;
-      const forward = routeFrom(travel.destinationNodeId), backward = routeFrom(travel.originNodeId);
-      const forwardCost = forward === null ? Infinity : travel.distanceKm - travel.progressKm + routeDistance(this.#graph, forward);
-      const backwardCost = backward === null ? Infinity : travel.progressKm + routeDistance(this.#graph, backward);
-      if (!Number.isFinite(Math.min(forwardCost, backwardCost))) return rejected("ROUTE_NOT_FOUND", `No known road route leads to ${command.to_node_id}.`);
-      if (backwardCost < forwardCost) party.location = { ...travel, originNodeId: travel.destinationNodeId, destinationNodeId: travel.originNodeId, progressKm: travel.distanceKm - travel.progressKm, plannedNodeIds: backward!.slice(1) };
-      else travel.plannedNodeIds = forward!.slice(1);
-      return { accepted: true };
-    }
-
-    const route = routeFrom(command.from_node_id);
-    if (route === null || route.length < 2) return getEdgeBetween(this.#graph, command.from_node_id, command.to_node_id) === undefined
+    if (party.location.status === "traveling" && command.from_node_id !== party.location.originNodeId && command.from_node_id !== party.location.destinationNodeId) return rejected("ORIGIN_MISMATCH", `Party ${party.id} is not traveling from ${command.from_node_id}.`);
+    const knownEdges = this.#knownRoadEdgeIds(party);
+    const starts = party.location.status === "idle" ? [command.from_node_id] : [party.location.originNodeId, party.location.destinationNodeId];
+    if (!starts.some((start) => shortestKnownRoute(this.#graph, knownEdges, start, command.to_node_id) !== null)) return getEdgeBetween(this.#graph, command.from_node_id, command.to_node_id) === undefined
       ? rejected("ROUTE_NOT_FOUND", `No known road route leads from ${command.from_node_id} to ${command.to_node_id}.`)
       : rejected("ROUTE_UNKNOWN", `Party ${party.id} does not know the route to ${command.to_node_id}.`);
-    const edge = getEdgeBetween(this.#graph, route[0]!, route[1]!)!;
-
-    party.location = {
-      status: "traveling",
-      edgeId: edge.id,
-      originNodeId: command.from_node_id,
-      destinationNodeId: route[1]!,
-      distanceKm: edge.distanceKm,
-      speedKmPerDay: calculatePartyTravelSpeed(party.composition, this.#travelConfig) * (this.#caravanExpedition?.travelModifierPermille(party.id) ?? 1000) / 1000,
-      progressKm: 0,
-      plannedNodeIds: route.slice(2),
-    };
+    const previousGeneration = party.movementGeneration, previousOrder = party.movementOrder, previousPending = party.pendingMovementTickEventId, previousOrdinal = party.nextMovementTickOrdinal;
+    party.movementGeneration += 1;
+    party.movementOrder = { targetNodeId: command.to_node_id, generation: party.movementGeneration };
+    party.pendingMovementTickEventId = null;
+    try { this.#clock.schedule(this.#nextMovementTickIntent(party, this.#clock.elapsedDays + this.#travelConfig.movementTickDays)); }
+    catch (error) { party.movementGeneration = previousGeneration; party.movementOrder = previousOrder; party.pendingMovementTickEventId = previousPending; party.nextMovementTickOrdinal = previousOrdinal; return rejected("SCHEDULING_FAILED", error instanceof Error ? error.message : String(error)); }
     return { accepted: true };
+  }
+
+  #knownRoadEdgeIds(party: PartyRuntimeState): ReadonlySet<string> {
+    return new Set(this.navigationKnowledgeGraph(party.id, "party").edges.filter((item) => item.worldObjectId !== null && item.freshness === "fresh").map((item) => item.worldObjectId!));
+  }
+
+  #nextMovementTickIntent(party: PartyRuntimeState, dueElapsedDays: number): ScheduledEventIntent {
+    const ordinal = party.nextMovementTickOrdinal++;
+    const eventId = `party:${party.id}:movement:g${party.movementGeneration}:tick:${ordinal}`;
+    party.pendingMovementTickEventId = eventId;
+    return { eventId, kind: PARTY_MOVEMENT_TICK_DUE, dueElapsedDays, targetComponent: PARTY_MOVEMENT_COMPONENT, targetEntityId: party.id, payload: { generation: party.movementGeneration, ordinal } };
+  }
+
+  #handleMovementTick(intent: ScheduledEventIntent, elapsedDays: number): readonly ScheduledEventIntent[] {
+    if (intent.kind !== PARTY_MOVEMENT_TICK_DUE || intent.targetComponent !== PARTY_MOVEMENT_COMPONENT) throw new WorldSimulationConfigurationError(`Unexpected movement event ${intent.eventId}.`);
+    const payload = movementTickPayload(intent), party = this.#parties.get(intent.targetEntityId);
+    if (party === undefined || payload.generation !== party.movementGeneration || party.pendingMovementTickEventId !== intent.eventId) return [];
+    party.pendingMovementTickEventId = null;
+    const order = party.movementOrder;
+    if (order === null || order.generation !== payload.generation || this.#caravanExpedition?.isPaused(party.id) === true || party.composition.footCount + party.composition.horseCount + party.composition.packAnimalCount <= 0) return [];
+    const knownEdges = this.#knownRoadEdgeIds(party);
+    let remainingDays = this.#travelConfig.movementTickDays, movedKm = 0, movedDays = 0;
+    while (remainingDays > 1e-12 && party.movementOrder !== null) {
+      if (party.location.status === "idle") {
+        if (party.location.nodeId === order.targetNodeId) { party.movementOrder = null; break; }
+        if (party.location.nodeId === null || !this.#startNextRoadEdge(party, party.location.nodeId, order.targetNodeId, knownEdges)) { party.movementOrder = null; break; }
+      } else if ("spatial" in party.location) return [];
+      let travel = party.location as TravelingPartyState;
+      this.#orientRoadTravel(party, order.targetNodeId, knownEdges);
+      travel = party.location as TravelingPartyState;
+      travel.speedKmPerDay = this.#roadSpeed(party, this.#graph.edgesById.get(travel.edgeId));
+      const previousProgressKm = travel.progressKm, distance = Math.min(travel.speedKmPerDay * remainingDays, travel.distanceKm - travel.progressKm), duration = distance / travel.speedKmPerDay;
+      travel.progressKm += distance; remainingDays -= duration; movedDays += duration; movedKm += distance;
+      this.#observeRouteProgress(party, this.#graph.edgesById.get(travel.edgeId)!, travel.originNodeId, travel.destinationNodeId, previousProgressKm, travel.progressKm);
+      if (travel.progressKm + 1e-9 < travel.distanceKm) break;
+      const nodeId = travel.destinationNodeId;
+      party.location = { status: "idle", nodeId, position: [...this.#graph.nodesById.get(nodeId)!.position] };
+      this.#observeSignpostedLocalRoutes(party, nodeId);
+      if (nodeId === order.targetNodeId) { party.movementOrder = null; break; }
+    }
+    this.#consumeTravelSupplies(party, movedDays);
+    this.#caravanExpedition?.addTravelFatigue(party.id, movedKm);
+    return party.movementOrder === null || this.#caravanExpedition?.isPaused(party.id) === true ? [] : [this.#nextMovementTickIntent(party, elapsedDays + this.#travelConfig.movementTickDays)];
+  }
+
+  #roadSpeed(party: PartyRuntimeState, edge: RegionGraphEdge | undefined): number {
+    const position = createPartySnapshot(this.#graph, party, this.#economySeed).position;
+    return this.#spatialSpeed(party, terrainAt(this.#graph, position).map((area) => area.kind), edge?.travelMode === "track" ? "track" : "road");
+  }
+
+  #startNextRoadEdge(party: PartyRuntimeState, nodeId: string, targetNodeId: string, knownEdges: ReadonlySet<string>): boolean {
+    const route = shortestKnownRoute(this.#graph, knownEdges, nodeId, targetNodeId);
+    if (route === null || route.length < 2) return false;
+    const edge = getEdgeBetween(this.#graph, nodeId, route[1]!)!;
+    party.location = { status: "traveling", edgeId: edge.id, originNodeId: nodeId, destinationNodeId: route[1]!, distanceKm: edge.distanceKm, speedKmPerDay: this.#roadSpeed(party, edge), progressKm: 0 };
+    return true;
+  }
+
+  #orientRoadTravel(party: PartyRuntimeState, targetNodeId: string, knownEdges: ReadonlySet<string>): void {
+    if (party.location.status !== "traveling" || "spatial" in party.location) return;
+    const travel = party.location, forward = shortestKnownRoute(this.#graph, knownEdges, travel.destinationNodeId, targetNodeId), backward = shortestKnownRoute(this.#graph, knownEdges, travel.originNodeId, targetNodeId);
+    const forwardCost = forward === null ? Infinity : travel.distanceKm - travel.progressKm + routeDistance(this.#graph, forward), backwardCost = backward === null ? Infinity : travel.progressKm + routeDistance(this.#graph, backward);
+    if (backwardCost < forwardCost) party.location = { ...travel, originNodeId: travel.destinationNodeId, destinationNodeId: travel.originNodeId, progressKm: travel.distanceKm - travel.progressKm };
+  }
+
+  #consumeTravelSupplies(party: PartyRuntimeState, travelDays: number): void {
+    if (this.#caravanExpedition === null || travelDays <= 0) return;
+    const due = this.#caravanExpedition.accrueTravelSupplies(party.id, travelDays, party.composition.horseCount + party.composition.packAnimalCount > 0), foodAvailable = party.cargo.get("food") ?? 0, fodderAvailable = party.cargo.get("fodder") ?? 0, foodTaken = Math.min(foodAvailable, due.food), fodderTaken = Math.min(fodderAvailable, due.fodder);
+    setQuantity(party.cargo, "food", foodAvailable - foodTaken); setQuantity(party.cargo, "fodder", fodderAvailable - fodderTaken);
+    if (due.food + due.fodder > 0) this.#caravanExpedition.applySupplyCondition(party.id, foodTaken === due.food, fodderTaken === due.fodder);
   }
 
   #executeTransferGoods(command: TransferGoodsCommand): TransferGoodsResult {
@@ -1460,44 +1534,19 @@ export class WorldSimulation {
   advanceDays(days: number): void {
     if (this.#simulationFoundation !== null) {
       this.#simulationFoundation.advanceDays(days, (fromElapsedDays, toElapsedDays) => {
-        this.#advanceContinuousState(fromElapsedDays, toElapsedDays);
+        this.#advanceLocationEconomyBetween(fromElapsedDays, toElapsedDays);
       });
       return;
     }
-    const previousElapsedDays = this.#clock.elapsedDays;
-    this.#clock.advanceDays(days);
-    this.#advanceContinuousState(previousElapsedDays, this.#clock.elapsedDays);
+    this.#clock.advanceDays(days, { maxEvents: 100_000, dispatch: (intent) => intent.targetComponent === PARTY_MOVEMENT_COMPONENT ? this.#handleMovementTick(intent, this.#clock.elapsedDays) : [], onTimeAdvanced: (fromElapsedDays, toElapsedDays) => this.#advanceLocationEconomyBetween(fromElapsedDays, toElapsedDays) });
   }
 
-  #advanceContinuousState(previousElapsedDays: number, currentElapsedDays: number): void {
+  movementTickDays(): number { return this.#travelConfig.movementTickDays; }
+
+  #advanceLocationEconomyBetween(previousElapsedDays: number, currentElapsedDays: number): void {
     const elapsedFullDays = completedSimulationDays(currentElapsedDays)
       - completedSimulationDays(previousElapsedDays);
     if (elapsedFullDays > 0) this.#advanceLocationEconomy(elapsedFullDays);
-    const days = currentElapsedDays - previousElapsedDays;
-    for (const party of this.#parties.values()) {
-      if (party.location.status !== "traveling") continue;
-      if (this.#caravanExpedition?.isPaused(party.id) === true) continue;
-      const travel = party.location;
-      const travelDays = Math.min(days, (travel.distanceKm - travel.progressKm) / travel.speedKmPerDay);
-      if (this.#caravanExpedition !== null && travelDays > 0) { const due = this.#caravanExpedition.accrueTravelSupplies(party.id, travelDays, party.composition.horseCount + party.composition.packAnimalCount > 0), foodAvailable = party.cargo.get("food") ?? 0, fodderAvailable = party.cargo.get("fodder") ?? 0, foodTaken = Math.min(foodAvailable, due.food), fodderTaken = Math.min(fodderAvailable, due.fodder); setQuantity(party.cargo, "food", foodAvailable - foodTaken); setQuantity(party.cargo, "fodder", fodderAvailable - fodderTaken); if (due.food + due.fodder > 0) this.#caravanExpedition.applySupplyCondition(party.id, foodTaken === due.food, fodderTaken === due.fodder); }
-      travel.progressKm = Math.min(
-        travel.distanceKm,
-        travel.progressKm + travel.speedKmPerDay * days,
-      );
-      if (!("spatial" in travel)) this.#observeRouteProgress(party, this.#graph.edgesById.get(travel.edgeId)!, travel.originNodeId, travel.destinationNodeId, travel.progressKm);
-      this.#caravanExpedition?.addTravelFatigue(party.id, travel.speedKmPerDay * days);
-      if ("spatial" in travel) continue;
-      if (travel.progressKm + 1e-9 >= travel.distanceKm) {
-        travel.progressKm = travel.distanceKm;
-        this.#observeSignpostedLocalRoutes(party, travel.destinationNodeId);
-        const nextNodeId = travel.plannedNodeIds.shift();
-        if (nextNodeId === undefined) party.location = { status: "idle", nodeId: travel.destinationNodeId, position: [...this.#graph.nodesById.get(travel.destinationNodeId)!.position] };
-        else {
-          const nextEdge = getEdgeBetween(this.#graph, travel.destinationNodeId, nextNodeId)!;
-          party.location = { status: "traveling", edgeId: nextEdge.id, originNodeId: travel.destinationNodeId, destinationNodeId: nextNodeId, distanceKm: nextEdge.distanceKm, speedKmPerDay: travel.speedKmPerDay, progressKm: 0, plannedNodeIds: travel.plannedNodeIds };
-        }
-      }
-    }
   }
 
   #bindEncounterPort(): void {
@@ -1520,10 +1569,25 @@ export class WorldSimulation {
     if (calculateCargoUsedBulk(incoming, this.#economySeed.goodsCatalog) > calculatePartyCargoCapacity(attacker.composition, this.#economySeed.partyCargoConfig)) return false;
     const casualtyTargets: readonly (readonly [PartyRuntimeState | undefined, number])[] = [[attacker, mutation.attackerCasualties], [defender, mutation.defenderCasualties], ...Object.entries(mutation.escortCasualties).map(([id, count]) => [this.#parties.get(id), count] as const)];
     if (casualtyTargets.some(([party, count]) => party === undefined || !Number.isSafeInteger(count) || count < 0 || count > party.composition.footCount + party.composition.horseCount + party.composition.guardCount)) return false;
+    this.#delayMovement(defender, mutation.defenderDelayDays);
     for (const [goodsId, amount] of Object.entries(mutation.stolenCargo)) { setQuantity(defender.cargo, goodsId, (defender.cargo.get(goodsId) ?? 0) - amount); setQuantity(attacker.cargo, goodsId, (attacker.cargo.get(goodsId) ?? 0) + amount); }
     for (const [party, count] of casualtyTargets) if (party !== undefined) party.composition = applyCasualties(party.composition, count);
-    if (defender.location.status === "traveling") defender.location.progressKm = Math.max(0, defender.location.progressKm - defender.location.speedKmPerDay * mutation.defenderDelayDays);
     return true;
+  }
+
+  #delayMovement(party: PartyRuntimeState, delayDays: number): void {
+    if (party.movementOrder === null || delayDays <= 0) return;
+    const previousGeneration = party.movementGeneration, previousOrder = party.movementOrder, previousPending = party.pendingMovementTickEventId, previousOrdinal = party.nextMovementTickOrdinal;
+    party.movementGeneration += 1;
+    party.movementOrder = { ...party.movementOrder, generation: party.movementGeneration };
+    party.pendingMovementTickEventId = null;
+    try { if (party.composition.footCount + party.composition.horseCount + party.composition.packAnimalCount > 0) this.#clock.schedule(this.#nextMovementTickIntent(party, this.#clock.elapsedDays + Math.max(delayDays, this.#travelConfig.movementTickDays))); }
+    catch (error) { party.movementGeneration = previousGeneration; party.movementOrder = previousOrder; party.pendingMovementTickEventId = previousPending; party.nextMovementTickOrdinal = previousOrdinal; throw error; }
+  }
+
+  #ensureMovementTick(party: PartyRuntimeState | undefined): void {
+    if (party === undefined || party.movementOrder === null || party.pendingMovementTickEventId !== null || this.#caravanExpedition?.isPaused(party.id) === true) return;
+    this.#clock.schedule(this.#nextMovementTickIntent(party, this.#clock.elapsedDays + this.#travelConfig.movementTickDays));
   }
 
   reset(): void {
@@ -1576,8 +1640,11 @@ export class WorldSimulation {
             distanceKm: source.travel.distanceKm,
             speedKmPerDay: source.travel.speedKmPerDay,
             progressKm: source.travel.progressKm,
-            plannedNodeIds: [...source.travel.plannedNodeIds],
           };
+      party.movementOrder = source.movementOrder === null ? null : { ...source.movementOrder };
+      party.movementGeneration = source.movementGeneration;
+      party.nextMovementTickOrdinal = source.nextMovementTickOrdinal;
+      party.pendingMovementTickEventId = source.pendingMovementTickEventId;
       party.observedWaypointIds.clear();
       for (const id of source.observedWaypointIds) party.observedWaypointIds.add(id);
       party.observedLandmarkIds.clear();
@@ -1704,11 +1771,12 @@ export class WorldSimulation {
     edge: RegionGraphEdge,
     originNodeId: string,
     destinationNodeId: string,
+    previousProgressKm: number,
     progressKm: number,
   ): void {
     for (const waypoint of edge.routeWaypoints) {
       const distanceFromOrigin = edge.originNodeId === originNodeId ? waypoint.distanceFromStartKm : edge.distanceKm - waypoint.distanceFromStartKm;
-      if (distanceFromOrigin > progressKm + 1e-9) continue;
+      if (distanceFromOrigin <= previousProgressKm + 1e-9 || distanceFromOrigin > progressKm + 1e-9) continue;
       if (party.observedWaypointIds.has(waypoint.id)) continue;
       party.observedWaypointIds.add(waypoint.id);
       for (const landmarkId of waypoint.landmarkIds) party.observedLandmarkIds.add(landmarkId);
@@ -1895,6 +1963,10 @@ function createParties(
       observedWaypointIds: new Set(),
       observedLandmarkIds: new Set(),
       location: { status: "idle", nodeId: seed.nodeId, position: [...graph.nodesById.get(seed.nodeId)!.position] },
+      movementOrder: null,
+      movementGeneration: 0,
+      nextMovementTickOrdinal: 0,
+      pendingMovementTickEventId: null,
     });
   }
   return parties;
@@ -2078,6 +2150,13 @@ function readSpatialPlan(intent: ScheduledEventIntent): SpatialTravelPlan | Spat
   return structuredClone(plan) as unknown as SpatialTravelPlan | SpatialSearchPlan;
 }
 
+function movementTickPayload(intent: ScheduledEventIntent): { readonly generation: number; readonly ordinal: number } {
+  if (intent.payload === null || Array.isArray(intent.payload) || typeof intent.payload !== "object") throw new WorldSimulationConfigurationError(`Movement event ${intent.eventId} payload is invalid.`);
+  const { generation, ordinal } = intent.payload as Record<string, SerializableValue>;
+  if (!Number.isSafeInteger(generation) || (generation as number) < 0 || !Number.isSafeInteger(ordinal) || (ordinal as number) < 0) throw new WorldSimulationConfigurationError(`Movement event ${intent.eventId} payload fields are invalid.`);
+  return { generation: generation as number, ordinal: ordinal as number };
+}
+
 function createPartySnapshot(
   graph: RegionGraph,
   party: PartyRuntimeState,
@@ -2102,13 +2181,17 @@ function createPartySnapshot(
       ...economyCargo,
       travel: null,
       spatialTravel: null,
+      movementOrder: party.movementOrder === null ? null : { ...party.movementOrder },
+      movementGeneration: party.movementGeneration,
+      nextMovementTickOrdinal: party.nextMovementTickOrdinal,
+      pendingMovementTickEventId: party.pendingMovementTickEventId,
     };
   }
 
   const travel = party.location;
   if ("spatial" in travel) {
     const ratio = travel.distanceKm === 0 ? 1 : travel.progressKm / travel.distanceKm;
-    return { id: party.id, displayName: party.displayName, managerActorId: party.managerActorId, seedNodeId: party.seedNodeId, status: "traveling", currentNodeId: null, position: pointAlongPolyline(travel.path, ratio * polylineDistance(travel.path)), composition: { ...party.composition }, knownRouteIds: [...party.knownRouteIds], observedWaypointIds: [...party.observedWaypointIds].sort(), observedLandmarkIds: [...party.observedLandmarkIds].sort(), ...economyCargo, travel: null, spatialTravel: { journeyId: travel.journeyId, kind: travel.kind, origin: [...travel.origin], destination: [...travel.destination], path: travel.path.map((item) => [...item]), distanceKm: travel.distanceKm, progressKm: travel.progressKm, speedKmPerDay: travel.speedKmPerDay, targetWorldObjectId: travel.targetWorldObjectId } };
+    return { id: party.id, displayName: party.displayName, managerActorId: party.managerActorId, seedNodeId: party.seedNodeId, status: "traveling", currentNodeId: null, position: pointAlongPolyline(travel.path, ratio * polylineDistance(travel.path)), composition: { ...party.composition }, knownRouteIds: [...party.knownRouteIds], observedWaypointIds: [...party.observedWaypointIds].sort(), observedLandmarkIds: [...party.observedLandmarkIds].sort(), ...economyCargo, travel: null, spatialTravel: { journeyId: travel.journeyId, kind: travel.kind, origin: [...travel.origin], destination: [...travel.destination], path: travel.path.map((item) => [...item]), distanceKm: travel.distanceKm, progressKm: travel.progressKm, speedKmPerDay: travel.speedKmPerDay, targetWorldObjectId: travel.targetWorldObjectId }, movementOrder: party.movementOrder === null ? null : { ...party.movementOrder }, movementGeneration: party.movementGeneration, nextMovementTickOrdinal: party.nextMovementTickOrdinal, pendingMovementTickEventId: party.pendingMovementTickEventId };
   }
   const edge = graph.edgesById.get(travel.edgeId);
   if (edge === undefined) {
@@ -2136,9 +2219,12 @@ function createPartySnapshot(
       distanceKm: travel.distanceKm,
       progressKm: travel.progressKm,
       speedKmPerDay: travel.speedKmPerDay,
-      plannedNodeIds: [...travel.plannedNodeIds],
     },
     spatialTravel: null,
+    movementOrder: party.movementOrder === null ? null : { ...party.movementOrder },
+    movementGeneration: party.movementGeneration,
+    nextMovementTickOrdinal: party.nextMovementTickOrdinal,
+    pendingMovementTickEventId: party.pendingMovementTickEventId,
   };
 }
 

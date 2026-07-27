@@ -1,17 +1,10 @@
 # Move Party Command
 
-## Purpose
+## Purpose and boundary
 
-`MovePartyCommand` is the first server-authoritative travel command. It moves a neutral `Party` between adjacent nodes in the current region graph.
-
-A party can represent a caravan, pilgrim group, bishop retinue, local lord with escort, bandit band, patrol, or another field group. Travel mechanics must not depend on a specialized caravan-only type.
-
-## Owner / consumers
-
-- Owner: authoritative simulation.
-- Consumers: local singleplayer client, future multiplayer clients, AI controllers, patrol/city/faction controllers.
-
-## Command shape
+`MovePartyCommand` sets or replaces the road-navigation order of one physical
+Party. It is submitted by player and AI controllers through the canonical
+`WorldCommandEnvelope`; it never moves a Party synchronously.
 
 ```json
 {
@@ -21,73 +14,70 @@ A party can represent a caravan, pilgrim group, bishop retinue, local lord with 
 }
 ```
 
-## Validation rules
+`to_node_id` may be any reachable node in the Party's fresh, private
+Navigation Knowledge Graph. `from_node_id` is an optimistic physical-context
+guard: while idle it must be the current node; while on a road it must be one
+of that road's endpoints. A command may replace the target mid-edge. Off-road
+orders remain separate spatial commands.
 
-The authoritative simulation rejects the command when:
+## Accepted transition
 
-- `party_id` does not exist,
-- the party is already traveling,
-- `from_node_id` is not the party's current node,
-- either graph node is missing,
-- no edge connects `from_node_id` and `to_node_id`.
-- the edge exists, but the party does not know that route.
+An accepted command atomically:
 
-Rejected commands return a `CommandResult` with `accepted=false`, an explicit `error_code`, and a message. Rejected commands must not mutate party state.
+1. validates the target against current owner-scoped navigation knowledge;
+2. increments the Party movement generation;
+3. stores `{ targetNodeId, generation }` as the current order;
+4. schedules one `PartyMovementTickEvent` for the authored cadence.
 
-## State transition
+It does not change edge, progress, position, knowledge, supplies, fatigue, or
+arrival state. Replaced generations invalidate their queued ticks; stale ticks
+complete harmlessly without mutation or successors.
 
-Accepted commands:
+## Tick semantics
 
-1. Resolve the graph edge between `from_node_id` and `to_node_id`.
-2. Verify that the party knows the route.
-3. Calculate party travel speed from `PartyComposition` and `party_travel.json`.
-4. Set the party travel state to `traveling`.
-5. Store origin, destination, route distance, speed, and progress.
+The default authored cadence is one in-world hour in
+`data/simulation/party_travel.json`. A valid tick reads current Party state,
+order, composition, conditions, terrain, road/track class, seasonal weather,
+time-of-day visibility and fresh private
+road knowledge. It moves only the physical distance possible during that tick
+and schedules exactly one successor when movement can continue.
 
-Simulation ticks advance travel progress in days. When progress reaches route distance, the party arrives at `to_node_id` and returns to `idle`.
+At a node the next edge is chosen deterministically from current knowledge;
+no multi-edge itinerary is stored. A tick may cross nodes and spends leftover
+tick time on the newly selected edge. Arrival is a tick outcome, not a
+guaranteed arrival intent. Road/track class affects speed and authored geometry
+is followed. Coordinate/off-road travel never becomes an implicit road
+shortcut.
 
-## Party composition
+For a mid-edge target replacement, the next valid tick compares the known
+cost through both endpoints. Reversing flips edge orientation and progress but
+preserves the exact interpolated physical coordinate. Stable route and node ID
+tie-breaks apply.
 
-Party composition is data, not a subtype hierarchy. Current fields:
+## Interleaving and pause
 
-```json
-{
-  "foot_count": 8,
-  "horse_count": 2,
-  "wagon_count": 1,
-  "pack_animal_count": 1,
-  "guard_count": 2
-}
-```
+All movement, Facility, consumption, encounter and other intents share the
+same WorldClock due-time/scheduling-sequence order. Advancing one day performs
+only clock advancement; it is equivalent to 24 hourly advances. Encounters or
+damage between ticks may alter composition, delay, clear, pause or invalidate
+movement. An awaiting-decision Party neither moves nor self-schedules. A legal
+resolution resumes one tick chain if an order and capable Party remain.
 
-Current travel speed config lives in:
+Waypoints, landmarks and signposts are observed only across the physical
+segment traversed by a valid tick. Issuing or changing an order reveals no
+knowledge.
 
-```text
-data/simulation/party_travel.json
-```
+## Persistence and bounds
 
-The initial formula is intentionally small:
+JSON saves retain canonical edge/progress or idle coordinate, current order,
+generation, tick ordinal, pending event ID, clock queue, observations, supplies
+and fatigue. Save/load and reset preserve deterministic continuation. There is
+at most one valid successor per moving Party; invalidated pending events are
+bounded by explicit order changes. Completed clock history grows linearly and
+is retained for replay/audit in v1.
 
-```text
-speed = base_speed + horse_count * horse_bonus - wagon_count * wagon_penalty
-speed = max(minimum_speed, speed)
-```
+## Rejections
 
-Future work can add terrain, weather, road type, burden, morale, fatigue, and skills without changing the command boundary.
-
-## Knowledge boundary
-
-Godot stores only lightweight runtime party knowledge for known nodes/routes. This prevents client snapshots and debug UI from seeing full server graph truth.
-
-Durable world memory is explicitly out of scope for this GDScript layer. It belongs in the separate WorldMemory service with SQLite storage and its own API.
-
-## Test coverage
-
-Covered by `game/tests/PartyTravelCommandTest.gd`:
-
-- valid adjacent move starts travel and arrives after ticks,
-- unconnected destination is rejected,
-- origin mismatch is rejected,
-- busy party is rejected,
-- existing but unknown route is rejected,
-- wagon-heavy composition is slower than mounted composition.
+Missing Party/node, mismatched physical context, off-road busy state, unknown
+route or unreachable private target are explicit atomic failures. There is no
+fallback to truth, teleport, automatic itinerary, callback or client mutation.

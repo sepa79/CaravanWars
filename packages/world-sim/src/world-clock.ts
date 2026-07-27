@@ -123,7 +123,7 @@ export class WorldClock {
 
   advanceDays(days: number, options?: WorldClockAdvanceOptions): void {
     if (!Number.isFinite(days) || days <= 0) throw new WorldClockAdvanceError(days);
-    const targetElapsedDays = this.#elapsedDays + days;
+    const targetElapsedDays = canonicalElapsedDays(this.#elapsedDays + days, this.#elapsedDays);
     if (!Number.isFinite(targetElapsedDays)) throw new WorldClockAdvanceError(days);
     if (options === undefined) {
       this.#advanceTimeTo(targetElapsedDays, undefined);
@@ -199,6 +199,12 @@ export class WorldClock {
     }
     return next;
   }
+}
+
+function canonicalElapsedDays(value: number, previous: number): number {
+  const nearestInteger = Math.round(value);
+  if (nearestInteger >= previous && Math.abs(value - nearestInteger) < 1e-9) return nearestInteger;
+  return value;
 }
 
 function validateSnapshot(snapshot: WorldClockSnapshot): void {

@@ -37,7 +37,15 @@ The graph represents civilization, trade routes, villages, forts, monasteries, c
 
 Roads are not straight lines. Roads contain intermediate nodes, turns, bridges, landmarks, inns, forests, and crossings.
 
-Future route geometry should split physical roads into ordered segments or waypoints under the logical graph edge. This will support more accurate travel time, line-of-sight, parties meeting on the road, and player-drawn parchment map details without turning every bend into a strategic graph node.
+Authored route geometry uses ordered polylines/waypoints under each logical
+edge. Canonical hourly movement ticks traverse that geometry without turning
+every bend into a strategic graph node.
+
+Road orders store a destination, not a path. On every reached graph node the
+authoritative simulation chooses the next known edge from the actor's current
+private navigation graph. Changing the destination mid-edge preserves the
+exact physical coordinate; the next tick may continue or reverse. Time advance
+never moves Parties outside ordinary WorldClock events.
 
 ## Maps
 
