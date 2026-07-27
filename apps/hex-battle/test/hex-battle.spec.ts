@@ -7,9 +7,15 @@ test("player selects perceived actors and issues grouped orders without controll
   const canvas = page.locator("#map"), box = await canvas.boundingBox();
   if (box === null) throw new Error("Map missing");
   await canvas.click({ position: { x: box.width * .30, y: box.height * .50 } });
-  await expect(page.locator("#selectedName")).not.toHaveText("Wybierz heks lub postać");
+  await expect(page.locator("#selectedName")).toHaveText("Wulf");
+  await page.getByText("Ruch", { exact: true }).click();
+  await page.getByRole("button", { name: "Naprzód" }).click();
+  await expect(page.locator("#selectedName")).toContainText("wskaż cel");
+  await canvas.click({ position: { x: box.width * .50, y: box.height * .50 } });
   await page.locator("#advance").click();
   await expect(page.locator("#tick")).toHaveText("1");
+  const state = await page.request.get("/api/state").then((response) => response.json());
+  expect(state.visible.find((actor: { actorId: string }) => actor.actorId === "ally_spear").position).not.toEqual({ q: -2, r: 0 });
   await expect(page.locator("body")).not.toHaveCSS("overflow-y", "auto");
 });
 
