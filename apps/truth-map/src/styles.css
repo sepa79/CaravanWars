@@ -62,7 +62,7 @@ h3 { margin:1px 0 -4px; color:#a88758; font-size:.72rem; letter-spacing:.08em; t
 .paged-list { min-height:0; margin:0; padding:0; list-style:none; display:grid; gap:7px; }.paged-list li { padding:8px; border:1px solid #3c3327; border-radius:7px; color:#cfc0a6; font-size:.73rem; line-height:1.3; }
 .pager { margin-top:auto; display:grid; grid-template-columns:44px 1fr 44px; align-items:center; gap:8px; text-align:center; color:#9f927d; font-size:.72rem; }.pager button { min-height:40px; }
 
-.encounter-dialog { width:min(620px,calc(100vw - 24px)); max-height:calc(100dvh - 24px); margin:auto; padding:0; border:1px solid #8e6239; border-radius:14px; color:#e7dac0; background:#211c15; box-shadow:0 30px 90px #000; overflow:hidden; }.encounter-dialog::backdrop { background:rgba(8,6,4,.78); backdrop-filter:blur(4px); }.dialog-card { min-height:0; padding:20px; }.dialog-card h2 { margin:0 0 8px; font:500 1.5rem Georgia,serif; }.dialog-card p:not(.section-label) { margin:0 0 14px; color:#c9bba1; }
+.encounter-dialog { position:fixed; inset:0; z-index:1000; width:min(620px,calc(100vw - 24px)); max-height:calc(100dvh - 24px); margin:auto; padding:0; border:1px solid #8e6239; border-radius:14px; color:#e7dac0; background:#211c15; box-shadow:0 0 0 100vmax rgba(8,6,4,.78),0 30px 90px #000; overflow:hidden; }.encounter-dialog::backdrop { background:rgba(8,6,4,.78); backdrop-filter:blur(4px); }.dialog-card { min-height:0; padding:20px; }.dialog-card h2 { margin:0 0 8px; font:500 1.5rem Georgia,serif; }.dialog-card p:not(.section-label) { margin:0 0 14px; color:#c9bba1; }
 
 @media (max-width:760px) {
   .game-shell { grid-template-rows:50px 56px minmax(0,1fr); }
