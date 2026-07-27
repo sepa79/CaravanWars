@@ -525,12 +525,7 @@ function renderPlayableExpedition(): void {
       button.textContent = decision;
       button.dataset.decision = decision;
       button.addEventListener("click", () => {
-        void expeditionCommand("resolve_expedition_encounter", {
-          commandId: `browser:encounter:${encounter.encounterId}:${decision}`,
-          issuerActorId: "player_leader",
-          encounterId: encounter.encounterId,
-          decision,
-        });
+        showEncounterConfirmation(encounter.encounterId, decision);
       });
       encounterChoices.append(button);
     }
@@ -540,23 +535,17 @@ function renderPlayableExpedition(): void {
       encounterOutcome.decision === "fight"
         ? "Walka rozstrzygnięta"
         : "Spotkanie rozstrzygnięte";
-    encounterSummary.textContent = `${encounterOutcome.decision}: ${encounterOutcome.outcome}. Możesz kontynuować podróż.`;
-    const continueButton = document.createElement("button");
-    continueButton.className = "primary";
-    continueButton.textContent = "Kontynuuj podróż (+6 godzin)";
-    continueButton.dataset.encounterContinue = "true";
-    continueButton.addEventListener("click", () => {
-      encounterOutcome = null;
-      void advancePlayableExpedition(0.25);
-    });
-    const journalButton = document.createElement("button");
-    journalButton.textContent = "Zobacz dziennik";
-    journalButton.addEventListener("click", () => {
+    encounterSummary.textContent = `${encounterOutcome.decision}: ${encounterOutcome.outcome}.`;
+    const okButton = document.createElement("button");
+    okButton.className = "primary";
+    okButton.textContent = "OK";
+    okButton.dataset.encounterOk = "true";
+    okButton.addEventListener("click", () => {
       encounterOutcome = null;
       encounterPanel.close();
-      void activateGameView("journal");
+      void activateGameView("map");
     });
-    encounterChoices.append(continueButton, journalButton);
+    encounterChoices.append(okButton);
     openEncounterDialog();
   } else if (encounterPanel.open) {
     encounterPanel.close();
@@ -583,6 +572,43 @@ function renderPlayableExpedition(): void {
   journalPage.textContent = `${journalPageIndex + 1} / ${pageCount}`;
   journalPrevious.disabled = journalPageIndex === 0;
   journalNext.disabled = journalPageIndex + 1 >= pageCount;
+}
+function showEncounterConfirmation(
+  encounterId: string,
+  decision: string,
+): void {
+  encounterTitle.textContent = "Potwierdź zamiar";
+  encounterSummary.textContent = encounterIntent(decision);
+  const confirmButton = document.createElement("button");
+  confirmButton.className = "primary";
+  confirmButton.textContent = "Zatwierdź";
+  confirmButton.dataset.encounterConfirm = decision;
+  confirmButton.addEventListener("click", () => {
+    queueExpeditionMutation(() =>
+      expeditionCommand("resolve_expedition_encounter", {
+        commandId: `browser:encounter:${encounterId}:${decision}`,
+        issuerActorId: "player_leader",
+        encounterId,
+        decision,
+      }),
+    );
+  });
+  const backButton = document.createElement("button");
+  backButton.textContent = "Wróć do wyboru";
+  backButton.addEventListener("click", renderPlayableExpedition);
+  encounterChoices.replaceChildren(confirmButton, backButton);
+  confirmButton.focus();
+}
+function encounterIntent(decision: string): string {
+  const descriptions: Readonly<Record<string, string>> = {
+    evade: "Próbujemy zgubić napastników, wykorzystując tempo, teren i osłonę.",
+    retreat: "Zawracamy i próbujemy oderwać się od zagrożenia znaną drogą.",
+    negotiate: "Podejmujemy rozmowę, żeby uniknąć walki i ograniczyć straty.",
+    surrender_cargo: "Oddajemy żądany ładunek, aby ocalić ludzi i karawanę.",
+    fight: "Stajemy do walki i próbujemy odeprzeć napastników siłą.",
+    pay_ransom: "Oferujemy zapłatę w zamian za bezpieczny przejazd.",
+  };
+  return descriptions[decision] ?? `Próbujemy wykonać działanie: ${decision}.`;
 }
 function openEncounterDialog(): void {
   stopAutoAdvance();

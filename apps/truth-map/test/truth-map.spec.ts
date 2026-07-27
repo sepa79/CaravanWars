@@ -112,6 +112,7 @@ test("playable expedition completes contract through physical cargo, encounter d
   await expect(page.locator("#encounterPanel")).toBeVisible();
   await expect(page.locator("#encounterTitle")).toHaveText("Karawana zatrzymana");
   await page.locator('[data-decision="negotiate"]').click();
+  await page.locator('[data-encounter-confirm="negotiate"]').click();
   await expect(page.locator("#expeditionLog")).toContainText("negotiated_passage");
   const advance = await page.request.post("/api/expedition/advance", { data: { days: 7 } });
   expect(advance.ok()).toBe(true);
@@ -129,6 +130,7 @@ test("playable expedition failure path conserves loss and rejects incomplete del
   await openPanel(page, "contract");
   await page.locator("#acceptContract").click(); await page.locator("#pickupContract").click(); await moveOnMap(page, "opole"); await page.locator("#advanceSixHours").click();
   await page.locator('[data-decision="surrender_cargo"]').click();
+  await page.locator('[data-encounter-confirm="surrender_cargo"]').click();
   await expect(page.locator("#expeditionCargo")).toContainText("food 6");
   await page.request.post("/api/expedition/advance", { data: { days: 5 } }); await page.reload(); await openPanel(page, "contract"); await page.locator("#deliverContract").click();
   await expect(page.locator("#expeditionStatus")).toContainText("INSUFFICIENT_GOODS");
@@ -143,11 +145,15 @@ test("fight presents its result and an explicit way to continue the journey", as
   await page.locator("#advanceSixHours").click();
   await expect(page.locator("#encounterPanel")).toBeVisible();
   await page.locator('[data-decision="fight"]').click();
+  await expect(page.locator("#encounterTitle")).toHaveText("Potwierdź zamiar");
+  await expect(page.locator("#encounterSummary")).toContainText("Stajemy do walki");
+  await page.locator('[data-encounter-confirm="fight"]').click();
   await expect(page.locator("#encounterTitle")).toHaveText("Walka rozstrzygnięta");
   await expect(page.locator("#encounterSummary")).toContainText("fight:");
-  await expect(page.locator('[data-encounter-continue="true"]')).toBeVisible();
-  await page.locator('[data-encounter-continue="true"]').click();
+  await expect(page.locator("#encounterChoices button")).toHaveCount(1);
+  await page.locator('[data-encounter-ok="true"]').click();
   await expect(page.locator("#encounterPanel")).not.toBeVisible();
+  await expect(page.locator("#mapView")).toBeVisible();
   await expect(page.locator("#expeditionLog")).toContainText("fight:");
 });
 
@@ -176,7 +182,7 @@ test("rapid manual commands are executed in order and +6h opens the ambush", asy
   await expect(page.locator("#encounterTitle")).toHaveText("Karawana zatrzymana");
 });
 
-test("auto advance stops at the ambush and the result opens the journal", async ({ page }) => {
+test("auto advance stops at the ambush and OK returns to the map", async ({ page }) => {
   await page.goto("/");
   await openPanel(page, "contract");
   await page.locator("#acceptContract").click();
@@ -186,9 +192,10 @@ test("auto advance stops at the ambush and the result opens the journal", async 
   await expect(page.locator("#encounterPanel")).toBeVisible();
   await expect(page.locator("#autoAdvance")).not.toBeChecked();
   await page.locator('[data-decision="fight"]').click();
-  await page.getByRole("button", { name: "Zobacz dziennik" }).click();
+  await page.locator('[data-encounter-confirm="fight"]').click();
+  await page.locator('[data-encounter-ok="true"]').click();
   await expect(page.locator("#encounterPanel")).not.toBeVisible();
-  await expect(page.locator('[data-game-view="journal"]')).toBeVisible();
+  await expect(page.locator("#mapView")).toBeVisible();
   await expect(page.locator("#expeditionLog")).toContainText("fight:");
 });
 
@@ -265,8 +272,9 @@ for (const viewport of viewports) test(`game shell remains viewport-locked at ${
   await expect(page.locator("#encounterPanel")).toBeInViewport();
   await expect(page.locator("#encounterChoices button").first()).toBeFocused();
   await page.locator('[data-decision="negotiate"]').click();
-  await expect(page.locator('[data-encounter-continue="true"]')).toBeVisible();
-  await page.locator('[data-encounter-continue="true"]').click();
+  await page.locator('[data-encounter-confirm="negotiate"]').click();
+  await expect(page.locator('[data-encounter-ok="true"]')).toBeVisible();
+  await page.locator('[data-encounter-ok="true"]').click();
   await expect(page.locator("#encounterPanel")).not.toBeVisible();
   const resized = { width: Math.max(390, viewport.width - 173), height: Math.max(640, viewport.height - 91) };
   await page.setViewportSize(resized); await assertViewportLocked(page);
