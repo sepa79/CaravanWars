@@ -75,6 +75,8 @@ TODO
 
 ## Current canonical references
 
+- Hex Battle Slice v2: docs/hex_battle_slice_v2.md
+
 - Party movement command: `docs/specs/commands/move_party.md`
 - World command envelope v0: `docs/specs/commands/world_command_envelope_v0.md`
 - Assign party order command: `docs/specs/commands/assign_party_order.md`

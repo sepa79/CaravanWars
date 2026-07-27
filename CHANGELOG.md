@@ -4,6 +4,11 @@
 
 ### Added
 
+- Hex Battle Slice v2 with authoritative BattleGroups, deterministic loose/
+  line/shield formations, physically propagated group orders, atomic
+  simultaneous movement reservations, coherent doctrine, snapshot replay and
+  a playable ford-defense Canvas UI.
+
 - Viewport-Locked Game UI v1 with a true `100dvh` game shell, responsive
   map/context views, paged journal and diagnostics, accessible encounter modal,
   five-size browser geometry matrix, screenshot inspection, API health route

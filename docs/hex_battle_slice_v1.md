@@ -1,5 +1,8 @@
 # Hex Battle Slice v1
 
+> Superseded by [Hex Battle Slice v2](hex_battle_slice_v2.md). This remains the
+> historical contract for the first slice.
+
 This slice establishes the battle simulation boundary without coupling it to the regional travel implementation.
 
 ## Player agency
