@@ -104,7 +104,9 @@ test("playable expedition completes contract through physical cargo, encounter d
   await expect(page.locator("#expeditionCargo")).toContainText("food 12");
   await moveOnMap(page, "opole");
   await page.locator("#advanceSixHours").click();
+  await expect(page.locator("#clock")).toContainText("06:00");
   await expect(page.locator("#encounterPanel")).toBeVisible();
+  await expect(page.locator("#encounterTitle")).toHaveText("Karawana zatrzymana");
   await page.locator('[data-decision="negotiate"]').click();
   await expect(page.locator("#expeditionLog")).toContainText("negotiated_passage");
   const advance = await page.request.post("/api/expedition/advance", { data: { days: 5 } });
