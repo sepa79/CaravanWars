@@ -163,6 +163,10 @@ const regionName = requireElement<HTMLElement>("regionName");
 const regionStats = requireElement<HTMLElement>("regionStats");
 const mapMode = requireElement<HTMLSelectElement>("mapMode");
 const mapScopeLabel = requireElement<HTMLElement>("mapScopeLabel");
+const mapPanelMode = requireElement<HTMLElement>("mapPanelMode");
+const mapPanelCoverage = requireElement<HTMLElement>("mapPanelCoverage");
+const mapPanelPosition = requireElement<HTMLElement>("mapPanelPosition");
+const mapPanelKnowledge = requireElement<HTMLElement>("mapPanelKnowledge");
 const cargoFood = requireElement<HTMLElement>("cargoFood");
 const localFood = requireElement<HTMLElement>("localFood");
 const merchantStep = requireElement<HTMLButtonElement>("merchantStep");
@@ -241,7 +245,11 @@ moveButton.addEventListener("click", () => { void submitMove(); });
 advanceSixHours.addEventListener("click", () => { void advanceTime(0.25); });
 advanceDay.addEventListener("click", () => { void advanceTime(1); });
 resetButton.addEventListener("click", () => { void resetSimulation(); });
-mapMode.addEventListener("change", () => { if (mapMode.value !== "truth" && activeGameView === "diagnostics") void activateGameView("map"); void refreshState(); });
+mapMode.addEventListener("change", () => {
+  if (mapMode.value === "truth") showingExpeditionMap = false;
+  if (mapMode.value !== "truth" && activeGameView === "diagnostics") void activateGameView("map");
+  void refreshState();
+});
 merchantStep.addEventListener("click", () => { void runMerchantStep(); });
 advanceEconomy.addEventListener("click", () => { void advanceRegionalEconomy(); });
 acceptContract.addEventListener("click", () => { void expeditionCommand("accept_caravan_contract", { commandId: "browser:accept", issuerActorId: "player_leader", contractId: "contract_wroclaw_opole_food", contractorPartyId: "player_expedition" }); });
@@ -255,14 +263,17 @@ advanceExpedition.addEventListener("click", () => { void advancePlayableExpediti
 autoAdvance.addEventListener("change", updateAutoAdvance);
 
 gameStage.dataset.activeView = activeGameView;
-for (const candidate of contextViews) candidate.hidden = candidate.dataset.gameView !== "map" && candidate.dataset.gameView !== "caravan";
+for (const candidate of contextViews) candidate.hidden = candidate.id !== "mapView" && candidate.dataset.gameView !== "map";
 encounterPanel.addEventListener("cancel", (event) => { event.preventDefault(); });
 void refreshState();
 window.setInterval(() => { void refreshState(false); }, 1_000);
 
 async function refreshState(reportFailure = true): Promise<void> {
+  const requestedMode = mapMode.value;
   try {
-    state = await requestJson<DebugState>(viewUrl("/api/state"));
+    const nextState = await requestJson<DebugState>(viewUrl("/api/state"));
+    if (mapMode.value !== requestedMode) return;
+    state = nextState;
     if (!showingExpeditionMap) updateView();
     await Promise.all([refreshEconomyDiagnostics(), refreshPlayableExpedition()]);
     setApiStatus("Połączono", false);
@@ -327,8 +338,8 @@ function renderEconomyDiagnostics(diagnostics: EconomyDiagnostics): void {
 async function activateGameView(view: string): Promise<void> {
   activeGameView = view;
   gameStage.dataset.activeView = view;
-  const sidebarView = view === "map" ? "caravan" : view;
-  for (const candidate of contextViews) candidate.hidden = candidate.dataset.gameView !== "map" && candidate.dataset.gameView !== sidebarView;
+  const sidebarView = view;
+  for (const candidate of contextViews) candidate.hidden = candidate.id !== "mapView" && candidate.dataset.gameView !== sidebarView;
   for (const tab of gameTabs) tab.setAttribute("aria-selected", String(tab.dataset.panelTarget === view));
   if (view === "diagnostics" && mapMode.value !== "truth") { mapMode.value = "truth"; await refreshState(); }
   const active = contextViews.find((candidate) => candidate.dataset.gameView === sidebarView);
@@ -439,6 +450,10 @@ function updateView(): void {
   navigationKnowledge.textContent = currentState.mode === "party"
     ? `PRIVATE NAVIGATION — uncertain areas ${areas.length}; landmark relations ${relations.map((item) => `${item.relation} (${item.confidencePermille}‰, ${item.freshness})`).join("; ") || "none"}`
     : "TRUTH / DEBUG — hidden locations and authoritative coordinates are visible";
+  mapPanelMode.textContent = currentState.mode === "truth" ? "Developerski / pełna prawda" : "Wiedza grupy";
+  mapPanelCoverage.textContent = `${currentState.region.nodes.length} miejsc, ${currentState.region.edges.length} dróg`;
+  mapPanelPosition.textContent = describeLocation(currentState.region, party);
+  mapPanelKnowledge.textContent = currentState.mode === "truth" ? "Pokazuje pełny stan świata, również obiekty nieznane drużynie." : `Mapa prywatna: ${areas.length} obszarów niepewnych i ${relations.length} relacji z landmarkami.`;
   const spatial = currentState.spatialTruth?.metrics;
   spatialDiagnostics.textContent = spatial === undefined ? "—" : `off-road ${spatial.offRoadDistanceKm.toFixed(1)} km; searched ${spatial.searchAreaCoveredKm2.toFixed(1)} km²; discoveries ${spatial.discoveries}; false leads ${spatial.falseLeads}; hidden visits ${spatial.hiddenSiteVisits}`;
   updateDestinations(currentState.region, party);

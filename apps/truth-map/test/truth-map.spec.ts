@@ -195,7 +195,8 @@ test("polling keeps the expedition map, sidebar and permanent time controls stab
   await expect(page.locator("#apiStatus")).toHaveText("Połączono");
   await openPanel(page, "map");
   await expect(page.locator("#contextPanel")).toBeVisible();
-  await expect(page.locator('[data-game-view="caravan"]')).toBeVisible();
+  await expect(page.locator('#contextPanel [data-game-view="map"]')).toBeVisible();
+  await expect(page.locator('[data-game-view="caravan"]')).not.toBeVisible();
   for (const id of ["advanceSixHours", "advanceDay", "autoAdvance"]) await expect(page.locator(`#${id}`)).toBeVisible();
   const canvasAttributeChanges = await page.evaluate(() => new Promise<number>((resolve) => {
     const canvas = document.querySelector("#mapCanvas");
@@ -208,6 +209,21 @@ test("polling keeps the expedition map, sidebar and permanent time controls stab
   expect(canvasAttributeChanges).toBe(0);
   await openPanel(page, "journal");
   for (const id of ["advanceSixHours", "advanceDay", "autoAdvance"]) await expect(page.locator(`#${id}`)).toBeVisible();
+});
+
+test("map and roster are distinct and truth mode overrides the private expedition map", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await openPanel(page, "map");
+  await expect(page.locator('#contextPanel [data-game-view="map"]')).toBeVisible();
+  await expect(page.locator('[data-game-view="caravan"]')).not.toBeVisible();
+  await openPanel(page, "caravan");
+  await expect(page.locator('#contextPanel [data-game-view="map"]')).not.toBeVisible();
+  await expect(page.locator('[data-game-view="caravan"]')).toBeVisible();
+  await page.locator("#showExpeditionMap").click();
+  await page.locator("#mapMode").selectOption("truth");
+  await expect(page.locator("#mapMode")).toHaveValue("truth");
+  await expect(page.locator("#mapPanelMode")).toContainText("Developerski");
 });
 
 test("captures desktop and small viewport game-shell inspection screenshots", async ({ page }) => {

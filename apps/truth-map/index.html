@@ -36,6 +36,11 @@
         </section>
 
         <aside id="contextPanel" class="context-panel" aria-label="Panel kontekstowy">
+          <section class="context-view" data-game-view="map">
+            <header class="panel-heading"><p class="section-label">WARSTWA MAPY</p><h2>Mapa wyprawy</h2></header>
+            <dl class="facts"><div><dt>Tryb</dt><dd id="mapPanelMode">—</dd></div><div><dt>Zasięg</dt><dd id="mapPanelCoverage">—</dd></div><div><dt>Pozycja grupy</dt><dd id="mapPanelPosition">—</dd></div></dl>
+            <p id="mapPanelKnowledge" class="compact-copy">—</p>
+          </section>
           <section class="context-view" data-game-view="caravan" hidden>
             <header class="panel-heading"><p class="section-label" data-i18n="selectedParty"></p><h2 id="partyName">—</h2></header>
             <dl class="facts"><div><dt data-i18n="partyId"></dt><dd id="partyId">—</dd></div><div><dt data-i18n="status"></dt><dd id="partyStatus">—</dd></div><div><dt data-i18n="location"></dt><dd id="partyLocation">—</dd></div><div><dt data-i18n="speed"></dt><dd id="partySpeed">—</dd></div><div><dt>Cargo / monety</dt><dd id="expeditionCargo">—</dd></div></dl>
