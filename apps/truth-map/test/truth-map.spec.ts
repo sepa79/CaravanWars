@@ -7,37 +7,19 @@ test.beforeEach(async ({ request }) => {
   expect(response.ok()).toBe(true);
 });
 
-test("defaults to a filtered Party Map and moves through the command boundary", async ({ page }) => {
+test("defaults to the expedition Party Map", async ({ page }) => {
   await page.goto("/");
-
-  await expect(page.locator("#mapMode")).toHaveValue("party");
   await expect(page.locator("#mapScopeLabel")).toHaveText("Wiedza wybranej grupy");
-  await expect(page.locator("#regionStats")).toContainText("2 miejsc · 1 dróg · 0 landmarki");
-  const initialPartyState = await page.request.get("/api/state?view_mode=party&party_id=player_party");
-  expect(await initialPartyState.text()).not.toContain("raciborz");
-  await expect(page.locator("#partyId")).toHaveText("player_party");
+  await expect(page.locator("#partyId")).toHaveText("player_expedition");
   await expect(page.locator("#partyLocation")).toHaveText("Wroclaw");
   await expect(page.locator("#mapCanvas")).toBeVisible();
   await expect(page.locator("#navigationKnowledge")).toContainText("PRIVATE NAVIGATION");
-  expect(await initialPartyState.text()).not.toContain("black_pine_bandit_base");
-
-  await openPanel(page, "commands");
-  await page.locator("#destination").selectOption("opole");
-  await page.locator("#moveButton").click();
-  await expect(page.locator("#partyStatus")).toHaveText("w podróży");
-  await expect(page.locator("#commandResult")).toContainText("Komenda przyjęta");
-  await expect(page.locator("#regionStats")).toContainText("2 landmarki");
-
-  const advance = await page.request.post("/api/time/advance?view_mode=party&party_id=player_party", { data: { days: 4 } });
-  expect(advance.ok()).toBe(true);
-  await page.reload();
-  await expect(page.locator("#partyStatus")).toHaveText("oczekuje");
-  await expect(page.locator("#partyLocation")).toHaveText("Opole");
 });
 
 test("truth mode is explicit and exposes more than the selected party knows", async ({ page }) => {
   await page.goto("/");
-  await page.locator("#mapMode").selectOption("truth");
+  await openPanel(page, "diagnostics");
+  await page.locator("#debugMapObserver").selectOption("truth");
 
   await expect(page.locator("#mapScopeLabel")).toHaveText("Pełna prawda regionu");
   await expect(page.locator("#regionStats")).not.toContainText("2 miejsc · 1 dróg");
@@ -47,36 +29,10 @@ test("truth mode is explicit and exposes more than the selected party knows", as
   expect(await truth.text()).toContain("selectedOwnerGraph");
 });
 
-test("merchant AI carries physical food from remembered source to remembered need", async ({ page }) => {
+test("AI is autonomous and has no manual gameplay tab", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator("#cargoFood")).toHaveText("0");
-  await expect(page.locator("#localFood")).toHaveText("40");
-
-  await openPanel(page, "ai");
-  await page.locator("#merchantStep").click();
-  await expect(page.locator("#merchantResult")).toContainText("withdraw: command_accepted");
-  await expect(page.locator("#cargoFood")).toHaveText("10");
-  await expect(page.locator("#localFood")).toHaveText("30");
-
-  await page.locator("#merchantStep").click();
-  await expect(page.locator("#merchantResult")).toContainText("travel: command_accepted");
-  await expect(page.locator("#partyStatus")).toHaveText("w podróży");
-
-  const advance = await page.request.post(
-    "/api/time/advance?view_mode=party&party_id=player_party",
-    { data: { days: 4 } },
-  );
-  expect(advance.ok()).toBe(true);
-  await page.reload();
-  await openPanel(page, "ai");
-  await expect(page.locator("#partyLocation")).toHaveText("Opole");
-  await expect(page.locator("#cargoFood")).toHaveText("10");
-  await expect(page.locator("#localFood")).toHaveText("0");
-
-  await page.locator("#merchantStep").click();
-  await expect(page.locator("#merchantResult")).toContainText("deposit: command_accepted");
-  await expect(page.locator("#cargoFood")).toHaveText("0");
-  await expect(page.locator("#localFood")).toHaveText("10");
+  await expect(page.locator('[data-panel-target="ai"]')).toHaveCount(0);
+  await expect(page.locator("#merchantStep")).toHaveCount(0);
 });
 
 test("surfaces malformed host controls as explicit request failures", async ({ request }) => {
@@ -109,8 +65,7 @@ test("regional economy diagnostics require explicit truth mode and advance auton
   const advanced = await request.post("/api/economy/advance?view_mode=truth", { data: { days: 2 } });
   expect(advanced.ok()).toBeTruthy();
   expect((await advanced.json()).metrics.elapsedDays).toBeGreaterThan(initialBody.metrics.elapsedDays);
-  await page.goto("/?view_mode=truth");
-  await page.locator("#mapMode").selectOption("truth");
+  await page.goto("/");
   await openPanel(page, "diagnostics");
   await expect(page.locator("#economyDiagnostics")).toBeVisible();
   await expect(page.locator("#economyDiagnostics")).toContainText("TRUTH / DEBUG");
@@ -124,7 +79,6 @@ test("regional economy diagnostics require explicit truth mode and advance auton
 test("playable expedition completes contract through physical cargo, encounter decision and settlement", async ({ page }) => {
   await page.goto("/");
   await openPanel(page, "caravan");
-  await page.getByRole("button", { name: "Pokaż prywatną mapę wyprawy" }).click();
   await expect(page.locator("#partyId")).toHaveText("player_expedition");
   await expect(page.locator("body")).not.toContainText("great_forest_bandit_base");
   await openPanel(page, "contract");
@@ -187,7 +141,7 @@ test("playable API is current and contract loads without a 404 UI error", async 
   await expect(page.locator("#expeditionStatus")).not.toContainText("404");
 });
 
-test("leaving truth mode closes diagnostics instead of leaking stale truth", async ({ page }) => { await page.goto("/"); await openPanel(page, "diagnostics"); await expect(page.locator("#economyDiagnostics")).toBeVisible(); await page.locator("#mapMode").selectOption("party"); await expect(page.locator("#economyDiagnostics")).not.toBeVisible(); await expect(page.locator("#mapView")).toBeVisible(); });
+test("leaving Debug restores the private expedition map", async ({ page }) => { await page.goto("/"); await openPanel(page, "diagnostics"); await page.locator("#debugMapObserver").selectOption("truth"); await expect(page.locator("#mapPanelMode")).toContainText("Developerski"); await openPanel(page, "map"); await expect(page.locator("#mapPanelMode")).toHaveText("Wiedza grupy"); await expect(page.locator("#partyId")).toHaveText("player_expedition"); });
 
 test("polling keeps the expedition map, sidebar and permanent time controls stable", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -211,7 +165,7 @@ test("polling keeps the expedition map, sidebar and permanent time controls stab
   for (const id of ["advanceSixHours", "advanceDay", "autoAdvance"]) await expect(page.locator(`#${id}`)).toBeVisible();
 });
 
-test("map and roster are distinct and truth mode overrides the private expedition map", async ({ page }) => {
+test("map and roster are distinct and Debug can inspect every party map", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
   await openPanel(page, "map");
@@ -220,9 +174,12 @@ test("map and roster are distinct and truth mode overrides the private expeditio
   await openPanel(page, "caravan");
   await expect(page.locator('#contextPanel [data-game-view="map"]')).not.toBeVisible();
   await expect(page.locator('[data-game-view="caravan"]')).toBeVisible();
-  await page.locator("#showExpeditionMap").click();
-  await page.locator("#mapMode").selectOption("truth");
-  await expect(page.locator("#mapMode")).toHaveValue("truth");
+  await expect(page.locator("#showExpeditionMap")).toHaveCount(0);
+  await openPanel(page, "diagnostics");
+  await expect(page.locator("#debugMapObserver option")).toHaveCount(4);
+  await page.locator("#debugMapObserver").selectOption("black_pine_raiders");
+  await expect(page.locator("#partyId")).toHaveText("black_pine_raiders");
+  await page.locator("#debugMapObserver").selectOption("truth");
   await expect(page.locator("#mapPanelMode")).toContainText("Developerski");
 });
 
@@ -237,7 +194,7 @@ for (const viewport of viewports) test(`game shell remains viewport-locked at ${
   await page.goto("/");
   await expect(page.locator("#apiStatus")).toHaveText("Połączono");
   await assertViewportLocked(page);
-  for (const panel of ["map", "caravan", "contract", "journal", "commands", "ai", "diagnostics"]) { await openPanel(page, panel); await assertViewportLocked(page); }
+  for (const panel of ["map", "caravan", "contract", "journal", "commands", "diagnostics"]) { await openPanel(page, panel); await assertViewportLocked(page); }
   await openPanel(page, "contract");
   await page.locator("#acceptContract").click(); await page.locator("#pickupContract").click(); await page.locator("#departExpedition").click(); await page.locator("#advanceExpedition").click();
   await expect(page.locator("#encounterPanel")).toBeVisible();

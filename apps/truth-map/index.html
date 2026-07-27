@@ -12,7 +12,6 @@
       <header class="top-bar">
         <button id="brandHome" class="brand" type="button" data-panel-target="map" aria-label="Pokaż mapę"><span>CaravanWars</span><small>Expedition v1</small></button>
         <div class="top-status"><span id="clock" class="clock">—</span><div class="time-controls" aria-label="Sterowanie czasem"><button id="advanceSixHours" type="button">+6h</button><button id="advanceDay" type="button">+1d</button><label title="Automatyczny upływ czasu"><input id="autoAdvance" type="checkbox" /><span>Auto</span></label></div><span id="apiStatus" class="api-status" role="status">Łączenie…</span></div>
-        <label class="mode-badge" for="mapMode"><span class="mode-dot"></span><span data-i18n="mapMode"></span><select id="mapMode"><option value="party" data-i18n="partyMode"></option><option value="truth" data-i18n="truthMode"></option></select></label>
       </header>
 
       <nav class="game-tabs" aria-label="Widoki gry">
@@ -21,7 +20,6 @@
         <button type="button" data-panel-target="contract" aria-selected="false">Kontrakt</button>
         <button type="button" data-panel-target="journal" aria-selected="false">Dziennik</button>
         <button type="button" data-panel-target="commands" aria-selected="false">Rozkazy</button>
-        <button type="button" data-panel-target="ai" aria-selected="false">AI</button>
         <button type="button" data-panel-target="diagnostics" aria-selected="false">Debug</button>
       </nav>
 
@@ -45,7 +43,6 @@
             <header class="panel-heading"><p class="section-label" data-i18n="selectedParty"></p><h2 id="partyName">—</h2></header>
             <dl class="facts"><div><dt data-i18n="partyId"></dt><dd id="partyId">—</dd></div><div><dt data-i18n="status"></dt><dd id="partyStatus">—</dd></div><div><dt data-i18n="location"></dt><dd id="partyLocation">—</dd></div><div><dt data-i18n="speed"></dt><dd id="partySpeed">—</dd></div><div><dt>Cargo / monety</dt><dd id="expeditionCargo">—</dd></div></dl>
             <h3>Skład</h3><div id="expeditionCharacters" class="compact-copy">—</div>
-            <button id="showExpeditionMap" type="button">Pokaż prywatną mapę wyprawy</button>
           </section>
 
           <section id="expeditionPanel" class="context-view" data-game-view="contract" hidden>
@@ -66,14 +63,9 @@
             <button id="resetButton" class="quiet" data-i18n="reset"></button>
           </section>
 
-          <section class="context-view" data-game-view="ai" hidden>
-            <header class="panel-heading"><p class="section-label">KONTROLERY</p><h2>AI i automatyzacja</h2></header>
-            <dl class="facts"><div><dt data-i18n="cargoFood"></dt><dd id="cargoFood">—</dd></div><div><dt data-i18n="localFood"></dt><dd id="localFood">—</dd></div></dl>
-            <button id="merchantStep" class="primary" data-i18n="runMerchantStep"></button><p id="merchantResult" class="command-result" aria-live="polite"></p><button id="runExpeditionAi">Krok Expedition AI</button>
-          </section>
-
           <section id="economyDiagnostics" class="context-view" data-game-view="diagnostics" hidden>
             <header class="panel-heading"><p class="section-label">TRUTH / DEBUG</p><h2>Diagnostyka regionu</h2></header>
+            <label class="field-label" for="debugMapObserver">Mapa obserwatora</label><select id="debugMapObserver"><option value="truth">Pełna mapa świata (Truth)</option></select>
             <div data-diagnostic-page="0"><dl class="facts"><div><dt>Day</dt><dd id="economyDay">—</dd></div><div><dt>Trades</dt><dd id="economyTrades">—</dd></div><div><dt>Shortages</dt><dd id="economyShortages">—</dd></div><div><dt>Active tasks</dt><dd id="economyTasks">—</dd></div><div><dt>Distance</dt><dd id="economyDistance">—</dd></div><div><dt>Season / year</dt><dd id="economySeason">—</dd></div></dl></div>
             <div data-diagnostic-page="1" hidden><dl class="facts"><div><dt>Facility profiles</dt><dd id="economyProfiles">—</dd></div><div><dt>Winter reserves</dt><dd id="economyReserves">—</dd></div><div><dt>Population / health</dt><dd id="economyPopulation">—</dd></div><div><dt>Labour/security</dt><dd id="economyLabour">—</dd></div><div><dt>Continuous space</dt><dd id="spatialDiagnostics">—</dd></div></dl></div>
             <div data-diagnostic-page="2" hidden><p id="economyAnnualChart" class="compact-copy">Annual production chart: no completed year</p><ol id="economyDecisions" class="paged-list"></ol></div>

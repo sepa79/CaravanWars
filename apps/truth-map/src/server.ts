@@ -134,6 +134,8 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
   const requestUrl = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
 
   if (method === "GET" && requestUrl.pathname === "/api/health") { writeJson(response, 200, { apiVersion: "viewport-game-ui-v1", expeditionEndpoint: "/api/expedition/state" }); return; }
+  if (method === "GET" && requestUrl.pathname === "/api/debug/map-observers") { writeJson(response, 200, { observers: [{ id: "truth", displayName: "Pełna mapa świata (Truth)" }, { id: "player_party", displayName: simulation.partySnapshot("player_party").displayName }, { id: playableExpedition.playerPartyId, displayName: playableExpedition.world.partySnapshot(playableExpedition.playerPartyId).displayName }, { id: playableExpedition.banditPartyId, displayName: playableExpedition.world.partySnapshot(playableExpedition.banditPartyId).displayName }] }); return; }
+  if (method === "GET" && requestUrl.pathname === "/api/debug/map") { const observer = requestUrl.searchParams.get("observer"); if (observer === "truth") writeJson(response, 200, createDebugState(graph, simulation)); else if (observer === "player_party") writeJson(response, 200, simulation.partyMapSnapshot(observer)); else if (observer === playableExpedition.playerPartyId || observer === playableExpedition.banditPartyId) writeJson(response, 200, playableExpedition.world.partyMapSnapshot(observer)); else throw new RequestValidationError("unknown debug map observer"); return; }
   if (method === "GET" && requestUrl.pathname === "/api/state") {
     writeJson(response, 200, createClientState(requestUrl, graph, simulation));
     return;

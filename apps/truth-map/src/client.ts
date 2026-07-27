@@ -161,16 +161,12 @@ const autoAdvance = requireElement<HTMLInputElement>("autoAdvance");
 const resetButton = requireElement<HTMLButtonElement>("resetButton");
 const regionName = requireElement<HTMLElement>("regionName");
 const regionStats = requireElement<HTMLElement>("regionStats");
-const mapMode = requireElement<HTMLSelectElement>("mapMode");
+const debugMapObserver = requireElement<HTMLSelectElement>("debugMapObserver");
 const mapScopeLabel = requireElement<HTMLElement>("mapScopeLabel");
 const mapPanelMode = requireElement<HTMLElement>("mapPanelMode");
 const mapPanelCoverage = requireElement<HTMLElement>("mapPanelCoverage");
 const mapPanelPosition = requireElement<HTMLElement>("mapPanelPosition");
 const mapPanelKnowledge = requireElement<HTMLElement>("mapPanelKnowledge");
-const cargoFood = requireElement<HTMLElement>("cargoFood");
-const localFood = requireElement<HTMLElement>("localFood");
-const merchantStep = requireElement<HTMLButtonElement>("merchantStep");
-const merchantResult = requireElement<HTMLElement>("merchantResult");
 const economyDiagnostics = requireElement<HTMLElement>("economyDiagnostics");
 const economyDay = requireElement<HTMLElement>("economyDay");
 const economyTrades = requireElement<HTMLElement>("economyTrades");
@@ -196,9 +192,7 @@ const acceptContract = requireElement<HTMLButtonElement>("acceptContract");
 const pickupContract = requireElement<HTMLButtonElement>("pickupContract");
 const departExpedition = requireElement<HTMLButtonElement>("departExpedition");
 const exploreExpedition = requireElement<HTMLButtonElement>("exploreExpedition");
-const showExpeditionMap = requireElement<HTMLButtonElement>("showExpeditionMap");
 const deliverContract = requireElement<HTMLButtonElement>("deliverContract");
-const runExpeditionAi = requireElement<HTMLButtonElement>("runExpeditionAi");
 const advanceExpedition = requireElement<HTMLButtonElement>("advanceExpedition");
 const encounterPanel = requireElement<HTMLDialogElement>("encounterPanel");
 const encounterTitle = requireElement<HTMLElement>("encounterTitle");
@@ -229,7 +223,8 @@ let journalPageIndex = 0;
 let diagnosticPageIndex = 0;
 let encounterReturnFocus: HTMLElement | null = null;
 let encounterOutcome: null | { readonly decision: string; readonly outcome: string } = null;
-let showingExpeditionMap = false;
+let showingExpeditionMap = true;
+let debugMapActive = false;
 let lastMapRenderSignature = "";
 let lastDestinationSignature = "";
 let lastExpeditionRenderSignature = "";
@@ -242,23 +237,16 @@ journalNext.addEventListener("click", () => { journalPageIndex += 1; renderPlaya
 diagnosticPrevious.addEventListener("click", () => { diagnosticPageIndex = Math.max(0, diagnosticPageIndex - 1); renderDiagnosticPage(); });
 diagnosticNext.addEventListener("click", () => { diagnosticPageIndex = Math.min(diagnosticPages.length - 1, diagnosticPageIndex + 1); renderDiagnosticPage(); });
 moveButton.addEventListener("click", () => { void submitMove(); });
-advanceSixHours.addEventListener("click", () => { void advanceTime(0.25); });
-advanceDay.addEventListener("click", () => { void advanceTime(1); });
+advanceSixHours.addEventListener("click", () => { void advancePlayableExpedition(0.25); });
+advanceDay.addEventListener("click", () => { void advancePlayableExpedition(1); });
 resetButton.addEventListener("click", () => { void resetSimulation(); });
-mapMode.addEventListener("change", () => {
-  if (mapMode.value === "truth") showingExpeditionMap = false;
-  if (mapMode.value !== "truth" && activeGameView === "diagnostics") void activateGameView("map");
-  void refreshState();
-});
-merchantStep.addEventListener("click", () => { void runMerchantStep(); });
+debugMapObserver.addEventListener("change", () => { void refreshDebugMap(); });
 advanceEconomy.addEventListener("click", () => { void advanceRegionalEconomy(); });
 acceptContract.addEventListener("click", () => { void expeditionCommand("accept_caravan_contract", { commandId: "browser:accept", issuerActorId: "player_leader", contractId: "contract_wroclaw_opole_food", contractorPartyId: "player_expedition" }); });
 pickupContract.addEventListener("click", () => { void expeditionCommand("pickup_caravan_contract", { commandId: "browser:pickup", issuerActorId: "player_leader", contractId: "contract_wroclaw_opole_food" }); });
 departExpedition.addEventListener("click", () => { void expeditionCommand("move_party", { party_id: "player_expedition", from_node_id: "wroclaw", to_node_id: "opole" }); });
 exploreExpedition.addEventListener("click", () => { void expeditionCommand("search_area", { commandId: "browser:explore:forest-shortcut", issuerActorId: "player_leader", partyId: "player_expedition", areaKnowledgeId: "area:rumored_forest_shortcut", searchRadiusKm: 3, observationSkillPermille: 820 }); });
-showExpeditionMap.addEventListener("click", () => { if (expeditionState !== null) { showingExpeditionMap = true; state = expeditionState.partyMap; updateView(); void activateGameView("map"); } });
 deliverContract.addEventListener("click", () => { void expeditionCommand("deliver_caravan_contract", { commandId: "browser:deliver", issuerActorId: "player_leader", contractId: "contract_wroclaw_opole_food" }); });
-runExpeditionAi.addEventListener("click", () => { void expeditionAiStep(); });
 advanceExpedition.addEventListener("click", () => { void advancePlayableExpedition(0.25); });
 autoAdvance.addEventListener("change", updateAutoAdvance);
 
@@ -266,15 +254,14 @@ gameStage.dataset.activeView = activeGameView;
 for (const candidate of contextViews) candidate.hidden = candidate.id !== "mapView" && candidate.dataset.gameView !== "map";
 encounterPanel.addEventListener("cancel", (event) => { event.preventDefault(); });
 void refreshState();
+void loadDebugMapObservers();
 window.setInterval(() => { void refreshState(false); }, 1_000);
 
 async function refreshState(reportFailure = true): Promise<void> {
-  const requestedMode = mapMode.value;
   try {
     const nextState = await requestJson<DebugState>(viewUrl("/api/state"));
-    if (mapMode.value !== requestedMode) return;
-    state = nextState;
-    if (!showingExpeditionMap) updateView();
+    if (!debugMapActive) state = nextState;
+    if (!showingExpeditionMap && !debugMapActive) updateView();
     await Promise.all([refreshEconomyDiagnostics(), refreshPlayableExpedition()]);
     setApiStatus("Połączono", false);
   } catch (error: unknown) {
@@ -287,7 +274,7 @@ async function refreshPlayableExpedition(): Promise<void> {
   const nextExpeditionState = await requestJson<ExpeditionState>("/api/expedition/state");
   const changed = JSON.stringify(nextExpeditionState) !== JSON.stringify(expeditionState);
   expeditionState = nextExpeditionState;
-  if (showingExpeditionMap) { state = expeditionState.partyMap; updateView(); }
+  if (showingExpeditionMap && !debugMapActive) { state = expeditionState.partyMap; updateView(); }
   if (changed) renderPlayableExpedition();
 }
 function renderPlayableExpedition(): void { const current = expeditionState, contract = current?.expedition?.contracts[0]; if (current === null || current.expedition === null || contract === undefined) return; expeditionContract.textContent = `${contract.quantity} ${contract.goodsId}: Wrocław → Opole`; expeditionStatus.textContent = `Status: ${contract.status}`; expeditionDeadline.textContent = `dzień ${contract.deadlineElapsedDays}, zapłata ${contract.paymentCoin} coin`; expeditionCharacters.textContent = current.expedition.characters.map((item) => `${item.characterId} [${item.roles.join("/")}] h${item.healthPermille} f${item.fatiguePermille}`).join("; "); expeditionCargo.textContent = Object.entries(current.party.cargo).map(([id, amount]) => `${id} ${amount}`).join(", ") || "puste"; acceptContract.disabled = contract.status !== "offered"; pickupContract.disabled = contract.status !== "accepted"; departExpedition.disabled = contract.status !== "picked_up" || current.party.currentNodeId !== "wroclaw"; exploreExpedition.disabled = contract.status !== "picked_up" || current.party.currentNodeId !== "wroclaw"; deliverContract.disabled = contract.status !== "picked_up" || current.party.currentNodeId !== "opole"; const encounter = current.expedition.encounter; encounterChoices.replaceChildren(); if (encounter !== null) { encounterTitle.textContent = "Karawana zatrzymana"; encounterSummary.textContent = `Zagrożenie na ${encounter.routeId}. Wybór ma fizyczne konsekwencje.`; for (const decision of encounter.affordances) { const button = document.createElement("button"); button.textContent = decision; button.dataset.decision = decision; button.addEventListener("click", () => { void expeditionCommand("resolve_expedition_encounter", { commandId: `browser:encounter:${encounter.encounterId}:${decision}`, issuerActorId: "player_leader", encounterId: encounter.encounterId, decision }); }); encounterChoices.append(button); } openEncounterDialog(); } else if (encounterOutcome !== null) { encounterTitle.textContent = encounterOutcome.decision === "fight" ? "Walka rozstrzygnięta" : "Spotkanie rozstrzygnięte"; encounterSummary.textContent = `${encounterOutcome.decision}: ${encounterOutcome.outcome}. Możesz kontynuować podróż.`; const continueButton = document.createElement("button"); continueButton.className = "primary"; continueButton.textContent = "Kontynuuj podróż (+6 godzin)"; continueButton.dataset.encounterContinue = "true"; continueButton.addEventListener("click", () => { encounterOutcome = null; void advancePlayableExpedition(0.25); }); const journalButton = document.createElement("button"); journalButton.textContent = "Zobacz dziennik"; journalButton.addEventListener("click", () => { encounterOutcome = null; encounterPanel.close(); void activateGameView("journal"); }); encounterChoices.append(continueButton, journalButton); openEncounterDialog(); } else if (encounterPanel.open) { encounterPanel.close(); encounterReturnFocus?.focus(); encounterReturnFocus = null; } const pageSize = 4, pageCount = Math.max(1, Math.ceil(current.expedition.log.length / pageSize)); journalPageIndex = Math.min(journalPageIndex, pageCount - 1); const entries = current.expedition.log.slice().reverse().slice(journalPageIndex * pageSize, (journalPageIndex + 1) * pageSize); expeditionLog.replaceChildren(...entries.map((entry) => { const item = document.createElement("li"); item.textContent = `D${entry.elapsedDays.toFixed(2)} ${entry.text}`; return item; })); journalPage.textContent = `${journalPageIndex + 1} / ${pageCount}`; journalPrevious.disabled = journalPageIndex === 0; journalNext.disabled = journalPageIndex + 1 >= pageCount; }
@@ -297,10 +284,25 @@ async function advancePlayableExpedition(days: number): Promise<void> { expediti
 async function expeditionAiStep(): Promise<void> { const response = await postJson<{ readonly state: ExpeditionState }>("/api/expedition/ai-step", {}); expeditionState = response.state; renderPlayableExpedition(); }
 
 async function refreshEconomyDiagnostics(): Promise<void> {
-  const truth = mapMode.value === "truth";
+  const truth = activeGameView === "diagnostics" && debugMapObserver.value === "truth";
   if (!truth) return;
   const diagnostics = await requestJson<EconomyDiagnostics>("/api/economy?view_mode=truth");
   renderEconomyDiagnostics(diagnostics);
+}
+
+async function loadDebugMapObservers(): Promise<void> {
+  const response = await requestJson<{ readonly observers: readonly { readonly id: string; readonly displayName: string }[] }>("/api/debug/map-observers");
+  const selected = debugMapObserver.value || "truth";
+  debugMapObserver.replaceChildren(...response.observers.map((observer) => new Option(observer.displayName, observer.id)));
+  debugMapObserver.value = response.observers.some((observer) => observer.id === selected) ? selected : "truth";
+}
+
+async function refreshDebugMap(): Promise<void> {
+  debugMapActive = true;
+  showingExpeditionMap = false;
+  state = await requestJson<DebugState>(`/api/debug/map?observer=${encodeURIComponent(debugMapObserver.value)}`);
+  updateView();
+  if (debugMapObserver.value === "truth") await refreshEconomyDiagnostics();
 }
 
 async function advanceRegionalEconomy(): Promise<void> {
@@ -341,7 +343,12 @@ async function activateGameView(view: string): Promise<void> {
   const sidebarView = view;
   for (const candidate of contextViews) candidate.hidden = candidate.id !== "mapView" && candidate.dataset.gameView !== sidebarView;
   for (const tab of gameTabs) tab.setAttribute("aria-selected", String(tab.dataset.panelTarget === view));
-  if (view === "diagnostics" && mapMode.value !== "truth") { mapMode.value = "truth"; await refreshState(); }
+  if (view === "diagnostics") await refreshDebugMap();
+  else if (debugMapActive) {
+    debugMapActive = false;
+    showingExpeditionMap = true;
+    if (expeditionState !== null) { state = expeditionState.partyMap; updateView(); }
+  }
   const active = contextViews.find((candidate) => candidate.dataset.gameView === sidebarView);
   if (view !== "map") (active?.querySelector<HTMLElement>("button:not(:disabled),select:not(:disabled),[tabindex]") ?? document.querySelector<HTMLElement>(`[data-panel-target="${view}"]`))?.focus();
   requestAnimationFrame(render);
@@ -395,27 +402,13 @@ async function resetSimulation(): Promise<void> {
   }
 }
 
-async function runMerchantStep(): Promise<void> {
-  try {
-    const response = await postJson<MerchantStepResponse>(viewUrl("/api/ai/merchant-step"), {});
-    state = response.state;
-    merchantResult.textContent = response.decision.action === "none"
-      ? `${translate("merchantNone")}: ${response.decision.reason}`
-      : `${response.decision.action}: ${response.decision.reason}`;
-    merchantResult.classList.toggle("error", response.decision.commandResult?.accepted === false);
-    updateView();
-  } catch (error: unknown) {
-    showError(error);
-  }
-}
-
 function updateAutoAdvance(): void {
   if (autoAdvanceTimer !== null) {
     window.clearInterval(autoAdvanceTimer);
     autoAdvanceTimer = null;
   }
   if (autoAdvance.checked) {
-    autoAdvanceTimer = window.setInterval(() => { void advanceTime(1 / 24); }, 250);
+    autoAdvanceTimer = window.setInterval(() => { void advancePlayableExpedition(1 / 24); }, 250);
   }
 }
 
@@ -432,15 +425,8 @@ function updateView(): void {
   partySpeed.textContent = party.travel === null
     ? "—"
     : `${party.travel.speedKmPerDay.toFixed(1)} km/dzień`;
-  cargoFood.textContent = String(party.cargo.food ?? 0);
-  const localLocation = currentState.snapshot.locations.find((location) =>
-    location.nodeId === party.currentNodeId);
-  localFood.textContent = localLocation === undefined
-    ? "—"
-    : String(localLocation.resources.food ?? 0);
   clock.textContent = formatClock(currentState.snapshot.clock.elapsedDays);
   regionName.textContent = currentState.region.displayName;
-  mapMode.value = currentState.mode;
   mapScopeLabel.textContent = currentState.mode === "truth"
     ? translate("authoritativeRegion")
     : translate("knownRegion");
@@ -715,7 +701,7 @@ async function requestJson<T>(url: string): Promise<T> {
 
 function viewUrl(path: string): string {
   const parameters = new URLSearchParams({
-    view_mode: mapMode.value,
+    view_mode: "party",
     party_id: "player_party",
   });
   return `${path}?${parameters.toString()}`;
