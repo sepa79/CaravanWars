@@ -28,7 +28,11 @@ test("group selection, targeted Rally and Advance preview and animate coherently
   expect(previewPixels).toBeGreaterThan(100);
   await page.locator("#confirmTarget").click();
   const before = await page.request.get("/api/state").then((response) => response.json());
-  for (let tick = 0; tick < 8; tick += 1) await page.locator("#advance").click();
+  await page.locator("#advance").click();
+  const afterFirstStep = await page.request.get("/api/state").then((response) => response.json());
+  expect(afterFirstStep.alliedGroups.find((group: { groupId: string }) => group.groupId === "retainers").orderStatus).toBe("executing");
+  expect(afterFirstStep.visible.filter((actor: { groupId: string }) => actor.groupId === "retainers").some((actor: { position: unknown }, index: number) => JSON.stringify(actor.position) !== JSON.stringify(before.visible.filter((item: { groupId: string }) => item.groupId === "retainers")[index]?.position))).toBe(true);
+  for (let tick = 0; tick < 7; tick += 1) await page.locator("#advance").click();
   const after = await page.request.get("/api/state").then((response) => response.json());
   expect(after.tick).toBe(before.tick + 8);
   expect(after.visible.filter((actor: { groupId: string }) => actor.groupId === "retainers").some((actor: { position: unknown }, index: number) => JSON.stringify(actor.position) !== JSON.stringify(before.visible.filter((item: { groupId: string }) => item.groupId === "retainers")[index]?.position))).toBe(true);

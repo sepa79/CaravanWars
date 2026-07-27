@@ -16,23 +16,20 @@ test("orders target an authorized group and use physical voice delivery", () => 
   assert.equal(order(battle, "hold").accepted, true);
   assert.equal(battle.issueOrder({ issuerId: "player", targetGroupId: "raiders", category: "position", type: "hold", targetHex: null, targetGroupIdToAttack: null, targetFacing: null }).accepted, false);
   const status = (): string | undefined => battle.truthSnapshot().groups.find((group) => group.id === "retainers")!.currentOrder?.status;
-  battle.advanceTick(); assert.equal(status(), "propagating");
-  battle.advanceTick(); assert.equal(status(), "received");
-  battle.advanceTick(); assert.equal(status(), "interpreted");
   battle.advanceTick(); assert.equal(status(), "executing");
 });
 
 test("an order outside voice range becomes unheard, never magically received", () => {
   const battle = new BattleSimulation(seed({ player: { q: -4, r: 0 }, allies: [{ q: 3, r: 0 }] }));
   assert.equal(order(battle, "hold").accepted, true);
-  battle.advanceTick(); battle.advanceTick();
+  battle.advanceTick();
   assert.equal(battle.truthSnapshot().groups.find((group) => group.id === "retainers")!.currentOrder?.status, "unheard");
 });
 
 test("an unreachable physical target reaches the explicit impossible terminal state", () => {
   const battle = createFordDefenseBattle();
   assert.equal(order(battle, "advance", { q: 9, r: 9 }).accepted, true);
-  for (let tick = 0; tick < 4; tick += 1) battle.advanceTick();
+  battle.advanceTick();
   assert.equal(battle.truthSnapshot().groups.find((group) => group.id === "retainers")!.currentOrder?.status, "impossible");
 });
 

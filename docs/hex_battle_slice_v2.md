@@ -31,11 +31,14 @@ The vocabulary is Follow me, Rally, Advance, Hold position, Change facing,
 Close formation, Loose formation, Attack target group, Ordered withdrawal and
 Act at discretion. Targeted orders require prepare, preview and confirm/cancel.
 
-Lifecycle advances on ticks:
+The lifecycle is recorded for diagnostics, but direct voice/visual delivery is
+resolved within one battle tick:
 
     issued -> propagating -> received -> interpreted -> executing
 
-Terminal outcomes are unheard, refused, impossible and completed. During
+The group can therefore begin executing in the same tick in which the order is
+heard. Multi-tick propagation is reserved for future messenger, relay, noise or
+distance mechanics. Terminal outcomes are unheard, refused, impossible and completed. During
 propagation at least one living member must be within the issuer's physical
 voice range. Otherwise the order becomes unheard. Broken groups may refuse.
 
