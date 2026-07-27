@@ -126,7 +126,7 @@ test("rejected movement commands do not mutate party state", () => {
   }
 });
 
-test("rejects a second movement command while a party is traveling", () => {
+test("a new road destination reverses travel from the exact current position", () => {
   const simulation = createSimulation();
   assert.equal(submitMove(simulation, {
     party_id: "player_party",
@@ -134,14 +134,35 @@ test("rejects a second movement command while a party is traveling", () => {
     to_node_id: "opole",
   }).accepted, true);
 
+  simulation.advanceDays(1);
+  const before = simulation.partySnapshot("player_party");
   const result = submitMove(simulation, {
     party_id: "player_party",
-    from_node_id: "wroclaw",
-    to_node_id: "opole",
+    from_node_id: "opole",
+    to_node_id: "wroclaw",
   });
-  assert.equal(result.accepted, false);
-  if (result.accepted) assert.fail("Expected rejected command.");
-  assert.equal(result.errorCode, "PARTY_BUSY");
+  assert.equal(result.accepted, true);
+  const after = simulation.partySnapshot("player_party");
+  assert.deepEqual(after.position, before.position);
+  assert.equal(after.travel?.destinationNodeId, "wroclaw");
+  assert.ok(Math.abs(after.travel!.progressKm - (after.travel!.distanceKm - before.travel!.progressKm)) < 1e-9);
+});
+
+test("rerouting mid-road returns to the junction and continues along the new known road", () => {
+  const graph = loadRegionGraphFile(SILESIA_PATH), config = loadPartyTravelConfigFile(PARTY_TRAVEL_PATH);
+  const simulation = new WorldSimulation(graph, config, [{ ...PLAYER_PARTY, knownRouteIds: ["wroclaw_opole", "wroclaw_legnica"] }], null);
+  assert.equal(submitMove(simulation, { party_id: "player_party", from_node_id: "wroclaw", to_node_id: "opole" }).accepted, true);
+  simulation.advanceDays(0.5);
+  const position = simulation.partySnapshot("player_party").position;
+  assert.equal(submitMove(simulation, { party_id: "player_party", from_node_id: "opole", to_node_id: "legnica" }).accepted, true);
+  let party = simulation.partySnapshot("player_party");
+  assert.deepEqual(party.position, position);
+  assert.equal(party.travel?.destinationNodeId, "wroclaw");
+  assert.deepEqual(party.travel?.plannedNodeIds, ["legnica"]);
+  simulation.advanceDays(party.travel!.progressKm / party.travel!.speedKmPerDay);
+  party = simulation.partySnapshot("player_party");
+  assert.equal(party.travel?.originNodeId, "wroclaw");
+  assert.equal(party.travel?.destinationNodeId, "legnica");
 });
 
 test("rejects an existing route that the party does not know", () => {
@@ -178,7 +199,7 @@ test("party map snapshot includes only party-known graph facts", () => {
   assert.deepEqual(partyMap.snapshot.parties.map((party) => party.id), ["player_party"]);
 });
 
-test("starting known-route travel creates owner-specific observations and reveals only observed marks", () => {
+test("known-route travel reveals waypoints only as the party physically reaches them", () => {
   const simulation = createSimulation();
   assert.equal(submitMove(simulation, {
     party_id: "player_party",
@@ -186,26 +207,33 @@ test("starting known-route travel creates owner-specific observations and reveal
     to_node_id: "opole",
   }).accepted, true);
 
-  const partyMap = simulation.partyMapSnapshot("player_party");
+  let partyMap = simulation.partyMapSnapshot("player_party");
+  assert.deepEqual(partyMap.region.edges[0]?.routeWaypoints, []);
+  assert.deepEqual(partyMap.region.landmarks, []);
+  assert.deepEqual(simulation.snapshot().runtimeEvents, []);
+
+  simulation.advanceDays(24 / 31);
+  partyMap = simulation.partyMapSnapshot("player_party");
+  assert.deepEqual(partyMap.region.edges[0]?.routeWaypoints, []);
+
+  simulation.advanceDays(2 / 31);
+  partyMap = simulation.partyMapSnapshot("player_party");
   assert.deepEqual(
     partyMap.region.edges[0]?.routeWaypoints.map((waypoint) => waypoint.id),
-    [
-      "wroclaw_opole_old_willow_ford",
-      "wroclaw_opole_sleza_view",
-      "wroclaw_opole_odra_bend",
-    ],
+    ["wroclaw_opole_old_willow_ford"],
   );
   assert.deepEqual(
     partyMap.region.landmarks.map((landmark) => landmark.id),
-    ["sleza_massif", "old_willow_ford"],
+    ["old_willow_ford"],
   );
   assert.deepEqual(partyMap.region.terrainAreas, []);
 
   const events = simulation.snapshot().runtimeEvents;
-  assert.equal(events.length, 3);
-  assert.deepEqual(events[0], {
+  assert.equal(events.length, 1);
+  assert.ok(Math.abs(events[0]!.elapsedDays - 26 / 31) < 1e-12);
+  assert.deepEqual({ ...events[0], elapsedDays: undefined }, {
     eventType: "worldsim_route_waypoint_observed",
-    elapsedDays: 0,
+    elapsedDays: undefined,
     ownerPartyId: "player_party",
     edgeId: "wroclaw_opole",
     originNodeId: "wroclaw",

@@ -248,6 +248,7 @@ export interface PartyTravelSnapshot {
   readonly distanceKm: number;
   readonly progressKm: number;
   readonly speedKmPerDay: number;
+  readonly plannedNodeIds: readonly string[];
 }
 
 export interface PartySpatialTravelSnapshot {
@@ -431,6 +432,7 @@ interface TravelingPartyState {
   readonly distanceKm: number;
   readonly speedKmPerDay: number;
   progressKm: number;
+  plannedNodeIds: string[];
 }
 
 interface SpatialTravelingPartyState {
@@ -1276,43 +1278,49 @@ export class WorldSimulation {
     if (party === undefined) {
       return rejected("PARTY_NOT_FOUND", `Party ${command.party_id} does not exist.`);
     }
-    if (party.location.status === "traveling") {
-      return rejected("PARTY_BUSY", `Party ${party.id} is already traveling.`);
-    }
     if (!this.#graph.nodesById.has(command.from_node_id)) {
       return rejected("NODE_NOT_FOUND", `Origin node ${command.from_node_id} does not exist.`);
     }
     if (!this.#graph.nodesById.has(command.to_node_id)) {
       return rejected("NODE_NOT_FOUND", `Destination node ${command.to_node_id} does not exist.`);
     }
-    if (party.location.nodeId !== command.from_node_id) {
+    if (party.location.status === "traveling" && "spatial" in party.location) return rejected("PARTY_BUSY", `Party ${party.id} is traveling off-road.`);
+    if (party.location.status === "idle" && party.location.nodeId !== command.from_node_id) {
       return rejected(
         "ORIGIN_MISMATCH",
         `Party ${party.id} is at ${party.location.nodeId}, not ${command.from_node_id}.`,
       );
     }
 
-    const edge = getEdgeBetween(this.#graph, command.from_node_id, command.to_node_id);
-    if (edge === undefined) {
-      return rejected(
-        "ROUTE_NOT_FOUND",
-        `No route connects ${command.from_node_id} and ${command.to_node_id}.`,
-      );
+    const knownEdges = new Set(this.navigationKnowledgeGraph(party.id, "party").edges.filter((item) => item.worldObjectId !== null && item.freshness === "fresh").map((item) => item.worldObjectId!));
+    const routeFrom = (start: string) => shortestKnownRoute(this.#graph, knownEdges, start, command.to_node_id);
+    if (party.location.status === "traveling") {
+      const travel = party.location;
+      const forward = routeFrom(travel.destinationNodeId), backward = routeFrom(travel.originNodeId);
+      const forwardCost = forward === null ? Infinity : travel.distanceKm - travel.progressKm + routeDistance(this.#graph, forward);
+      const backwardCost = backward === null ? Infinity : travel.progressKm + routeDistance(this.#graph, backward);
+      if (!Number.isFinite(Math.min(forwardCost, backwardCost))) return rejected("ROUTE_NOT_FOUND", `No known road route leads to ${command.to_node_id}.`);
+      if (backwardCost < forwardCost) party.location = { ...travel, originNodeId: travel.destinationNodeId, destinationNodeId: travel.originNodeId, progressKm: travel.distanceKm - travel.progressKm, plannedNodeIds: backward!.slice(1) };
+      else travel.plannedNodeIds = forward!.slice(1);
+      return { accepted: true };
     }
-    if (!this.navigationKnowledgeGraph(party.id, "party").edges.some((item) => item.worldObjectId === edge.id && item.freshness === "fresh")) {
-      return rejected("ROUTE_UNKNOWN", `Party ${party.id} does not know route ${edge.id}.`);
-    }
+
+    const route = routeFrom(command.from_node_id);
+    if (route === null || route.length < 2) return getEdgeBetween(this.#graph, command.from_node_id, command.to_node_id) === undefined
+      ? rejected("ROUTE_NOT_FOUND", `No known road route leads from ${command.from_node_id} to ${command.to_node_id}.`)
+      : rejected("ROUTE_UNKNOWN", `Party ${party.id} does not know the route to ${command.to_node_id}.`);
+    const edge = getEdgeBetween(this.#graph, route[0]!, route[1]!)!;
 
     party.location = {
       status: "traveling",
       edgeId: edge.id,
       originNodeId: command.from_node_id,
-      destinationNodeId: command.to_node_id,
+      destinationNodeId: route[1]!,
       distanceKm: edge.distanceKm,
       speedKmPerDay: calculatePartyTravelSpeed(party.composition, this.#travelConfig) * (this.#caravanExpedition?.travelModifierPermille(party.id) ?? 1000) / 1000,
       progressKm: 0,
+      plannedNodeIds: route.slice(2),
     };
-    this.#observeRoute(party, edge, command.from_node_id, command.to_node_id);
     return { accepted: true };
   }
 
@@ -1476,12 +1484,18 @@ export class WorldSimulation {
         travel.distanceKm,
         travel.progressKm + travel.speedKmPerDay * days,
       );
+      if (!("spatial" in travel)) this.#observeRouteProgress(party, this.#graph.edgesById.get(travel.edgeId)!, travel.originNodeId, travel.destinationNodeId, travel.progressKm);
       this.#caravanExpedition?.addTravelFatigue(party.id, travel.speedKmPerDay * days);
       if ("spatial" in travel) continue;
       if (travel.progressKm + 1e-9 >= travel.distanceKm) {
         travel.progressKm = travel.distanceKm;
-        party.location = { status: "idle", nodeId: travel.destinationNodeId, position: [...this.#graph.nodesById.get(travel.destinationNodeId)!.position] };
         this.#observeSignpostedLocalRoutes(party, travel.destinationNodeId);
+        const nextNodeId = travel.plannedNodeIds.shift();
+        if (nextNodeId === undefined) party.location = { status: "idle", nodeId: travel.destinationNodeId, position: [...this.#graph.nodesById.get(travel.destinationNodeId)!.position] };
+        else {
+          const nextEdge = getEdgeBetween(this.#graph, travel.destinationNodeId, nextNodeId)!;
+          party.location = { status: "traveling", edgeId: nextEdge.id, originNodeId: travel.destinationNodeId, destinationNodeId: nextNodeId, distanceKm: nextEdge.distanceKm, speedKmPerDay: travel.speedKmPerDay, progressKm: 0, plannedNodeIds: travel.plannedNodeIds };
+        }
       }
     }
   }
@@ -1562,6 +1576,7 @@ export class WorldSimulation {
             distanceKm: source.travel.distanceKm,
             speedKmPerDay: source.travel.speedKmPerDay,
             progressKm: source.travel.progressKm,
+            plannedNodeIds: [...source.travel.plannedNodeIds],
           };
       party.observedWaypointIds.clear();
       for (const id of source.observedWaypointIds) party.observedWaypointIds.add(id);
@@ -1684,13 +1699,16 @@ export class WorldSimulation {
     };
   }
 
-  #observeRoute(
+  #observeRouteProgress(
     party: PartyRuntimeState,
     edge: RegionGraphEdge,
     originNodeId: string,
     destinationNodeId: string,
+    progressKm: number,
   ): void {
     for (const waypoint of edge.routeWaypoints) {
+      const distanceFromOrigin = edge.originNodeId === originNodeId ? waypoint.distanceFromStartKm : edge.distanceKm - waypoint.distanceFromStartKm;
+      if (distanceFromOrigin > progressKm + 1e-9) continue;
       if (party.observedWaypointIds.has(waypoint.id)) continue;
       party.observedWaypointIds.add(waypoint.id);
       for (const landmarkId of waypoint.landmarkIds) party.observedLandmarkIds.add(landmarkId);
@@ -1774,6 +1792,30 @@ export class WorldSimulation {
 function graphMapBounds(graph: RegionGraph): { readonly minimum: Vec2; readonly maximum: Vec2 } {
   const xs = graph.nodes.map((node) => node.position[0]), ys = graph.nodes.map((node) => node.position[1]);
   return { minimum: [Math.min(...xs), Math.min(...ys)], maximum: [Math.max(...xs), Math.max(...ys)] };
+}
+
+function shortestKnownRoute(graph: RegionGraph, knownEdgeIds: ReadonlySet<string>, start: string, target: string): string[] | null {
+  const distances = new Map<string, number>([[start, 0]]), previous = new Map<string, string>(), pending = new Set<string>([start]);
+  while (pending.size > 0) {
+    const node = [...pending].sort((a, b) => (distances.get(a)! - distances.get(b)!) || a.localeCompare(b))[0]!;
+    pending.delete(node);
+    if (node === target) break;
+    for (const edge of graph.edges.filter((item) => knownEdgeIds.has(item.id) && (item.originNodeId === node || item.targetNodeId === node))) {
+      const next = edge.originNodeId === node ? edge.targetNodeId : edge.originNodeId, candidate = distances.get(node)! + edge.distanceKm;
+      if (candidate >= (distances.get(next) ?? Infinity)) continue;
+      distances.set(next, candidate); previous.set(next, node); pending.add(next);
+    }
+  }
+  if (!distances.has(target)) return null;
+  const route = [target];
+  while (route[0] !== start) route.unshift(previous.get(route[0]!)!);
+  return route;
+}
+
+function routeDistance(graph: RegionGraph, nodeIds: readonly string[]): number {
+  let total = 0;
+  for (let index = 1; index < nodeIds.length; index += 1) total += getEdgeBetween(graph, nodeIds[index - 1]!, nodeIds[index]!)!.distanceKm;
+  return total;
 }
 
 function copyPartySeed(seed: PartySeed): PartySeed {
@@ -2094,6 +2136,7 @@ function createPartySnapshot(
       distanceKm: travel.distanceKm,
       progressKm: travel.progressKm,
       speedKmPerDay: travel.speedKmPerDay,
+      plannedNodeIds: [...travel.plannedNodeIds],
     },
     spatialTravel: null,
   };

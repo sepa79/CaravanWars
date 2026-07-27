@@ -60,6 +60,7 @@ interface PartyTravel {
   readonly distanceKm: number;
   readonly progressKm: number;
   readonly speedKmPerDay: number;
+  readonly plannedNodeIds: readonly string[];
 }
 
 interface PartyState {
@@ -362,12 +363,13 @@ async function submitSelectedMove(): Promise<void> {
   const currentState = state;
   const party = currentState?.snapshot.parties[0];
   const selectedNode = currentState?.region.nodes.find((node) => node.id === selectedMapNodeId);
-  if (currentState === null || currentState === undefined || party?.currentNodeId === null
-    || party?.currentNodeId === undefined || selectedNode === undefined) return;
+  const routeOrigin = party?.currentNodeId ?? party?.travel?.originNodeId;
+  if (currentState === null || currentState === undefined || party === undefined || routeOrigin === null
+    || routeOrigin === undefined || selectedNode === undefined) return;
 
   try {
     if (party.id === "player_expedition") {
-      const response = await postJson<{ readonly result: { readonly result: MovePartyResponse["result"] }; readonly state: ExpeditionState }>("/api/expedition/command", { commandType: "move_party", command: { party_id: party.id, from_node_id: party.currentNodeId, to_node_id: selectedNode.id } });
+      const response = await postJson<{ readonly result: { readonly result: MovePartyResponse["result"] }; readonly state: ExpeditionState }>("/api/expedition/command", { commandType: "move_party", command: { party_id: party.id, from_node_id: routeOrigin, to_node_id: selectedNode.id } });
       expeditionState = response.state;
       state = response.state.partyMap;
       if (response.result.result.accepted) showMessage(translate("commandAccepted"), false);
@@ -378,7 +380,7 @@ async function submitSelectedMove(): Promise<void> {
     }
     const response = await postJson<MovePartyResponse>(viewUrl("/api/commands/move-party"), {
       party_id: party.id,
-      from_node_id: party.currentNodeId,
+      from_node_id: routeOrigin,
       to_node_id: selectedNode.id,
     });
     state = response.state;
@@ -403,10 +405,10 @@ function openMapContextMenu(event: MouseEvent): void {
   const node = mapNodeAt(event) ?? state?.region.nodes.find((candidate) => candidate.id === selectedMapNodeId);
   if (node === undefined) { mapContextMenu.hidden = true; return; }
   selectedMapNodeId = node.id;
-  const party = state?.snapshot.parties[0], adjacent = party?.currentNodeId !== null && party?.currentNodeId !== undefined && state?.region.edges.some((edge) => (edge.originNodeId === party.currentNodeId && edge.targetNodeId === node.id) || (edge.targetNodeId === party.currentNodeId && edge.originNodeId === node.id)) === true;
-  moveToSelected.disabled = party?.status !== "idle" || party.currentNodeId === node.id || !adjacent || debugMapActive;
+  const party = state?.snapshot.parties[0], currentGoal = party?.travel?.plannedNodeIds.at(-1) ?? party?.travel?.destinationNodeId ?? party?.currentNodeId;
+  moveToSelected.disabled = party === undefined || currentGoal === node.id || debugMapActive;
   mapContextTitle.textContent = node.displayName;
-  moveToSelected.textContent = moveToSelected.disabled ? "Brak dostępnego ruchu" : `Wyrusz do ${node.displayName}`;
+  moveToSelected.textContent = moveToSelected.disabled ? "To jest obecny cel" : party?.status === "traveling" ? `Zmień cel na ${node.displayName}` : `Wyrusz do ${node.displayName}`;
   mapContextMenu.style.left = `${Math.min(event.offsetX, Math.max(0, canvas.clientWidth - 190))}px`;
   mapContextMenu.style.top = `${Math.min(event.offsetY, Math.max(0, canvas.clientHeight - 90))}px`;
   mapContextMenu.hidden = false;
