@@ -70,9 +70,14 @@ Landmarks may be point-like or small areas. Some are major landmarks visible fro
 
 ### Layer 3: region graph
 
-The region graph remains the navigation and decision contract.
+The region graph is authored road/track geometry and strategic topology inside
+continuous space. It is physical truth, but is neither the whole navigable
+space nor an actor's decision contract.
 
-Graph nodes are strategic or decision locations such as cities, villages, passes, major crossings, forks, camps, and authority locations. Graph edges are logical route contracts between those locations. Detailed road shape belongs under the edge as route geometry, not as extra strategic nodes unless the point becomes a decision location.
+Graph nodes are strategic or decision locations such as cities, villages,
+passes, forks and hidden camps. Graph edges are physical route contracts.
+Actors decide through private WorldMemory-derived Navigation Knowledge Graphs;
+off-road travel/search uses coordinates without creating parallel truth.
 
 ## Route geometry relationship
 

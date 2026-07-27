@@ -48,6 +48,7 @@ import {
 } from "./population-dynamics.js";
 import { ROUTE_ENCOUNTER_DUE, ROUTE_SECURITY_COMPONENT, RouteSecurity } from "./route-security.js";
 import type { CreateSecurityTaskCommand, EncounterPhysicalPort, PlanRouteEncounterCommand, RouteEncounterEvent, RouteSecuritySnapshot, SecurityCommandResult, TransitionSecurityTaskCommand } from "./route-security.js";
+import { SPATIAL_SEARCH_DUE, SPATIAL_TRAVEL_DUE } from "./continuous-space.js";
 import type {
   AllocateLabourCommand,
   PopulationCommandResult,
@@ -169,6 +170,7 @@ export class WorldSimulationFoundation {
   #population: PopulationDynamics | null;
   #routeSecurity: RouteSecurity | null;
   #encounterPort: EncounterPhysicalPort | null = null;
+  #spatialEventHandler: ((intent: ScheduledEventIntent, elapsedDays: number) => void) | null = null;
   readonly #maxEventsPerAdvance: number;
   #events: SimulationFoundationEvent[];
   #resetSnapshot: SimulationFoundationSnapshot | null = null;
@@ -273,6 +275,8 @@ export class WorldSimulationFoundation {
   populationSettlement(settlementId: string) { return this.#population?.snapshot().settlements.find((item) => item.settlementId === settlementId) ?? null; }
 
   setEncounterPhysicalPort(port: EncounterPhysicalPort): void { this.#encounterPort = port; }
+  setSpatialEventHandler(handler: (intent: ScheduledEventIntent, elapsedDays: number) => void): void { this.#spatialEventHandler = handler; }
+  scheduleCommandIntent(intent: ScheduledEventIntent): void { this.#clock.schedule(intent); }
   routeSecuritySnapshot(): RouteSecuritySnapshot | null { return this.#routeSecurity?.snapshot() ?? null; }
   routeSecurityRoute(routeId: string) { return this.#routeSecurity?.route(routeId) ?? null; }
   executeCreateSecurityTask(command: CreateSecurityTaskCommand): SecurityCommandResult {
@@ -541,6 +545,11 @@ export class WorldSimulationFoundation {
     if (intent.kind === ROUTE_ENCOUNTER_DUE && intent.targetComponent === ROUTE_SECURITY_COMPONENT) {
       if (this.#encounterPort === null) throw new SimulationFoundationValidationError("Encounter physical port is unavailable.");
       this.#events.push(this.#requireRouteSecurity().handleEncounter(intent, this.#clock.elapsedDays, this.#encounterPort));
+      return [];
+    }
+    if (intent.kind === SPATIAL_TRAVEL_DUE || intent.kind === SPATIAL_SEARCH_DUE) {
+      if (this.#spatialEventHandler === null) throw new SimulationFoundationValidationError("Spatial event handler is unavailable.");
+      this.#spatialEventHandler(intent, this.#clock.elapsedDays);
       return [];
     }
     if (intent.kind === POPULATION_MIGRATION_ARRIVAL_DUE && intent.targetComponent === POPULATION_COMPONENT) {

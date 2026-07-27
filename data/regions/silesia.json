@@ -65,6 +65,33 @@
       "elevation_m": 126.0,
       "visibility_class": "local",
       "notes": "Recognizable forest-edge landmark west of the Great Forest."
+    },
+    {
+      "id": "old_oak",
+      "display_name": "Old Oak",
+      "kind": "tree",
+      "position": [87.0, 33.0],
+      "elevation_m": 132.0,
+      "visibility_class": "local",
+      "notes": "A distinctive old oak used in private forest directions."
+    },
+    {
+      "id": "great_stone",
+      "display_name": "Great Stone",
+      "kind": "standing_stone",
+      "position": [88.5, 33.5],
+      "elevation_m": 136.0,
+      "visibility_class": "local",
+      "notes": "Large stone near the old oak; half a travel day from the hidden camp."
+    },
+    {
+      "id": "forest_lake",
+      "display_name": "Forest Lake",
+      "kind": "lake",
+      "position": [91.0, 35.0],
+      "elevation_m": 128.0,
+      "visibility_class": "local",
+      "notes": "Small lake beside the concealed bandit camp."
     }
   ],
   "nodes": [
@@ -144,6 +171,16 @@
       "kind": "wilderness",
       "notes": "Dangerous forest region.",
       "position": [83.0, 36.0]
+    },
+    {
+      "id": "black_pine_bandit_base",
+      "display_name": "Black Pine Camp",
+      "kind": "hidden_camp",
+      "notes": "Physical concealed base in the forest near the lake.",
+      "position": [91.5, 34.5],
+      "visibility": "hidden",
+      "concealment_permille": 720,
+      "discovery_radius_km": 1.5
     }
   ],
   "edges": [
@@ -259,6 +296,39 @@
           "elevation_m": 105.0,
           "travel_time_modifier": 1.0,
           "landmark_tags": ["fields", "opole_approach"]
+        }
+      ]
+    },
+    {
+      "id": "great_forest_bandit_track",
+      "from": "great_forest",
+      "to": "black_pine_bandit_base",
+      "distance_km": 18.0,
+      "kind": "forest_track",
+      "visibility": "hidden",
+      "travel_mode": "track",
+      "geometry": [
+        {
+          "id": "bandit_track_old_oak",
+          "kind": "forest_landmark",
+          "position": [87.0, 33.0],
+          "distance_from_start_km": 8.0,
+          "elevation_m": 132.0,
+          "travel_time_modifier": 1.35,
+          "terrain_area_ids": ["great_forest_area"],
+          "landmark_ids": ["old_oak", "great_stone"],
+          "landmark_tags": ["forest", "oak", "stone"]
+        },
+        {
+          "id": "bandit_track_lake",
+          "kind": "lakeside_track",
+          "position": [91.0, 35.0],
+          "distance_from_start_km": 16.0,
+          "elevation_m": 128.0,
+          "travel_time_modifier": 1.2,
+          "terrain_area_ids": ["great_forest_area"],
+          "landmark_ids": ["forest_lake"],
+          "landmark_tags": ["forest", "lake"]
         }
       ]
     }

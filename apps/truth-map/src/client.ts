@@ -87,6 +87,11 @@ interface DebugState {
     readonly parties: readonly PartyState[];
     readonly locations: readonly LocationState[];
   };
+  readonly navigationKnowledge?: {
+    readonly approximateAreas: readonly { readonly knowledgeId: string; readonly center: Vec2; readonly radiusKm: number; readonly confidencePermille: number; readonly freshness: "fresh" | "stale" }[];
+    readonly landmarkRelations: readonly { readonly knowledgeId: string; readonly relation: string; readonly confidencePermille: number; readonly freshness: "fresh" | "stale" }[];
+  };
+  readonly spatialTruth?: { readonly metrics: { readonly offRoadDistanceKm: number; readonly searchAreaCoveredKm2: number; readonly discoveries: number; readonly falseLeads: number; readonly hiddenSiteVisits: number }; readonly selectedOwnerGraph: { readonly ownerId: string; readonly nodes: readonly unknown[]; readonly edges: readonly unknown[]; readonly areas: readonly unknown[] } };
 }
 
 interface MovePartyResponse {
@@ -163,6 +168,8 @@ const economyReserves = requireElement<HTMLElement>("economyReserves");
 const economyAnnualChart = requireElement<HTMLElement>("economyAnnualChart");
 const economyPopulation = requireElement<HTMLElement>("economyPopulation");
 const economyLabour = requireElement<HTMLElement>("economyLabour");
+const spatialDiagnostics = requireElement<HTMLElement>("spatialDiagnostics");
+const navigationKnowledge = requireElement<HTMLElement>("navigationKnowledge");
 const economyDecisions = requireElement<HTMLOListElement>("economyDecisions");
 const advanceEconomy = requireElement<HTMLButtonElement>("advanceEconomy");
 
@@ -329,6 +336,13 @@ function updateView(): void {
     ? translate("authoritativeRegion")
     : translate("knownRegion");
   regionStats.textContent = `${currentState.region.nodes.length} miejsc · ${currentState.region.edges.length} dróg · ${currentState.region.landmarks.length} landmarki`;
+  const areas = currentState.navigationKnowledge?.approximateAreas ?? [];
+  const relations = currentState.navigationKnowledge?.landmarkRelations ?? [];
+  navigationKnowledge.textContent = currentState.mode === "party"
+    ? `PRIVATE NAVIGATION — uncertain areas ${areas.length}; landmark relations ${relations.map((item) => `${item.relation} (${item.confidencePermille}‰, ${item.freshness})`).join("; ") || "none"}`
+    : "TRUTH / DEBUG — hidden locations and authoritative coordinates are visible";
+  const spatial = currentState.spatialTruth?.metrics;
+  spatialDiagnostics.textContent = spatial === undefined ? "—" : `off-road ${spatial.offRoadDistanceKm.toFixed(1)} km; searched ${spatial.searchAreaCoveredKm2.toFixed(1)} km²; discoveries ${spatial.discoveries}; false leads ${spatial.falseLeads}; hidden visits ${spatial.hiddenSiteVisits}`;
   updateDestinations(currentState.region, party);
   render();
 }
@@ -392,10 +406,19 @@ function render(): void {
 
   const projection = createProjection(currentState.region, bounds.width, bounds.height);
   drawTerrain(currentState.region, projection);
+  drawUncertainty(currentState.navigationKnowledge?.approximateAreas ?? [], projection);
   drawEdges(currentState.region, projection);
   drawLandmarks(currentState.region, projection);
   drawNodes(currentState.region, projection);
   for (const party of currentState.snapshot.parties) drawParty(party, projection);
+}
+
+function drawUncertainty(areas: readonly { readonly center: Vec2; readonly radiusKm: number; readonly freshness: "fresh" | "stale" }[], project: Projection): void {
+  for (const area of areas) {
+    const center = project(area.center), radiusPoint = project([area.center[0] + area.radiusKm / 5, area.center[1]]);
+    context.save(); context.beginPath(); context.arc(center[0], center[1], Math.abs(radiusPoint[0] - center[0]), 0, Math.PI * 2);
+    context.setLineDash([6, 5]); context.strokeStyle = area.freshness === "stale" ? "rgba(145,91,60,.45)" : "rgba(45,91,120,.75)"; context.fillStyle = "rgba(70,120,145,.10)"; context.fill(); context.stroke(); context.restore();
+  }
 }
 
 type Projection = (point: Vec2) => Vec2;

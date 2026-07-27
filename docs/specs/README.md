@@ -120,6 +120,7 @@ TODO
 - Party Map snapshot v0: `docs/specs/state/party_map_snapshot_v0.md`
 - World physical layers v0: `docs/specs/regions/world_physical_layers_v0.md`
 - Planned route geometry v0: `docs/specs/regions/route_geometry_v0.md`
+- Continuous space and private navigation graph v1: `docs/specs/regions/continuous_space_navigation_v1.md`
 - Route observation integration v0: `docs/specs/worldsim/route_observation_integration_v0.md`
 - WorldSim observation pipeline v0: `docs/specs/worldsim/observation_pipeline_v0.md`
 - Region graph seed data: `data/regions/silesia.json`

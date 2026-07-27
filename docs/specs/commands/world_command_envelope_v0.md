@@ -27,6 +27,15 @@ V0 `commandType` values are `move_party`, `transfer_goods`,
 command's canonical result. There is no heuristic command detection, payload
 conversion, or fallback handler.
 
+Continuous Space v1 extends the same discriminated union with
+`spatial_travel`, `search_area`, `observe_surroundings`,
+`report_navigation_knowledge`, and `relocate_spatial_object`. These payloads
+carry canonical command IDs and are fingerprint-idempotent. Navigation targets
+are private WorldMemory knowledge IDs, not caller-supplied truth coordinates or
+unknown world IDs. Search/travel enqueue ordinary serializable WorldClock
+intents; reports require a positive simulated courier delay; relocation is a
+Governance-scoped truth command.
+
 The generic Facility operation payload is:
 
 ```json

@@ -2,9 +2,9 @@
 
 ## Purpose
 
-`Region Graph v0` is the canonical authored-data contract for a physical region
-graph during the Node/TypeScript migration. The graph remains simulation truth;
-maps remain actor-facing presentation artifacts.
+`Region Graph v0` is the canonical authored-data contract for physical route
+geometry inside the continuous 2D region. Authored coordinates remain truth;
+the graph is not all space or shared actor knowledge.
 
 ## Owner / consumers
 
@@ -36,7 +36,8 @@ be exposed directly through normal player snapshots.
 ## Nodes
 
 Each node requires `id`, `display_name`, `kind`, and `position`. `notes` is
-optional. Node ids must be unique within the region.
+optional. `visibility` is `public` (default) or `hidden`; hidden nodes also use
+explicit `concealment_permille` and `discovery_radius_km`. Node ids are unique.
 
 ## Edges
 
@@ -53,6 +54,10 @@ kind
 `from` and `to` must reference existing nodes. `distance_km` must be positive.
 Edge ids must be unique. `waypoints` is the legacy coordinate-only list and
 normalizes to an empty list when absent.
+
+`visibility` is `public` (default) or `hidden`. `travel_mode` is `road`
+(default) or `track`. These are physical facts and do not grant any actor
+knowledge; a Party needs a WorldMemory navigation entry before routing.
 
 ## Route geometry
 

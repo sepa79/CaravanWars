@@ -15,8 +15,9 @@ boundary.
 - `packages/world-sim` owns authoritative world state and command handling.
 - Player caravans, bandit bands, patrols, city authorities, AI agents, and
   future human-controlled roles use the same command interface.
-- The region graph is physical truth. Parchment maps are actor-specific
-  presentation and memory artifacts.
+- Authored region data is physical 2D truth. Graph roads are faster geometry,
+  not all space or shared knowledge; actor maps project private navigation
+  knowledge and uncertainty from WorldMemory.
 - Facilities, World Clock, Trade Hubs, and WorldMemory are separate reusable
   components with explicit contracts.
 - RouteSecurity keeps local edge risk and task/encounter lifecycle while

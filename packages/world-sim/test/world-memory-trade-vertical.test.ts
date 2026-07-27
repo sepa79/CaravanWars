@@ -109,7 +109,7 @@ test("remote observation and foreign owner writes are rejected without leaking k
     "intruder-order", "intruder", "merchant", "hub-b", "buy", 1, 1,
   ));
   assert.equal(unauthorized.accepted, false);
-  assert.equal(world.worldMemoryView("merchant", "party").entries.length, 0);
+  assert.equal(world.worldMemoryView("merchant", "party").entries.every((entry) => entry.kind === "navigation_seed"), true);
   assert.equal(world.worldMemoryView("intruder", "actor").entries.length, 1);
 
   accepted(submit(world, {

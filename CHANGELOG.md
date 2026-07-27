@@ -4,6 +4,11 @@
 
 ### Added
 
+- Continuous Space, Exploration & Private Navigation Graph v1 with one
+  authoritative 2D truth, hidden/off-road locations, deterministic movement
+  and search, private uncertain navigation knowledge, save/replay, and
+  explicitly filtered Party Map versus labelled truth diagnostics.
+
 - Route Security, Bandits & Escorts v1 with local route risk, physical
   security Parties, Governance/labour-checked task lifecycle, deterministic
   delayed encounters, atomic physical effects, private aging observations,

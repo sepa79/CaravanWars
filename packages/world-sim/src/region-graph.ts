@@ -8,6 +8,9 @@ export interface RegionGraphNode {
   readonly kind: string;
   readonly notes: string;
   readonly position: Vec2;
+  readonly visibility: "public" | "hidden";
+  readonly concealmentPermille: number;
+  readonly discoveryRadiusKm: number;
 }
 
 export interface RegionRouteWaypoint {
@@ -31,6 +34,8 @@ export interface RegionGraphEdge {
   readonly kind: string;
   readonly waypointCoordinates: readonly Vec2[];
   readonly routeWaypoints: readonly RegionRouteWaypoint[];
+  readonly visibility: "public" | "hidden";
+  readonly travelMode: "road" | "track";
 }
 
 export interface RegionTerrainArea {
@@ -164,6 +169,9 @@ function parseNode(input: unknown, path: string): RegionGraphNode {
     kind: requireString(source.kind, `${path}.kind`),
     notes: optionalString(source.notes, `${path}.notes`),
     position: requireVec2(source.position, `${path}.position`),
+    visibility: optionalVisibility(source.visibility, `${path}.visibility`),
+    concealmentPermille: optionalBoundedInteger(source.concealment_permille, `${path}.concealment_permille`, 0, 0, 1000),
+    discoveryRadiusKm: optionalPositiveNumber(source.discovery_radius_km, `${path}.discovery_radius_km`, 1),
   };
 }
 
@@ -181,6 +189,8 @@ function parseEdge(input: unknown, path: string): RegionGraphEdge {
     routeWaypoints: optionalArray(source.geometry, `${path}.geometry`).map((value, index) =>
       parseRouteWaypoint(value, `${path}.geometry[${index}]`),
     ),
+    visibility: optionalVisibility(source.visibility, `${path}.visibility`),
+    travelMode: source.travel_mode === undefined ? "road" : requireTravelMode(source.travel_mode, `${path}.travel_mode`),
   };
 }
 
@@ -348,4 +358,31 @@ function optionalVec2(value: unknown, path: string, defaultValue: Vec2): Vec2 {
 
 function optionalStringArray(value: unknown, path: string): readonly string[] {
   return optionalArray(value, path).map((item, index) => requireString(item, `${path}[${index}]`));
+}
+
+function optionalVisibility(value: unknown, path: string): "public" | "hidden" {
+  if (value === undefined) return "public";
+  const parsed = requireString(value, path);
+  if (parsed !== "public" && parsed !== "hidden") throw new RegionGraphValidationError([`${path} must be public or hidden.`]);
+  return parsed;
+}
+
+function requireTravelMode(value: unknown, path: string): "road" | "track" {
+  const parsed = requireString(value, path);
+  if (parsed !== "road" && parsed !== "track") throw new RegionGraphValidationError([`${path} must be road or track.`]);
+  return parsed;
+}
+
+function optionalBoundedInteger(value: unknown, path: string, defaultValue: number, minimum: number, maximum: number): number {
+  if (value === undefined) return defaultValue;
+  const parsed = requireNumber(value, path);
+  if (!Number.isSafeInteger(parsed) || parsed < minimum || parsed > maximum) throw new RegionGraphValidationError([`${path} must be an integer from ${minimum} to ${maximum}.`]);
+  return parsed;
+}
+
+function optionalPositiveNumber(value: unknown, path: string, defaultValue: number): number {
+  if (value === undefined) return defaultValue;
+  const parsed = requireNumber(value, path);
+  if (parsed <= 0) throw new RegionGraphValidationError([`${path} must be positive.`]);
+  return parsed;
 }

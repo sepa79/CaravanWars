@@ -38,13 +38,18 @@ TypeScript with a browser-first client and a thin future Electron shell.
 - Population, Health & Labour Dynamics v1 is active with age cohorts,
   seasonal disease, nutrition/health/mortality, scarce labour allocations and
   route-bound migration through the canonical command boundary.
+- Continuous Space v1 is active over the same authored Silesia truth: Parties
+  can leave roads, search bounded areas and resume mid-path; hidden sites and
+  tracks enter only an owner-scoped, WorldMemory-derived Navigation Knowledge
+  Graph through adjudicated discovery or delayed provenance-bearing reports.
 
 ## Non-negotiable model
 
 - Singleplayer and multiplayer share one command and state model.
 - Every physical or managerial actor uses the same command interface.
 - WorldSim owns physical truth; clients receive filtered snapshots.
-- The region graph is truth; parchment maps are presentation artifacts.
+- Authored continuous 2D region data is truth; its graph is physical route
+  geometry, while parchment maps are private knowledge presentations.
 - Facilities, World Clock, Trade Hubs, and WorldMemory are separate reusable
   components with explicit contracts.
 - Trade Hubs are instances connected to specific Facilities, never a global

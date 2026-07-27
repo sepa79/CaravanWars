@@ -30,8 +30,9 @@ integration layer.
   deterministic time advancement, and snapshot production.
 - `data/regions` owns authored physical region graphs.
 - `data/simulation` owns explicit simulation configuration.
-- The region graph is physical truth. Parchment maps are actor-facing
-  artifacts derived from knowledge and memory.
+- Canonical authored region data is physical 2D truth. Its graph is road/track
+  geometry within continuous space, not all space or implicit shared
+  knowledge. Parchment maps are actor-facing projections of WorldMemory.
 - UI and LLM layers may propose commands; they never mutate simulation state.
 - Missing or invalid inputs fail explicitly. There are no silent fallback
   chains or heuristic compatibility paths.
@@ -199,6 +200,21 @@ port validates and atomically applies cargo, casualty and delay effects.
 Security tasks use Governance and allocated military labour. Route decisions
 consume only fresh owner-scoped WorldMemory. Party Map never receives route
 risk; the labelled TRUTH/DEBUG view may inspect it.
+
+### Continuous space and private navigation
+
+WorldSimulation owns one authored 2D truth for coordinates, terrain, public and
+hidden sites, landmarks and road/track geometry. Roads accelerate movement but
+do not bound existence. ContinuousSpace supplies deterministic geometry,
+off-road/search plans, discovery, relocations and saveable metrics through the
+same WorldClock and command envelope. It does not own a second Party state.
+
+Each Party's Navigation Knowledge Graph is a pure projection of its private
+WorldMemory. Commands and AI route only through fresh projected knowledge.
+Observation is adjudicated against truth and appended with provenance,
+confidence and uncertainty; reports have simulated delay. Party Map receives
+only this projection, while labelled TRUTH/DEBUG can inspect hidden truth and a
+selected owner's graph.
 
 ## Active repository boundaries
 

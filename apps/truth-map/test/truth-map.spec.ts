@@ -16,6 +16,8 @@ test("defaults to a filtered Party Map and moves through the command boundary", 
   await expect(page.locator("#partyId")).toHaveText("player_party");
   await expect(page.locator("#partyLocation")).toHaveText("Wroclaw");
   await expect(page.locator("#mapCanvas")).toBeVisible();
+  await expect(page.locator("#navigationKnowledge")).toContainText("PRIVATE NAVIGATION");
+  expect(await initialPartyState.text()).not.toContain("black_pine_bandit_base");
 
   await page.locator("#destination").selectOption("opole");
   await page.locator("#moveButton").click();
@@ -36,6 +38,10 @@ test("truth mode is explicit and exposes more than the selected party knows", as
 
   await expect(page.locator("#mapScopeLabel")).toHaveText("Pełna prawda regionu");
   await expect(page.locator("#regionStats")).not.toContainText("2 miejsc · 1 dróg");
+  await expect(page.locator("#navigationKnowledge")).toContainText("TRUTH / DEBUG");
+  const truth = await page.request.get("/api/state?view_mode=truth&party_id=player_party");
+  expect(await truth.text()).toContain("black_pine_bandit_base");
+  expect(await truth.text()).toContain("selectedOwnerGraph");
 });
 
 test("merchant AI carries physical food from remembered source to remembered need", async ({ page }) => {
@@ -106,4 +112,5 @@ test("regional economy diagnostics require explicit truth mode and advance auton
   await expect(page.locator("#economyProfiles")).toContainText("_v1");
   await expect(page.locator("#economyPopulation")).toContainText("wroclaw");
   await expect(page.locator("#economyLabour")).toContainText("SECURITY TRUTH");
+  await expect(page.locator("#spatialDiagnostics")).toContainText("off-road");
 });

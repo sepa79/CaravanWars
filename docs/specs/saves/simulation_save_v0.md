@@ -60,6 +60,15 @@ next append sequence, private entries, and processed-ingest fingerprints.
 WorldMemory JSON load validates deterministic ids, owner scope, provenance,
 timestamps, payload serialization, and idempotency records.
 
+Continuous Space v1 adds one `continuousSpace` block containing movement and
+visibility configuration, aggregate metrics, command/event fingerprints and
+authoritative relocations. Each Party stores its seed node, exact current
+coordinate and, when active, the off-road/search polyline, distance, progress,
+speed and target world ID. WorldMemory remains the sole persisted navigation
+knowledge store. Loading validates finite positions and restores pending
+spatial due events through the canonical WorldClock, so mid-search and
+mid-off-road continuation is identical.
+
 `player_map_state` is reserved for the future player-drawn parchment map journal. It is intentionally empty in v0. The region graph remains the source of truth; player map state is presentation/memory state.
 
 ## New game

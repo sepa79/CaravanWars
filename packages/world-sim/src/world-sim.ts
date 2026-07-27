@@ -4,6 +4,7 @@ import { getEdgeBetween } from "./region-graph.js";
 import type {
   RegionGraph,
   RegionGraphEdge,
+  RegionGraphNode,
   RegionLandmark,
   RegionRouteWaypoint,
   Vec2,
@@ -12,7 +13,7 @@ import { WorldClock } from "./world-clock.js";
 import { Facilities } from "./facilities.js";
 import { Governance } from "./governance.js";
 import { TradeHubs } from "./trade-hubs.js";
-import type { WorldClockSnapshot } from "./world-clock.js";
+import type { ScheduledEventIntent, SerializableValue, WorldClockSnapshot } from "./world-clock.js";
 import type {
   FacilityOperationCommand,
   FacilityOperationResult,
@@ -46,6 +47,8 @@ import { PopulationDynamics } from "./population-dynamics.js";
 import type { AllocateLabourCommand, PopulationCommandResult, StartMigrationCommand } from "./population-dynamics.js";
 import { RouteSecurity } from "./route-security.js";
 import type { CreateSecurityTaskCommand, EncounterPartyView, EncounterPhysicalMutation, PlanRouteEncounterCommand, RouteEncounterEvent, SecurityCommandResult, TransitionSecurityTaskCommand } from "./route-security.js";
+import { ContinuousSpace, SPATIAL_SEARCH_DUE, SPATIAL_TRAVEL_DUE, buildNavigationKnowledgeGraph, detectionSucceeds, deterministicSearchPath, distance as spatialDistance, distanceToPolyline, navigationItem, pointAlongPolyline, polylineDistance, spatialSpeedKmPerDay, terrainAt } from "./continuous-space.js";
+import type { ObserveSurroundingsCommand, ReportNavigationKnowledgeCommand, SearchAreaCommand, SpatialCommandResult, SpatialRuntimeSnapshot, SpatialSearchPlan, SpatialTravelCommand, SpatialTravelPlan } from "./continuous-space.js";
 
 export interface DeliverSupplyTaskCommand {
   readonly commandId: string;
@@ -168,6 +171,8 @@ export interface TransferPartyGoodsWithTradeHubCommand extends TransferTradeHubG
   readonly partyId: string;
 }
 
+export interface RelocateSpatialObjectCommand { readonly commandId: string; readonly issuerActorId: string; readonly worldObjectId: string; readonly position: Vec2 }
+
 export type WorldCommandEnvelope =
   | { readonly commandType: "move_party"; readonly command: MovePartyCommand }
   | { readonly commandType: "transfer_goods"; readonly command: TransferGoodsCommand }
@@ -189,7 +194,12 @@ export type WorldCommandEnvelope =
   | { readonly commandType: "start_population_migration"; readonly command: StartMigrationCommand }
   | { readonly commandType: "create_security_task"; readonly command: CreateSecurityTaskCommand }
   | { readonly commandType: "transition_security_task"; readonly command: TransitionSecurityTaskCommand }
-  | { readonly commandType: "plan_route_encounter"; readonly command: PlanRouteEncounterCommand };
+  | { readonly commandType: "plan_route_encounter"; readonly command: PlanRouteEncounterCommand }
+  | { readonly commandType: "spatial_travel"; readonly command: SpatialTravelCommand }
+  | { readonly commandType: "search_area"; readonly command: SearchAreaCommand }
+  | { readonly commandType: "observe_surroundings"; readonly command: ObserveSurroundingsCommand }
+  | { readonly commandType: "report_navigation_knowledge"; readonly command: ReportNavigationKnowledgeCommand }
+  | { readonly commandType: "relocate_spatial_object"; readonly command: RelocateSpatialObjectCommand };
 
 export type WorldCommandSubmissionResult =
   | { readonly commandType: "move_party"; readonly result: CommandResult }
@@ -206,7 +216,12 @@ export type WorldCommandSubmissionResult =
   | { readonly commandType: "start_population_migration"; readonly result: PopulationCommandResult }
   | { readonly commandType: "create_security_task"; readonly result: SecurityCommandResult }
   | { readonly commandType: "transition_security_task"; readonly result: SecurityCommandResult }
-  | { readonly commandType: "plan_route_encounter"; readonly result: SecurityCommandResult };
+  | { readonly commandType: "plan_route_encounter"; readonly result: SecurityCommandResult }
+  | { readonly commandType: "spatial_travel"; readonly result: SpatialCommandResult }
+  | { readonly commandType: "search_area"; readonly result: SpatialCommandResult }
+  | { readonly commandType: "observe_surroundings"; readonly result: SpatialCommandResult }
+  | { readonly commandType: "report_navigation_knowledge"; readonly result: SpatialCommandResult }
+  | { readonly commandType: "relocate_spatial_object"; readonly result: SpatialCommandResult };
 
 export interface PartyTravelSnapshot {
   readonly edgeId: string;
@@ -217,10 +232,23 @@ export interface PartyTravelSnapshot {
   readonly speedKmPerDay: number;
 }
 
+export interface PartySpatialTravelSnapshot {
+  readonly journeyId: string;
+  readonly kind: "offroad" | "search";
+  readonly origin: Vec2;
+  readonly destination: Vec2;
+  readonly path: readonly Vec2[];
+  readonly distanceKm: number;
+  readonly progressKm: number;
+  readonly speedKmPerDay: number;
+  readonly targetWorldObjectId: string | null;
+}
+
 export interface PartySnapshot {
   readonly id: string;
   readonly displayName: string;
   readonly managerActorId: string;
+  readonly seedNodeId: string;
   readonly status: "idle" | "traveling";
   readonly currentNodeId: string | null;
   readonly position: Vec2;
@@ -232,6 +260,7 @@ export interface PartySnapshot {
   readonly cargoCapacityBulk: number | null;
   readonly cargoUsedBulk: number | null;
   readonly travel: PartyTravelSnapshot | null;
+  readonly spatialTravel: PartySpatialTravelSnapshot | null;
 }
 
 export interface LocationSnapshot {
@@ -250,6 +279,7 @@ export interface WorldSnapshot {
   readonly runtimeEvents: readonly WorldSimulationEvent[];
   readonly worldMemory: WorldMemorySnapshot;
   readonly shortageObservationCursors: Readonly<Record<string, number>>;
+  readonly continuousSpace: SpatialRuntimeSnapshot;
 }
 
 export interface ObserveLocalTradeContextRequest {
@@ -361,11 +391,16 @@ export interface PartyMapSnapshot {
     readonly parties: readonly [PartySnapshot];
     readonly locations: readonly LocationSnapshot[];
   };
+  readonly navigationKnowledge: {
+    readonly approximateAreas: readonly { readonly knowledgeId: string; readonly center: Vec2; readonly radiusKm: number; readonly confidencePermille: number; readonly freshness: "fresh" | "stale"; readonly provenanceEntryId: string }[];
+    readonly landmarkRelations: readonly { readonly knowledgeId: string; readonly relation: string; readonly confidencePermille: number; readonly freshness: "fresh" | "stale"; readonly provenanceEntryId: string }[];
+  };
 }
 
 interface IdlePartyState {
   readonly status: "idle";
-  readonly nodeId: string;
+  readonly nodeId: string | null;
+  readonly position: Vec2;
 }
 
 interface TravelingPartyState {
@@ -378,12 +413,27 @@ interface TravelingPartyState {
   progressKm: number;
 }
 
-type PartyLocationState = IdlePartyState | TravelingPartyState;
+interface SpatialTravelingPartyState {
+  readonly status: "traveling";
+  readonly spatial: true;
+  readonly journeyId: string;
+  readonly kind: "offroad" | "search";
+  readonly origin: Vec2;
+  readonly destination: Vec2;
+  readonly path: readonly Vec2[];
+  readonly distanceKm: number;
+  readonly speedKmPerDay: number;
+  readonly targetWorldObjectId: string | null;
+  progressKm: number;
+}
+
+type PartyLocationState = IdlePartyState | TravelingPartyState | SpatialTravelingPartyState;
 
 interface PartyRuntimeState {
   readonly id: string;
   readonly displayName: string;
   readonly managerActorId: string;
+  readonly seedNodeId: string;
   composition: PartyComposition;
   readonly cargo: Map<string, number>;
   readonly knownRouteIds: ReadonlySet<string>;
@@ -476,6 +526,8 @@ export class WorldSimulation {
   readonly #partySeeds: readonly PartySeed[];
   readonly #economySeed: WorldEconomySeed | null;
   readonly #simulationFoundation: WorldSimulationFoundation | null;
+  #continuousSpace: ContinuousSpace;
+  readonly #initialContinuousSpaceSnapshot: SpatialRuntimeSnapshot;
   #worldMemory: WorldMemory;
   readonly #initialWorldMemorySnapshot: WorldMemorySnapshot;
   #parties: Map<string, PartyRuntimeState>;
@@ -491,6 +543,7 @@ export class WorldSimulation {
     clock = new WorldClock(),
     simulationFoundation: WorldSimulationFoundation | null = null,
     worldMemory = new WorldMemory(),
+    continuousSpace = ContinuousSpace.create(defaultSpatialConfig()),
   ) {
     this.#graph = graph;
     this.#travelConfig = travelConfig;
@@ -510,8 +563,12 @@ export class WorldSimulation {
     for (const securityParty of this.#simulationFoundation?.routeSecuritySnapshot()?.parties ?? []) if (!this.#parties.has(securityParty.partyId)) throw new WorldSimulationConfigurationError(`RouteSecurity party ${securityParty.partyId} is not a physical WorldSimulation Party.`);
     validateInitialCargoCapacities(this.#parties, this.#economySeed);
     this.#worldMemory = new WorldMemory(worldMemory.snapshot());
+    this.#continuousSpace = new ContinuousSpace(continuousSpace.snapshot());
+    this.#initialContinuousSpaceSnapshot = this.#continuousSpace.snapshot();
+    this.#seedNavigationKnowledge();
     this.#initialWorldMemorySnapshot = this.#worldMemory.snapshot();
     this.#bindEncounterPort();
+    this.#simulationFoundation?.setSpatialEventHandler((intent, elapsedDays) => this.#handleSpatialEvent(intent, elapsedDays));
   }
 
   static fromSnapshot(
@@ -536,13 +593,13 @@ export class WorldSimulation {
       id: party.id,
       displayName: party.displayName,
       managerActorId: party.managerActorId,
-      nodeId: party.currentNodeId ?? party.travel?.originNodeId ?? "",
+      nodeId: party.seedNodeId,
       composition: party.composition,
       knownRouteIds: party.knownRouteIds,
       cargo: party.cargo,
     }));
     const simulation = new WorldSimulation(
-      graph, travelConfig, seeds, economySeed, clock, foundation, new WorldMemory(snapshot.worldMemory),
+      graph, travelConfig, seeds, economySeed, clock, foundation, new WorldMemory(snapshot.worldMemory), new ContinuousSpace(snapshot.continuousSpace),
     );
     simulation.#restoreRuntimeSnapshot(snapshot);
     return simulation;
@@ -571,6 +628,11 @@ export class WorldSimulation {
   ): Extract<WorldCommandSubmissionResult, { readonly commandType: "cancel_trade_hub_order" }>;
   submitCommand(envelope: WorldCommandEnvelope): WorldCommandSubmissionResult;
   submitCommand(envelope: WorldCommandEnvelope): WorldCommandSubmissionResult {
+    if (envelope.commandType === "spatial_travel") return { commandType: envelope.commandType, result: this.#startSpatialTravel(envelope.command) };
+    if (envelope.commandType === "search_area") return { commandType: envelope.commandType, result: this.#startSpatialSearch(envelope.command) };
+    if (envelope.commandType === "observe_surroundings") return { commandType: envelope.commandType, result: this.#observeSurroundings(envelope.command) };
+    if (envelope.commandType === "report_navigation_knowledge") return { commandType: envelope.commandType, result: this.#reportNavigationKnowledge(envelope.command) };
+    if (envelope.commandType === "relocate_spatial_object") return { commandType: envelope.commandType, result: this.#relocateSpatialObject(envelope.command) };
     if (envelope.commandType === "create_security_task") return { commandType: envelope.commandType, result: this.#simulationFoundation?.executeCreateSecurityTask(envelope.command) ?? securityUnavailable() };
     if (envelope.commandType === "transition_security_task") return { commandType: envelope.commandType, result: this.#simulationFoundation?.executeTransitionSecurityTask(envelope.command) ?? securityUnavailable() };
     if (envelope.commandType === "plan_route_encounter") {
@@ -674,6 +736,9 @@ export class WorldSimulation {
     return this.#worldMemory.ownerView(ownerId, ownerKind, this.#clock.elapsedDays);
   }
 
+  navigationKnowledgeGraph(ownerId: string, ownerKind: WorldMemoryOwnerKind) { return buildNavigationKnowledgeGraph(this.#worldMemory.ownerView(ownerId, ownerKind, this.#clock.elapsedDays)); }
+  spatialTruthSnapshot(): { readonly hiddenNodes: readonly RegionGraphNode[]; readonly metrics: ReturnType<ContinuousSpace["metrics"]> } { return { hiddenNodes: this.#graph.nodes.filter((node) => node.visibility === "hidden").map((node) => structuredClone(node)), metrics: this.#continuousSpace.metrics() }; }
+
   observeGovernorShortages(
     governorActorId: string,
     staleAfterDays: number,
@@ -759,7 +824,7 @@ export class WorldSimulation {
   observeLocalRouteSecurity(observationId: string, observerPartyId: string, ownerId: string, ownerKind: Extract<WorldMemoryOwnerKind, "actor" | "party">, routeId: string, staleAfterDays: number): WorldMemoryEntry | null {
     const party = this.#parties.get(observerPartyId), edge = this.#graph.edgesById.get(routeId), security = this.#simulationFoundation?.routeSecurityRoute(routeId);
     if (party === undefined || edge === undefined || security === null || security === undefined) return null;
-    const local = party.location.status === "traveling" ? party.location.edgeId === routeId : edge.originNodeId === party.location.nodeId || edge.targetNodeId === party.location.nodeId;
+    const local = party.location.status === "traveling" ? !("spatial" in party.location) && party.location.edgeId === routeId : edge.originNodeId === party.location.nodeId || edge.targetNodeId === party.location.nodeId;
     if (!local || ownerId !== (ownerKind === "party" ? party.id : party.managerActorId)) return null;
     const result = this.#worldMemory.ingest({ ingestId: `route-security:${observationId}`, ownerId, ownerKind, kind: "route_security_observation", observedAtElapsedDays: this.#clock.elapsedDays, knownAtElapsedDays: this.#clock.elapsedDays, staleAfterDays, provenance: { sourceType: "direct_observation", sourceId: observationId, sourceOwnerId: observerPartyId, nodeId: party.location.status === "idle" ? party.location.nodeId : null }, payload: { routeId, riskPermille: security.riskPermille, incidentCount: security.incidentCount, patrolStrength: security.patrolStrength } });
     return result.accepted ? result.entry : null;
@@ -779,7 +844,7 @@ export class WorldSimulation {
     const party = this.#parties.get(partyId);
     if (party === undefined) throw new WorldSimulationQueryError(`Party ${partyId} does not exist.`);
     const snapshot = createPartySnapshot(this.#graph, party, this.#economySeed);
-    const hubs = party.location.status === "idle"
+    const hubs = party.location.status === "idle" && party.location.nodeId !== null
       ? this.#simulationFoundation?.tradeHubSnapshotsAtNode(party.location.nodeId) ?? []
       : [];
     return {
@@ -810,6 +875,7 @@ export class WorldSimulation {
         message: `Observer ${party.id} cannot write memory owned by ${request.ownerId}.`,
       };
     }
+    if (party.location.nodeId === null) return { accepted: false, errorCode: "NO_LOCAL_TRADE_HUB", message: `Party ${party.id} is off-road and has no local TradeHub.` };
     const hubs = this.#simulationFoundation?.tradeHubSnapshotsAtNode(party.location.nodeId) ?? [];
     if (hubs.length === 0) {
       return {
@@ -975,6 +1041,126 @@ export class WorldSimulation {
     return result.accepted ? { accepted: true, idempotentReplay: result.idempotentReplay } : supplyRejected("MEMORY_CONFLICT", result.message);
   }
 
+  #startSpatialTravel(command: SpatialTravelCommand): SpatialCommandResult {
+    const replay = this.#continuousSpace.replay(command); if (replay !== null) return replay;
+    const party = this.#parties.get(command.partyId); if (party === undefined) return this.#continuousSpace.record(command, spatialRejected("PARTY_NOT_FOUND", `Party ${command.partyId} does not exist.`));
+    if (party.location.status !== "idle") return this.#continuousSpace.record(command, spatialRejected("PARTY_BUSY", `Party ${command.partyId} is traveling.`));
+    if (!this.#canCommandNavigation(command.issuerActorId, party)) return this.#continuousSpace.record(command, spatialRejected("NOT_AUTHORIZED", "Issuer cannot command this Party's navigation."));
+    const graph = this.navigationKnowledgeGraph(party.id, "party"), knowledge = navigationItem(graph, command.targetKnowledgeId);
+    if (knowledge === null || knowledge.estimatedPosition === null) return this.#continuousSpace.record(command, spatialRejected("KNOWLEDGE_UNKNOWN", `Navigation target ${command.targetKnowledgeId} is not known by ${party.id}.`));
+    if (knowledge.freshness === "stale") return this.#continuousSpace.record(command, spatialRejected("KNOWLEDGE_STALE", `Navigation target ${command.targetKnowledgeId} is stale.`));
+    const origin = party.location.position, destination = knowledge.estimatedPosition, config = this.#continuousSpace.config();
+    const terrain = terrainAt(this.#graph, destination), distanceKm = spatialDistance(origin, destination, config.coordinateKmScale);
+    if (distanceKm <= 0) return this.#continuousSpace.record(command, spatialRejected("INVALID_COMMAND", "Spatial destination must differ from current position."));
+    const speed = this.#spatialSpeed(party, terrain.map((item) => item.kind), knowledge.kind === "edge" ? "track" : "offroad");
+    const plan: SpatialTravelPlan = { commandId: command.commandId, eventId: `spatial:${command.commandId}:arrival`, partyId: party.id, kind: command.kind, origin: [...origin], destination: [...destination], targetWorldObjectId: knowledge.worldObjectId, distanceKm, durationDays: distanceKm / speed, terrainAreaIds: terrain.map((item) => item.id), knowledgeEntryId: knowledge.provenanceEntryId };
+    const intent: ScheduledEventIntent = { eventId: plan.eventId, kind: SPATIAL_TRAVEL_DUE, dueElapsedDays: this.#clock.elapsedDays + plan.durationDays, targetComponent: "continuous_space", targetEntityId: party.id, payload: { plan: plan as unknown as SerializableValue } };
+    if (this.#simulationFoundation === null) return this.#continuousSpace.record(command, spatialRejected("SCHEDULING_FAILED", "Spatial travel requires the canonical Foundation dispatcher."));
+    try { this.#simulationFoundation.scheduleCommandIntent(intent); }
+    catch (error) { return this.#continuousSpace.record(command, spatialRejected("SCHEDULING_FAILED", error instanceof Error ? error.message : String(error))); }
+    party.location = { status: "traveling", spatial: true, journeyId: command.commandId, kind: "offroad", origin: [...origin], destination: [...destination], path: [[...origin], [...destination]], distanceKm, speedKmPerDay: speed, progressKm: 0, targetWorldObjectId: knowledge.worldObjectId };
+    return this.#continuousSpace.record(command, { accepted: true, idempotentReplay: false, scheduledEventId: plan.eventId });
+  }
+
+  #startSpatialSearch(command: SearchAreaCommand): SpatialCommandResult {
+    const replay = this.#continuousSpace.replay(command); if (replay !== null) return replay;
+    const party = this.#parties.get(command.partyId); if (party === undefined) return this.#continuousSpace.record(command, spatialRejected("PARTY_NOT_FOUND", `Party ${command.partyId} does not exist.`));
+    if (party.location.status !== "idle") return this.#continuousSpace.record(command, spatialRejected("PARTY_BUSY", `Party ${command.partyId} is traveling.`));
+    if (!this.#canCommandNavigation(command.issuerActorId, party)) return this.#continuousSpace.record(command, spatialRejected("NOT_AUTHORIZED", "Issuer cannot command this search."));
+    const item = navigationItem(this.navigationKnowledgeGraph(party.id, "party"), command.areaKnowledgeId);
+    if (item === null || (item.uncertainty === null && item.estimatedPosition === null)) return this.#continuousSpace.record(command, spatialRejected("KNOWLEDGE_UNKNOWN", "Search area is not present in private navigation knowledge."));
+    if (!Number.isFinite(command.searchRadiusKm) || command.searchRadiusKm <= 0 || command.searchRadiusKm > 30 || !Number.isSafeInteger(command.observationSkillPermille) || command.observationSkillPermille < 0 || command.observationSkillPermille > 1000) return this.#continuousSpace.record(command, spatialRejected("INVALID_COMMAND", "Search radius or observation skill is invalid."));
+    const center = item.uncertainty?.center ?? item.estimatedPosition!, config = this.#continuousSpace.config(), searchPath = deterministicSearchPath(center, Math.min(command.searchRadiusKm, item.uncertainty?.radiusKm ?? command.searchRadiusKm) / config.coordinateKmScale, config.maxSearchSteps), path = [[...party.location.position] as Vec2, ...searchPath], distanceKm = polylineDistance(path, config.coordinateKmScale), speed = this.#spatialSpeed(party, terrainAt(this.#graph, center).map((area) => area.kind), "offroad");
+    const plan: SpatialSearchPlan = { commandId: command.commandId, eventId: `spatial:${command.commandId}:search`, partyId: party.id, center: [...center], radiusKm: command.searchRadiusKm, path, distanceKm, durationDays: distanceKm / speed, observationSkillPermille: command.observationSkillPermille, knowledgeEntryId: item.provenanceEntryId };
+    const intent: ScheduledEventIntent = { eventId: plan.eventId, kind: SPATIAL_SEARCH_DUE, dueElapsedDays: this.#clock.elapsedDays + plan.durationDays, targetComponent: "continuous_space", targetEntityId: party.id, payload: { plan: plan as unknown as SerializableValue } };
+    if (this.#simulationFoundation === null) return this.#continuousSpace.record(command, spatialRejected("SCHEDULING_FAILED", "Spatial search requires the canonical Foundation dispatcher."));
+    try { this.#simulationFoundation.scheduleCommandIntent(intent); } catch (error) { return this.#continuousSpace.record(command, spatialRejected("SCHEDULING_FAILED", error instanceof Error ? error.message : String(error))); }
+    party.location = { status: "traveling", spatial: true, journeyId: command.commandId, kind: "search", origin: [...party.location.position], destination: [...searchPath.at(-1)!], path, distanceKm, speedKmPerDay: speed, progressKm: 0, targetWorldObjectId: null };
+    return this.#continuousSpace.record(command, { accepted: true, idempotentReplay: false, scheduledEventId: plan.eventId });
+  }
+
+  #observeSurroundings(command: ObserveSurroundingsCommand): SpatialCommandResult {
+    const replay = this.#continuousSpace.replay(command); if (replay !== null) return replay;
+    const party = this.#parties.get(command.partyId); if (party === undefined) return this.#continuousSpace.record(command, spatialRejected("PARTY_NOT_FOUND", `Party ${command.partyId} does not exist.`));
+    if (!this.#canCommandNavigation(command.issuerActorId, party)) return this.#continuousSpace.record(command, spatialRejected("NOT_AUTHORIZED", "Issuer cannot command observation."));
+    if (!Number.isSafeInteger(command.observationSkillPermille) || command.observationSkillPermille < 0 || command.observationSkillPermille > 1000) return this.#continuousSpace.record(command, spatialRejected("INVALID_COMMAND", "Observation skill is invalid."));
+    const position = createPartySnapshot(this.#graph, party, this.#economySeed).position;
+    this.#adjudicateSpatialObservation(party, position, [position], command.observationSkillPermille, command.commandId);
+    return this.#continuousSpace.record(command, { accepted: true, idempotentReplay: false, scheduledEventId: null });
+  }
+
+  #reportNavigationKnowledge(command: ReportNavigationKnowledgeCommand): SpatialCommandResult {
+    const replay = this.#continuousSpace.replay(command); if (replay !== null) return replay;
+    const reporter = this.#parties.get(command.reporterPartyId); if (reporter === undefined) return this.#continuousSpace.record(command, spatialRejected("PARTY_NOT_FOUND", "Reporter Party does not exist."));
+    if (reporter.location.status !== "idle") return this.#continuousSpace.record(command, spatialRejected("PARTY_BUSY", "A report requires a physical handoff while idle."));
+    if (!this.#canCommandNavigation(command.issuerActorId, reporter)) return this.#continuousSpace.record(command, spatialRejected("NOT_AUTHORIZED", "Issuer cannot report for this Party."));
+    const item = navigationItem(this.navigationKnowledgeGraph(reporter.id, "party"), command.sourceKnowledgeId);
+    if (item === null || !Number.isFinite(command.knownDelayDays) || command.knownDelayDays <= 0 || !Number.isSafeInteger(command.confidenceLossPermille) || !Number.isSafeInteger(command.distortionPermille)) return this.#continuousSpace.record(command, spatialRejected("INVALID_COMMAND", "A report requires valid source knowledge and an explicit positive courier delay."));
+    const confidence = Math.max(0, item.confidencePermille - command.confidenceLossPermille), uncertaintyRadius = (item.uncertainty?.radiusKm ?? 0.5) * (1 + Math.max(0, command.distortionPermille) / 1000), sourceCenter = item.estimatedPosition ?? item.uncertainty?.center ?? null, uncertaintyCenter = sourceCenter === null ? null : distortedReportCenter(sourceCenter, uncertaintyRadius, command.distortionPermille, command.commandId, this.#continuousSpace.config().coordinateKmScale);
+    const exact = confidence >= 900 && command.distortionPermille === 0;
+    const result = this.#worldMemory.ingest({ ingestId: `navigation-report:${command.commandId}`, ownerId: command.recipientOwnerId, ownerKind: command.recipientOwnerKind, kind: "navigation_report", observedAtElapsedDays: this.#clock.elapsedDays, knownAtElapsedDays: this.#clock.elapsedDays + command.knownDelayDays, staleAfterDays: 180, provenance: { sourceType: "report", sourceId: command.commandId, sourceOwnerId: reporter.id, nodeId: reporter.location.nodeId }, payload: { knowledgeId: item.knowledgeId, knowledgeKind: item.kind, worldObjectId: exact ? item.worldObjectId : null, estimatedPosition: exact ? item.estimatedPosition : null, uncertaintyCenter, uncertaintyRadiusKm: uncertaintyRadius, relation: item.relation, confidencePermille: confidence, distortionPermille: command.distortionPermille, sourceEntryId: item.provenanceEntryId } });
+    return this.#continuousSpace.record(command, result.accepted ? { accepted: true, idempotentReplay: result.idempotentReplay, scheduledEventId: null } : spatialRejected("COMMAND_ID_CONFLICT", result.message));
+  }
+
+  #relocateSpatialObject(command: RelocateSpatialObjectCommand): SpatialCommandResult {
+    const replay = this.#continuousSpace.replay(command); if (replay !== null) return replay;
+    const foundation = this.#simulationFoundation;
+    if (foundation === null || !foundation.authorize(command.issuerActorId, command.worldObjectId, "spatial:relocate")) return this.#continuousSpace.record(command, spatialRejected("NOT_AUTHORIZED", "Issuer cannot relocate this world object."));
+    if (command.position.length !== 2 || command.position.some((value) => !Number.isFinite(value))) return this.#continuousSpace.record(command, spatialRejected("INVALID_COMMAND", "Relocation coordinate is invalid."));
+    this.#continuousSpace.relocate(command.worldObjectId, command.position);
+    return this.#continuousSpace.record(command, { accepted: true, idempotentReplay: false, scheduledEventId: null });
+  }
+
+  #handleSpatialEvent(intent: ScheduledEventIntent, elapsedDays: number): void {
+    if (!this.#continuousSpace.recordEvent(intent.eventId)) return;
+    const plan = readSpatialPlan(intent), party = this.#parties.get(plan.partyId);
+    if (party === undefined || party.location.status !== "traveling" || !("spatial" in party.location) || party.location.journeyId !== plan.commandId) return;
+    party.location.progressKm = party.location.distanceKm;
+    if (intent.kind === SPATIAL_SEARCH_DUE) {
+      const search = plan as SpatialSearchPlan, position = search.path.at(-1)!;
+      const discovered = this.#adjudicateSpatialObservation(party, position, search.path, search.observationSkillPermille, search.commandId);
+      party.location = { status: "idle", nodeId: null, position: [...position] };
+      this.#continuousSpace.addTravel(search.distanceKm, false); this.#continuousSpace.addSearch(search.radiusKm, discovered);
+      return;
+    }
+    const travel = plan as SpatialTravelPlan, targetNode = travel.targetWorldObjectId === null ? null : this.#graph.nodesById.get(travel.targetWorldObjectId);
+    party.location = { status: "idle", nodeId: targetNode === undefined || targetNode === null ? null : targetNode.id, position: [...travel.destination] };
+    this.#continuousSpace.addTravel(travel.distanceKm, targetNode?.visibility === "hidden");
+    this.#adjudicateSpatialObservation(party, travel.destination, [travel.origin, travel.destination], 700, travel.commandId);
+  }
+
+  #adjudicateSpatialObservation(party: PartyRuntimeState, position: Vec2, path: readonly Vec2[], skillPermille: number, observationId: string): boolean {
+    const config = this.#continuousSpace.config(), elapsed = this.#clock.elapsedDays, visibility = config.baseVisibilityKm * ((Math.floor(elapsed) % 360) >= 330 ? config.nightVisibilityPermille / 1000 : 1);
+    let discovered = false;
+    for (const node of this.#graph.nodes.filter((item) => item.visibility === "hidden").sort((a, b) => a.id < b.id ? -1 : 1)) {
+      const truth = this.#continuousSpace.truthPosition(this.#graph, node.id)!;
+      const closest = Math.min(distanceToPolyline(truth, path, config.coordinateKmScale), spatialDistance(position, truth, config.coordinateKmScale));
+      if (!detectionSucceeds(`${observationId}:${node.id}`, closest, Math.max(visibility, node.discoveryRadiusKm), skillPermille, node.concealmentPermille)) continue;
+      const uncertainty = Math.max(0.1, (1000 - skillPermille) / 500);
+      const ingest = this.#worldMemory.ingest({ ingestId: `navigation-discovery:${party.id}:${observationId}:${node.id}`, ownerId: party.id, ownerKind: "party", kind: "navigation_discovery", observedAtElapsedDays: elapsed, knownAtElapsedDays: elapsed, staleAfterDays: 360, provenance: { sourceType: "direct_observation", sourceId: observationId, sourceOwnerId: party.id, nodeId: party.location.status === "idle" ? party.location.nodeId : null }, payload: { knowledgeId: `node:${node.id}`, knowledgeKind: "node", worldObjectId: node.id, estimatedPosition: truth, uncertaintyCenter: truth, uncertaintyRadiusKm: uncertainty, relation: "directly_observed", confidencePermille: Math.max(500, skillPermille) } });
+      if (ingest.accepted && !ingest.idempotentReplay) discovered = true;
+      for (const edge of this.#graph.edges.filter((item) => item.visibility === "hidden" && (item.originNodeId === node.id || item.targetNodeId === node.id)).sort((a, b) => a.id < b.id ? -1 : 1)) {
+        const otherNodeId = edge.originNodeId === node.id ? edge.targetNodeId : edge.originNodeId;
+        this.#worldMemory.ingest({ ingestId: `navigation-discovery:${party.id}:${observationId}:${edge.id}`, ownerId: party.id, ownerKind: "party", kind: "navigation_discovery", observedAtElapsedDays: elapsed, knownAtElapsedDays: elapsed, staleAfterDays: 180, provenance: { sourceType: "direct_observation", sourceId: observationId, sourceOwnerId: party.id, nodeId: node.id }, payload: { knowledgeId: `edge:${edge.id}`, knowledgeKind: "edge", worldObjectId: edge.id, estimatedPosition: this.#continuousSpace.truthPosition(this.#graph, otherNodeId), uncertaintyCenter: truth, uncertaintyRadiusKm: uncertainty, relation: `${edge.originNodeId}->${edge.targetNodeId}`, confidencePermille: Math.max(500, skillPermille) } });
+      }
+    }
+    return discovered;
+  }
+
+  #canCommandNavigation(issuerActorId: string, party: PartyRuntimeState): boolean { return issuerActorId === party.managerActorId || this.#simulationFoundation?.authorize(issuerActorId, party.id, "navigation:command") === true; }
+  #spatialSpeed(party: PartyRuntimeState, terrainKinds: readonly string[], mode: "road" | "track" | "offroad"): number {
+    const capacity = this.#economySeed === null ? 1 : calculatePartyCargoCapacity(party.composition, this.#economySeed.partyCargoConfig), used = this.#economySeed === null ? 0 : calculateCargoUsedBulk(party.cargo, this.#economySeed.goodsCatalog), burden = Math.round(used / Math.max(1, capacity) * 1000), winter = (Math.floor(this.#clock.elapsedDays) % 360) < 90;
+    return spatialSpeedKmPerDay(calculatePartyTravelSpeed(party.composition, this.#travelConfig), this.#continuousSpace.config(), terrainKinds, burden, 1000, winter, 1000, mode);
+  }
+
+  #seedNavigationKnowledge(): void {
+    for (const party of this.#parties.values()) for (const edgeId of [...party.knownRouteIds].sort()) {
+      const edge = this.#graph.edgesById.get(edgeId)!;
+      for (const nodeId of [edge.originNodeId, edge.targetNodeId].sort()) { const node = this.#graph.nodesById.get(nodeId)!; this.#worldMemory.ingest({ ingestId: `navigation-seed:${party.id}:node:${node.id}`, ownerId: party.id, ownerKind: "party", kind: "navigation_seed", observedAtElapsedDays: 0, knownAtElapsedDays: 0, staleAfterDays: null, provenance: { sourceType: "command_result", sourceId: "scenario_seed", sourceOwnerId: party.id, nodeId: node.id }, payload: { knowledgeId: `node:${node.id}`, knowledgeKind: "node", worldObjectId: node.id, estimatedPosition: node.position, uncertaintyCenter: null, uncertaintyRadiusKm: null, relation: "known_location", confidencePermille: 1000 } }); }
+      this.#worldMemory.ingest({ ingestId: `navigation-seed:${party.id}:edge:${edge.id}`, ownerId: party.id, ownerKind: "party", kind: "navigation_seed", observedAtElapsedDays: 0, knownAtElapsedDays: 0, staleAfterDays: null, provenance: { sourceType: "command_result", sourceId: "scenario_seed", sourceOwnerId: party.id, nodeId: null }, payload: { knowledgeId: `edge:${edge.id}`, knowledgeKind: "edge", worldObjectId: edge.id, estimatedPosition: this.#graph.nodesById.get(edge.targetNodeId)!.position, uncertaintyCenter: null, uncertaintyRadiusKm: null, relation: `${edge.originNodeId}->${edge.targetNodeId}`, confidencePermille: 1000 } });
+    }
+  }
+
   #executeMoveParty(command: MovePartyCommand): CommandResult {
     const party = this.#parties.get(command.party_id);
     if (party === undefined) {
@@ -1003,7 +1189,7 @@ export class WorldSimulation {
         `No route connects ${command.from_node_id} and ${command.to_node_id}.`,
       );
     }
-    if (!party.knownRouteIds.has(edge.id)) {
+    if (!this.navigationKnowledgeGraph(party.id, "party").edges.some((item) => item.worldObjectId === edge.id && item.freshness === "fresh")) {
       return rejected("ROUTE_UNKNOWN", `Party ${party.id} does not know route ${edge.id}.`);
     }
 
@@ -1177,9 +1363,10 @@ export class WorldSimulation {
         travel.distanceKm,
         travel.progressKm + travel.speedKmPerDay * days,
       );
+      if ("spatial" in travel) continue;
       if (travel.progressKm + 1e-9 >= travel.distanceKm) {
         travel.progressKm = travel.distanceKm;
-        party.location = { status: "idle", nodeId: travel.destinationNodeId };
+        party.location = { status: "idle", nodeId: travel.destinationNodeId, position: [...this.#graph.nodesById.get(travel.destinationNodeId)!.position] };
       }
     }
   }
@@ -1193,7 +1380,7 @@ export class WorldSimulation {
     const state = this.#simulationFoundation?.routeSecuritySnapshot()?.parties.find((item) => item.partyId === id);
     const capacity = this.#economySeed === null ? 0 : calculatePartyCargoCapacity(party.composition, this.#economySeed.partyCargoConfig);
     const used = this.#economySeed === null ? 0 : calculateCargoUsedBulk(party.cargo, this.#economySeed.goodsCatalog);
-    return { partyId: id, travelingRouteId: party.location.status === "traveling" ? party.location.edgeId : null, composition: { ...party.composition }, cargo: Object.fromEntries(party.cargo), cargoFreeBulk: Math.max(0, capacity - used), conditionPermille: state?.conditionPermille ?? 1000, moralePermille: state?.moralePermille ?? 1000 };
+    return { partyId: id, travelingRouteId: party.location.status === "traveling" && !("spatial" in party.location) ? party.location.edgeId : null, composition: { ...party.composition }, cargo: Object.fromEntries(party.cargo), cargoFreeBulk: Math.max(0, capacity - used), conditionPermille: state?.conditionPermille ?? 1000, moralePermille: state?.moralePermille ?? 1000 };
   }
 
   #applyEncounterMutation(mutation: EncounterPhysicalMutation): boolean {
@@ -1221,6 +1408,7 @@ export class WorldSimulation {
     this.#locations = createLocations(this.#graph, this.#economySeed);
     this.#runtimeEvents = [];
     this.#worldMemory = new WorldMemory(this.#initialWorldMemorySnapshot);
+    this.#continuousSpace = new ContinuousSpace(this.#initialContinuousSpaceSnapshot);
     this.#shortageObservationCursors.clear();
   }
 
@@ -1234,6 +1422,7 @@ export class WorldSimulation {
       runtimeEvents: this.#runtimeEvents.map(copyWorldSimulationEvent),
       worldMemory: this.#worldMemory.snapshot(),
       shortageObservationCursors: Object.fromEntries(this.#shortageObservationCursors),
+      continuousSpace: this.#continuousSpace.snapshot(),
     };
   }
 
@@ -1244,8 +1433,10 @@ export class WorldSimulation {
       party.cargo.clear();
       party.composition = { ...source.composition };
       for (const [goodsId, amount] of Object.entries(source.cargo)) party.cargo.set(goodsId, amount);
-      party.location = source.travel === null
-        ? { status: "idle", nodeId: requireRestoredNode(source) }
+      party.location = source.spatialTravel !== null
+        ? { status: "traveling", spatial: true, journeyId: source.spatialTravel.journeyId, kind: source.spatialTravel.kind, origin: [...source.spatialTravel.origin], destination: [...source.spatialTravel.destination], path: source.spatialTravel.path.map((item) => [...item]), distanceKm: source.spatialTravel.distanceKm, speedKmPerDay: source.spatialTravel.speedKmPerDay, progressKm: source.spatialTravel.progressKm, targetWorldObjectId: source.spatialTravel.targetWorldObjectId }
+        : source.travel === null
+        ? { status: "idle", nodeId: source.currentNodeId, position: [...source.position] }
         : {
             status: "traveling",
             edgeId: source.travel.edgeId,
@@ -1317,14 +1508,15 @@ export class WorldSimulation {
     }
     const localNodeId = party.location.status === "idle" ? party.location.nodeId : null;
 
-    const knownEdges = this.#graph.edges.filter((edge) => party.knownRouteIds.has(edge.id));
-    const knownNodeIds = new Set<string>();
+    const knowledge = this.navigationKnowledgeGraph(party.id, "party"), knownEdgeIds = new Set(knowledge.edges.map((item) => item.worldObjectId).filter((item): item is string => item !== null));
+    const knownEdges = this.#graph.edges.filter((edge) => knownEdgeIds.has(edge.id));
+    const knownNodeIds = new Set<string>(knowledge.nodes.map((item) => item.worldObjectId).filter((item): item is string => item !== null));
     for (const edge of knownEdges) {
       knownNodeIds.add(edge.originNodeId);
       knownNodeIds.add(edge.targetNodeId);
     }
-    if (party.location.status === "idle") knownNodeIds.add(party.location.nodeId);
-    else {
+    if (party.location.status === "idle" && party.location.nodeId !== null) knownNodeIds.add(party.location.nodeId);
+    else if (party.location.status === "traveling" && !("spatial" in party.location)) {
       knownNodeIds.add(party.location.originNodeId);
       knownNodeIds.add(party.location.destinationNodeId);
     }
@@ -1366,6 +1558,10 @@ export class WorldSimulation {
               .filter((location) => location.nodeId === localNodeId)
               .map(createLocationSnapshot)
           : [],
+      },
+      navigationKnowledge: {
+        approximateAreas: [...knowledge.areas, ...knowledge.nodes, ...knowledge.landmarks].filter((item) => item.uncertainty !== null).map((item) => ({ knowledgeId: item.knowledgeId, center: [...item.uncertainty!.center], radiusKm: item.uncertainty!.radiusKm, confidencePermille: item.confidencePermille, freshness: item.freshness, provenanceEntryId: item.provenanceEntryId })),
+        landmarkRelations: knowledge.relations.filter((item) => item.relation !== null).map((item) => ({ knowledgeId: item.knowledgeId, relation: item.relation!, confidencePermille: item.confidencePermille, freshness: item.freshness, provenanceEntryId: item.provenanceEntryId })),
       },
     };
   }
@@ -1512,12 +1708,13 @@ function createParties(
       id: seed.id,
       displayName: seed.displayName,
       managerActorId: seed.managerActorId,
+      seedNodeId: seed.nodeId,
       composition: { ...seed.composition },
       cargo,
       knownRouteIds: new Set(seed.knownRouteIds),
       observedWaypointIds: new Set(),
       observedLandmarkIds: new Set(),
-      location: { status: "idle", nodeId: seed.nodeId },
+      location: { status: "idle", nodeId: seed.nodeId, position: [...graph.nodesById.get(seed.nodeId)!.position] },
     });
   }
   return parties;
@@ -1676,6 +1873,27 @@ function securityRejected(errorCode: Extract<SecurityCommandResult, { accepted: 
 
 function securityUnavailable(): SecurityCommandResult { return securityRejected("INVALID_COMMAND", "RouteSecurity is not configured."); }
 
+function spatialRejected(errorCode: Extract<SpatialCommandResult, { accepted: false }>["errorCode"], message: string): SpatialCommandResult { return { accepted: false, idempotentReplay: false, errorCode, message }; }
+
+function distortedReportCenter(center: Vec2, radiusKm: number, distortionPermille: number, key: string, coordinateKmScale: number): Vec2 {
+  if (distortionPermille <= 0) return [...center];
+  let hash = 2166136261;
+  for (let index = 0; index < key.length; index += 1) { hash ^= key.charCodeAt(index); hash = Math.imul(hash, 16777619); }
+  const angle = ((hash >>> 0) % 3600) / 3600 * Math.PI * 2, offsetCoordinateUnits = radiusKm * Math.min(1000, distortionPermille) / 1000 / coordinateKmScale;
+  return [center[0] + Math.cos(angle) * offsetCoordinateUnits, center[1] + Math.sin(angle) * offsetCoordinateUnits];
+}
+
+function defaultSpatialConfig() { return { coordinateKmScale: 5, roadSpeedPermille: 1200, trackSpeedPermille: 850, terrainSpeedPermille: { forest: 650, hills: 700, river_valley: 900 }, burdenSpeedFloorPermille: 500, winterSpeedPermille: 800, nightVisibilityPermille: 500, baseVisibilityKm: 3, maxSearchSteps: 12 }; }
+
+function readSpatialPlan(intent: ScheduledEventIntent): SpatialTravelPlan | SpatialSearchPlan {
+  if (intent.payload === null || Array.isArray(intent.payload) || typeof intent.payload !== "object") throw new WorldSimulationConfigurationError(`Spatial event ${intent.eventId} payload is invalid.`);
+  const plan = (intent.payload as Record<string, SerializableValue>).plan;
+  if (plan === null || Array.isArray(plan) || typeof plan !== "object") throw new WorldSimulationConfigurationError(`Spatial event ${intent.eventId} plan is invalid.`);
+  const value = plan as Record<string, SerializableValue>;
+  if (typeof value.commandId !== "string" || typeof value.partyId !== "string" || typeof value.distanceKm !== "number" || !Number.isFinite(value.distanceKm)) throw new WorldSimulationConfigurationError(`Spatial event ${intent.eventId} plan fields are invalid.`);
+  return structuredClone(plan) as unknown as SpatialTravelPlan | SpatialSearchPlan;
+}
+
 function createPartySnapshot(
   graph: RegionGraph,
   party: PartyRuntimeState,
@@ -1683,29 +1901,31 @@ function createPartySnapshot(
 ): PartySnapshot {
   const economyCargo = createPartyCargoSnapshot(party, economySeed);
   if (party.location.status === "idle") {
-    const node = graph.nodesById.get(party.location.nodeId);
-    if (node === undefined) {
-      throw new WorldSimulationConfigurationError(
-        `Party ${party.id} is at missing node ${party.location.nodeId}.`,
-      );
-    }
+    const node = party.location.nodeId === null ? null : graph.nodesById.get(party.location.nodeId);
+    if (party.location.nodeId !== null && node === undefined) throw new WorldSimulationConfigurationError(`Party ${party.id} is at missing node ${party.location.nodeId}.`);
     return {
       id: party.id,
       displayName: party.displayName,
       managerActorId: party.managerActorId,
+      seedNodeId: party.seedNodeId,
       status: "idle",
-      currentNodeId: node.id,
-      position: node.position,
+      currentNodeId: node?.id ?? null,
+      position: [...party.location.position],
       composition: { ...party.composition },
       knownRouteIds: [...party.knownRouteIds],
       observedWaypointIds: [...party.observedWaypointIds].sort(),
       observedLandmarkIds: [...party.observedLandmarkIds].sort(),
       ...economyCargo,
       travel: null,
+      spatialTravel: null,
     };
   }
 
   const travel = party.location;
+  if ("spatial" in travel) {
+    const ratio = travel.distanceKm === 0 ? 1 : travel.progressKm / travel.distanceKm;
+    return { id: party.id, displayName: party.displayName, managerActorId: party.managerActorId, seedNodeId: party.seedNodeId, status: "traveling", currentNodeId: null, position: pointAlongPolyline(travel.path, ratio * polylineDistance(travel.path)), composition: { ...party.composition }, knownRouteIds: [...party.knownRouteIds], observedWaypointIds: [...party.observedWaypointIds].sort(), observedLandmarkIds: [...party.observedLandmarkIds].sort(), ...economyCargo, travel: null, spatialTravel: { journeyId: travel.journeyId, kind: travel.kind, origin: [...travel.origin], destination: [...travel.destination], path: travel.path.map((item) => [...item]), distanceKm: travel.distanceKm, progressKm: travel.progressKm, speedKmPerDay: travel.speedKmPerDay, targetWorldObjectId: travel.targetWorldObjectId } };
+  }
   const edge = graph.edgesById.get(travel.edgeId);
   if (edge === undefined) {
     throw new WorldSimulationConfigurationError(
@@ -1716,6 +1936,7 @@ function createPartySnapshot(
     id: party.id,
     displayName: party.displayName,
     managerActorId: party.managerActorId,
+    seedNodeId: party.seedNodeId,
     status: "traveling",
     currentNodeId: null,
     position: interpolateTravelPosition(graph, edge, travel),
@@ -1732,6 +1953,7 @@ function createPartySnapshot(
       progressKm: travel.progressKm,
       speedKmPerDay: travel.speedKmPerDay,
     },
+    spatialTravel: null,
   };
 }
 

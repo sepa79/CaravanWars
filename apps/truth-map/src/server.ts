@@ -212,6 +212,10 @@ function createDebugState(regionGraph: RegionGraph, world: WorldSimulation): obj
       landmarks: regionGraph.landmarks,
     },
     snapshot: world.snapshot(),
+    spatialTruth: {
+      ...world.spatialTruthSnapshot(),
+      selectedOwnerGraph: world.navigationKnowledgeGraph("player_party", "party"),
+    },
   };
 }
 

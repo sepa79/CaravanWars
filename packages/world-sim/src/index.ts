@@ -38,6 +38,7 @@ export type {
   PartyMapSnapshot,
   PartyTravelConfig,
   PartyTravelSnapshot,
+  PartySpatialTravelSnapshot,
   WorldSnapshot,
   WorldSimulationEvent,
   GoodsTransferredEvent,
@@ -59,6 +60,7 @@ export type {
   WorldEconomySeed,
   WorldCommandEnvelope,
   WorldCommandSubmissionResult,
+  RelocateSpatialObjectCommand,
 } from "./world-sim.js";
 
 export {
@@ -276,6 +278,8 @@ export {
   POPULATION_SEASON_DUE,
   PopulationDynamics,
 } from "./population-dynamics.js";
+export { ContinuousSpace, SPATIAL_SEARCH_DUE, SPATIAL_TRAVEL_DUE, buildNavigationKnowledgeGraph, detectionSucceeds, deterministicSearchPath, distance, distanceToPolyline, edgePolyline, navigationItem, pointAlongPolyline, pointInUncertainty, polylineDistance, spatialSpeedKmPerDay, terrainAt } from "./continuous-space.js";
+export type { NavigationKnowledgeGraph, NavigationKnowledgeItem, NavigationKnowledgeKind, ObserveSurroundingsCommand, ReportNavigationKnowledgeCommand, SearchAreaCommand, SpatialCommandResult, SpatialMetrics, SpatialMovementConfig, SpatialRuntimeSnapshot, SpatialSearchPlan, SpatialTravelCommand, SpatialTravelKind, SpatialTravelPlan, UncertaintyCircle } from "./continuous-space.js";
 export { BanditRouteController, ROUTE_ENCOUNTER_DUE, ROUTE_SECURITY_COMPONENT, RouteSecurity, SecurityAwareRouteController } from "./route-security.js";
 export type { CreateSecurityTaskCommand, EncounterPartyView, EncounterPhysicalMutation, EncounterPhysicalPort, PlanRouteEncounterCommand, RouteChoicePolicy, RouteEncounterEvent, RouteEncounterSnapshot, RouteSecuritySnapshot, RouteSecurityState, SecurityCommandResult, SecurityPartyRole, SecurityPartyState, SecurityTaskKind, SecurityTaskSnapshot, SecurityTaskStatus, TransitionSecurityTaskCommand } from "./route-security.js";
 export type {

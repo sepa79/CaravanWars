@@ -16,6 +16,8 @@ test("seasonal Silesia fixture has ten local hubs, profiled Facilities and at le
   assert.equal(snapshot.runner.world.parties.length, 27);
   assert.equal(snapshot.runner.world.parties.filter((party) => party.id.startsWith("seasonal_merchant_")).length, 12);
   assert.equal("simulationFoundation" in fixture.runner.partyMapSnapshot("seasonal_merchant_0"), false);
+  assert.equal(fixture.runner.partyMapSnapshot("seasonal_merchant_0").region.nodes.some((node) => node.id === "black_pine_bandit_base"), false);
+  assert.equal(fixture.runner.partyMapSnapshot("bandit_red").region.nodes.some((node) => node.id === "black_pine_bandit_base"), true);
 });
 
 test("full year, save mid-cycle and deterministic continuation preserve bounded queues and non-negative stores", () => {

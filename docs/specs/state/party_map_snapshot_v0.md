@@ -3,8 +3,9 @@
 ## Purpose
 
 `Party Map Snapshot v0` is the actor-filtered debug map boundary for one
-observer party. The authoritative region graph remains physical truth, but the
-snapshot contains only graph facts known by that party.
+observer party. Authoritative continuous region data remains physical truth,
+but the snapshot contains only facts in that party's WorldMemory-derived
+Navigation Knowledge Graph.
 
 ## Owner / consumers
 
@@ -18,17 +19,18 @@ snapshot contains only graph facts known by that party.
 For the requested `observerPartyId`, the snapshot includes:
 
 - only that party's own physical snapshot;
-- nodes that are endpoints of its known routes, plus its current or active
-  travel endpoints;
-- only routes in `knownRouteIds`;
+- nodes and edges present in its private navigation projection, plus physical
+  current or active road-travel endpoints;
 - only route waypoints and landmark marks observed through the authoritative
   observation layer;
-- no terrain-area geometry in v0: a route observation may remember a terrain
+- uncertain circles and landmark relations with confidence, freshness and
+  provenance entry ID, rendered as explicitly approximate marks;
+- no authoritative terrain-area geometry: an observation may remember a terrain
   area id without revealing its authoritative full shape.
 
-True coordinates of included marks are allowed only because this is a
-development layout adapter. Their presence does not make the Party Map a save
-or player parchment contract.
+Hidden truth coordinates are never serialized merely because an object exists.
+An exact coordinate appears only after the observer owns sufficiently precise
+knowledge. This remains a development layout adapter, not a separate save.
 
 An unknown observer party fails explicitly. It must never fall back to a truth
 snapshot or an empty anonymous view.
@@ -40,6 +42,6 @@ not receive the full graph and hide unknown facts locally.
 
 ## Compatibility notes
 
-This v0 snapshot is runtime visibility and map-debug state, not durable
-WorldMemory. Observation-driven marks will extend this same boundary; they
-must not create a second physical graph.
+This snapshot is a projection, not durable belief state. WorldMemory is the
+durable owner; TRUTH/DEBUG is a separate explicitly labelled endpoint and must
+never be a fallback for Party Map.

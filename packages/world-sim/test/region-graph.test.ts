@@ -16,10 +16,12 @@ test("loads the canonical Silesia graph with current authored geometry", () => {
   const graph = loadRegionGraphFile(SILESIA_PATH);
 
   assert.equal(graph.id, "silesia");
-  assert.equal(graph.nodesById.size, 11);
-  assert.equal(graph.edgesById.size, 18);
+  assert.equal(graph.nodesById.size, 12);
+  assert.equal(graph.edgesById.size, 19);
   assert.equal(graph.terrainAreasById.size, 3);
-  assert.equal(graph.landmarksById.size, 4);
+  assert.equal(graph.landmarksById.size, 7);
+  assert.equal(graph.nodesById.get("black_pine_bandit_base")?.visibility, "hidden");
+  assert.equal(graph.edgesById.get("great_forest_bandit_track")?.travelMode, "track");
 
   assert.ok(getNeighbors(graph, "wroclaw").includes("opole"));
   assert.equal(graph.landmarksById.get("sleza_massif")?.visibilityClass, "major");
