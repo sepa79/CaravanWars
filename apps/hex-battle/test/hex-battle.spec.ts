@@ -15,6 +15,8 @@ test("player selects perceived actors and issues grouped orders without controll
 
 test("battle UI remains viewport locked", async ({ page }) => {
   await page.goto("/");
+  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(21, 19, 15)");
+  await expect(page.locator(".shell")).toHaveCSS("display", "grid");
   const dimensions = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight, viewportWidth: innerWidth, viewportHeight: innerHeight }));
   expect(dimensions.width).toBeLessThanOrEqual(dimensions.viewportWidth);
   expect(dimensions.height).toBeLessThanOrEqual(dimensions.viewportHeight);
