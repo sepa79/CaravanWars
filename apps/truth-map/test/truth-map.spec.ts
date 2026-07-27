@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-async function openPanel(page: import("@playwright/test").Page, name: string) { await page.locator(`[data-panel-target="${name}"]`).first().click(); }
+async function openPanel(page: import("@playwright/test").Page, name: string) { await page.locator(`.game-tabs [data-panel-target="${name}"]`).click(); }
 
 test.beforeEach(async ({ request }) => {
   const response = await request.post("/api/reset?view_mode=party&party_id=player_party", { data: {} });
@@ -188,6 +188,27 @@ test("playable API is current and contract loads without a 404 UI error", async 
 });
 
 test("leaving truth mode closes diagnostics instead of leaking stale truth", async ({ page }) => { await page.goto("/"); await openPanel(page, "diagnostics"); await expect(page.locator("#economyDiagnostics")).toBeVisible(); await page.locator("#mapMode").selectOption("party"); await expect(page.locator("#economyDiagnostics")).not.toBeVisible(); await expect(page.locator("#mapView")).toBeVisible(); });
+
+test("polling keeps the expedition map, sidebar and permanent time controls stable", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await expect(page.locator("#apiStatus")).toHaveText("Połączono");
+  await openPanel(page, "map");
+  await expect(page.locator("#contextPanel")).toBeVisible();
+  await expect(page.locator('[data-game-view="caravan"]')).toBeVisible();
+  for (const id of ["advanceSixHours", "advanceDay", "autoAdvance"]) await expect(page.locator(`#${id}`)).toBeVisible();
+  const canvasAttributeChanges = await page.evaluate(() => new Promise<number>((resolve) => {
+    const canvas = document.querySelector("#mapCanvas");
+    if (canvas === null) return resolve(-1);
+    let changes = 0;
+    const observer = new MutationObserver(() => { changes += 1; });
+    observer.observe(canvas, { attributes: true, attributeFilter: ["width", "height"] });
+    window.setTimeout(() => { observer.disconnect(); resolve(changes); }, 2200);
+  }));
+  expect(canvasAttributeChanges).toBe(0);
+  await openPanel(page, "journal");
+  for (const id of ["advanceSixHours", "advanceDay", "autoAdvance"]) await expect(page.locator(`#${id}`)).toBeVisible();
+});
 
 test("captures desktop and small viewport game-shell inspection screenshots", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 }); await page.goto("/"); await openPanel(page, "contract"); await page.screenshot({ path: "/tmp/caravanwars-viewport-desktop.png" });

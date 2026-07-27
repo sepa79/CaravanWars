@@ -226,6 +226,9 @@ let diagnosticPageIndex = 0;
 let encounterReturnFocus: HTMLElement | null = null;
 let encounterOutcome: null | { readonly decision: string; readonly outcome: string } = null;
 let showingExpeditionMap = false;
+let lastMapRenderSignature = "";
+let lastDestinationSignature = "";
+let lastExpeditionRenderSignature = "";
 
 translateDocument();
 window.addEventListener("resize", render);
@@ -252,6 +255,7 @@ advanceExpedition.addEventListener("click", () => { void advancePlayableExpediti
 autoAdvance.addEventListener("change", updateAutoAdvance);
 
 gameStage.dataset.activeView = activeGameView;
+for (const candidate of contextViews) candidate.hidden = candidate.dataset.gameView !== "map" && candidate.dataset.gameView !== "caravan";
 encounterPanel.addEventListener("cancel", (event) => { event.preventDefault(); });
 void refreshState();
 window.setInterval(() => { void refreshState(false); }, 1_000);
@@ -259,7 +263,7 @@ window.setInterval(() => { void refreshState(false); }, 1_000);
 async function refreshState(reportFailure = true): Promise<void> {
   try {
     state = await requestJson<DebugState>(viewUrl("/api/state"));
-    updateView();
+    if (!showingExpeditionMap) updateView();
     await Promise.all([refreshEconomyDiagnostics(), refreshPlayableExpedition()]);
     setApiStatus("Połączono", false);
   } catch (error: unknown) {
@@ -268,7 +272,13 @@ async function refreshState(reportFailure = true): Promise<void> {
   }
 }
 
-async function refreshPlayableExpedition(): Promise<void> { expeditionState = await requestJson<ExpeditionState>("/api/expedition/state"); if (showingExpeditionMap) { state = expeditionState.partyMap; updateView(); } renderPlayableExpedition(); }
+async function refreshPlayableExpedition(): Promise<void> {
+  const nextExpeditionState = await requestJson<ExpeditionState>("/api/expedition/state");
+  const changed = JSON.stringify(nextExpeditionState) !== JSON.stringify(expeditionState);
+  expeditionState = nextExpeditionState;
+  if (showingExpeditionMap) { state = expeditionState.partyMap; updateView(); }
+  if (changed) renderPlayableExpedition();
+}
 function renderPlayableExpedition(): void { const current = expeditionState, contract = current?.expedition?.contracts[0]; if (current === null || current.expedition === null || contract === undefined) return; expeditionContract.textContent = `${contract.quantity} ${contract.goodsId}: Wrocław → Opole`; expeditionStatus.textContent = `Status: ${contract.status}`; expeditionDeadline.textContent = `dzień ${contract.deadlineElapsedDays}, zapłata ${contract.paymentCoin} coin`; expeditionCharacters.textContent = current.expedition.characters.map((item) => `${item.characterId} [${item.roles.join("/")}] h${item.healthPermille} f${item.fatiguePermille}`).join("; "); expeditionCargo.textContent = Object.entries(current.party.cargo).map(([id, amount]) => `${id} ${amount}`).join(", ") || "puste"; acceptContract.disabled = contract.status !== "offered"; pickupContract.disabled = contract.status !== "accepted"; departExpedition.disabled = contract.status !== "picked_up" || current.party.currentNodeId !== "wroclaw"; exploreExpedition.disabled = contract.status !== "picked_up" || current.party.currentNodeId !== "wroclaw"; deliverContract.disabled = contract.status !== "picked_up" || current.party.currentNodeId !== "opole"; const encounter = current.expedition.encounter; encounterChoices.replaceChildren(); if (encounter !== null) { encounterTitle.textContent = "Karawana zatrzymana"; encounterSummary.textContent = `Zagrożenie na ${encounter.routeId}. Wybór ma fizyczne konsekwencje.`; for (const decision of encounter.affordances) { const button = document.createElement("button"); button.textContent = decision; button.dataset.decision = decision; button.addEventListener("click", () => { void expeditionCommand("resolve_expedition_encounter", { commandId: `browser:encounter:${encounter.encounterId}:${decision}`, issuerActorId: "player_leader", encounterId: encounter.encounterId, decision }); }); encounterChoices.append(button); } openEncounterDialog(); } else if (encounterOutcome !== null) { encounterTitle.textContent = encounterOutcome.decision === "fight" ? "Walka rozstrzygnięta" : "Spotkanie rozstrzygnięte"; encounterSummary.textContent = `${encounterOutcome.decision}: ${encounterOutcome.outcome}. Możesz kontynuować podróż.`; const continueButton = document.createElement("button"); continueButton.className = "primary"; continueButton.textContent = "Kontynuuj podróż (+6 godzin)"; continueButton.dataset.encounterContinue = "true"; continueButton.addEventListener("click", () => { encounterOutcome = null; void advancePlayableExpedition(0.25); }); const journalButton = document.createElement("button"); journalButton.textContent = "Zobacz dziennik"; journalButton.addEventListener("click", () => { encounterOutcome = null; encounterPanel.close(); void activateGameView("journal"); }); encounterChoices.append(continueButton, journalButton); openEncounterDialog(); } else if (encounterPanel.open) { encounterPanel.close(); encounterReturnFocus?.focus(); encounterReturnFocus = null; } const pageSize = 4, pageCount = Math.max(1, Math.ceil(current.expedition.log.length / pageSize)); journalPageIndex = Math.min(journalPageIndex, pageCount - 1); const entries = current.expedition.log.slice().reverse().slice(journalPageIndex * pageSize, (journalPageIndex + 1) * pageSize); expeditionLog.replaceChildren(...entries.map((entry) => { const item = document.createElement("li"); item.textContent = `D${entry.elapsedDays.toFixed(2)} ${entry.text}`; return item; })); journalPage.textContent = `${journalPageIndex + 1} / ${pageCount}`; journalPrevious.disabled = journalPageIndex === 0; journalNext.disabled = journalPageIndex + 1 >= pageCount; }
 function openEncounterDialog(): void { if (!encounterPanel.open) { encounterReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null; encounterPanel.showModal(); } requestAnimationFrame(() => encounterChoices.querySelector<HTMLButtonElement>("button")?.focus()); }
 async function expeditionCommand(commandType: string, command: Record<string, unknown>): Promise<void> { try { const response = await postJson<{ readonly result: { readonly result: { readonly accepted: boolean; readonly errorCode?: string; readonly message?: string; readonly outcome?: string } }; readonly state: ExpeditionState }>("/api/expedition/command", { commandType, command }); expeditionState = response.state; const result = response.result.result; expeditionCommandMessage = result.accepted ? "Komenda przyjęta" : `${result.errorCode}: ${result.message}`; if (commandType === "resolve_expedition_encounter" && result.accepted) encounterOutcome = { decision: String(command.decision), outcome: result.outcome ?? "zakończone" }; renderPlayableExpedition(); expeditionStatus.textContent += ` — ${expeditionCommandMessage}`; } catch (error) { showError(error); } }
@@ -314,7 +324,17 @@ function renderEconomyDiagnostics(diagnostics: EconomyDiagnostics): void {
   renderDiagnosticPage();
 }
 
-async function activateGameView(view: string): Promise<void> { activeGameView = view; gameStage.dataset.activeView = view; for (const candidate of contextViews) candidate.hidden = candidate.dataset.gameView !== "map" && candidate.dataset.gameView !== view; for (const tab of gameTabs) tab.setAttribute("aria-selected", String(tab.dataset.panelTarget === view)); if (view === "diagnostics" && mapMode.value !== "truth") { mapMode.value = "truth"; await refreshState(); } const active = contextViews.find((candidate) => candidate.dataset.gameView === view); (active?.querySelector<HTMLElement>("button:not(:disabled),select:not(:disabled),[tabindex]") ?? document.querySelector<HTMLElement>(`[data-panel-target="${view}"]`))?.focus(); requestAnimationFrame(render); }
+async function activateGameView(view: string): Promise<void> {
+  activeGameView = view;
+  gameStage.dataset.activeView = view;
+  const sidebarView = view === "map" ? "caravan" : view;
+  for (const candidate of contextViews) candidate.hidden = candidate.dataset.gameView !== "map" && candidate.dataset.gameView !== sidebarView;
+  for (const tab of gameTabs) tab.setAttribute("aria-selected", String(tab.dataset.panelTarget === view));
+  if (view === "diagnostics" && mapMode.value !== "truth") { mapMode.value = "truth"; await refreshState(); }
+  const active = contextViews.find((candidate) => candidate.dataset.gameView === sidebarView);
+  if (view !== "map") (active?.querySelector<HTMLElement>("button:not(:disabled),select:not(:disabled),[tabindex]") ?? document.querySelector<HTMLElement>(`[data-panel-target="${view}"]`))?.focus();
+  requestAnimationFrame(render);
+}
 function renderDiagnosticPage(): void { for (const page of diagnosticPages) page.hidden = Number(page.dataset.diagnosticPage) !== diagnosticPageIndex; diagnosticPage.textContent = `${diagnosticPageIndex + 1} / ${diagnosticPages.length}`; diagnosticPrevious.disabled = diagnosticPageIndex === 0; diagnosticNext.disabled = diagnosticPageIndex + 1 >= diagnosticPages.length; }
 function setApiStatus(message: string, error: boolean): void { apiStatus.textContent = message; apiStatus.classList.toggle("error", error); }
 
@@ -426,6 +446,9 @@ function updateView(): void {
 }
 
 function updateDestinations(region: RegionState, party: PartyState): void {
+  const signature = JSON.stringify([party.status, party.currentNodeId, party.knownRouteIds, region.edges, region.nodes]);
+  if (signature === lastDestinationSignature) return;
+  lastDestinationSignature = signature;
   const previousValue = destination.value;
   destination.replaceChildren();
   if (party.status !== "idle" || party.currentNodeId === null) {
@@ -477,6 +500,9 @@ function render(): void {
   if (currentState === null) return;
   const bounds = canvas.getBoundingClientRect();
   const deviceScale = window.devicePixelRatio || 1;
+  const renderSignature = JSON.stringify([currentState.region, currentState.snapshot.parties, currentState.navigationKnowledge?.approximateAreas, bounds.width, bounds.height, deviceScale]);
+  if (renderSignature === lastMapRenderSignature) return;
+  lastMapRenderSignature = renderSignature;
   canvas.width = Math.max(1, Math.floor(bounds.width * deviceScale));
   canvas.height = Math.max(1, Math.floor(bounds.height * deviceScale));
   context.setTransform(deviceScale, 0, 0, deviceScale, 0, 0);

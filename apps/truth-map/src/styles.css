@@ -17,6 +17,10 @@ button.quiet { background:transparent; }
 .brand { width:auto; min-height:40px; padding:2px 8px; border:0; display:flex; align-items:baseline; gap:9px; background:transparent; font-family:Georgia,serif; font-size:1.25rem; }
 .brand small { color:#9f927d; font:700 .66rem Inter,sans-serif; letter-spacing:.08em; text-transform:uppercase; }
 .top-status { min-width:0; display:flex; align-items:center; gap:12px; color:#f0d6a5; font-size:.75rem; }
+.time-controls { display:flex; align-items:center; gap:5px; }
+.time-controls button { min-height:34px; padding:4px 9px; }
+.time-controls label { min-height:34px; display:flex; align-items:center; gap:4px; padding:0 7px; border:1px solid #514635; border-radius:8px; color:#d7c49f; cursor:pointer; }
+.time-controls input { width:17px; height:17px; accent-color:#d49a50; }
 .clock { white-space:nowrap; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
 .api-status { max-width:32ch; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#91b788; }
 .api-status.error { color:#dd856e; }
@@ -29,8 +33,6 @@ button.quiet { background:transparent; }
 .game-tabs button[aria-selected="true"] { color:#24170e; background:#d49a50; }
 
 .game-stage { min-width:0; min-height:0; overflow:hidden; display:grid; grid-template-columns:minmax(0,1fr) minmax(300px,360px); padding:10px; gap:10px; }
-.game-stage[data-active-view="map"] { grid-template-columns:minmax(0,1fr); }
-.game-stage[data-active-view="map"] .context-panel { display:none; }
 .map-panel,.context-panel { min-width:0; min-height:0; overflow:hidden; border:1px solid #4b3f2d; border-radius:12px; box-shadow:0 20px 54px rgba(0,0,0,.34); }
 .map-panel { display:grid; grid-template-rows:auto auto minmax(0,1fr); background:linear-gradient(rgba(83,64,36,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(83,64,36,.04) 1px,transparent 1px),#d7c49c; background-size:32px 32px; }
 .map-heading { min-width:0; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px 7px; border-bottom:1px solid rgba(73,57,35,.22); }
@@ -61,7 +63,7 @@ h3 { margin:1px 0 -4px; color:#a88758; font-size:.72rem; letter-spacing:.08em; t
 
 @media (max-width:760px) {
   .game-shell { grid-template-rows:50px 56px minmax(0,1fr); }
-  .top-bar { padding:5px 8px; }.brand { font-size:1.05rem; }.brand small,.mode-badge>span:not(.mode-dot) { display:none; }.top-status { margin-left:auto; gap:6px; }.api-status { max-width:none; font-size:0; }.api-status::before { content:"●"; font-size:.7rem; }
+  .top-bar { padding:5px 8px; }.brand { font-size:1.05rem; }.brand small,.mode-badge>span:not(.mode-dot),.time-controls label span { display:none; }.top-status { margin-left:auto; gap:5px; }.time-controls { gap:3px; }.time-controls button { min-width:44px; min-height:40px; padding:3px 6px; }.time-controls label { min-width:40px; min-height:40px; padding:0; justify-content:center; }.api-status { max-width:none; font-size:0; }.api-status::before { content:"●"; font-size:.7rem; }
   .game-tabs { grid-template-columns:repeat(7,72px); justify-content:space-between; gap:2px; padding:6px 4px; }.game-tabs button { min-height:44px; font-size:.66rem; padding:4px 2px; }
   .game-stage { display:block; padding:6px; }
   .map-panel,.context-panel { width:100%; height:100%; border-radius:9px; }
@@ -71,4 +73,4 @@ h3 { margin:1px 0 -4px; color:#a88758; font-size:.72rem; letter-spacing:.08em; t
   .encounter-dialog { width:100vw; height:100dvh; max-height:none; border:0; border-radius:0; }.dialog-card { height:100%; display:flex; flex-direction:column; justify-content:center; padding:max(18px,env(safe-area-inset-top)) 18px max(18px,env(safe-area-inset-bottom)); }.dialog-card .action-grid { grid-template-columns:1fr; }
 }
 
-@media (max-width:520px) { .game-tabs { grid-template-columns:repeat(7,minmax(44px,1fr)); }.game-tabs button { font-size:.59rem; }.mode-badge select { max-width:102px; }.action-grid { gap:6px; }.context-view { gap:8px; }.compact-copy:not(#expeditionCharacters) { -webkit-line-clamp:4; } }
+@media (max-width:520px) { .brand { display:none; }.game-tabs { grid-template-columns:repeat(7,minmax(44px,1fr)); }.game-tabs button { font-size:.59rem; }.mode-badge select { max-width:102px; }.action-grid { gap:6px; }.context-view { gap:8px; }.compact-copy:not(#expeditionCharacters) { -webkit-line-clamp:4; } }
