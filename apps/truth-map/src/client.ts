@@ -46,6 +46,7 @@ interface Landmark {
 interface RegionState {
   readonly id: string;
   readonly displayName: string;
+  readonly mapBounds: { readonly minimum: Vec2; readonly maximum: Vec2 };
   readonly nodes: readonly GraphNode[];
   readonly edges: readonly GraphEdge[];
   readonly terrainAreas: readonly TerrainArea[];
@@ -151,9 +152,10 @@ const partyId = requireElement<HTMLElement>("partyId");
 const partyStatus = requireElement<HTMLElement>("partyStatus");
 const partyLocation = requireElement<HTMLElement>("partyLocation");
 const partySpeed = requireElement<HTMLElement>("partySpeed");
-const destination = requireElement<HTMLSelectElement>("destination");
-const moveButton = requireElement<HTMLButtonElement>("moveButton");
 const commandResult = requireElement<HTMLElement>("commandResult");
+const mapContextMenu = requireElement<HTMLElement>("mapContextMenu");
+const mapContextTitle = requireElement<HTMLElement>("mapContextTitle");
+const moveToSelected = requireElement<HTMLButtonElement>("moveToSelected");
 const clock = requireElement<HTMLElement>("clock");
 const advanceSixHours = requireElement<HTMLButtonElement>("advanceSixHours");
 const advanceDay = requireElement<HTMLButtonElement>("advanceDay");
@@ -190,10 +192,9 @@ const expeditionCargo = requireElement<HTMLElement>("expeditionCargo");
 const expeditionDeadline = requireElement<HTMLElement>("expeditionDeadline");
 const acceptContract = requireElement<HTMLButtonElement>("acceptContract");
 const pickupContract = requireElement<HTMLButtonElement>("pickupContract");
-const departExpedition = requireElement<HTMLButtonElement>("departExpedition");
+const departExpedition = { disabled: false };
 const exploreExpedition = requireElement<HTMLButtonElement>("exploreExpedition");
 const deliverContract = requireElement<HTMLButtonElement>("deliverContract");
-const advanceExpedition = requireElement<HTMLButtonElement>("advanceExpedition");
 const encounterPanel = requireElement<HTMLDialogElement>("encounterPanel");
 const encounterTitle = requireElement<HTMLElement>("encounterTitle");
 const encounterSummary = requireElement<HTMLElement>("encounterSummary");
@@ -226,8 +227,8 @@ let encounterOutcome: null | { readonly decision: string; readonly outcome: stri
 let showingExpeditionMap = true;
 let debugMapActive = false;
 let lastMapRenderSignature = "";
-let lastDestinationSignature = "";
 let lastExpeditionRenderSignature = "";
+let selectedMapNodeId: string | null = null;
 
 translateDocument();
 window.addEventListener("resize", render);
@@ -236,7 +237,10 @@ journalPrevious.addEventListener("click", () => { journalPageIndex = Math.max(0,
 journalNext.addEventListener("click", () => { journalPageIndex += 1; renderPlayableExpedition(); });
 diagnosticPrevious.addEventListener("click", () => { diagnosticPageIndex = Math.max(0, diagnosticPageIndex - 1); renderDiagnosticPage(); });
 diagnosticNext.addEventListener("click", () => { diagnosticPageIndex = Math.min(diagnosticPages.length - 1, diagnosticPageIndex + 1); renderDiagnosticPage(); });
-moveButton.addEventListener("click", () => { void submitMove(); });
+canvas.addEventListener("click", (event) => { selectMapNode(event); });
+canvas.addEventListener("contextmenu", (event) => { event.preventDefault(); openMapContextMenu(event); });
+moveToSelected.addEventListener("click", () => { mapContextMenu.hidden = true; void submitSelectedMove(); });
+document.addEventListener("click", (event) => { if (!mapContextMenu.contains(event.target as Node) && event.target !== canvas) mapContextMenu.hidden = true; });
 advanceSixHours.addEventListener("click", () => { void advancePlayableExpedition(0.25); });
 advanceDay.addEventListener("click", () => { void advancePlayableExpedition(1); });
 resetButton.addEventListener("click", () => { void resetSimulation(); });
@@ -244,10 +248,8 @@ debugMapObserver.addEventListener("change", () => { void refreshDebugMap(); });
 advanceEconomy.addEventListener("click", () => { void advanceRegionalEconomy(); });
 acceptContract.addEventListener("click", () => { void expeditionCommand("accept_caravan_contract", { commandId: "browser:accept", issuerActorId: "player_leader", contractId: "contract_wroclaw_opole_food", contractorPartyId: "player_expedition" }); });
 pickupContract.addEventListener("click", () => { void expeditionCommand("pickup_caravan_contract", { commandId: "browser:pickup", issuerActorId: "player_leader", contractId: "contract_wroclaw_opole_food" }); });
-departExpedition.addEventListener("click", () => { void expeditionCommand("move_party", { party_id: "player_expedition", from_node_id: "wroclaw", to_node_id: "opole" }); });
 exploreExpedition.addEventListener("click", () => { void expeditionCommand("search_area", { commandId: "browser:explore:forest-shortcut", issuerActorId: "player_leader", partyId: "player_expedition", areaKnowledgeId: "area:rumored_forest_shortcut", searchRadiusKm: 3, observationSkillPermille: 820 }); });
 deliverContract.addEventListener("click", () => { void expeditionCommand("deliver_caravan_contract", { commandId: "browser:deliver", issuerActorId: "player_leader", contractId: "contract_wroclaw_opole_food" }); });
-advanceExpedition.addEventListener("click", () => { void advancePlayableExpedition(0.25); });
 autoAdvance.addEventListener("change", updateAutoAdvance);
 
 gameStage.dataset.activeView = activeGameView;
@@ -356,15 +358,16 @@ async function activateGameView(view: string): Promise<void> {
 function renderDiagnosticPage(): void { for (const page of diagnosticPages) page.hidden = Number(page.dataset.diagnosticPage) !== diagnosticPageIndex; diagnosticPage.textContent = `${diagnosticPageIndex + 1} / ${diagnosticPages.length}`; diagnosticPrevious.disabled = diagnosticPageIndex === 0; diagnosticNext.disabled = diagnosticPageIndex + 1 >= diagnosticPages.length; }
 function setApiStatus(message: string, error: boolean): void { apiStatus.textContent = message; apiStatus.classList.toggle("error", error); }
 
-async function submitMove(): Promise<void> {
+async function submitSelectedMove(): Promise<void> {
   const currentState = state;
   const party = currentState?.snapshot.parties[0];
+  const selectedNode = currentState?.region.nodes.find((node) => node.id === selectedMapNodeId);
   if (currentState === null || currentState === undefined || party?.currentNodeId === null
-    || party?.currentNodeId === undefined || destination.value.length === 0) return;
+    || party?.currentNodeId === undefined || selectedNode === undefined) return;
 
   try {
     if (party.id === "player_expedition") {
-      const response = await postJson<{ readonly result: { readonly result: MovePartyResponse["result"] }; readonly state: ExpeditionState }>("/api/expedition/command", { commandType: "move_party", command: { party_id: party.id, from_node_id: party.currentNodeId, to_node_id: destination.value } });
+      const response = await postJson<{ readonly result: { readonly result: MovePartyResponse["result"] }; readonly state: ExpeditionState }>("/api/expedition/command", { commandType: "move_party", command: { party_id: party.id, from_node_id: party.currentNodeId, to_node_id: selectedNode.id } });
       expeditionState = response.state;
       state = response.state.partyMap;
       if (response.result.result.accepted) showMessage(translate("commandAccepted"), false);
@@ -376,7 +379,7 @@ async function submitMove(): Promise<void> {
     const response = await postJson<MovePartyResponse>(viewUrl("/api/commands/move-party"), {
       party_id: party.id,
       from_node_id: party.currentNodeId,
-      to_node_id: destination.value,
+      to_node_id: selectedNode.id,
     });
     state = response.state;
     if (response.result.accepted) showMessage(translate("commandAccepted"), false);
@@ -385,6 +388,37 @@ async function submitMove(): Promise<void> {
   } catch (error: unknown) {
     showError(error);
   }
+}
+
+function selectMapNode(event: MouseEvent): void {
+  const node = mapNodeAt(event);
+  selectedMapNodeId = node?.id ?? null;
+  mapContextMenu.hidden = true;
+  commandResult.textContent = node === undefined ? "Nie wybrano miejsca." : `Wybrano: ${node.displayName}. Prawy przycisk otwiera dostępne działania.`;
+  lastMapRenderSignature = "";
+  render();
+}
+
+function openMapContextMenu(event: MouseEvent): void {
+  const node = mapNodeAt(event) ?? state?.region.nodes.find((candidate) => candidate.id === selectedMapNodeId);
+  if (node === undefined) { mapContextMenu.hidden = true; return; }
+  selectedMapNodeId = node.id;
+  const party = state?.snapshot.parties[0], adjacent = party?.currentNodeId !== null && party?.currentNodeId !== undefined && state?.region.edges.some((edge) => (edge.originNodeId === party.currentNodeId && edge.targetNodeId === node.id) || (edge.targetNodeId === party.currentNodeId && edge.originNodeId === node.id)) === true;
+  moveToSelected.disabled = party?.status !== "idle" || party.currentNodeId === node.id || !adjacent || debugMapActive;
+  mapContextTitle.textContent = node.displayName;
+  moveToSelected.textContent = moveToSelected.disabled ? "Brak dostępnego ruchu" : `Wyrusz do ${node.displayName}`;
+  mapContextMenu.style.left = `${Math.min(event.offsetX, Math.max(0, canvas.clientWidth - 190))}px`;
+  mapContextMenu.style.top = `${Math.min(event.offsetY, Math.max(0, canvas.clientHeight - 90))}px`;
+  mapContextMenu.hidden = false;
+  lastMapRenderSignature = "";
+  render();
+}
+
+function mapNodeAt(event: MouseEvent): GraphNode | undefined {
+  const currentState = state;
+  if (currentState === null) return undefined;
+  const projection = createProjection(currentState.region, canvas.clientWidth, canvas.clientHeight);
+  return currentState.region.nodes.map((node) => ({ node, point: projection(node.position) })).filter(({ point }) => Math.hypot(point[0] - event.offsetX, point[1] - event.offsetY) <= 18).sort((left, right) => left.node.id.localeCompare(right.node.id))[0]?.node;
 }
 
 async function advanceTime(days: number): Promise<void> {
@@ -456,40 +490,7 @@ function updateView(): void {
   mapPanelKnowledge.textContent = currentState.mode === "truth" ? "Pokazuje pełny stan świata, również obiekty nieznane drużynie." : `Mapa prywatna: ${areas.length} obszarów niepewnych i ${relations.length} relacji z landmarkami.`;
   const spatial = currentState.spatialTruth?.metrics;
   spatialDiagnostics.textContent = spatial === undefined ? "—" : `off-road ${spatial.offRoadDistanceKm.toFixed(1)} km; searched ${spatial.searchAreaCoveredKm2.toFixed(1)} km²; discoveries ${spatial.discoveries}; false leads ${spatial.falseLeads}; hidden visits ${spatial.hiddenSiteVisits}`;
-  updateDestinations(currentState.region, party);
   render();
-}
-
-function updateDestinations(region: RegionState, party: PartyState): void {
-  const signature = JSON.stringify([party.status, party.currentNodeId, party.knownRouteIds, region.edges, region.nodes]);
-  if (signature === lastDestinationSignature) return;
-  lastDestinationSignature = signature;
-  const previousValue = destination.value;
-  destination.replaceChildren();
-  if (party.status !== "idle" || party.currentNodeId === null) {
-    const option = new Option(translate("traveling"), "");
-    destination.add(option);
-    destination.disabled = true;
-    moveButton.disabled = true;
-    return;
-  }
-
-  const routeTargets = region.edges.flatMap((edge) => {
-    if (!party.knownRouteIds.includes(edge.id)) return [];
-    if (edge.originNodeId === party.currentNodeId) return [edge.targetNodeId];
-    if (edge.targetNodeId === party.currentNodeId) return [edge.originNodeId];
-    return [];
-  });
-  for (const targetId of routeTargets) {
-    const node = region.nodes.find((candidate) => candidate.id === targetId);
-    if (node !== undefined) destination.add(new Option(node.displayName, node.id));
-  }
-  if ([...destination.options].some((option) => option.value === previousValue)) {
-    destination.value = previousValue;
-  }
-  if (destination.options.length === 0) destination.add(new Option(translate("noDestination"), ""));
-  destination.disabled = destination.options.length === 0 || destination.value.length === 0;
-  moveButton.disabled = destination.disabled;
 }
 
 function describeLocation(region: RegionState, party: PartyState): string {
@@ -543,23 +544,10 @@ function drawUncertainty(areas: readonly { readonly center: Vec2; readonly radiu
 type Projection = (point: Vec2) => Vec2;
 
 function createProjection(region: RegionState, width: number, height: number): Projection {
-  const points: Vec2[] = [
-    ...region.nodes.map((node) => node.position),
-    ...region.landmarks.map((landmark) => landmark.position),
-    ...region.edges.flatMap((edge) => edge.routeWaypoints.map((waypoint) => waypoint.position)),
-    ...region.terrainAreas.flatMap((area) => area.shape === "polygon"
-      ? [...area.polygon]
-      : [
-          [area.center[0] - area.radius[0], area.center[1] - area.radius[1]] as Vec2,
-          [area.center[0] + area.radius[0], area.center[1] + area.radius[1]] as Vec2,
-        ]),
-  ];
-  const xs = points.map((point) => point[0]);
-  const ys = points.map((point) => point[1]);
-  const minimumX = Math.min(...xs);
-  const maximumX = Math.max(...xs);
-  const minimumY = Math.min(...ys);
-  const maximumY = Math.max(...ys);
+  const minimumX = region.mapBounds.minimum[0];
+  const minimumY = region.mapBounds.minimum[1];
+  const maximumX = region.mapBounds.maximum[0];
+  const maximumY = region.mapBounds.maximum[1];
   const padding = 52;
   const scale = Math.min(
     (width - padding * 2) / Math.max(1, maximumX - minimumX),
@@ -653,6 +641,7 @@ function drawNodes(region: RegionState, project: Projection): void {
   for (const node of region.nodes) {
     const point = project(node.position);
     const radius = node.kind.includes("major") ? 7 : 5;
+    if (node.id === selectedMapNodeId) { context.beginPath(); context.arc(point[0], point[1], radius + 10, 0, Math.PI * 2); context.strokeStyle = "#a43d2d"; context.lineWidth = 3; context.stroke(); }
     context.beginPath();
     context.arc(point[0], point[1], radius + 3, 0, Math.PI * 2);
     context.fillStyle = "rgba(242, 228, 191, 0.9)";

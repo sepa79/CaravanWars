@@ -225,6 +225,7 @@ function createDebugState(regionGraph: RegionGraph, world: WorldSimulation): obj
       id: regionGraph.id,
       displayName: regionGraph.displayName,
       description: regionGraph.description,
+      mapBounds: { minimum: [Math.min(...regionGraph.nodes.map((node) => node.position[0])), Math.min(...regionGraph.nodes.map((node) => node.position[1]))], maximum: [Math.max(...regionGraph.nodes.map((node) => node.position[0])), Math.max(...regionGraph.nodes.map((node) => node.position[1]))] },
       nodes: regionGraph.nodes,
       edges: regionGraph.edges,
       terrainAreas: regionGraph.terrainAreas,

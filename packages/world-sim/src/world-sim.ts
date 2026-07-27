@@ -395,6 +395,7 @@ export interface PartyMapRegionEdge {
 export interface PartyMapRegionSnapshot {
   readonly id: string;
   readonly displayName: string;
+  readonly mapBounds: { readonly minimum: Vec2; readonly maximum: Vec2 };
   readonly nodes: readonly PartyMapRegionNode[];
   readonly edges: readonly PartyMapRegionEdge[];
   readonly terrainAreas: readonly never[];
@@ -1643,6 +1644,7 @@ export class WorldSimulation {
       region: {
         id: this.#graph.id,
         displayName: this.#graph.displayName,
+        mapBounds: graphMapBounds(this.#graph),
         nodes: this.#graph.nodes
           .filter((node) => knownNodeIds.has(node.id))
           .map((node) => ({
@@ -1767,6 +1769,11 @@ export class WorldSimulation {
       }
     }
   }
+}
+
+function graphMapBounds(graph: RegionGraph): { readonly minimum: Vec2; readonly maximum: Vec2 } {
+  const xs = graph.nodes.map((node) => node.position[0]), ys = graph.nodes.map((node) => node.position[1]);
+  return { minimum: [Math.min(...xs), Math.min(...ys)], maximum: [Math.max(...xs), Math.max(...ys)] };
 }
 
 function copyPartySeed(seed: PartySeed): PartySeed {

@@ -19,7 +19,6 @@
         <button type="button" data-panel-target="caravan" aria-selected="false">Skład</button>
         <button type="button" data-panel-target="contract" aria-selected="false">Kontrakt</button>
         <button type="button" data-panel-target="journal" aria-selected="false">Dziennik</button>
-        <button type="button" data-panel-target="commands" aria-selected="false">Rozkazy</button>
         <button type="button" data-panel-target="diagnostics" aria-selected="false">Debug</button>
       </nav>
 
@@ -30,14 +29,14 @@
             <div id="regionStats" class="region-stats">—</div>
           </div>
           <p id="navigationKnowledge" class="map-note">—</p>
-          <div class="canvas-wrap"><canvas id="mapCanvas"></canvas><div class="legend"><span><i class="legend-road"></i><b data-i18n="routes"></b></span><span><i class="legend-node"></i><b data-i18n="locations"></b></span><span><i class="legend-landmark"></i><b data-i18n="landmarks"></b></span><span><i class="legend-party"></i><b data-i18n="party"></b></span></div></div>
+          <div class="canvas-wrap"><canvas id="mapCanvas" tabindex="0" aria-label="Mapa wyprawy. Kliknij miejsce, następnie otwórz menu kontekstowe prawym przyciskiem."></canvas><div id="mapContextMenu" class="map-context-menu" hidden><div id="mapContextTitle">—</div><button id="moveToSelected" type="button" class="primary">Wyrusz</button></div><div class="legend"><span><i class="legend-road"></i><b data-i18n="routes"></b></span><span><i class="legend-node"></i><b data-i18n="locations"></b></span><span><i class="legend-landmark"></i><b data-i18n="landmarks"></b></span><span><i class="legend-party"></i><b data-i18n="party"></b></span></div></div>
         </section>
 
         <aside id="contextPanel" class="context-panel" aria-label="Panel kontekstowy">
           <section class="context-view" data-game-view="map">
             <header class="panel-heading"><p class="section-label">WARSTWA MAPY</p><h2>Mapa wyprawy</h2></header>
             <dl class="facts"><div><dt>Tryb</dt><dd id="mapPanelMode">—</dd></div><div><dt>Zasięg</dt><dd id="mapPanelCoverage">—</dd></div><div><dt>Pozycja grupy</dt><dd id="mapPanelPosition">—</dd></div></dl>
-            <p id="mapPanelKnowledge" class="compact-copy">—</p>
+            <p id="mapPanelKnowledge" class="compact-copy">—</p><p id="commandResult" class="command-result" aria-live="polite">Kliknij miejsce na mapie; prawym przyciskiem otwórz menu.</p>
           </section>
           <section class="context-view" data-game-view="caravan" hidden>
             <header class="panel-heading"><p class="section-label" data-i18n="selectedParty"></p><h2 id="partyName">—</h2></header>
@@ -48,18 +47,13 @@
           <section id="expeditionPanel" class="context-view" data-game-view="contract" hidden>
             <header class="panel-heading"><p class="section-label">PLAYABLE CARAVAN EXPEDITION</p><h2 id="expeditionContract">Wczytywanie kontraktu…</h2><p id="expeditionStatus" class="command-result" aria-live="polite">—</p></header>
             <dl class="facts"><div><dt>Termin</dt><dd id="expeditionDeadline">—</dd></div></dl>
-            <div class="action-grid"><button id="acceptContract" class="primary">Przyjmij</button><button id="pickupContract">Odbierz cargo</button><button id="departExpedition">Trasa do Opola</button><button id="exploreExpedition">Eksploruj skrót</button><button id="deliverContract">Dostarcz</button><button id="advanceExpedition">+ 6 godzin</button></div>
+            <div class="action-grid"><button id="acceptContract" class="primary">Przyjmij</button><button id="pickupContract">Odbierz cargo</button><button id="exploreExpedition">Eksploruj skrót</button><button id="deliverContract">Dostarcz</button></div>
           </section>
 
           <section class="context-view" data-game-view="journal" hidden>
             <header class="panel-heading"><p class="section-label">PRYWATNA WIEDZA</p><h2>Dziennik wyprawy</h2></header>
             <ol id="expeditionLog" class="paged-list"></ol>
             <div class="pager"><button id="journalPrevious" type="button" aria-label="Poprzednia strona dziennika">←</button><span id="journalPage">1 / 1</span><button id="journalNext" type="button" aria-label="Następna strona dziennika">→</button></div>
-          </section>
-
-          <section class="context-view" data-game-view="commands" hidden>
-            <header class="panel-heading"><p class="section-label" data-i18n="travelCommand"></p><h2>Ruch i czas</h2></header>
-            <label class="field-label" for="destination" data-i18n="destination"></label><select id="destination"></select><button id="moveButton" class="primary" data-i18n="depart"></button><p id="commandResult" class="command-result" aria-live="polite"></p>
           </section>
 
           <section id="economyDiagnostics" class="context-view" data-game-view="diagnostics" hidden>

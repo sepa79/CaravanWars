@@ -11,6 +11,7 @@ test("defaults to the expedition Party Map", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("#mapScopeLabel")).toHaveText("Wiedza wybranej grupy");
   await expect(page.locator("#partyId")).toHaveText("player_expedition");
+  await expect(page.locator("#regionStats")).toContainText("4 miejsc · 3 dróg");
   await expect(page.locator("#partyLocation")).toHaveText("Wroclaw");
   await expect(page.locator("#mapCanvas")).toBeVisible();
   await expect(page.locator("#navigationKnowledge")).toContainText("PRIVATE NAVIGATION");
@@ -18,10 +19,11 @@ test("defaults to the expedition Party Map", async ({ page }) => {
 
 test("gameplay Move targets the expedition world and Reset exists only in Debug", async ({ page }) => {
   await page.goto("/");
-  await openPanel(page, "commands");
+  await openPanel(page, "map");
   await expect(page.locator("#resetButton")).not.toBeVisible();
-  await page.locator("#destination").selectOption("opole");
-  await page.locator("#moveButton").click();
+  await expect(page.locator('[data-panel-target="commands"]')).toHaveCount(0);
+  await expect(page.locator("#moveToSelected")).toHaveCount(1);
+  await moveOnMap(page, "opole");
   await expect(page.locator("#commandResult")).toContainText("Komenda przyjęta");
   await expect(page.locator("#commandResult")).not.toContainText("PARTY_NOT_FOUND");
   await expect(page.locator("#partyStatus")).toHaveText("w podróży");
@@ -100,8 +102,8 @@ test("playable expedition completes contract through physical cargo, encounter d
   await expect(page.locator("#expeditionStatus")).toContainText("accepted");
   await page.locator("#pickupContract").click();
   await expect(page.locator("#expeditionCargo")).toContainText("food 12");
-  await page.locator("#departExpedition").click();
-  await page.locator("#advanceExpedition").click();
+  await moveOnMap(page, "opole");
+  await page.locator("#advanceSixHours").click();
   await expect(page.locator("#encounterPanel")).toBeVisible();
   await page.locator('[data-decision="negotiate"]').click();
   await expect(page.locator("#expeditionLog")).toContainText("negotiated_passage");
@@ -119,7 +121,7 @@ test("playable expedition completes contract through physical cargo, encounter d
 test("playable expedition failure path conserves loss and rejects incomplete delivery", async ({ page }) => {
   await page.goto("/");
   await openPanel(page, "contract");
-  await page.locator("#acceptContract").click(); await page.locator("#pickupContract").click(); await page.locator("#departExpedition").click(); await page.locator("#advanceExpedition").click();
+  await page.locator("#acceptContract").click(); await page.locator("#pickupContract").click(); await moveOnMap(page, "opole"); await page.locator("#advanceSixHours").click();
   await page.locator('[data-decision="surrender_cargo"]').click();
   await expect(page.locator("#expeditionCargo")).toContainText("food 6");
   await page.request.post("/api/expedition/advance", { data: { days: 5 } }); await page.reload(); await openPanel(page, "contract"); await page.locator("#deliverContract").click();
@@ -131,8 +133,8 @@ test("fight presents its result and an explicit way to continue the journey", as
   await openPanel(page, "contract");
   await page.locator("#acceptContract").click();
   await page.locator("#pickupContract").click();
-  await page.locator("#departExpedition").click();
-  await page.locator("#advanceExpedition").click();
+  await moveOnMap(page, "opole");
+  await page.locator("#advanceSixHours").click();
   await expect(page.locator("#encounterPanel")).toBeVisible();
   await page.locator('[data-decision="fight"]').click();
   await expect(page.locator("#encounterTitle")).toHaveText("Walka rozstrzygnięta");
@@ -208,9 +210,9 @@ for (const viewport of viewports) test(`game shell remains viewport-locked at ${
   await page.goto("/");
   await expect(page.locator("#apiStatus")).toHaveText("Połączono");
   await assertViewportLocked(page);
-  for (const panel of ["map", "caravan", "contract", "journal", "commands", "diagnostics"]) { await openPanel(page, panel); await assertViewportLocked(page); }
+  for (const panel of ["map", "caravan", "contract", "journal", "diagnostics"]) { await openPanel(page, panel); await assertViewportLocked(page); }
   await openPanel(page, "contract");
-  await page.locator("#acceptContract").click(); await page.locator("#pickupContract").click(); await page.locator("#departExpedition").click(); await page.locator("#advanceExpedition").click();
+  await page.locator("#acceptContract").click(); await page.locator("#pickupContract").click(); await moveOnMap(page, "opole"); await page.locator("#advanceSixHours").click();
   await expect(page.locator("#encounterPanel")).toBeVisible();
   await assertViewportLocked(page);
   await expect(page.locator("#encounterPanel")).toBeInViewport();
@@ -222,6 +224,24 @@ for (const viewport of viewports) test(`game shell remains viewport-locked at ${
   const resized = { width: Math.max(390, viewport.width - 173), height: Math.max(640, viewport.height - 91) };
   await page.setViewportSize(resized); await assertViewportLocked(page);
 });
+
+async function moveOnMap(page: import("@playwright/test").Page, nodeId: string) {
+  await openPanel(page, "map");
+  const state = await (await page.request.get("/api/expedition/state")).json();
+  const node = state.partyMap.region.nodes.find((candidate: { id: string }) => candidate.id === nodeId);
+  if (node === undefined) throw new Error(`Map node ${nodeId} is not known.`);
+  const box = await page.locator("#mapCanvas").boundingBox();
+  if (box === null) throw new Error("Map canvas has no bounds.");
+  const bounds = state.partyMap.region.mapBounds, padding = 52;
+  const scale = Math.min((box.width - padding * 2) / Math.max(1, bounds.maximum[0] - bounds.minimum[0]), (box.height - padding * 2) / Math.max(1, bounds.maximum[1] - bounds.minimum[1]));
+  const contentWidth = (bounds.maximum[0] - bounds.minimum[0]) * scale, contentHeight = (bounds.maximum[1] - bounds.minimum[1]) * scale;
+  const position = { x: (box.width - contentWidth) / 2 + (node.position[0] - bounds.minimum[0]) * scale, y: (box.height - contentHeight) / 2 + (node.position[1] - bounds.minimum[1]) * scale };
+  await page.locator("#mapCanvas").click({ position });
+  await page.locator("#mapCanvas").click({ button: "right", position });
+  await expect(page.locator("#mapContextMenu")).toBeVisible();
+  await expect(page.locator("#moveToSelected")).toBeEnabled();
+  await page.locator("#moveToSelected").click();
+}
 
 async function assertViewportLocked(page: import("@playwright/test").Page) {
   const geometry = await page.evaluate(() => ({ innerWidth, innerHeight, htmlWidth: document.documentElement.scrollWidth, htmlHeight: document.documentElement.scrollHeight, bodyWidth: document.body.scrollWidth, bodyHeight: document.body.scrollHeight, map: (() => { const rect = document.querySelector("#mapCanvas")!.getBoundingClientRect(); return { width: rect.width, height: rect.height }; })(), panels: [...document.querySelectorAll<HTMLElement>("[data-game-view]")].filter((element) => element.offsetParent !== null).map((element) => ({ name: element.dataset.gameView, clientHeight: element.clientHeight, scrollHeight: element.scrollHeight, overflowY: getComputedStyle(element).overflowY })), visible: [...document.querySelectorAll<HTMLElement>("button:not([hidden]), select:not([hidden]), dialog[open]")].filter((element) => element.offsetParent !== null || element instanceof HTMLDialogElement && element.open).map((element) => { const rect = element.getBoundingClientRect(); return { id: element.id || element.textContent?.trim().slice(0, 20), left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }; }) }));

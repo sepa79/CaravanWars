@@ -9,6 +9,17 @@ const goodsCatalog = loadGoodsCatalogFile(resolve("data/simulation/goods_catalog
 function prepare() { const fixture = createPlayableExpeditionFixture(graph, travel); const world = fixture.world; assert.equal(world.submitCommand({ commandType: "accept_caravan_contract", command: { commandId: "accept", issuerActorId: "player_leader", contractId: "contract_wroclaw_opole_food", contractorPartyId: "player_expedition" } }).result.accepted, true); assert.equal(world.submitCommand({ commandType: "pickup_caravan_contract", command: { commandId: "pickup", issuerActorId: "player_leader", contractId: "contract_wroclaw_opole_food" } }).result.accepted, true); return fixture; }
 function startEncounter(world: ReturnType<typeof prepare>["world"]) { assert.equal(world.submitCommand({ commandType: "move_party", command: { party_id: "player_expedition", from_node_id: "wroclaw", to_node_id: "opole" } }).result.accepted, true); assert.equal(world.submitCommand({ commandType: "move_party", command: { party_id: "black_pine_raiders", from_node_id: "wroclaw", to_node_id: "opole" } }).result.accepted, true); assert.equal(world.submitCommand({ commandType: "plan_expedition_encounter", command: { commandId: "ambush", issuerActorId: "bandit_chief", encounterId: "ambush_1", routeId: "wroclaw_opole", attackerPartyId: "black_pine_raiders", defenderPartyId: "player_expedition", delayDays: 0.5 } }).result.accepted, true); world.advanceDays(0.5); assert.equal(world.partyExpeditionView("player_expedition")!.encounter?.status, "awaiting_decision"); }
 
+test("player parchment starts with regional basics and keeps a stable frame as knowledge grows", () => {
+  const { world } = createPlayableExpeditionFixture(graph, travel), before = world.partyMapSnapshot("player_expedition");
+  assert.deepEqual(before.region.edges.map((edge) => edge.id).sort(), ["wroclaw_glogow", "wroclaw_legnica", "wroclaw_opole"]);
+  assert.equal(world.submitCommand({ commandType: "move_party", command: { party_id: "player_expedition", from_node_id: "wroclaw", to_node_id: "opole" } }).result.accepted, true);
+  world.advanceDays(6);
+  const after = world.partyMapSnapshot("player_expedition");
+  assert.deepEqual(after.region.mapBounds, before.region.mapBounds);
+  assert.equal(after.region.edges.length > before.region.edges.length, true);
+  assert.deepEqual(after.region.nodes.find((node) => node.id === "opole")?.position, before.region.nodes.find((node) => node.id === "opole")?.position);
+});
+
 test("playable contract loop conserves physical cargo and coin through encounter and completion", () => {
   const { world } = prepare(); assert.equal(world.partySnapshot("player_expedition").cargo.food, 12); startEncounter(world);
   const paused = world.partySnapshot("player_expedition").travel!.progressKm; world.advanceDays(0.25); assert.equal(world.partySnapshot("player_expedition").travel!.progressKm, paused);
