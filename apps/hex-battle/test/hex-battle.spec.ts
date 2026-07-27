@@ -15,6 +15,8 @@ test("group selection, targeted Rally and Advance preview and animate coherently
   await expect(page.locator("#selectedName")).toContainText("choose hex");
   const canvas = page.locator("#map"), box = await canvas.boundingBox();
   if (box === null) throw new Error("Battle map missing");
+  await canvas.hover({ position: { x: box.width * .58, y: box.height * .50 } });
+  await expect(page.locator("#selectedInfo")).toContainText("Green hex");
   await canvas.click({ position: { x: box.width * .58, y: box.height * .50 } });
   await expect(page.locator(".target-confirmation")).toBeVisible();
   await expect(page.locator("#targetSummary")).toContainText("Advance → hex");
