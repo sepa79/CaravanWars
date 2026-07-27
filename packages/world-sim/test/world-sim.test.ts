@@ -41,6 +41,7 @@ const PLAYER_PARTY: PartySeed = {
 
 test("valid adjacent move follows authored geometry and arrives after deterministic ticks", () => {
   const simulation = createSimulation();
+  assert.equal(simulation.partyMapSnapshot("player_party").region.edges.length, 1);
   const result = submitMove(simulation, {
     party_id: "player_party",
     from_node_id: "wroclaw",
@@ -59,6 +60,21 @@ test("valid adjacent move follows authored geometry and arrives after determinis
   assert.equal(arrivedParty?.status, "idle");
   assert.equal(arrivedParty?.currentNodeId, "opole");
   assert.deepEqual(arrivedParty?.position, [66, 43]);
+  const learnedMap = simulation.partyMapSnapshot("player_party");
+  assert.equal(learnedMap.region.edges.length > 1, true);
+  assert.equal(learnedMap.region.nodes.some((node) => node.id === "raciborz"), true);
+});
+
+test("arrival signposts reveal only public routes adjacent to the destination", () => {
+  const simulation = createSimulation();
+  assert.equal(submitMove(simulation, { party_id: "player_party", from_node_id: "wroclaw", to_node_id: "opole" }).accepted, true);
+  simulation.advanceDays(100 / 31);
+  const map = simulation.partyMapSnapshot("player_party");
+  const expected = loadRegionGraphFile(SILESIA_PATH).edges.filter((edge) => edge.visibility === "public" && (edge.originNodeId === "opole" || edge.targetNodeId === "opole")).map((edge) => edge.id).sort();
+  const learned = map.region.edges.filter((edge) => edge.originNodeId === "opole" || edge.targetNodeId === "opole").map((edge) => edge.id).sort();
+  assert.deepEqual(learned, expected);
+  const hiddenIds = new Set(loadRegionGraphFile(SILESIA_PATH).edges.filter((edge) => edge.visibility === "hidden").map((edge) => edge.id));
+  assert.equal(map.region.edges.some((edge) => hiddenIds.has(edge.id)), false);
 });
 
 test("reverse travel follows the same authored route in reverse", () => {

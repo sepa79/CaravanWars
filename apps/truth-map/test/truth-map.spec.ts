@@ -95,6 +95,7 @@ test("playable expedition completes contract through physical cargo, encounter d
   const advance = await page.request.post("/api/expedition/advance", { data: { days: 5 } });
   expect(advance.ok()).toBe(true);
   await page.reload();
+  await expect(page.locator("#regionStats")).not.toContainText("2 miejsc · 1 dróg");
   await openPanel(page, "contract");
   await expect(page.locator("#deliverContract")).toBeEnabled();
   await page.locator("#deliverContract").click();

@@ -1480,6 +1480,7 @@ export class WorldSimulation {
       if (travel.progressKm + 1e-9 >= travel.distanceKm) {
         travel.progressKm = travel.distanceKm;
         party.location = { status: "idle", nodeId: travel.destinationNodeId, position: [...this.#graph.nodesById.get(travel.destinationNodeId)!.position] };
+        this.#observeSignpostedLocalRoutes(party, travel.destinationNodeId);
       }
     }
   }
@@ -1706,6 +1707,21 @@ export class WorldSimulation {
         landmarkIds: [...waypoint.landmarkIds],
         landmarkTags: [...waypoint.landmarkTags],
       });
+    }
+  }
+
+  #observeSignpostedLocalRoutes(party: PartyRuntimeState, nodeId: string): void {
+    const elapsed = this.#clock.elapsedDays;
+    const adjacentEdges = this.#graph.edges
+      .filter((edge) => edge.visibility === "public" && (edge.originNodeId === nodeId || edge.targetNodeId === nodeId))
+      .sort((left, right) => left.id.localeCompare(right.id));
+    for (const edge of adjacentEdges) {
+      for (const endpointId of [edge.originNodeId, edge.targetNodeId].sort()) {
+        const endpoint = this.#graph.nodesById.get(endpointId)!;
+        this.#worldMemory.ingest({ ingestId: `arrival-signpost:${party.id}:${nodeId}:node:${endpointId}`, ownerId: party.id, ownerKind: "party", kind: "navigation_discovery", observedAtElapsedDays: elapsed, knownAtElapsedDays: elapsed, staleAfterDays: null, provenance: { sourceType: "direct_observation", sourceId: `signpost:${nodeId}`, sourceOwnerId: null, nodeId }, payload: { knowledgeId: `node:${endpointId}`, knowledgeKind: "node", worldObjectId: endpointId, estimatedPosition: endpoint.position, uncertaintyCenter: null, uncertaintyRadiusKm: null, relation: `signposted_from:${nodeId}`, confidencePermille: 900 } });
+      }
+      const otherNodeId = edge.originNodeId === nodeId ? edge.targetNodeId : edge.originNodeId;
+      this.#worldMemory.ingest({ ingestId: `arrival-signpost:${party.id}:${nodeId}:edge:${edge.id}`, ownerId: party.id, ownerKind: "party", kind: "navigation_discovery", observedAtElapsedDays: elapsed, knownAtElapsedDays: elapsed, staleAfterDays: null, provenance: { sourceType: "direct_observation", sourceId: `signpost:${nodeId}`, sourceOwnerId: null, nodeId }, payload: { knowledgeId: `edge:${edge.id}`, knowledgeKind: "edge", worldObjectId: edge.id, estimatedPosition: this.#graph.nodesById.get(otherNodeId)!.position, uncertaintyCenter: null, uncertaintyRadiusKm: null, relation: `${edge.originNodeId}->${edge.targetNodeId}`, confidencePermille: 900 } });
     }
   }
 

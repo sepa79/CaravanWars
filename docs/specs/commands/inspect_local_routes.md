@@ -39,6 +39,8 @@ Accepted commands:
 3. Add both endpoint node ids for each discovered edge to runtime party knowledge.
 4. Return discovery counts in `CommandResult.details`.
 
+The current TypeScript runtime also applies this bounded local inspection automatically when road travel arrives at a destination node. This models visible road exits, signposts, and immediately available local directions. Only public adjacent edges are learned; hidden tracks and concealed sites still require scouting, rumor, search, or direct discovery.
+
 ## Result details
 
 ```json
