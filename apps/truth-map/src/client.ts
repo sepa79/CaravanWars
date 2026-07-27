@@ -363,6 +363,16 @@ async function submitMove(): Promise<void> {
     || party?.currentNodeId === undefined || destination.value.length === 0) return;
 
   try {
+    if (party.id === "player_expedition") {
+      const response = await postJson<{ readonly result: { readonly result: MovePartyResponse["result"] }; readonly state: ExpeditionState }>("/api/expedition/command", { commandType: "move_party", command: { party_id: party.id, from_node_id: party.currentNodeId, to_node_id: destination.value } });
+      expeditionState = response.state;
+      state = response.state.partyMap;
+      if (response.result.result.accepted) showMessage(translate("commandAccepted"), false);
+      else showMessage(`${response.result.result.errorCode}: ${response.result.result.message}`, true);
+      renderPlayableExpedition();
+      updateView();
+      return;
+    }
     const response = await postJson<MovePartyResponse>(viewUrl("/api/commands/move-party"), {
       party_id: party.id,
       from_node_id: party.currentNodeId,
@@ -392,11 +402,15 @@ async function advanceTime(days: number): Promise<void> {
 
 async function resetSimulation(): Promise<void> {
   try {
-    state = await postJson<DebugState>(viewUrl("/api/reset"), {});
+    await postJson<DebugState>(viewUrl("/api/reset"), {});
     autoAdvance.checked = false;
     updateAutoAdvance();
+    encounterOutcome = null;
+    journalPageIndex = 0;
+    expeditionState = null;
+    await refreshPlayableExpedition();
+    if (activeGameView === "diagnostics") await refreshDebugMap();
     showMessage(translate("resetComplete"), false);
-    updateView();
   } catch (error: unknown) {
     showError(error);
   }

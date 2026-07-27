@@ -11,7 +11,7 @@ const polish = {
   speed: "Prędkość",
   travelCommand: "Komenda podróży",
   destination: "Cel sąsiedniej trasy",
-  depart: "Wyślij MovePartyCommand",
+  depart: "Wyrusz",
   worldClock: "World Clock",
   advanceSixHours: "+ 6 godzin",
   advanceDay: "+ 1 dzień",

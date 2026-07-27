@@ -60,7 +60,6 @@
           <section class="context-view" data-game-view="commands" hidden>
             <header class="panel-heading"><p class="section-label" data-i18n="travelCommand"></p><h2>Ruch i czas</h2></header>
             <label class="field-label" for="destination" data-i18n="destination"></label><select id="destination"></select><button id="moveButton" class="primary" data-i18n="depart"></button><p id="commandResult" class="command-result" aria-live="polite"></p>
-            <button id="resetButton" class="quiet" data-i18n="reset"></button>
           </section>
 
           <section id="economyDiagnostics" class="context-view" data-game-view="diagnostics" hidden>
@@ -69,7 +68,7 @@
             <div data-diagnostic-page="0"><dl class="facts"><div><dt>Day</dt><dd id="economyDay">—</dd></div><div><dt>Trades</dt><dd id="economyTrades">—</dd></div><div><dt>Shortages</dt><dd id="economyShortages">—</dd></div><div><dt>Active tasks</dt><dd id="economyTasks">—</dd></div><div><dt>Distance</dt><dd id="economyDistance">—</dd></div><div><dt>Season / year</dt><dd id="economySeason">—</dd></div></dl></div>
             <div data-diagnostic-page="1" hidden><dl class="facts"><div><dt>Facility profiles</dt><dd id="economyProfiles">—</dd></div><div><dt>Winter reserves</dt><dd id="economyReserves">—</dd></div><div><dt>Population / health</dt><dd id="economyPopulation">—</dd></div><div><dt>Labour/security</dt><dd id="economyLabour">—</dd></div><div><dt>Continuous space</dt><dd id="spatialDiagnostics">—</dd></div></dl></div>
             <div data-diagnostic-page="2" hidden><p id="economyAnnualChart" class="compact-copy">Annual production chart: no completed year</p><ol id="economyDecisions" class="paged-list"></ol></div>
-            <div class="pager"><button id="diagnosticPrevious" type="button" aria-label="Poprzednia strona diagnostyki">←</button><span id="diagnosticPage">1 / 3</span><button id="diagnosticNext" type="button" aria-label="Następna strona diagnostyki">→</button></div><button id="advanceEconomy" class="primary">Run regional day</button>
+            <div class="pager"><button id="diagnosticPrevious" type="button" aria-label="Poprzednia strona diagnostyki">←</button><span id="diagnosticPage">1 / 3</span><button id="diagnosticNext" type="button" aria-label="Następna strona diagnostyki">→</button></div><button id="advanceEconomy" class="primary">Run regional day</button><button id="resetButton" class="quiet" data-i18n="reset"></button>
           </section>
         </aside>
       </section>

@@ -16,6 +16,19 @@ test("defaults to the expedition Party Map", async ({ page }) => {
   await expect(page.locator("#navigationKnowledge")).toContainText("PRIVATE NAVIGATION");
 });
 
+test("gameplay Move targets the expedition world and Reset exists only in Debug", async ({ page }) => {
+  await page.goto("/");
+  await openPanel(page, "commands");
+  await expect(page.locator("#resetButton")).not.toBeVisible();
+  await page.locator("#destination").selectOption("opole");
+  await page.locator("#moveButton").click();
+  await expect(page.locator("#commandResult")).toContainText("Komenda przyjęta");
+  await expect(page.locator("#commandResult")).not.toContainText("PARTY_NOT_FOUND");
+  await expect(page.locator("#partyStatus")).toHaveText("w podróży");
+  await openPanel(page, "diagnostics");
+  await expect(page.locator("#resetButton")).toBeVisible();
+});
+
 test("truth mode is explicit and exposes more than the selected party knows", async ({ page }) => {
   await page.goto("/");
   await openPanel(page, "diagnostics");
