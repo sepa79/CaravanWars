@@ -1535,10 +1535,10 @@ export class WorldSimulation {
     if (this.#simulationFoundation !== null) {
       this.#simulationFoundation.advanceDays(days, (fromElapsedDays, toElapsedDays) => {
         this.#advanceLocationEconomyBetween(fromElapsedDays, toElapsedDays);
-      });
+      }, () => this.#caravanExpedition?.snapshot().encounters.some((item) => item.status === "awaiting_decision") === true);
       return;
     }
-    this.#clock.advanceDays(days, { maxEvents: 100_000, dispatch: (intent) => intent.targetComponent === PARTY_MOVEMENT_COMPONENT ? this.#handleMovementTick(intent, this.#clock.elapsedDays) : [], onTimeAdvanced: (fromElapsedDays, toElapsedDays) => this.#advanceLocationEconomyBetween(fromElapsedDays, toElapsedDays) });
+    this.#clock.advanceDays(days, { maxEvents: 100_000, dispatch: (intent) => intent.targetComponent === PARTY_MOVEMENT_COMPONENT ? this.#handleMovementTick(intent, this.#clock.elapsedDays) : [], onTimeAdvanced: (fromElapsedDays, toElapsedDays) => this.#advanceLocationEconomyBetween(fromElapsedDays, toElapsedDays), shouldHalt: () => this.#caravanExpedition?.snapshot().encounters.some((item) => item.status === "awaiting_decision") === true });
   }
 
   movementTickDays(): number { return this.#travelConfig.movementTickDays; }

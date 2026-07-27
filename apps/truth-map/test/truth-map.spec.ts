@@ -151,6 +151,20 @@ test("fight presents its result and an explicit way to continue the journey", as
   await expect(page.locator("#expeditionLog")).toContainText("fight:");
 });
 
+test("a one-day advance halts at a player decision and keeps the encounter modal visible", async ({ page }) => {
+  await page.goto("/");
+  await openPanel(page, "contract");
+  await page.locator("#acceptContract").click();
+  await page.locator("#pickupContract").click();
+  await moveOnMap(page, "opole");
+  await page.locator("#advanceDay").click({ force: true });
+  await expect(page.locator("#encounterPanel")).toBeVisible();
+  await expect(page.locator("#encounterTitle")).toHaveText("Karawana zatrzymana");
+  const pausedAt = await page.locator("#clock").textContent();
+  await page.locator("#advanceDay").click({ force: true });
+  await expect(page.locator("#clock")).toHaveText(pausedAt ?? "");
+});
+
 test("playable API is current and contract loads without a 404 UI error", async ({ page, request }) => {
   const health = await request.get("/api/health");
   expect(health.ok()).toBe(true);

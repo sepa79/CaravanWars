@@ -481,12 +481,14 @@ export class WorldSimulationFoundation {
   advanceDays(
     days: number,
     onTimeAdvanced?: (fromElapsedDays: number, toElapsedDays: number) => void,
+    shouldHalt?: () => boolean,
   ): void {
     if (!this.#configurationSealed) this.captureResetState();
     this.#clock.advanceDays(days, {
       maxEvents: this.#maxEventsPerAdvance,
       dispatch: (intent) => this.#dispatch(intent),
       ...(onTimeAdvanced === undefined ? {} : { onTimeAdvanced }),
+      ...(shouldHalt === undefined ? {} : { shouldHalt }),
     });
   }
 

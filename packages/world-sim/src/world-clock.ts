@@ -30,6 +30,7 @@ export interface WorldClockAdvanceOptions {
   readonly maxEvents: number;
   readonly dispatch: (intent: ScheduledEventIntent) => readonly ScheduledEventIntent[] | void;
   readonly onTimeAdvanced?: (fromElapsedDays: number, toElapsedDays: number) => void;
+  readonly shouldHalt?: () => boolean;
 }
 
 export class WorldClockValidationError extends Error {
@@ -132,6 +133,7 @@ export class WorldClock {
     if (!Number.isSafeInteger(options.maxEvents) || options.maxEvents <= 0) {
       throw new WorldClockValidationError("World clock maxEvents must be a positive safe integer.");
     }
+    if (options.shouldHalt?.() === true) return;
 
     let dispatched = 0;
     while (true) {
@@ -156,6 +158,7 @@ export class WorldClock {
         failureMessage: null,
       });
       this.scheduleAll(followUps);
+      if (options.shouldHalt?.() === true) return;
     }
     this.#advanceTimeTo(targetElapsedDays, options.onTimeAdvanced);
   }

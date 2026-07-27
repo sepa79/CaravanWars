@@ -117,6 +117,16 @@ test("batch scheduling is atomic when any event id conflicts", () => {
   assert.deepEqual(clock.snapshot(), before);
 });
 
+test("a blocking domain condition halts an advance at the event that creates it", () => {
+  const clock = new WorldClock();
+  let blocked = false;
+  clock.schedule(intent("decision", "DecisionRequired", 0.25));
+  clock.advanceDays(1, { maxEvents: 10, dispatch: () => { blocked = true; }, shouldHalt: () => blocked });
+  assert.equal(clock.elapsedDays, 0.25);
+  clock.advanceDays(1, { maxEvents: 10, dispatch: () => assert.fail("No event may dispatch while blocked."), shouldHalt: () => blocked });
+  assert.equal(clock.elapsedDays, 0.25);
+});
+
 function intent(eventId: string, kind: string, dueElapsedDays: number): ScheduledEventIntent {
   return {
     eventId,

@@ -22,7 +22,7 @@ test("player parchment starts with regional basics and keeps a stable frame as k
 
 test("playable contract loop conserves physical cargo and coin through encounter and completion", () => {
   const { world } = prepare(); assert.equal(world.partySnapshot("player_expedition").cargo.food, 12); startEncounter(world);
-  const paused = world.partySnapshot("player_expedition").travel!.progressKm; world.advanceDays(0.25); assert.equal(world.partySnapshot("player_expedition").travel!.progressKm, paused);
+  const paused = world.partySnapshot("player_expedition").travel!.progressKm, pausedAt = world.elapsedDays(); world.advanceDays(0.25); assert.equal(world.partySnapshot("player_expedition").travel!.progressKm, paused); assert.equal(world.elapsedDays(), pausedAt);
   const result = world.submitCommand({ commandType: "resolve_expedition_encounter", command: { commandId: "negotiate", issuerActorId: "player_leader", encounterId: "ambush_1", decision: "negotiate" } }).result; assert.equal(result.accepted, true); assert.equal(world.partySnapshot("player_expedition").cargo.coin, 1); assert.equal(world.partySnapshot("black_pine_raiders").cargo.coin, 4);
   assert.equal(world.snapshot().simulationFoundation!.routeSecurity!.routes[0]!.incidentCount, 1);
   world.advanceDays(6); assert.equal(world.partySnapshot("player_expedition").currentNodeId, "opole"); const delivered = world.submitCommand({ commandType: "deliver_caravan_contract", command: { commandId: "deliver", issuerActorId: "player_leader", contractId: "contract_wroclaw_opole_food" } }).result; assert.equal(delivered.accepted, true);
