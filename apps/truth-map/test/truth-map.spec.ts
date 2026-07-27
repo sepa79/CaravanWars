@@ -28,7 +28,7 @@ test("gameplay Move targets the expedition world and Reset exists only in Debug"
   await expect(page.locator("#commandResult")).not.toContainText("PARTY_NOT_FOUND");
   await expect(page.locator("#partyStatus")).toHaveText("oczekuje");
   await page.locator("#advanceSixHours").click();
-  await expect(page.locator("#clock")).toContainText("06:00");
+  await expect(page.locator("#clock")).toContainText("05:00");
   await expect(page.locator("#partyStatus")).toHaveText("w podróży");
   await expect(page.locator("#partyLocation")).toContainText("Opole");
   await openPanel(page, "diagnostics");
@@ -108,7 +108,7 @@ test("playable expedition completes contract through physical cargo, encounter d
   await expect(page.locator("#expeditionCargo")).toContainText("food 12");
   await moveOnMap(page, "opole");
   await page.locator("#advanceSixHours").click();
-  await expect(page.locator("#clock")).toContainText("06:00");
+  await expect(page.locator("#clock")).toContainText("05:00");
   await expect(page.locator("#encounterPanel")).toBeVisible();
   await expect(page.locator("#encounterTitle")).toHaveText("Karawana zatrzymana");
   await page.locator('[data-decision="negotiate"]').click();
@@ -163,6 +163,33 @@ test("a one-day advance halts at a player decision and keeps the encounter modal
   const pausedAt = await page.locator("#clock").textContent();
   await page.locator("#advanceDay").click({ force: true });
   await expect(page.locator("#clock")).toHaveText(pausedAt ?? "");
+});
+
+test("rapid manual commands are executed in order and +6h opens the ambush", async ({ page }) => {
+  await page.goto("/");
+  await openPanel(page, "contract");
+  await page.locator("#acceptContract").click();
+  await page.locator("#pickupContract").click({ force: true });
+  await moveOnMap(page, "opole");
+  await page.locator("#advanceSixHours").click();
+  await expect(page.locator("#encounterPanel")).toBeVisible();
+  await expect(page.locator("#encounterTitle")).toHaveText("Karawana zatrzymana");
+});
+
+test("auto advance stops at the ambush and the result opens the journal", async ({ page }) => {
+  await page.goto("/");
+  await openPanel(page, "contract");
+  await page.locator("#acceptContract").click();
+  await page.locator("#pickupContract").click({ force: true });
+  await moveOnMap(page, "opole");
+  await page.locator("#autoAdvance").check();
+  await expect(page.locator("#encounterPanel")).toBeVisible();
+  await expect(page.locator("#autoAdvance")).not.toBeChecked();
+  await page.locator('[data-decision="fight"]').click();
+  await page.getByRole("button", { name: "Zobacz dziennik" }).click();
+  await expect(page.locator("#encounterPanel")).not.toBeVisible();
+  await expect(page.locator('[data-game-view="journal"]')).toBeVisible();
+  await expect(page.locator("#expeditionLog")).toContainText("fight:");
 });
 
 test("playable API is current and contract loads without a 404 UI error", async ({ page, request }) => {

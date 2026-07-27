@@ -218,6 +218,7 @@ const diagnosticPages = [...document.querySelectorAll<HTMLElement>("[data-diagno
 let state: DebugState | null = null;
 let requestInFlight = false;
 let autoAdvanceTimer: number | null = null;
+let expeditionMutationQueue: Promise<void> = Promise.resolve();
 let expeditionState: ExpeditionState | null = null;
 let expeditionCommandMessage = "";
 let activeGameView = "map";
@@ -240,15 +241,15 @@ diagnosticPrevious.addEventListener("click", () => { diagnosticPageIndex = Math.
 diagnosticNext.addEventListener("click", () => { diagnosticPageIndex = Math.min(diagnosticPages.length - 1, diagnosticPageIndex + 1); renderDiagnosticPage(); });
 canvas.addEventListener("click", (event) => { selectMapNode(event); });
 canvas.addEventListener("contextmenu", (event) => { event.preventDefault(); openMapContextMenu(event); });
-moveToSelected.addEventListener("click", () => { mapContextMenu.hidden = true; void submitSelectedMove(); });
+moveToSelected.addEventListener("click", () => { mapContextMenu.hidden = true; queueExpeditionMutation(submitSelectedMove); });
 document.addEventListener("click", (event) => { if (!mapContextMenu.contains(event.target as Node) && event.target !== canvas) mapContextMenu.hidden = true; });
-advanceSixHours.addEventListener("click", () => { void advancePlayableExpedition(0.25); });
-advanceDay.addEventListener("click", () => { void advancePlayableExpedition(1); });
+advanceSixHours.addEventListener("click", () => { queueExpeditionMutation(() => advancePlayableExpedition(0.25)); });
+advanceDay.addEventListener("click", () => { queueExpeditionMutation(() => advancePlayableExpedition(1)); });
 resetButton.addEventListener("click", () => { void resetSimulation(); });
 debugMapObserver.addEventListener("change", () => { void refreshDebugMap(); });
 advanceEconomy.addEventListener("click", () => { void advanceRegionalEconomy(); });
-acceptContract.addEventListener("click", () => { void expeditionCommand("accept_caravan_contract", { commandId: "browser:accept", issuerActorId: "player_leader", contractId: "contract_wroclaw_opole_food", contractorPartyId: "player_expedition" }); });
-pickupContract.addEventListener("click", () => { void expeditionCommand("pickup_caravan_contract", { commandId: "browser:pickup", issuerActorId: "player_leader", contractId: "contract_wroclaw_opole_food" }); });
+acceptContract.addEventListener("click", () => { queueExpeditionMutation(() => expeditionCommand("accept_caravan_contract", { commandId: "browser:accept", issuerActorId: "player_leader", contractId: "contract_wroclaw_opole_food", contractorPartyId: "player_expedition" })); });
+pickupContract.addEventListener("click", () => { queueExpeditionMutation(() => expeditionCommand("pickup_caravan_contract", { commandId: "browser:pickup", issuerActorId: "player_leader", contractId: "contract_wroclaw_opole_food" })); });
 exploreExpedition.addEventListener("click", () => { void expeditionCommand("search_area", { commandId: "browser:explore:forest-shortcut", issuerActorId: "player_leader", partyId: "player_expedition", areaKnowledgeId: "area:rumored_forest_shortcut", searchRadiusKm: 3, observationSkillPermille: 820 }); });
 deliverContract.addEventListener("click", () => { void expeditionCommand("deliver_caravan_contract", { commandId: "browser:deliver", issuerActorId: "player_leader", contractId: "contract_wroclaw_opole_food" }); });
 autoAdvance.addEventListener("change", updateAutoAdvance);
@@ -281,7 +282,7 @@ async function refreshPlayableExpedition(): Promise<void> {
   if (changed) renderPlayableExpedition();
 }
 function renderPlayableExpedition(): void { const current = expeditionState, contract = current?.expedition?.contracts[0]; if (current === null || current.expedition === null || contract === undefined) return; expeditionContract.textContent = `${contract.quantity} ${contract.goodsId}: Wrocław → Opole`; expeditionStatus.textContent = `Status: ${contract.status}`; expeditionDeadline.textContent = `dzień ${contract.deadlineElapsedDays}, zapłata ${contract.paymentCoin} coin`; expeditionCharacters.textContent = current.expedition.characters.map((item) => `${item.characterId} [${item.roles.join("/")}] h${item.healthPermille} f${item.fatiguePermille}`).join("; "); expeditionCargo.textContent = Object.entries(current.party.cargo).map(([id, amount]) => `${id} ${amount}`).join(", ") || "puste"; acceptContract.disabled = contract.status !== "offered"; pickupContract.disabled = contract.status !== "accepted"; departExpedition.disabled = contract.status !== "picked_up" || current.party.currentNodeId !== "wroclaw"; exploreExpedition.disabled = contract.status !== "picked_up" || current.party.currentNodeId !== "wroclaw"; deliverContract.disabled = contract.status !== "picked_up" || current.party.currentNodeId !== "opole"; const encounter = current.expedition.encounter; encounterChoices.replaceChildren(); if (encounter !== null) { encounterTitle.textContent = "Karawana zatrzymana"; encounterSummary.textContent = `Zagrożenie na ${encounter.routeId}. Wybór ma fizyczne konsekwencje.`; for (const decision of encounter.affordances) { const button = document.createElement("button"); button.textContent = decision; button.dataset.decision = decision; button.addEventListener("click", () => { void expeditionCommand("resolve_expedition_encounter", { commandId: `browser:encounter:${encounter.encounterId}:${decision}`, issuerActorId: "player_leader", encounterId: encounter.encounterId, decision }); }); encounterChoices.append(button); } openEncounterDialog(); } else if (encounterOutcome !== null) { encounterTitle.textContent = encounterOutcome.decision === "fight" ? "Walka rozstrzygnięta" : "Spotkanie rozstrzygnięte"; encounterSummary.textContent = `${encounterOutcome.decision}: ${encounterOutcome.outcome}. Możesz kontynuować podróż.`; const continueButton = document.createElement("button"); continueButton.className = "primary"; continueButton.textContent = "Kontynuuj podróż (+6 godzin)"; continueButton.dataset.encounterContinue = "true"; continueButton.addEventListener("click", () => { encounterOutcome = null; void advancePlayableExpedition(0.25); }); const journalButton = document.createElement("button"); journalButton.textContent = "Zobacz dziennik"; journalButton.addEventListener("click", () => { encounterOutcome = null; encounterPanel.close(); void activateGameView("journal"); }); encounterChoices.append(continueButton, journalButton); openEncounterDialog(); } else if (encounterPanel.open) { encounterPanel.close(); encounterReturnFocus?.focus(); encounterReturnFocus = null; } const pageSize = 4, pageCount = Math.max(1, Math.ceil(current.expedition.log.length / pageSize)); journalPageIndex = Math.min(journalPageIndex, pageCount - 1); const entries = current.expedition.log.slice().reverse().slice(journalPageIndex * pageSize, (journalPageIndex + 1) * pageSize); expeditionLog.replaceChildren(...entries.map((entry) => { const item = document.createElement("li"); item.textContent = `D${entry.elapsedDays.toFixed(2)} ${entry.text}`; return item; })); journalPage.textContent = `${journalPageIndex + 1} / ${pageCount}`; journalPrevious.disabled = journalPageIndex === 0; journalNext.disabled = journalPageIndex + 1 >= pageCount; }
-function openEncounterDialog(): void { if (!encounterPanel.open) { encounterReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null; encounterPanel.showModal(); } requestAnimationFrame(() => encounterChoices.querySelector<HTMLButtonElement>("button")?.focus()); }
+function openEncounterDialog(): void { stopAutoAdvance(); if (!encounterPanel.open) { encounterReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null; encounterPanel.showModal(); } requestAnimationFrame(() => encounterChoices.querySelector<HTMLButtonElement>("button")?.focus()); }
 function applyPlayableExpeditionState(next: ExpeditionState): void {
   expeditionState = next;
   if (showingExpeditionMap && !debugMapActive) { state = next.partyMap; updateView(); }
@@ -289,6 +290,9 @@ function applyPlayableExpeditionState(next: ExpeditionState): void {
 }
 async function expeditionCommand(commandType: string, command: Record<string, unknown>): Promise<void> { try { const response = await postJson<{ readonly result: { readonly result: { readonly accepted: boolean; readonly errorCode?: string; readonly message?: string; readonly outcome?: string } }; readonly state: ExpeditionState }>("/api/expedition/command", { commandType, command }); const result = response.result.result; expeditionCommandMessage = result.accepted ? "Komenda przyjęta" : `${result.errorCode}: ${result.message}`; if (commandType === "resolve_expedition_encounter" && result.accepted) encounterOutcome = { decision: String(command.decision), outcome: result.outcome ?? "zakończone" }; applyPlayableExpeditionState(response.state); expeditionStatus.textContent += ` — ${expeditionCommandMessage}`; } catch (error) { showError(error); } }
 async function advancePlayableExpedition(days: number): Promise<void> { applyPlayableExpeditionState(await postJson<ExpeditionState>("/api/expedition/advance", { days })); }
+function queueExpeditionMutation(operation: () => Promise<void>): void {
+  expeditionMutationQueue = expeditionMutationQueue.then(operation, operation).catch(showError);
+}
 async function expeditionAiStep(): Promise<void> { const response = await postJson<{ readonly state: ExpeditionState }>("/api/expedition/ai-step", {}); applyPlayableExpeditionState(response.state); }
 
 async function refreshEconomyDiagnostics(): Promise<void> {
@@ -463,8 +467,14 @@ function updateAutoAdvance(): void {
     autoAdvanceTimer = null;
   }
   if (autoAdvance.checked) {
-    autoAdvanceTimer = window.setInterval(() => { void advancePlayableExpedition(1 / 24); }, 250);
+    autoAdvanceTimer = window.setInterval(() => { queueExpeditionMutation(() => advancePlayableExpedition(1 / 24)); }, 250);
   }
+}
+
+function stopAutoAdvance(): void {
+  if (!autoAdvance.checked && autoAdvanceTimer === null) return;
+  autoAdvance.checked = false;
+  updateAutoAdvance();
 }
 
 function updateView(): void {
