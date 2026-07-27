@@ -41,3 +41,21 @@ test("the same seed and commands replay deterministically", () => {
   }
   assert.deepEqual(left.truthSnapshot(), right.truthSnapshot());
 });
+
+test("allies without an order hold position instead of charging autonomously", () => {
+  const battle = createDemoBattle(), before = battle.truthSnapshot();
+  battle.advanceTick();
+  const after = battle.truthSnapshot();
+  for (const id of ["ally_spear", "ally_bow"]) assert.deepEqual(after.actors.find((actor) => actor.id === id)?.position, before.actors.find((actor) => actor.id === id)?.position);
+});
+
+test("ordered movement uses exclusive hex reservations throughout every tick", () => {
+  const battle = createDemoBattle();
+  battle.issueOrder({ issuerId: "player", recipientId: "ally_spear", category: "movement", type: "advance", targetHex: { q: 1, r: 0 }, targetActorId: null });
+  battle.issueOrder({ issuerId: "player", recipientId: "ally_bow", category: "movement", type: "advance", targetHex: { q: 1, r: 0 }, targetActorId: null });
+  for (let tick = 0; tick < 12; tick += 1) {
+    battle.advanceTick();
+    const positions = battle.truthSnapshot().actors.map((actor) => `${actor.position.q},${actor.position.r}`);
+    assert.equal(new Set(positions).size, positions.length);
+  }
+});

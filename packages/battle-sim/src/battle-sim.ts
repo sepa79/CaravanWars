@@ -81,11 +81,16 @@ export class BattleSimulation {
   advanceTick(): void {
     this.#tick += 1;
     const actors = [...this.#actors.values()].filter((actor) => actor.health > 0).sort((a, b) => a.id.localeCompare(b.id));
+    const intents = new Map(actors.map((actor) => [actor.id, actor.playerControlled ? actor.intent : this.#chooseAiIntent(actor)]));
+    const reserved = new Set([...this.#actors.values()].map((actor) => hexKey(actor.position)));
     for (const actor of actors) {
-      const intent = actor.playerControlled ? actor.intent : this.#chooseAiIntent(actor);
+      const intent = intents.get(actor.id);
       actor.intent = null;
-      if (intent?.type === "move") this.#move(actor, intent.target);
-      else if (intent?.type === "attack") this.#attack(actor, intent.targetActorId);
+      if (intent?.type === "move") this.#move(actor, intent.target, reserved);
+    }
+    for (const actor of actors) {
+      const intent = intents.get(actor.id);
+      if (intent?.type === "attack") this.#attack(actor, intent.targetActorId);
     }
   }
 
@@ -109,16 +114,17 @@ export class BattleSimulation {
       const target = order.type === "follow" || order.type === "rally" ? this.#actors.get(order.issuerId)?.position ?? null : order.targetHex;
       if (target !== null) return this.#stepToward(actor, target);
     }
+    if (actor.faction === "player") { const adjacent = this.#adjacentEnemy(actor); return adjacent === null ? null : { type: "attack", targetActorId: adjacent.id }; }
     const enemy = this.#nearestVisibleEnemy(actor);
     return enemy === null ? null : this.#intentTowardActor(actor, enemy.id);
   }
 
   #intentTowardActor(actor: ActorState, targetId: string): ActorIntent | null { const target = this.#actors.get(targetId); if (target === undefined || target.health <= 0) return null; return hexDistance(actor.position, target.position) === 1 ? { type: "attack", targetActorId: target.id } : this.#stepToward(actor, target.position); }
-  #stepToward(actor: ActorState, target: Hex): ActorIntent | null { const candidates = hexNeighbors(actor.position).filter((hex) => insideMap(hex, this.#map.radius) && !this.#blocked(hex) && !this.#occupied(hex)).sort((a, b) => hexDistance(a, target) - hexDistance(b, target) || hexKey(a).localeCompare(hexKey(b))); return candidates[0] === undefined ? null : { type: "move", target: candidates[0] }; }
+  #stepToward(actor: ActorState, target: Hex): ActorIntent | null { const step = firstPathStep(actor.position, target, this.#map.radius, (hex) => this.#blocked(hex) || (this.#occupied(hex) && !sameHex(hex, target))); return step === null ? null : { type: "move", target: step }; }
   #stepAwayFromNearestEnemy(actor: ActorState): ActorIntent | null { const enemy = this.#nearestVisibleEnemy(actor); if (enemy === null) return null; const candidates = hexNeighbors(actor.position).filter((hex) => insideMap(hex, this.#map.radius) && !this.#blocked(hex) && !this.#occupied(hex)).sort((a, b) => hexDistance(b, enemy.position) - hexDistance(a, enemy.position) || hexKey(a).localeCompare(hexKey(b))); return candidates[0] === undefined ? null : { type: "move", target: candidates[0] }; }
   #nearestVisibleEnemy(actor: ActorState): ActorState | null { return [...this.#actors.values()].filter((candidate) => candidate.faction !== actor.faction && candidate.health > 0 && hexDistance(actor.position, candidate.position) <= actor.sightRange).sort((a, b) => hexDistance(actor.position, a.position) - hexDistance(actor.position, b.position) || a.id.localeCompare(b.id))[0] ?? null; }
   #adjacentEnemy(actor: ActorState): ActorState | null { return [...this.#actors.values()].find((candidate) => candidate.faction !== actor.faction && candidate.health > 0 && hexDistance(actor.position, candidate.position) === 1) ?? null; }
-  #move(actor: ActorState, target: Hex): void { if (hexDistance(actor.position, target) !== 1 || this.#blocked(target) || this.#occupied(target)) return; actor.position = copyHex(target); this.#events.push({ tick: this.#tick, type: "moved", actorId: actor.id, detail: hexKey(target) }); }
+  #move(actor: ActorState, target: Hex, reserved: Set<string>): void { if (hexDistance(actor.position, target) !== 1 || this.#blocked(target) || reserved.has(hexKey(target))) return; actor.position = copyHex(target); reserved.add(hexKey(target)); this.#events.push({ tick: this.#tick, type: "moved", actorId: actor.id, detail: hexKey(target) }); }
   #attack(actor: ActorState, targetId: string): void { const target = this.#actors.get(targetId); if (target === undefined || target.health <= 0 || target.faction === actor.faction || hexDistance(actor.position, target.position) !== 1) return; const damage = 2 + deterministicValue(`${this.#tick}:${actor.id}:${target.id}`, 3); target.health = Math.max(0, target.health - damage); target.morale = Math.max(0, target.morale - damage * 35); this.#events.push({ tick: this.#tick, type: "attacked", actorId: actor.id, detail: target.id }); }
   #visibleToPlayer(actor: ActorState): boolean { const player = this.#actors.get(this.#playerActorId)!; return actor.id === player.id || hexDistance(player.position, actor.position) <= player.sightRange; }
   #blocked(hex: Hex): boolean { return this.#map.blocked.some((item) => sameHex(item, hex)); }
@@ -139,6 +145,7 @@ function observation(player: ActorState, actor: ActorState, tick: number): Playe
 function bearing(from: Hex, to: Hex): string { if (sameHex(from, to)) return "tutaj"; const dq = to.q - from.q, dr = to.r - from.r; if (Math.abs(dq) > Math.abs(dr)) return dq > 0 ? "wschód" : "zachód"; return dr > 0 ? "południowy zachód" : "północny wschód"; }
 function isInCommandChain(actors: ReadonlyMap<string, ActorState>, commanderId: string, actorId: string): boolean { let current = actors.get(actorId); while (current?.commanderId !== null && current?.commanderId !== undefined) { if (current.commanderId === commanderId) return true; current = actors.get(current.commanderId); } return false; }
 function deterministicValue(key: string, range: number): number { let hash = 2166136261; for (const char of key) { hash ^= char.charCodeAt(0); hash = Math.imul(hash, 16777619); } return Math.abs(hash) % range; }
+function firstPathStep(start: Hex, target: Hex, radius: number, blocked: (hex: Hex) => boolean): Hex | null { const queue: Hex[] = [copyHex(start)], previous = new Map<string, Hex | null>([[hexKey(start), null]]); while (queue.length > 0) { const current = queue.shift()!; if (sameHex(current, target)) break; for (const next of hexNeighbors(current).sort((a, b) => hexKey(a).localeCompare(hexKey(b)))) { const key = hexKey(next); if (!insideMap(next, radius) || blocked(next) || previous.has(key)) continue; previous.set(key, current); queue.push(next); } } if (!previous.has(hexKey(target))) return null; let step = copyHex(target), parent = previous.get(hexKey(step)) ?? null; while (parent !== null && !sameHex(parent, start)) { step = parent; parent = previous.get(hexKey(step)) ?? null; } return sameHex(step, start) ? null : step; }
 function insideMap(hex: Hex, radius: number): boolean { return hexDistance({ q: 0, r: 0 }, hex) <= radius; }
 function sameHex(a: Hex, b: Hex): boolean { return a.q === b.q && a.r === b.r; }
 function hexKey(hex: Hex): string { return `${hex.q},${hex.r}`; }
