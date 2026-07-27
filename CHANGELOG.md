@@ -4,6 +4,12 @@
 
 ### Added
 
+- Separate authoritative individual and formation battle commands, with
+  selection-exclusive actions, stable member-to-slot identities, complete
+  green/amber/red formation footprint and corridor previews, coherent
+  stepwise Advance execution, explicit terrain outcomes, exact Aulus and
+  Retainers regressions, and Chromium/Firefox interaction coverage.
+
 - Hex Battle Slice v2 with authoritative BattleGroups, deterministic loose/
   line/shield formations, physically propagated group orders, atomic
   simultaneous movement reservations, coherent doctrine, snapshot replay and
